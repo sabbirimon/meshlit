@@ -12,8 +12,32 @@ skipped and why, what's next.
 
 ## Current state — 2026-08-01
 
-**Phase:** 0 — scaffolding (multi-module restructuring not yet started)
+**Phase:** 0 → 1 boundary. Phase 0 shipped; beginning Phase 1.
 
+**Phase 0 (DONE, this session):**
+- 14-module Gradle restructure (`:app` + 13 `core-*` modules).
+- build-logic composite build with convention plugins.
+- Compose UI shell with bottom navigation across 9 destinations.
+- core-common / core-trust types shipped (sealed result, error taxonomy,
+  NodeId, ClusterRole, CapabilitySnapshot, JobSpec, MeshlitLogger,
+  TrustTier, DeviceTrustPolicy).
+- AndroidManifest declares foreground service, FGS-data-sync,
+  near-by Wi-Fi, network, notification permissions.
+- `./gradlew :app:assembleDebug` succeeds.
+- `./gradlew :app:lintDebug` succeeds.
+- APK at `app/build/outputs/apk/debug/app-debug.apk` (62 MB).
+
+**Build guide v1.2 (DONE, this session):**
+- §0 principle 1 updated: data-parallel preserved, but MoE-shard
+  federation explicitly allowed.
+- §2.6 added — frontend/backend language choices.
+- §2.7 added — frontier model federation architecture and flow.
+- Phase 4.5 added — public-side gateway, OpenAI-compatible HTTP API,
+  bearer tokens, federated cluster.
+
+**Git (DONE, this session):**
+- Three commits on `phase/0-scaffolding`: planning snapshot, Phase 0
+  scaffold, build-guide expansion.
 **Brand identity (DONE, this session):**
 - Name: **Meshlit** ("Many phones. One mind.")
 - Palette: midnight `#0A0E1A` / violet `#7C5CFF` / cyan `#22D3EE` / emerald `#34D399`
@@ -96,6 +120,32 @@ In priority order:
 - **Model signing / supply-chain trust.** No Android-side mechanism
   exists for "this GGUF is from a known publisher." Revisit if a
   poisoned-model incident surfaces in the wild.
+- **MoE shard federation (Phase 4.5).** Newly added. Real validation
+  needs a working NDK llama.cpp first; revisit after Phase 1 ships.
+
+---
+
+## Honest session-boundary note (added 2026-08-01)
+
+Autopilot for the full project is **not** a single session. The
+remaining work spans at least 6 more phase-cycles. Each requires
+on-device verification that I cannot perform in a sandboxed CLI
+environment — only the human can plug in a phone, run `adb install`,
+and confirm a 15-minute background survival test.
+
+**Right now, the next agent should:**
+1. Read this PROGRESS.md.
+2. Read the `phase-0-done` tag state (git checkout phase-0-done after
+   it's tagged below).
+3. Begin Phase 1: NDK + llama.cpp + foreground service. The hardest
+   risk. The first prompt must round-trip Device-A → Device-B. Plan
+   on at least one full session for this phase.
+4. Tag `phase-1-done` only when the on-device test passes.
+
+**To tag Phase 0 done:**
+```
+git tag -a phase-0-done -m "Multi-module scaffold + Compose UI shell. APK builds, lint clean."
+```
 
 ---
 
