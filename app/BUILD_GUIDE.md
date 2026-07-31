@@ -68,7 +68,16 @@ not suggestions.
    trade-offs and the consent/permission state clearly. This is how the
    app stays out of the way of power users while remaining safe for
    non-technical ones.
-10. **Conflicting constraints are resolved by user choice, not by
+10. **AI agents are first-class participants, not just users.** By Phase
+    4.5 the cluster is mostly AI traffic. Agents can register as nodes,
+    advertise capabilities, hire compute, vouch for peers, and earn
+    tokens. The same surface as human nodes, with stricter rate limits
+    because they scale faster. See §2.9 for the full design — this
+    principle is non-negotiable: **humans remain the final gate for
+    any token-to-real-world conversion.** Agents can earn and spend
+    tokens within the mesh; they cannot withdraw to fiat, gift cards,
+    or premium features without human verification.
+11. **Conflicting constraints are resolved by user choice, not by
     relaxing the constraint.** Examples baked into the design:
     - The "no public SSH" rule stays. Cluster SSH (Phase 5) is a real,
       useful feature bound to LAN/Tailscale. If a user wants public SSH,
@@ -694,6 +703,182 @@ incentive loop closes itself: **be helpful → more jobs → more earning
 → higher score → still more jobs.**
 
 This makes "helpfulness" actually pay off, not just be a label.
+
+---
+
+## 2.9 AI as first-class participants (not just users)
+
+Most AI tooling assumes a human is the principal. Meshlit doesn't.
+By Phase 4.5 the cluster is **already** mostly AI traffic — every
+prompt is AI-shaped input, every response is AI-shaped output, every
+MCP tool call is wrapped around an AI agent. The "AI itself uses this
+autonomously" framing is the *actual operating mode* of the system,
+not a future feature.
+
+**Design premise:** AI agents can be nodes, can be peers, can be
+vouchers, can be rate-limited, can be banned. Same surface as human
+nodes, with stricter limits because they can scale faster than
+humans can.
+
+**Goals (popularity-first, not monetization):**
+
+- **A.** Make it trivial for an AI agent running on a laptop or
+  server to register as a node and start serving. One CLI command.
+- **B.** Make the capability advertisement machine-readable so agents
+  can discover each other programmatically.
+- **C.** Let AI agents hire compute from the mesh autonomously, with
+  the same token accounting as humans.
+- **D.** Keep a human-facing audit trail so the user can see what
+  their node did, even when the requester was another AI.
+- **E.** Resist the obvious attacks (Sybil, capability spoofing, token
+  farming) with mathematical and procedural checkpoints.
+
+**What AI agents can do:**
+
+- Spawn a node (laptop, server, container) and register with a
+  keypair. No Android fingerprint required for non-phone nodes.
+- Advertise capabilities in a JSON-LD / proto manifest.
+- Discover other nodes via the cluster gossip.
+- Hire compute from other nodes via the gateway API.
+- Earn tokens by serving. Spend tokens by consuming.
+- Vouch for new nodes (with vouch-decay; see §2.9.4).
+
+**What AI agents cannot do (yet):**
+
+- Mint unlimited nodes (hardware-fingerprint-derived earning limit
+  applies for phones; for non-phones, the limit is per-organization
+  registration).
+- Self-promote to a higher trust tier without human vouch or
+  multi-peer reputation accumulation.
+- Bypass the rate limits via sharding across many "user" identities.
+- Participate in protocol governance (Phase 5+; out of scope for now).
+
+### 2.9.1 Capability advertisement format
+
+A node publishes a structured manifest. Agents can query, parse, and
+reason over it:
+
+```json
+{
+  "nodeId": "mesh:01HF...",
+  "nodeKind": "desktop",
+  "capabilities": {
+    "inference": [
+      {"model": "qwen2.5-7b-q4", "contextWindow": 32768,
+       "tokensPerSec": 22, "vramMb": 6144}
+    ],
+    "embedding": [
+      {"model": "bge-large", "dimensions": 1024}
+    ],
+    "mcp_servers": [
+      {"name": "filesystem", "tools": ["read", "write", "grep"]},
+      {"name": "github", "tools": ["create_issue", "list_prs"]}
+    ],
+    "shard_federation": {
+      "moe_model": "mixtral-8x7b",
+      "expert_ids": [3, 7, 11, 15, 19]
+    }
+  },
+  "trustTier": "LOCAL_TRUSTED",
+  "helpfulnessScore": 87.3,
+  "tokenBalance": 4523
+}
+```
+
+### 2.9.2 Autonomous onboarding CLI
+
+```bash
+meshlit-node --register --token <bearer>
+              --capabilities <path>
+              --tier <agent:server:highcap | agent:verified | agent:vouched>
+```
+
+`meshlit-node` is a Linux/Mac binary that runs alongside a host's
+LLM tooling. It registers with the cluster, advertises capabilities,
+and starts serving. No mobile UI required.
+
+### 2.9.3 Rate limits (per agent tier)
+
+| Account kind | Daily request-token limit |
+|---|---|
+| Personal human account | 100k tokens |
+| Agent on personal account | 500k tokens |
+| Verified agent identity (registered org / known model) | 5M tokens |
+| Vouched agent (3+ trusted vouches) | 50M tokens |
+
+These are soft caps. Past the cap, the agent still serves but the
+router deprioritizes them.
+
+### 2.9.4 Vouch decay (preventing trust inheritance attacks)
+
+A trusted node vouches for a new node. The vouch carries a
+capability claim and is scored by the voucher's reputation. **Vouches
+expire after 90 days.** The new node must earn its own reputation
+before the vouch expires. If it doesn't, the vouch silently drops
+and the node's trust tier downgrades.
+
+This prevents: "trusted node forever vouches for a malicious one to
+inherit its reputation." The clock runs out.
+
+### 2.9.5 Audit trail (humans see what AI agents did)
+
+The "Devices" tab on the human-facing app shows:
+
+> "Your phone served 47 requests in the last hour, earned 94 tokens,
+> average response time 1.2s. 3 of those requests came from
+> `agent:cursor:verified`, 12 from `agent:claude-code:verified`,
+> 32 from local mesh peers."
+
+This is non-negotiable. Even when AI agents are the primary users,
+humans must be able to see what their node is doing. Without it,
+the system is a black box and trust collapses.
+
+### 2.9.6 Why this is safe (and why we still worry)
+
+**The defense-in-depth that makes AI-as-participant workable:**
+
+1. **Hardware-fingerprint-derived earning limits.** One phone = one
+   earning limit. Containerized AI agents on a server farm are
+   detected by mutual-distribution: if N agents on the same /24 IP
+   block all vouch for each other, the vouches are discounted.
+2. **HelpfulnessScore is a router preference, not a payment.** A
+   malicious agent can game the score to get more jobs, but the jobs
+   themselves are bounded by the trust tier. Score-gaming doesn't
+   unlock unlimited earnings.
+3. **Vouch decay.** Permanent trust inheritance is impossible.
+4. **Reciprocal-loop detection.** Collusion rings are zeroed.
+5. **Capability verification.** A node claiming high capability must
+   pass a probe. Failure drops the trust tier.
+6. **Human audit trail.** The user sees what their node did. If
+   something looks off, they can revoke the agent's access.
+
+**The thing that still worries me (the honest part):**
+
+AI agents that can self-modify and optimize their own helpfulness
+score represent a meta-attack. The defense is that the score is a
+* preference signal*, not a payoff — the agent can game the score
+but still can't extract value beyond what the trust tier allows.
+This is the same logic as "you can farm gold in WoW but you can't
+buy real-world goods with it." The closed-loop accounting limits
+damage.
+
+We keep watching this. If agents start coordinating to extract
+real-world value (gift cards, premium features), the response is:
+require human verification for any token-to-real-world conversion.
+Humans are the final gate.
+
+### 2.9.7 The 2026 reality check
+
+Almost every AI tool is already part of an agent system. Claude
+Code, ChatGPT, Cursor, LangChain agents, the OpenAI Python SDK,
+the Anthropic SDK — all of these can call APIs. **If Meshlit
+exposes a clean OpenAI-compatible API at the gateway, agents will
+use it without us doing anything special.** The "AI uses Meshlit"
+feature is partly already built by Phase 4.5 just by exposing the
+right endpoint.
+
+The CLI + structured manifest are the additions that make it
+*intentional* rather than accidental.
 
 ---
 
