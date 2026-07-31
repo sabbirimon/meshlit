@@ -123,6 +123,31 @@
     <string name="device_clear_override">Clear override</string>
     <string name="device_refresh_probe">Re-run probe</string>
 
+    <!-- First-run setup wizard -->
+    <string name="setup_title">Setup</string>
+    <string name="setup_explainer">A few quick permissions so this device stays reachable as a cluster node while backgrounded.</string>
+    <string name="setup_kills_fgs_warning">This OEM aggressively kills background services. Without these permissions, Meshlit may go offline within 30 minutes.</string>
+    <string name="setup_open_settings">Skip to app</string>
+    <string name="setup_skip">Skip for now</string>
+    <string name="setup_finish">Finish</string>
+    <string name="setup_take_me_there">Take me there</string>
+    <string name="setup_mark_done">Mark done</string>
+    <string name="setup_undo">Undo</string>
+    <string name="setup_step_notif_label">Allow notifications</string>
+    <string name="setup_step_notif_desc">So Meshlit can post inference-complete, peer-join, and security alerts while the app is backgrounded.</string>
+    <string name="setup_step_battery_label">Disable battery optimization</string>
+    <string name="setup_step_battery_desc">Lets Meshlit keep its foreground service running without the OS throttling it after 30 min idle.</string>
+    <string name="setup_step_saver_label">Add to protected apps</string>
+    <string name="setup_step_saver_desc">OEM-specific step. Some manufacturers require this in addition to the standard battery whitelist.</string>
+    <string name="setup_step_autostart_label">Allow autostart</string>
+    <string name="setup_step_autostart_desc">Lets Meshlit restart after a reboot — needed for cluster nodes that should always be online.</string>
+    <string name="setup_step_mi_push_label">Enable Mi Push</string>
+    <string name="setup_step_mi_push_desc">Xiaomi-specific. Without Mi Push, notifications take 5–15 minutes to arrive on MIUI / HyperOS.</string>
+    <string name="setup_step_hms_push_label">Enable HMS Push</string>
+    <string name="setup_step_hms_push_desc">Huawei-specific. Required for any notification delivery on EMUI / HarmonyOS devices without GMS.</string>
+    <string name="setup_step_harmonyos_label">Verify compatibility layer</string>
+    <string name="setup_step_harmonyos_desc">HarmonyOS NEXT runs Android apps via a compatibility layer. Some Meshlit features may not work — please confirm before continuing.</string>
+
     <!-- Permissions / notifications -->
     <string name="notif_channel_cluster">Cluster node</string>
     <string name="notif_channel_cluster_desc">Keeps this device reachable as a cluster node while the app is backgrounded.</string>

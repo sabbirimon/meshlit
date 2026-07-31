@@ -14,6 +14,7 @@ import com.meshlit.notifications.NotificationCenter
 import com.meshlit.notifications.NotificationPreferences
 import com.meshlit.settings.DeviceProfileRepository
 import com.meshlit.settings.SettingsRepository
+import com.meshlit.setup.FirstRunSetupRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,6 +55,10 @@ class MeshlitApplication : Application() {
 
     val deviceProfileRepository: DeviceProfileRepository by lazy {
         DeviceProfileRepository(this)
+    }
+
+    val firstRunSetupRepository: FirstRunSetupRepository by lazy {
+        FirstRunSetupRepository(this)
     }
 
     val systemProbe: AndroidSystemProbe by lazy { AndroidSystemProbe(this) }
