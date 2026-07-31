@@ -28,6 +28,20 @@
     <!-- Jobs screen -->
     <string name="jobs_empty_title">No jobs running</string>
     <string name="jobs_empty_body">Send a prompt from any Brain device to see jobs flow across the cluster.</string>
+    <string name="jobs_prompt_hint">Enter a prompt</string>
+    <string name="jobs_send">Send prompt</string>
+    <string name="jobs_cancel">Stop generation</string>
+    <string name="jobs_refresh">Start or refresh inference service</string>
+    <string name="jobs_status_idle">No model loaded</string>
+    <string name="jobs_status_loading">Loading model</string>
+    <string name="jobs_status_ready">Ready</string>
+    <string name="jobs_status_generating">Generating</string>
+    <string name="jobs_status_error">Inference error</string>
+    <string name="jobs_role_you">You</string>
+    <string name="jobs_role_model">Model</string>
+    <string name="jobs_thinking">Thinking…</string>
+    <string name="jobs_empty_state">Load a model, then enter a prompt to start local inference.</string>
+    <string name="jobs_engine_stub_hint">Start the service and load a GGUF model to begin.</string>
 
     <!-- Models screen -->
     <string name="models_empty_title">No models installed</string>

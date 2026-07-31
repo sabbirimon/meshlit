@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.meshlit.ui.nav.TopLevelDestination
+import com.meshlit.ui.screens.JobsScreen
 import com.meshlit.ui.screens.ScreenStub
 import com.meshlit.ui.screens.settings.CategoryScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
@@ -80,15 +81,17 @@ fun MeshlitApp() {
         ) {
             TopLevelDestination.all.forEach { dest ->
                 composable(dest.route) {
-                    // Settings tab uses the real Settings hub; others use the stub.
-                    if (dest == TopLevelDestination.Settings) {
-                        SettingsScreen(
+                    // Settings tab uses the real Settings hub; Jobs tab binds
+                    // to the inference foreground service. Everything else
+                    // remains a stub for now.
+                    when (dest) {
+                        TopLevelDestination.Settings -> SettingsScreen(
                             onOpenCategory = { cat ->
                                 navController.navigate("settings/category/${cat.name}")
                             },
                         )
-                    } else {
-                        ScreenStub(destination = dest, icon = dest.icon)
+                        TopLevelDestination.Jobs -> JobsScreen()
+                        else -> ScreenStub(destination = dest, icon = dest.icon)
                     }
                 }
             }

@@ -5,6 +5,7 @@ import android.os.Build
 import com.meshlit.core.common.HostOS
 import com.meshlit.core.common.HostOSDetection
 import com.meshlit.core.common.logger
+import com.meshlit.core.inference.InferenceCoordinator
 import com.meshlit.diagnostics.AndroidEGpuProbe
 import com.meshlit.diagnostics.AndroidHostOSProbe
 import com.meshlit.diagnostics.AndroidOemDetector
@@ -60,6 +61,15 @@ class MeshlitApplication : Application() {
     val firstRunSetupRepository: FirstRunSetupRepository by lazy {
         FirstRunSetupRepository(this)
     }
+
+    /**
+     * Singleton inference coordinator. The foreground service picks
+     * this up via the binder; the Jobs screen reads its state via the
+     * service binder. We expose it here so future deep-linking flows
+     * (e.g. "test prompt" from the Models screen) can fire without
+     * starting the service first.
+     */
+    val inferenceCoordinator: InferenceCoordinator by lazy { InferenceCoordinator() }
 
     val systemProbe: AndroidSystemProbe by lazy { AndroidSystemProbe(this) }
 

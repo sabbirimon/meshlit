@@ -61,6 +61,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Foreground service for hosting inference / MCP tool serving.
+             Android 14+ requires foregroundServiceType="dataSync". -->
+        <service
+            android:name=".inference.InferenceForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
     </application>
 
 </manifest>
