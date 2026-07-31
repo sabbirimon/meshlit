@@ -1,0 +1,58 @@
+# Gradle
+.gradle/
+build/
+/build
+*/build/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+**/local.properties
+
+# IDE
+*.iml
+.idea/
+/.idea
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+release/
+javadoc/
+
+# Native
+*.o
+*.so
+*.lo
+*.la
+
+# Logs
+*.log
+
+# Puku CLI runtime state
+.puku-cli/
+
+# Generated icon source (keep generated WebPs, drop the script)
+/tmp/gen_icons.py
+
+# Python cache
+__pycache__/
+*.pyc

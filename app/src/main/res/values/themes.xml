@@ -1,0 +1,18 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Meshlit theme — defined for Material Components as a transitional
+         bridge; Phase 0 will replace this with a Material 3 Compose theme. -->
+    <style name="Theme.Meshlit" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_violet</item>
+        <item name="colorPrimaryVariant">@color/brand_violet_dim</item>
+        <item name="colorOnPrimary">@color/brand_text_primary</item>
+        <item name="colorSecondary">@color/brand_cyan</item>
+        <item name="colorSecondaryVariant">@color/brand_cyan_dim</item>
+        <item name="colorOnSecondary">@color/brand_midnight</item>
+        <item name="android:colorBackground">@color/brand_midnight</item>
+        <item name="colorSurface">@color/brand_surface</item>
+        <item name="colorError">@color/brand_error</item>
+        <item name="android:statusBarColor">@color/brand_midnight</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:navigationBarColor">@color/brand_midnight</item>
+    </style>
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Meshlit monochrome layer (Android 13+ themed icons).
+    Designed to be tinted by the system. Higher contrast, simpler geometry
+    so it reads at 48dp and survives any foreground tint.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Beams -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M53.2,53.2 L53.2,33 a1.2,1.2 0 1,1 1.6,0 L54.8,33 L54.8,53.2 Z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M53.2,54.8 L33.4,66.4 a1.2,1.2 0 1,1 -1.4,-1.2 L52.4,53.2 Z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M54.8,54.8 L74.6,66.4 a1.2,1.2 0 1,0 1.4,-1.2 L55.6,53.2 Z" />
+
+    <!-- Satellite: Tool top -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M54,30 m-4.6,0 a4.6,4.6 0 1,0 9.2,0 a4.6,4.6 0 1,0 -9.2,0" />
+
+    <!-- Satellite: Monitor bottom-left -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M30,66 m-4.6,0 a4.6,4.6 0 1,0 9.2,0 a4.6,4.6 0 1,0 -9.2,0" />
+
+    <!-- Satellite: Tool bottom-right -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M78,66 m-4.6,0 a4.6,4.6 0 1,0 9.2,0 a4.6,4.6 0 1,0 -9.2,0" />
+
+    <!-- Brain node -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M54,54 m-7.2,0 a7.2,7.2 0 1,0 14.4,0 a7.2,7.2 0 1,0 -14.4,0" />
+</vector>

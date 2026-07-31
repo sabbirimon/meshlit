@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Meshlit brand palette — distributed-LLM cluster theme -->
+    <color name="brand_midnight">#FF0A0E1A</color>
+    <color name="brand_surface">#FF121829</color>
+    <color name="brand_surface_variant">#FF1B2238</color>
+    <color name="brand_outline">#FF2B3350</color>
+
+    <color name="brand_violet">#FF7C5CFF</color>
+    <color name="brand_violet_dim">#FF4B3FAA</color>
+    <color name="brand_cyan">#FF22D3EE</color>
+    <color name="brand_cyan_dim">#FF1E8E9F</color>
+    <color name="brand_emerald">#FF34D399</color>
+    <color name="brand_emerald_dim">#FF1F7A5B</color>
+
+    <color name="brand_text_primary">#FFE6E9F2</color>
+    <color name="brand_text_secondary">#FFA3AAC2</color>
+    <color name="brand_text_tertiary">#FF6B7392</color>
+
+    <color name="brand_error">#FFEF4444</color>
+    <color name="brand_warning">#FFF59E0B</color>
+    <color name="brand_success">#FF22C55E</color>
+
+    <!-- Adaptive icon palette -->
+    <color name="ic_launcher_background">#FF0A0E1A</color>
+</resources>

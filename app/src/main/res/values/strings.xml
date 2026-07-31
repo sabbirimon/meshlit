@@ -1,0 +1,48 @@
+<resources>
+    <string name="app_name">Meshlit</string>
+    <string name="app_tagline">Many phones. One mind.</string>
+
+    <!-- Top-level screens -->
+    <string name="screen_devices">Devices</string>
+    <string name="screen_jobs">Jobs</string>
+    <string name="screen_models">Models</string>
+    <string name="screen_settings">Settings</string>
+
+    <!-- Device screen -->
+    <string name="devices_empty_title">No devices on the cluster yet</string>
+    <string name="devices_empty_body">Open Meshlit on another phone on the same Wi-Fi to see it appear here. Inference, tools, and discovery start automatically.</string>
+    <string name="devices_join_cta">Make this device discoverable</string>
+    <string name="devices_role_brain">Brain</string>
+    <string name="devices_role_tool">Tool</string>
+    <string name="devices_role_monitor">Monitor</string>
+    <string name="devices_status_online">Online</string>
+    <string name="devices_status_offline">Offline</string>
+    <string name="devices_status_idle">Idle</string>
+    <string name="devices_status_busy">Working</string>
+
+    <!-- Jobs screen -->
+    <string name="jobs_empty_title">No jobs running</string>
+    <string name="jobs_empty_body">Send a prompt from any Brain device to see jobs flow across the cluster.</string>
+
+    <!-- Models screen -->
+    <string name="models_empty_title">No models installed</string>
+    <string name="models_empty_body">Download a GGUF model to enable local inference on this device.</string>
+
+    <!-- Settings -->
+    <string name="settings_role_assignment">Role assignment</string>
+    <string name="settings_trust_tier">Trust tier</string>
+    <string name="settings_wan_relay">WAN relay</string>
+    <string name="settings_about">About Meshlit</string>
+
+    <!-- Permissions / notifications -->
+    <string name="notif_channel_cluster">Cluster node</string>
+    <string name="notif_channel_cluster_desc">Keeps this device reachable as a cluster node while the app is backgrounded.</string>
+    <string name="notif_inference_running">Meshlit is serving inference</string>
+    <string name="notif_mcp_running">Meshlit is serving tools</string>
+
+    <!-- Foreground service -->
+    <string name="fgs_inference_title">Meshlit — Inference node</string>
+    <string name="fgs_inference_body">Serving prompts to the cluster</string>
+    <string name="fgs_mcp_title">Meshlit — Tool node</string>
+    <string name="fgs_mcp_body">Serving MCP tools to the cluster</string>
+</resources>

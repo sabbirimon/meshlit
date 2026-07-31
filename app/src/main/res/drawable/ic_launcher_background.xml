@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Meshlit adaptive launcher background.
+    Layer: 108 x 108 dp, full bleed.
+    Design: a deep midnight radial gradient with a subtle hex-mesh grid
+    fade. The hex motif previews the "cluster" idea without competing with
+    the foreground node graph.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="76"
+                android:startColor="#FF1A2240"
+                android:endColor="#FF06080F" />
+        </aapt:attr>
+    </path>
+
+    <!-- Hex cell motif: 7 hex outlines forming a small cluster, low opacity -->
+    <path
+        android:strokeColor="#22FFFFFF"
+        android:strokeWidth="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M54,28 L60,31.5 L60,38.5 L54,42 L48,38.5 L48,31.5 Z" />
+    <path
+        android:strokeColor="#18FFFFFF"
+        android:strokeWidth="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M40,42 L46,45.5 L46,52.5 L40,56 L34,52.5 L34,45.5 Z" />
+    <path
+        android:strokeColor="#18FFFFFF"
+        android:strokeWidth="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M68,42 L74,45.5 L74,52.5 L68,56 L62,52.5 L62,45.5 Z" />
+    <path
+        android:strokeColor="#10FFFFFF"
+        android:strokeWidth="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M54,56 L60,59.5 L60,66.5 L54,70 L48,66.5 L48,59.5 Z" />
+    <path
+        android:strokeColor="#10FFFFFF"
+        android:strokeWidth="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M26,56 L32,59.5 L32,66.5 L26,70 L20,66.5 L20,59.5 Z" />
+    <path
+        android:strokeColor="#10FFFFFF"
+        android:strokeWidth="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M82,56 L88,59.5 L88,66.5 L82,70 L76,66.5 L76,59.5 Z" />
+</vector>
