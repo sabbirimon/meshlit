@@ -460,6 +460,181 @@ sharding is invisible to the client.
 
 ---
 
+## 2.8 Token model: allocation, not monetization
+
+**Goal:** the token exists to allocate scarce shared resources across the
+mesh, not to monetize users. Growth comes from making hosting attractive,
+not from gating features. Premium exists for power users; the default
+experience is free forever.
+
+**Three tiers, all free by default:**
+
+| Tier | Who | Cost | What you get |
+|---|---|---|---|
+| **Meshlit Spark** | Anyone, no signup | Free | Own-phone local inference. Unlimited. |
+| **Meshlit Mesh** | Opt-in by toggling "share idle compute" | Free | + access to public mesh + earns tokens while hosting |
+| **Meshlit Mind** | Power users / devs / teams | Free during growth phase | + higher rate limits, custom model hosting, cluster API |
+
+A Spark user has the full app. Tokens only matter when reaching beyond
+your own phone.
+
+**Earning rates (always ≥ cost to the earner):**
+
+| Behavior | Reward |
+|---|---|
+| Idle + plugged in + Wi-Fi | +5 tokens/hour |
+| Actively serving a job | +1 token / 1k tokens generated for the requester |
+| Hosting a non-default model (13B+, embed, specialized) | +50% bonus |
+| Participating in MoE shard federation | 2× multiplier |
+| Low-connectivity region (provides redundancy) | 1.5× multiplier |
+| Running a public MCP server | +1 token / 100 tool invocations |
+
+**Onboarding bias (deliberately extreme toward hosting):**
+
+- Download app: 0 tokens.
+- Toggle "share idle compute" once: +500 tokens.
+- Host overnight for 7 consecutive days: +2,000 one-time bonus.
+- Friend joins and hosts ≥1 hour: both get +200.
+- Submit a chipset/eGPU/peripheral entry accepted into the public DB: +100.
+- First 1,000 hosts in a new region get a $10 local gift card (Amazon /
+  Flipkart / JD / Taobao). This is paid marketing, not token economics.
+
+**De-prioritization, not exclusion.** When the mesh is busy:
+
+| User state | Position in queue |
+|---|---|
+| Mesh user, has tokens | First |
+| Mesh user, no tokens | Wait, eventually served |
+| Spark user | Last, but still served if the mesh has surplus |
+| Mind user | Fastest lane, capped so it can't crowd out others |
+
+**What tokens are NOT:**
+
+- Not a cryptocurrency. No blockchain, no token contract, no DEX listing,
+  no "Meshlit to USD" rate.
+- Not tradeable on secondary markets. Tokens are not an asset class.
+- Not required to use the app. Spark is fully featured.
+- Not a stake / governance token. Voting is by node reputation (Phase 5).
+
+**Implementation (Phase 4.5, build before public gateway ships):**
+
+- `core-users` owns `TokenBalance`, `TokenLedger` (append-only),
+  `HostingRewards` engine.
+- Each node runs a `HostingRewardCalculator` that publishes its idle-
+  credit and per-job serving credit into the cluster gossip.
+- Anti-cheat lives in `core-firewall` + `core-guardrails`: detect fake
+  "serving" claims, throttle earning on suspicious nodes, rate-limit
+  earning per device (one phone = one node, ever).
+- The home screen shows a single chip: "127 tokens — host to earn more."
+  The token UI is never the center of the product. Hosting is.
+
+**Marketing framing (use this language, not "earn tokens"):**
+
+- "Your old phone can be a free AI server."
+- "Run a 70B model across your friends' phones for free."
+- "Your data never leaves your network."
+- "Be part of the largest decentralized AI cluster in your country."
+
+Tokens are invisible infrastructure that makes the network work. The
+growth message is the value of the collective, not the value of a
+credit balance.
+
+### 2.8.1 Measurable resources that earn credits
+
+Everything credited must be measurable. If we can't prove the
+contribution happened from the receiving end, no credit is issued.
+
+**Compute (the main category):**
+
+| Resource | Measurement | Rate |
+|---|---|---|
+| CPU time | `Process.getElapsedCpuTime()` + heartbeat | +1 / 10 min served |
+| On-device GPU time | llama.cpp `ggml_time_us()` matmul portions | +3 / 10 min (scarce) |
+| eGPU time | ROCm / nvprof / Vulkan timestamps | +8 / 10 min (very scarce) |
+| NPU time | vendor SDK telemetry | +4 / 10 min (premium) |
+| RAM headroom | KB available for KV cache during serve | +1 / GB-hour |
+| Storage read | per-job GGUF throughput | +1 / 5 GB served |
+| Storage write | import + checkpoints | +0.5 / 5 GB |
+
+**Network:**
+
+| Resource | Measurement | Rate |
+|---|---|---|
+| Ingress | `TrafficStats` per interface | +1 / GB |
+| Egress | `TrafficStats` per interface | +2 / GB (egress is scarcer) |
+| WAN relay | Tailscale/WG accounting | +5 / GB WAN |
+| Tunnel uptime | handshake freshness | +10 / hour |
+| NSD advertisements | beacon counter, rate-limited | +1 / 1000 beacons |
+
+**Specialty services:**
+
+| Resource | Measurement | Rate |
+|---|---|---|
+| Embedding generation | per-token counter | +2 / 1k embed tokens |
+| MCP tool invocations | server logs | +1 / 100 calls |
+| Image generation (SD/FLUX) | per-image, resolution-bucketed | +20 / SD-1.5 image, +200 / FLUX-12B |
+| Voice transcription (Whisper) | audio-seconds processed | +50 / hour of audio |
+| Vision (LLaVA-style) | per-image | +10 / image |
+| Custom LoRA training | per-step on someone else's data | +5 / step |
+| MoE expert hosting | per-expert-id served | +10 / 1k tokens routed through this node's experts |
+
+**Auxiliary (lower value, but real):**
+
+| Resource | Measurement | Rate |
+|---|---|---|
+| Heartbeat uptime | gossip presence | +0.5 / hour online |
+| Topology mapping | new peers brought into cluster | +5 / unique peer |
+| Chipset DB entry | merged community submission | +100 one-time |
+| Translation / docs | merged PR | +50 / PR |
+| Vouched-onboarding | referred friend active 7 days | +50 one-time |
+| Bug-report-with-fix | confirmed issue → merged fix | +200 one-time |
+
+### 2.8.2 NOT creditable (no proof of impact)
+
+- "I posted about Meshlit on Twitter" — no impact measurement.
+- "I bought a new phone to run this" — up-front cost ≠ ongoing contribution.
+- "I beta-tested the app" — unless structured bug reports with logs
+  lead to a merged fix.
+- "I introduced Meshlit to my company" — indirect attribution.
+- "I keep my node plugged in 24/7" — covered by the +5/hour idle
+  baseline; don't double-count.
+
+### 2.8.3 Premium token packages (when Mind tier actually pays)
+
+The growth phase is free. When Mind goes paid, the conversion has to
+satisfy **"buying can never be cheaper than earning."** A user hosting
+24/7 generates roughly +120 tokens/day, ~+3,600/month. So:
+
+| Package | Price | Tokens | Effective rate |
+|---|---|---|---|
+| Starter (free, always) | $0 | 100 on signup + all earning | — |
+| Hobbyist | $5/month | 5,000/month + earning | ~$1 / 1k tokens |
+| Pro | $20/month | 25,000/month + 1.5× earning multiplier | ~$0.80 / 1k tokens |
+| Team | $100/month | 150,000/month + custom model slots + 2× multiplier | ~$0.67 / 1k tokens |
+
+### 2.8.4 Per-device earning cap (fairness floor)
+
+Soft cap; past the cap the node still serves, but the marginal credit
+rate drops to 0.1× until the next day.
+
+| Node type | Daily earning cap |
+|---|---|
+| Phone (single SoC) | 200 / day |
+| Phone + eGPU | 500 / day |
+| Laptop / desktop peer | 800 / day |
+| Server peer | 2,000 / day |
+| MoE shard node | uncapped |
+
+### 2.8.5 Anti-exploitation checks
+
+- Earning claim with `TrafficStats` showing 0 bytes egress → flagged.
+- MCP invocation claims with empty server logs → flagged.
+- "Served 1M tokens" claim with empty `loadedModels` → flagged.
+- One phone = one earning limit, by hardware-fingerprint-derived node ID.
+- Buying a second phone doesn't double earning.
+
+---
+
 ## 3. Tech stack
 
 | Layer | Choice | Notes |
