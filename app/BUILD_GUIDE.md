@@ -633,6 +633,68 @@ rate drops to 0.1× until the next day.
 - One phone = one earning limit, by hardware-fingerprint-derived node ID.
 - Buying a second phone doesn't double earning.
 
+### 2.8.6 Helpfulness as a primary metric
+
+Bytes and CPU-seconds are proxies. The real measure of value to the
+network is **how many other people's tasks this node successfully
+completed.** A "help" is one unit of completed work delivered to a
+peer:
+
+| Help type | Token reward |
+|---|---|
+| Prompt served (full response delivered) | +2 (regardless of length) |
+| Embed batch served | +1 |
+| MCP tool call executed on this node | +1 |
+| MoE expert invocation | +0.5 / 1k tokens routed |
+| Vision task completed | +5 |
+| Voice transcription completed | +10 |
+| Image generated (SD-1.5 / FLUX-12B) | +20 / +200 |
+| File transfer completed | +0.5 / 100 MB |
+| SSH session minute served | +1 / 10 min |
+| LoRA training step | +5 |
+| Checkpoint saved for cluster | +10 |
+| Heartbeat / liveness ack | +0.5 / hour |
+
+**Help QUALITY signals (must-have):**
+
+- *Requester retried → first responder's "help" is revoked (-2 per
+  retry).* Bad answers are punished, not just unrewarded.
+- *Mid-stream abandonment → partial help (+1 instead of +2).*
+- *Job failure rate > 5% → helpfulness earnings throttled.*
+
+**Help QUALITY signals (Phase 4.5+):**
+
+- Optional peer rating (1–5 stars), doesn't block.
+- Trust-tier inheritance: a vouched node inherits the voucher's
+  reliability score until it builds its own history.
+
+**Spam resistance:**
+
+- Self-deal prevention: requests must come from a *different* `NodeId`.
+- Sybil limit: one hardware-fingerprint = one earning limit.
+- Reciprocal-detection: if two nodes only ever serve each other in a
+  closed loop, both earnings are zeroed (collusion catch).
+
+### 2.8.7 HelpfulnessScore (router preference, not balance)
+
+Beyond raw token earnings, compute a `HelpfulnessScore` per node:
+
+```
+helpfulness = (helps_delivered * 1.0)
+            - (helps_retried * 2.0)
+            - (jobs_failed * 5.0)
+            + (peer_rating_avg - 3.0) * 10.0
+            + (vouched_by_trusted_peer ? 50 : 0)
+```
+
+This score is **not** a balance — it's a router preference. When the
+mesh is busy, high-helpfulness nodes get first pick of incoming jobs.
+Low-helpfulness nodes still serve, but they're deprioritized. The
+incentive loop closes itself: **be helpful → more jobs → more earning
+→ higher score → still more jobs.**
+
+This makes "helpfulness" actually pay off, not just be a label.
+
 ---
 
 ## 3. Tech stack
