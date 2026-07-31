@@ -70,4 +70,32 @@
     <string name="fgs_inference_body">Serving prompts to the cluster</string>
     <string name="fgs_mcp_title">Meshlit — Tool node</string>
     <string name="fgs_mcp_body">Serving MCP tools to the cluster</string>
+
+    <!-- Notification settings -->
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_explainer">Per-category controls. OS-level importance, sound, vibration, and lock-screen visibility are set per channel in the system settings.</string>
+    <string name="notif_toggle_sound">Sound</string>
+    <string name="notif_toggle_vibration">Vibration</string>
+    <string name="notif_cat_fgs_host">Cluster node (foreground service)</string>
+    <string name="notif_cat_fgs_host_desc">Persistent notification while this device is hosting inference or MCP tools.</string>
+    <string name="notif_cat_inference_complete">Inference complete</string>
+    <string name="notif_cat_inference_complete_desc">Notifies you when a prompt you sent has finished generating.</string>
+    <string name="notif_cat_peer_topology">Peer topology</string>
+    <string name="notif_cat_peer_topology_desc">Other cluster nodes joining or leaving.</string>
+    <string name="notif_cat_job_failed">Job failed</string>
+    <string name="notif_cat_job_failed_desc">Inference or training job ran out of memory, crashed, or hit a network error.</string>
+    <string name="notif_cat_brain_battery_low">Brain battery low</string>
+    <string name="notif_cat_brain_battery_low_desc">The cluster\'s primary BRAIN device is about to drop out on battery.</string>
+    <string name="notif_cat_model_import">Model imported</string>
+    <string name="notif_cat_model_import_desc">A new model finished downloading or importing and is ready to use.</string>
+    <string name="notif_cat_security_alert">Security alert</string>
+    <string name="notif_cat_security_alert_desc">Jailbreak attempts, unknown peer auth, or signature mismatches.</string>
+    <string name="notif_cat_tunnel_state">Tunnel state</string>
+    <string name="notif_cat_tunnel_state_desc">Tailscale or WireGuard tunnel up, down, or reconfigured.</string>
+    <string name="notif_cat_public_token_used">Public token used</string>
+    <string name="notif_cat_public_token_used_desc">An external caller used one of your bearer tokens to dispatch work.</string>
+    <string name="notif_cat_training_milestone">Training milestone</string>
+    <string name="notif_cat_training_milestone_desc">A fine-tune step finished, a checkpoint was saved, or loss plateaued.</string>
+    <string name="notif_cat_chipset_db_update">Chipset database updated</string>
+    <string name="notif_cat_chipset_db_update_desc">Background sync pulled a new chipset or eGPU definitions snapshot.</string>
 </resources>
