@@ -12,8 +12,32 @@ skipped and why, what's next.
 
 ## Current state — 2026-08-01
 
-**Phase:** 0 — scaffolding (multi-module restructuring not yet started)
+**Phase:** 0 → 1 boundary. Phase 0 shipped; beginning Phase 1.
 
+**Phase 0 (DONE, this session):**
+- 14-module Gradle restructure (`:app` + 13 `core-*` modules).
+- build-logic composite build with convention plugins.
+- Compose UI shell with bottom navigation across 9 destinations.
+- core-common / core-trust types shipped (sealed result, error taxonomy,
+  NodeId, ClusterRole, CapabilitySnapshot, JobSpec, MeshlitLogger,
+  TrustTier, DeviceTrustPolicy).
+- AndroidManifest declares foreground service, FGS-data-sync,
+  near-by Wi-Fi, network, notification permissions.
+- `./gradlew :app:assembleDebug` succeeds.
+- `./gradlew :app:lintDebug` succeeds.
+- APK at `app/build/outputs/apk/debug/app-debug.apk` (62 MB).
+
+**Build guide v1.2 (DONE, this session):**
+- §0 principle 1 updated: data-parallel preserved, but MoE-shard
+  federation explicitly allowed.
+- §2.6 added — frontend/backend language choices.
+- §2.7 added — frontier model federation architecture and flow.
+- Phase 4.5 added — public-side gateway, OpenAI-compatible HTTP API,
+  bearer tokens, federated cluster.
+
+**Git (DONE, this session):**
+- Three commits on `phase/0-scaffolding`: planning snapshot, Phase 0
+  scaffold, build-guide expansion.
 **Brand identity (DONE, this session):**
 - Name: **Meshlit** ("Many phones. One mind.")
 - Palette: midnight `#0A0E1A` / violet `#7C5CFF` / cyan `#22D3EE` / emerald `#34D399`
