@@ -986,6 +986,96 @@ them, but they're not shaping current code:
 - Cross-node tensor parallelism — explicitly forbidden by §0 principle 1
 - Public gateway with bearer tokens — Phase 4.5, design already done
 
+### 2.10.10 Cross-OS compatibility (HarmonyOS + Chinese Android forks)
+
+The 60% of Android users who live on non-Google devices run one of
+several forks that break standard assumptions about foreground
+services, push channels, autostart, and battery whitelists.
+
+**OEM behavior profiles (see `core-common/OemProfile.kt`):**
+
+| Profile | OS | FGS survival | Push channel | GMS | HMS |
+|---|---|---|---|---|---|
+| AOSP / Pixel | Android | standard | FCM | yes | no |
+| Samsung OneUI | Android | standard | FCM | yes | no |
+| Xiaomi MIUI / HyperOS | Android | aggressive kill | Mi Push | yes | no |
+| Huawei EMUI | Android | aggressive kill | HMS Push | no | yes |
+| Honor MagicOS | Android | aggressive kill | HMS Push | no | yes |
+| Oppo ColorOS | Android | aggressive kill | FCM | yes | no |
+| Vivo OriginOS | Android | aggressive kill | FCM | yes | no |
+| OnePlus OxygenOS | Android | standard | FCM | yes | no |
+| Nubia RedMagic | Android | aggressive kill | FCM | yes | no |
+| Transsion XOS (Tecno/Infinix/itel) | Android | aggressive kill | FCM | yes | no |
+| **HarmonyOS NEXT** | **HarmonyOS** | best-effort AOSP compat | HMS Push | no | yes |
+| Unknown | Android | standard | FCM | yes | no |
+
+**What each profile forces on us:**
+
+- **Aggressive FGS killing** (Xiaomi / Huawei / Honor / Oppo / Vivo
+  / Nubia / Transsion): even with the FGS-data-sync type, the OEM's
+  battery manager will kill the service after 30 min idle. Workaround:
+  detect the OEM at first launch, walk the user through a 3–5 step
+  wizard that grants autostart permission, removes the app from
+  battery saver, and adds it to the OEM's "protected apps" list.
+  Each OEM has its own deep link to those settings screens.
+
+- **HMS Push (Huawei, Honor)**: FCM is unavailable on these devices.
+  Notifications must be delivered via HMS Push Kit. The notification
+  payload format is different from FCM, and tokens are issued by
+  Huawei's services, not Google's. Phase 1 ships FCM only; HMS Push
+  is added before the public-gateway launch because HarmonyOS users
+  are a non-trivial share of the market.
+
+- **Mi Push (Xiaomi)**: FCM is heavily throttled on MIUI / HyperOS
+  — apps that don't adopt Mi Push get near-zero notification
+  delivery. We adopt Mi Push alongside FCM on Xiaomi devices.
+
+- **HarmonyOS NEXT**: this is the hard one. HarmonyOS NEXT removes
+  AOSP entirely. Android apps run via Huawei's "AOSP compatibility
+  layer" which is **best-effort, not guaranteed**. We detect it
+  via `ro.build.version.harmony` system property and warn the user
+  that some features may not work. A native HarmonyOS NEXT app
+  (ArkTS toolchain) is a separate project — out of scope here.
+
+**The OEM setup wizard** (first launch + Settings → Reset OEM Setup):
+
+Each profile has a fixed list of steps the user must complete. The
+wizard persists completed steps to DataStore so it doesn't re-ask.
+Examples:
+
+- **Pixel / AOSP**: 2 steps (notification permission, battery whitelist)
+- **Samsung OneUI**: 2 steps (same)
+- **Xiaomi MIUI**: 5 steps (notif perm, autostart, battery whitelist,
+  battery saver disable, Mi Push opt-in)
+- **Huawei EMUI**: 4 steps (notif perm, autostart, battery whitelist,
+  HMS Push opt-in)
+- **HarmonyOS NEXT**: 3 steps (notif perm, HMS Push opt-in,
+  compatibility layer check)
+
+The wizard shows each step as a card with:
+- A clear label ("Allow Meshlit to start automatically")
+- A 1-sentence explanation of why
+- A "Take me there" button that opens the relevant settings screen
+  via the OEM-specific deep link (or AOSP Settings intent for
+  battery whitelist / notification permission)
+- A "Done" button to mark the step complete (we don't auto-detect;
+  the user confirms they did it)
+
+**Files:**
+
+- `core-common/OemProfile.kt` — the enum + detection data classes
+- `app/diagnostics/AndroidOemDetector.kt` — the detector
+- `app/ui/screens/OemSetupScreen.kt` — the wizard UI (Phase 1)
+- `app/notifications/PushAdapter.kt` — multi-channel push
+  abstraction with FCM / HMS Push / Mi Push implementations (Phase 1+)
+
+**Out of scope:**
+
+- Native HarmonyOS NEXT build (ArkTS / Stage model — separate project).
+- HarmonyOS distributed services integration (a different app).
+- OPPO / Vivo / Transsion push channels (FCM works well enough on
+  these for now; revisit if delivery metrics drop).
+
 ---
 
 ## 3. Tech stack
