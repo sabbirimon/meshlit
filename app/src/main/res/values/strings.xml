@@ -6,6 +6,11 @@
     <string name="screen_devices">Devices</string>
     <string name="screen_jobs">Jobs</string>
     <string name="screen_models">Models</string>
+    <string name="screen_files">Files</string>
+    <string name="screen_sessions">Sessions</string>
+    <string name="screen_cluster">Cluster</string>
+    <string name="screen_network">Network</string>
+    <string name="screen_users">Users</string>
     <string name="screen_settings">Settings</string>
 
     <!-- Device screen -->
@@ -27,6 +32,26 @@
     <!-- Models screen -->
     <string name="models_empty_title">No models installed</string>
     <string name="models_empty_body">Download a GGUF model to enable local inference on this device.</string>
+
+    <!-- Files screen -->
+    <string name="files_empty_title">Your cluster workspace is empty</string>
+    <string name="files_empty_body">Browse files on this device, copy them across cluster nodes, or fetch a model from another node.</string>
+
+    <!-- Sessions (SSH) -->
+    <string name="sessions_empty_title">No active sessions</string>
+    <string name="sessions_empty_body">Open a cluster SSH session from here — bound to LAN and Tailscale only.</string>
+
+    <!-- Cluster -->
+    <string name="cluster_empty_title">No cluster yet</string>
+    <string name="cluster_empty_body">Once at least one peer device joins, your cluster topology and roles show up here.</string>
+
+    <!-- Network -->
+    <string name="network_empty_title">Network transports</string>
+    <string name="network_empty_body">Pick how this device reaches the rest of the cluster: NSD/LAN, Wi-Fi Direct, Tailscale, WireGuard, relay. Nothing is on by default.</string>
+
+    <!-- Users -->
+    <string name="users_empty_title">Single-user mode</string>
+    <string name="users_empty_body">This device is yours. Enable multi-user mode in Settings to share model libraries and job history with another profile.</string>
 
     <!-- Settings -->
     <string name="settings_role_assignment">Role assignment</string>
