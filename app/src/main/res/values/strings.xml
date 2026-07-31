@@ -111,6 +111,18 @@
     <string name="settings_cat_os">Host OS</string>
     <string name="settings_os_linux_x86_hint">Detected via ro.product.cpu.abi and ro.kernel.qemu. Inference runs at full speed on x86_64 hosts; eGPU support is wider (CUDA, ROCm, oneAPI).</string>
 
+    <!-- Device screen -->
+    <string name="device_section_hardware">Hardware</string>
+    <string name="device_section_peripherals">Peripherals</string>
+    <string name="device_no_peripherals">No USB or Bluetooth peripherals detected. Plug in a hub, eGPU, or storage device to see it here.</string>
+    <string name="device_advanced_override">Manual override</string>
+    <string name="device_advanced_override_desc">Correct auto-detect mistakes — most users can leave this off.</string>
+    <string name="device_override_active">Override active — your edits take precedence over the probe.</string>
+    <string name="device_override_inactive">No override — auto-detect values are in use.</string>
+    <string name="device_override_hint">Edit any field below to override the probe result. The override is persisted to DataStore and survives relaunch.</string>
+    <string name="device_clear_override">Clear override</string>
+    <string name="device_refresh_probe">Re-run probe</string>
+
     <!-- Permissions / notifications -->
     <string name="notif_channel_cluster">Cluster node</string>
     <string name="notif_channel_cluster_desc">Keeps this device reachable as a cluster node while the app is backgrounded.</string>

@@ -86,6 +86,9 @@ dependencies {
     // Logging
     implementation(libs.slf4j.api)
 
+    // JSON (for SettingsRepository / DeviceProfileRepository override blobs)
+    implementation(libs.kotlinx.serialization.json)
+
     // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

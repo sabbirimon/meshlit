@@ -1,6 +1,7 @@
 package com.meshlit.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,43 +31,54 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
 import com.meshlit.core.common.DesktopBackend
+import com.meshlit.core.common.DeviceProfile
+import com.meshlit.core.common.EffectiveDeviceInfo
 import com.meshlit.core.common.HostOS
+import com.meshlit.core.common.HostOSDetection
+import com.meshlit.core.common.PeripheralDevice
 
 /**
- * Device settings screen. Shows the user what the system probe found:
+ * Device settings screen — the user-facing surface for the device
+ * profile. Built from three pieces:
  *
- *  - Host OS (Android / Linux x86 / Waydroid / ChromeOS ARC / ...)
- *  - Detected chipset family + model
- *  - GPU family + NPU presence
- *  - RAM + storage
- *  - eGPU status
+ *  1. Host OS card (always visible) — what the host-OS probe found
+ *  2. Hardware facts (always visible) — chipset, GPU, RAM, storage,
+ *     peripherals
+ *  3. Advanced override (toggle) — when on, shows the editor below
+ *     the read-only facts so the user can correct auto-detect mistakes
  *
- * Every row is read-only in Phase 1; Phase 2 adds the manual override
- * editor. The Host OS row is the most prominent — it's what tells
- * the user they're running on Linux/ChromeOS/emulator and what eGPU
- * backends are available.
- *
- * To replace the generic [CategoryScreen] DEVICE branch, this
- * composable is wired from `CategoryScreen` via a `when` clause.
+ * The screen reads the resolved [DeviceProfile] from the repository;
+ * the rest of the app uses [EffectiveDeviceInfo] (which is the
+ * override-resolved view).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as MeshlitApplication
+    val viewModel: DeviceScreenViewModel = viewModel(
+        factory = deviceScreenViewModelFactory(context),
+    )
+    val state by viewModel.state.collectAsState()
     val host = app.hostOSDetection
 
     Scaffold(
@@ -76,6 +90,14 @@ fun DeviceScreen(onBack: () -> Unit) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.device_refresh_probe),
                         )
                     }
                 },
@@ -93,37 +115,85 @@ fun DeviceScreen(onBack: () -> Unit) {
                 HostOSCard(host = host)
                 Spacer(Modifier.height(8.dp))
             }
+
             item {
                 Text(
-                    text = "Hardware",
+                    text = stringResource(R.string.device_section_hardware),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            item { FactRow(icon = Icons.Default.Memory, label = "Chipset", value = "(probed)") }
-            item { FactRow(icon = Icons.Default.Computer, label = "GPU", value = "(probed)") }
-            item { FactRow(icon = Icons.Default.Storage, label = "RAM", value = "(probed)") }
+            item {
+                HardwareCard(
+                    effective = state.profile.effective,
+                    detection = state.profile.detection,
+                )
+            }
+
             item {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "Peripherals",
+                    text = stringResource(R.string.device_section_peripherals),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
             item {
-                Text(
-                    text = stringResource(R.string.settings_category_coming_soon),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(vertical = 8.dp),
-                )
+                PeripheralsCard(peripherals = state.profile.connectedPeripherals)
             }
+
+            item {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.device_advanced_override),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.device_advanced_override_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(
+                        checked = state.advancedEnabled,
+                        onCheckedChange = { viewModel.setAdvancedEnabled(it) },
+                    )
+                }
+            }
+            if (state.advancedEnabled) {
+                item {
+                    OverrideEditorCard(
+                        effective = state.profile.effective,
+                        hasOverride = state.profile.hasOverride,
+                        onManufacturer = viewModel::setManualManufacturer,
+                        onModel = viewModel::setManualModelName,
+                        onChipset = viewModel::setManualChipset,
+                        onSocModel = viewModel::setManualSocModel,
+                        onGpu = viewModel::setManualGpu,
+                        onRam = viewModel::setManualRamMb,
+                        onCores = viewModel::setManualCpuCores,
+                        onNote = viewModel::setManualNote,
+                        onClearOverride = viewModel::clearOverride,
+                    )
+                }
+            }
+
+            item { Spacer(Modifier.height(32.dp)) }
         }
     }
 }
 
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
 @Composable
-private fun HostOSCard(host: com.meshlit.core.common.HostOSDetection) {
+private fun HostOSCard(host: HostOSDetection) {
     val isX86 = host.hostOS.isX86Host
     val icon: ImageVector = if (isX86) Icons.Default.Computer else Icons.Default.PhoneAndroid
     Card(
@@ -150,7 +220,7 @@ private fun HostOSCard(host: com.meshlit.core.common.HostOSDetection) {
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
-                Spacer(Modifier.size(12.dp))
+                Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = host.hostOS.displayName,
@@ -175,15 +245,13 @@ private fun HostOSCard(host: com.meshlit.core.common.HostOSDetection) {
                     "Attach an eGPU over USB-C for desktop-class compute.",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            if (host.preferredDesktopBackend != null) {
-                Spacer(Modifier.height(8.dp))
-                val backendName = host.preferredDesktopBackend?.displayName ?: "CPU"
-                Text(
-                    text = "Recommended eGPU backend: $backendName",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+            val backendName = host.preferredDesktopBackend?.displayName ?: "CPU"
+            Text(
+                text = "Recommended eGPU backend: $backendName",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             host.hostCpuModel?.let { model ->
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -196,17 +264,132 @@ private fun HostOSCard(host: com.meshlit.core.common.HostOSDetection) {
 }
 
 @Composable
-private fun FactRow(icon: ImageVector, label: String, value: String) {
+private fun HardwareCard(
+    effective: EffectiveDeviceInfo,
+    detection: com.meshlit.core.common.DetectedDeviceInfo,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(12.dp),
-        ) {
-            Icon(imageVector = icon, contentDescription = null)
-            Spacer(Modifier.size(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.titleSmall)
-                Text(value, style = MaterialTheme.typography.bodySmall)
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FactRow(
+                icon = Icons.Default.Computer,
+                label = "Model",
+                value = effective.model,
+                hint = detection.manufacturer,
+            )
+            FactRow(
+                icon = Icons.Default.Memory,
+                label = "Chipset",
+                value = effective.socFamily.displayName,
+                hint = effective.socModel?.let { "$it · ${effective.primaryAbi}" },
+            )
+            FactRow(
+                icon = Icons.Default.Computer,
+                label = "GPU",
+                value = effective.gpuFamily.displayName,
+                hint = if (effective.hasNpu) "NPU: ${effective.npuName ?: "present"}" else null,
+            )
+            FactRow(
+                icon = Icons.Default.Memory,
+                label = "RAM",
+                value = "${effective.totalRamMb / 1024} GB (${effective.totalRamMb} MB)",
+                hint = "${effective.cpuCoreCount} cores @ ${detection.cpuMaxFreqKHz / 1000} MHz",
+            )
+            FactRow(
+                icon = Icons.Default.Storage,
+                label = "Storage",
+                value = "${detection.totalStorageMb / 1024} GB total · ${detection.availableStorageMb / 1024} GB free",
+                hint = "Android ${effective.androidVersion} (SDK ${effective.androidSdkInt})",
+            )
+            effective.externalGpu?.let { egpu ->
+                HorizontalDivider()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Memory,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = egpu.displayName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "${egpu.kind.displayName} · ${egpu.driverStatus.displayName}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PeripheralsCard(peripherals: List<PeripheralDevice>) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (peripherals.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.device_no_peripherals),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                peripherals.forEach { p ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.tertiary),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = p.name ?: p.kind.displayName,
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            Text(
+                                text = "${p.kind.displayName} · ${p.transport.tag}" +
+                                    (p.vendorId?.let { " · VID 0x%04x".format(it) } ?: ""),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FactRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    hint: String? = null,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.titleSmall)
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+            hint?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
