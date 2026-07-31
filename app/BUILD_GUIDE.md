@@ -20,11 +20,18 @@ These decisions came out of scoping discussion and exist specifically to stop
 scope creep from turning into unbuildable features. Treat them as constraints,
 not suggestions.
 
-1. **Data-parallel, not tensor-parallel.** Never split one model's layers
-   across phones over the network. Each node runs a complete model. The
-   router distributes independent jobs across nodes. Real inter-phone
-   bandwidth (1–2 GB/s best case over USB, far less over Wi-Fi) cannot
-   support cross-device tensor operations at usable latency.
+1. **Data-parallel, not tensor-parallel. But MoE-shard federation is OK.**
+   Never split one model's layers or activations across phones over the
+   network — each node runs a complete model of *its* slice. The router
+   distributes independent jobs across nodes. Real inter-phone bandwidth
+   (1–2 GB/s best case over USB, far less over Wi-Fi) cannot support
+   cross-device tensor operations at usable latency. **However**, for
+   *Mixture-of-Experts* architectures (most modern frontier models),
+   coarse-grained shard federation IS feasible: each node holds the
+   complete weights for a subset of experts, and a lightweight router
+   dispatches tokens to the right shard. This is *not* tensor-parallel;
+   it's expert-routing at the token boundary. See §2.7 "Frontier model
+   federation" for the worked approach.
 2. **Role suggestions are advisory, not hard locks.** Warn and let the user
    override. Hard-locking invites sideloaded workarounds and blocks
    legitimate stress-testing.
@@ -230,6 +237,52 @@ latency/SLA distinct from LAN nodes.
 
 ---
 
+### Phase 4.5 — Public-side gateway & federated cluster
+
+**Goal:** anyone running Claude Code, an OpenAI client, an MCP client, or
+their own LLM/agent framework can address a Meshlit cluster as if it
+were a single inference provider. The cluster's phones become a
+federated backend for the public side.
+
+- **Public gateway node** (`core-inference` + `:app`): any cluster node
+  can be promoted to "public gateway" mode. In this mode it exposes an
+  OpenAI-compatible HTTP API:
+  - `POST /v1/chat/completions` (with SSE streaming)
+  - `POST /v1/embeddings`
+  - `GET  /v1/models`
+  - `POST /v1/completions` (legacy)
+  - `GET  /v1/cluster/status` (cluster topology for the public client)
+- **Bearer-token auth.** Per-device tokens the user generates from the
+  Meshlit UI. Each token is scoped: allowed-models, rate-limit, allowed
+  trust tiers, expiry. Tokens are revocable from inside the app. The
+  gateway logs every token use (caller IP, model, latency, status).
+- **Federated dispatch.** A request from the public side flows: gateway
+  → orchestrator → picker (capability + role match) → worker node(s).
+  Tokens stream back through the gateway to the client. The gateway
+  presents the cluster as a single model — the client never sees the
+  sharding.
+- **Bidirectional roles on a single device.** A single device can be
+  gateway + worker simultaneously, or worker + client (consuming
+  another cluster's gateway). No "master/worker" hard split. Roles are
+  per-traffic-direction, not per-device.
+- **Compatible with the AI ecosystem:** Claude Code, Cursor, LangChain,
+  LlamaIndex, the OpenAI Python SDK, the Anthropic SDK, MCP clients,
+  raw `curl`. Anything that speaks the OpenAI HTTP API works.
+- **Reachability:** the gateway is reachable over Tailscale or the
+  relay. Never directly public. Token-theft blast radius is contained
+  by scoping.
+- **HiveMind gossip** (see §2.7/§7.12): public-facing nodes broadcast
+  their existence + token policy to the rest of the cluster so the
+  orchestrator knows which node the public client should land on.
+
+**Exit criteria:** a laptop running Claude Code, configured with a
+Meshlit gateway URL and a bearer token, can complete a real coding task
+that uses the cluster's inference — and the result is observably faster
+(or at least not slower) than a single-phone baseline. The flow can be
+followed end-to-end in logs.
+
+---
+
 ### Phase 5 — SSH sessions, fine-tuning, adaptive scheduling, polish
 **Goal:** use the data Phase 2 started collecting; round out the product.
 
@@ -300,6 +353,110 @@ cluster node and export the result as a working GGUF.
 - Use git branches for each phase: `phase/0-scaffolding`,
   `phase/1-core-loop`, etc. `main` always points at the last completed
   phase's tag.
+
+---
+
+## 2.6 Frontend vs backend & language choices
+
+The app is a hybrid: it ships as an Android APK (Kotlin) but it has to
+play well with the broader AI tooling ecosystem. The choices in §3 are
+deliberate:
+
+- **Kotlin (primary):** the app, the orchestration, all cluster logic.
+  Idiomatic coroutines, no raw threads, full Android tooling support.
+- **C++ (NDK):** llama.cpp for inference. Already a battle-tested,
+  continuously updated inference engine. We don't try to write our own
+  inference loop; we wrap llama.cpp.
+- **Python (embeddable, optional):** for power-user notebooks / data
+  tooling. Two paths:
+  - **Chaquopy** in `:app` for users who want a Python REPL in the app.
+  - **ONNX Runtime** in `:core-inference` for some lightweight models
+    where llama.cpp isn't the right engine.
+  Python is NOT used for the inference hot path — that stays in
+  llama.cpp's C++ via JNI.
+- **Protobuf / OpenAI wire format / MCP JSON-RPC:** wire formats for
+  cluster traffic, public-side traffic, and tool calls respectively.
+  Reuse what the AI ecosystem already speaks.
+- **JSON for config** (topology, roles, trust, profiles). Trivial
+  tooling support, easy to inspect.
+
+The public gateway exposes the **OpenAI HTTP API** as the public
+contract — chosen because Claude Code, Cursor, the OpenAI SDK, LangChain,
+MCP clients, and the rest of the ecosystem already speak it. We don't
+invent a new protocol.
+
+---
+
+## 2.7 Frontier model federation: how Meshlit holds "part of" a frontier model
+
+The user-facing promise of Meshlit is "many phones, one mind." For
+**dense** models that means data-parallel: each phone holds the full
+model, jobs are distributed. The constraint is bandwidth — there's no
+way to share a single 7B-paramer's activations across phones in real time.
+
+For **Mixture-of-Experts** architectures (most modern frontier models —
+Mixtral, DBRX, GPT-4-class, Llama-4-MoE, Qwen-MoE, DeepSeek-MoE), there
+is a *different* federation that is feasible on phones:
+
+```
+                         Public client
+                              │
+                              ▼
+                    ┌───────────────────┐
+                    │ Gateway node      │
+                    │ (token auth)      │
+                    └─────────┬─────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+        ┌─────────┐     ┌─────────┐     ┌─────────┐
+        │ Shard 0 │     │ Shard 1 │     │ Shard 2 │
+        │ experts │     │ experts │     │ experts │
+        │  0..15  │     │ 16..31  │     │ 32..47  │
+        └─────────┘     └─────────┘     └─────────┘
+        phone A         phone B         phone C
+```
+
+**The flow:**
+
+1. Gateway receives a prompt, tokenizes it.
+2. A lightweight router on the gateway runs only the model's
+   `router.gate.*` weights (small, ~50 MB), and produces per-token
+   expert-id assignments.
+3. Tokens get batched and dispatched to the right shard — each phone
+   runs llama.cpp on **its slice of experts only** for those tokens.
+4. Outputs come back to the gateway, which stitches them into the
+   response stream and ships SSE to the public client.
+
+**Why this works:**
+- Inter-token bandwidth is **tiny** — a 4-byte expert id per token, not
+  activations. 1k tokens = 4 KB of dispatch, not 1k × hidden_size × 2
+  bytes of activations.
+- Each phone holds only the expert weights for its slice. A 8×7B MoE
+  model with 8 experts-per-token: each phone can hold 1-2 of those
+  experts' worth of weights.
+- llama.cpp supports MoE architectures natively; the shard is just
+  "a model with a subset of experts."
+
+**Why it doesn't work for dense models:** there's no router, so every
+token needs every layer's activation. The constraint stays. MoE is
+*the* architectural feature that makes phone-cluster federation of
+frontier models realistic.
+
+**Module ownership:**
+- `:core-inference` — the shard model manager, expert-id dispatch.
+- `:core-orchestration` — the gateway-side router and stitcher.
+- `:core-discovery` — advertises "I hold shard N of model X" so the
+  gateway knows which node to call.
+
+This is the same HiveMind coordination as Phase 4.5: each node
+publishes what it has, the gateway composes. The user can run dense
+models the old way (data-parallel, one model per node) and MoE models
+the new way (shards across nodes) and the public API is identical.
+
+**Validation:** Phase 4.5's exit criteria apply — public client hits
+the gateway, real frontier-class model produces real tokens, the
+sharding is invisible to the client.
 
 ---
 
