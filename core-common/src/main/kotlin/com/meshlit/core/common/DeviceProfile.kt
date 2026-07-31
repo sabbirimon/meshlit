@@ -292,6 +292,11 @@ data class EffectiveDeviceInfo(
  * `inferenceFit` is the rough ceiling for what this family can run.
  * It's a hint, not a hard rule (BUILD_GUIDE §0 principle 2: roles
  * are advisory).
+ *
+ * X86_INTEL / X86_AMD are doubled up with [HostOS.LINUX_X86] —
+ * the chipset tells you "this is x86 silicon" while the host OS tells
+ * you "this is running on Linux via Waydroid / Android-x86 / ARC".
+ * Both are detected independently and surfaced to the user.
  */
 @Serializable
 enum class SocFamily(

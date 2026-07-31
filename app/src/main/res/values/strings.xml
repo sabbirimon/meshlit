@@ -58,6 +58,58 @@
     <string name="settings_trust_tier">Trust tier</string>
     <string name="settings_wan_relay">WAN relay</string>
     <string name="settings_about">About Meshlit</string>
+    <string name="settings_no_results">No settings match your search.</string>
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_simple_toggle">Simple</string>
+    <string name="settings_advanced_toggle">Advanced</string>
+
+    <!-- Settings categories -->
+    <string name="settings_cat_device">Device</string>
+    <string name="settings_cat_theme">Theme &amp; Display</string>
+    <string name="settings_cat_notifications">Notifications</string>
+    <string name="settings_cat_cluster">Cluster &amp; Network</string>
+    <string name="settings_cat_models">Models</string>
+    <string name="settings_cat_account">Account</string>
+    <string name="settings_cat_performance">Performance</string>
+    <string name="settings_cat_privacy">Privacy &amp; Security</string>
+    <string name="settings_cat_about">About</string>
+    <string name="settings_cat_developer">Developer</string>
+
+    <!-- Theme settings -->
+    <string name="settings_theme_section_appearance">Appearance</string>
+    <string name="settings_theme_section_typography">Typography &amp; layout</string>
+    <string name="settings_theme_section_accessibility">Accessibility</string>
+    <string name="settings_theme_section_danger">Reset</string>
+    <string name="settings_theme_accent_label">Accent color</string>
+    <string name="settings_theme_accent_desc">Brand hue — Meshlit Violet by default</string>
+    <string name="settings_theme_palette_label">Base palette</string>
+    <string name="settings_theme_palette_desc">Background and surface tones</string>
+    <string name="settings_theme_mode_label">When to use dark mode</string>
+    <string name="settings_theme_mode_desc">System, always, or auto by time of day</string>
+    <string name="settings_theme_font_label">Font scale</string>
+    <string name="settings_theme_font_desc">Resize all text — 0.85x to 1.5x</string>
+    <string name="settings_theme_density_label">Display density</string>
+    <string name="settings_theme_density_desc">Compact, default, comfortable</string>
+    <string name="settings_theme_animations_label">Animations</string>
+    <string name="settings_theme_animations_desc">Disable for battery or accessibility</string>
+    <string name="settings_theme_high_contrast_label">High contrast</string>
+    <string name="settings_theme_high_contrast_desc">Deeper accents and stronger outlines</string>
+    <string name="settings_theme_reset_label">Reset theme to defaults</string>
+    <string name="settings_theme_reset_desc">Clears accent, palette, scale, and accessibility overrides</string>
+    <string name="settings_theme_reset_confirm">Reset all theme settings to defaults?</string>
+
+    <!-- Category screen shell -->
+    <string name="settings_category_open_system">Open system settings</string>
+    <string name="settings_category_section_basic">Basic</string>
+    <string name="settings_category_section_advanced">Advanced</string>
+    <string name="settings_category_coming_soon">Coming in a later phase — the design is locked and tracked in the build guide.</string>
+
+    <!-- Linux/x86 detection -->
+    <string name="device_os_linux_x86">Linux x86/x64 (emulator / VM / ChromeOS ARC)</string>
+    <string name="device_os_linux_x86_desc">Detected via ro.product.cpu.abi and ro.kernel.qemu. Inference runs at full speed on x86_64 hosts; eGPU support is wider (CUDA, ROCm, oneAPI).</string>
+    <string name="settings_cat_os">Host OS</string>
+    <string name="settings_os_linux_x86_hint">Detected via ro.product.cpu.abi and ro.kernel.qemu. Inference runs at full speed on x86_64 hosts; eGPU support is wider (CUDA, ROCm, oneAPI).</string>
 
     <!-- Permissions / notifications -->
     <string name="notif_channel_cluster">Cluster node</string>

@@ -20,11 +20,19 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.meshlit.ui.nav.TopLevelDestination
 import com.meshlit.ui.screens.ScreenStub
+import com.meshlit.ui.screens.settings.CategoryScreen
+import com.meshlit.ui.screens.settings.SettingsCategory
+import com.meshlit.ui.screens.settings.SettingsScreen
 
 /**
- * Root composable for the app. Hosts the bottom navigation and routes to
- * per-screen composables. Phase 0 ships nine top-level destinations as
- * empty-state stubs.
+ * Root composable for the app. Hosts the bottom navigation and routes
+ * to per-screen composables. The Settings tab gets a real hub (not a
+ * stub) which then routes into a [CategoryScreen] per category.
+ *
+ * Navigation hierarchy:
+ *   NavHost
+ *   ├── top-level destination 1..9 (stubs or full screens)
+ *   └── settings/category/{DEVICE|THEME|...} (deep links from search)
  */
 @Composable
 fun MeshlitApp() {
@@ -72,7 +80,26 @@ fun MeshlitApp() {
         ) {
             TopLevelDestination.all.forEach { dest ->
                 composable(dest.route) {
-                    ScreenStub(destination = dest, icon = dest.icon)
+                    // Settings tab uses the real Settings hub; others use the stub.
+                    if (dest == TopLevelDestination.Settings) {
+                        SettingsScreen(
+                            onOpenCategory = { cat ->
+                                navController.navigate("settings/category/${cat.name}")
+                            },
+                        )
+                    } else {
+                        ScreenStub(destination = dest, icon = dest.icon)
+                    }
+                }
+            }
+
+            // Deep links from Settings → Category.
+            SettingsCategory.entries.forEach { cat ->
+                composable("settings/category/${cat.name}") {
+                    CategoryScreen(
+                        category = cat,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
             }
         }

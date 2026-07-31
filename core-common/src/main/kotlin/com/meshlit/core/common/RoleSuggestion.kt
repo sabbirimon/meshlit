@@ -39,6 +39,31 @@ object RoleSuggestion {
         externalGpu: EGpuConnection?,
     ): ClusterRole = suggestFromSignals(device, capability, externalGpu)
 
+    /**
+     * Overload that adds the [HostOS] signal. On Linux x86_64 hosts
+     * (Waydroid, Android-x86, AVD, ChromeOS ARC) the device is
+     * effectively desktop-class: AVX2 SIMD, no thermal throttle,
+     * plenty of RAM. The role-suggestion rules reflect this by
+     * allowing BRAIN even on chipsets that would otherwise be TOOL.
+     *
+     * If [hostOS] is null we assume stock Android (the safe default).
+     */
+    fun suggest(
+        device: EffectiveDeviceInfo,
+        capability: CapabilitySnapshot,
+        externalGpu: EGpuConnection?,
+        hostOS: HostOS?,
+    ): ClusterRole {
+        val suggested = suggestFromSignals(device, capability, externalGpu)
+        // x86 hosts: even a LIGHT-fit x86 chip outperforms a
+        // FRONTIER-fit phone (no thermal envelope, AVX2 SIMD). Bump
+        // MONITOR → TOOL on Linux x86_64.
+        if (hostOS != null && hostOS.isX86Host && suggested == ClusterRole.MONITOR) {
+            return ClusterRole.TOOL
+        }
+        return suggested
+    }
+
     private fun suggestFromSignals(
         device: EffectiveDeviceInfo,
         cap: CapabilitySnapshot,

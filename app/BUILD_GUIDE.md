@@ -1078,6 +1078,157 @@ The wizard shows each step as a card with:
 
 ---
 
+## 2.11 Cross-architecture compatibility: Linux/x86 hosts
+
+A growing share of Meshlit runs will be on Linux x86_64 hosts — not
+phones. The codebase supports this without a separate build flavor:
+
+| Host | Detection signal | Inference fit | eGPU backend |
+|---|---|---|---|
+| **Android Studio AVD** (qemu/kvm) | `ro.kernel.qemu=1` + `FINGERPRINT=sdk_gphone*` | FRONTIER | CUDA / Vulkan |
+| **Waydroid** (Linux container) | `Build.PRODUCT=waydroid_x86_64` | FRONTIER | CUDA / ROCm / Vulkan |
+| **Android-x86** (Bliss / Prime / Phoenix) | DMI product_name contains "Bliss"/"Prime"/"Phoenix" | FRONTIER | CUDA / ROCm / oneAPI / Vulkan |
+| **ChromeOS ARC / ARCVM** | `ro.boot.hardware.platform=Google_Cros*` or `ro.hardware=kukui/cheeseburger/...` | FRONTIER | Vulkan (over Crostini) |
+| **Genymotion / Bluestacks / Nox** | `ro.kernel.qemu=1` + `x86_64` ABI | MID_HIGH | Vulkan |
+| **Anbox** (Ubuntu Touch) | `Build.PRODUCT=anbox*` | MID (kernel shared) | none (CPU only) |
+| **macOS** (Apple Silicon) | `os.arch=aarch64` on macOS host | FRONTIER | Metal |
+
+**Why this matters:**
+
+- On x86_64 hosts inference runs 5–20x faster than on a phone:
+  desktop-class AVX2/AVX-512 SIMD, no thermal throttle, plenty of
+  RAM (Chromebooks ship with 8–32 GB; AVDs run on workstation RAM).
+- The eGPU backend landscape is **much wider** on Linux: CUDA
+  (NVIDIA), ROCm (AMD), oneAPI (Intel), Metal (macOS), plus Vulkan
+  as the universal fallback. On a phone we're stuck with Vulkan /
+  OpenCL.
+- We don't have to fork the codebase. The same APK runs on phone,
+  AVD, Waydroid, Android-x86, and ChromeOS ARC — `AndroidHostOSProbe`
+  detects which host we're on and adjusts role-suggestion rules
+  (`RoleSuggestion.suggest(... hostOS)`).
+
+**Role suggestion on x86 hosts:**
+
+The default rules say "MID-tier ARM phone = TOOL". On a Linux x86
+host the same chipset becomes effectively desktop-class, so we bump
+MONITOR → TOOL even on LIGHT-fit chipsets. (We don't bump TOOL →
+BRAIN automatically because x86 chipsets that report as LIGHT
+(e.g. Intel Atom) really are slow.)
+
+**Detection algorithm:**
+
+1. `ro.boot.hardware.platform` starts with `Google_Cros*` → `CHROMEOS_ARC`
+2. `/sys/class/dmi/id/product_name` contains Bliss/Prime/Phoenix → `ANDROID_X86`
+3. `ro.kernel.qemu=1` + `Build.FINGERPRINT=*sdk_gphone*` → `ANDROID_EMULATOR`
+4. `ro.kernel.qemu=1` + `Build.PRODUCT=*waydroid*` → `WAYDROID`
+5. `ro.kernel.qemu=1` + `Build.PRODUCT=*anbox*` → `ANBOX`
+6. `ro.kernel.qemu=1` + x86_64 ABI → `THIRD_PARTY_EMULATOR`
+7. ABI starts with `x86` → `ANDROID_X86`
+8. Otherwise → `ANDROID` (or `HARMONYOS` if `ro.build.version.harmony` is set)
+
+**Files:**
+
+- `core-common/HostOS.kt` — the enum, `HostOSDetection` data class,
+  `DesktopBackend` enum (CUDA / ROCm / oneAPI / Vulkan / Metal)
+- `app/diagnostics/AndroidHostOSProbe.kt` — the actual detector
+- `app/ui/screens/settings/DeviceScreen.kt` — surfaces the detected
+  host + recommended backend to the user
+
+**The Settings panel shows a "Host OS" card** at the top of the
+Device category with the detected host, ABI, kernel version, host
+CPU model, and recommended desktop eGPU backend (when applicable).
+This is the user-facing signal that "you're on Linux x86_64 and
+Meshlit sees CUDA available."
+
+---
+
+## 2.12 Settings panel: full customization surface
+
+The Settings tab is the user-facing surface for every preference
+Meshlit ships. It's built to be **search-first** — every leaf-level
+setting is indexed by label, description, and tag, and the top
+search bar filters across all of them.
+
+**Structure:**
+
+```
+SettingsScreen (search bar + category cards)
+├── CategoryCard × 10  (Device, Theme, Notifications, Cluster,
+│                       Models, Account, Performance, Privacy,
+│                       About, Developer)
+└── CategoryScreen per category (back button + Simple/Advanced toggle)
+    ├── DeviceScreen (host OS card + hardware facts)
+    ├── ThemeCustomizationScreen (live re-theming controls)
+    ├── NotificationsSettingsScreen (per-category toggles)
+    └── Generic category screen (Phase 1 read-only list,
+        Phase 2 interactive)
+```
+
+**Theme customization surface (the headline feature):**
+
+`ThemeCustomizationScreen` writes directly to `SettingsRepository`
+(a DataStore-backed Flow). Because the CompositionLocal
+`LocalMeshlitThemeConfig` is wired to that Flow at the root
+(`MainActivity.onCreate`), every toggle re-themes the **entire app
+the instant the switch flips** — there's no "Apply" button.
+
+Live controls:
+- **Accent color**: 10 hues (Meshlit Violet, Cyan, Teal, Sky,
+  Indigo, Rose, Amber, Emerald, Fuchsia, Slate)
+- **Base palette**: 7 palettes (Midnight, Dusk, Dawn, Paper, Coffee,
+  Ocean, Forest) with mini-preview blocks
+- **Theme mode**: System / Always light / Always dark / Auto by
+  time of day (19:00–06:00 forces dark)
+- **Font scale**: 0.85x–1.5x with live text preview
+- **Density scale**: 0.85x–1.3x with live layout preview
+- **Animations**: switch (Phase 5 will read this)
+- **High contrast**: switch (deeper accent on light theme)
+- **Reset to defaults**: button + confirmation dialog (Advanced mode only)
+
+**Search across settings:**
+
+`SettingsSearchIndex` (a static object) holds a flat list of every
+leaf-level setting tagged with its `SettingsCategory`, label,
+description, and stable id (e.g. `"theme.accent"`). The hub screen's
+search bar filters as the user types — tapping a result deep-links
+to the parent category. Phase 2 will render in-app action buttons
+inline in the search results so the user can toggle a setting
+without leaving the search view.
+
+**Persistence:**
+
+`SettingsRepository` uses DataStore (Preferences variant) with a
+stable key namespace (`theme.*`). Migration policy: when we add a
+new setting, its key returns the default value when read from older
+stores. We never delete keys; we deprecate and ignore. That way a
+user upgrading v0.1 → v0.5 keeps every preference they ever set.
+
+**Files:**
+
+- `app/ui/screens/settings/SettingsScreen.kt` — the hub
+- `app/ui/screens/settings/CategoryScreen.kt` — the generic per-category shell
+- `app/ui/screens/settings/ThemeCustomizationScreen.kt` — live theme controls
+- `app/ui/screens/settings/ThemeSettingsViewModel.kt` — VM wiring
+- `app/ui/screens/settings/SettingsSearchIndex.kt` — searchable index
+- `app/ui/screens/settings/SearchBar.kt` — search input widget
+- `app/ui/screens/settings/DeviceScreen.kt` — Device category (specialized)
+- `app/settings/SettingsRepository.kt` — DataStore persistence
+- `app/ui/theme/DynamicTheme.kt` — config data class + 10 hues + 7 palettes
+- `app/ui/theme/Theme.kt` — resolves system dark mode against config
+
+**Why this matters:**
+
+Phase 1 used hard-coded colors and a single theme. The new panel
+turns the visual identity into a user-controlled surface: every
+property (hue, palette, scale, animation, contrast) is searchable,
+editable, and persists across launches. The live re-theme means the
+user sees the result of their change **immediately** — there's no
+"save and reload" loop.
+
+---
+
+---
+
 ## 3. Tech stack
 
 | Layer | Choice | Notes |
