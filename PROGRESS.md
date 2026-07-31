@@ -120,6 +120,32 @@ In priority order:
 - **Model signing / supply-chain trust.** No Android-side mechanism
   exists for "this GGUF is from a known publisher." Revisit if a
   poisoned-model incident surfaces in the wild.
+- **MoE shard federation (Phase 4.5).** Newly added. Real validation
+  needs a working NDK llama.cpp first; revisit after Phase 1 ships.
+
+---
+
+## Honest session-boundary note (added 2026-08-01)
+
+Autopilot for the full project is **not** a single session. The
+remaining work spans at least 6 more phase-cycles. Each requires
+on-device verification that I cannot perform in a sandboxed CLI
+environment — only the human can plug in a phone, run `adb install`,
+and confirm a 15-minute background survival test.
+
+**Right now, the next agent should:**
+1. Read this PROGRESS.md.
+2. Read the `phase-0-done` tag state (git checkout phase-0-done after
+   it's tagged below).
+3. Begin Phase 1: NDK + llama.cpp + foreground service. The hardest
+   risk. The first prompt must round-trip Device-A → Device-B. Plan
+   on at least one full session for this phase.
+4. Tag `phase-1-done` only when the on-device test passes.
+
+**To tag Phase 0 done:**
+```
+git tag -a phase-0-done -m "Multi-module scaffold + Compose UI shell. APK builds, lint clean."
+```
 
 ---
 
