@@ -882,6 +882,112 @@ The CLI + structured manifest are the additions that make it
 
 ---
 
+## 2.10 Android constraints and how we work around them
+
+**The only hard limits that matter right now.** Future-proofing
+for hypothetical 2027 threats is not the priority — designing
+around what Android actually does in 2026 is. Every implementation
+choice below flows from a real constraint, not a thought experiment.
+
+### 2.10.1 Foreground service (FGS) limits
+
+| Constraint | Workaround |
+|---|---|
+| FGS-data-sync capped at 6 hours/day, then 24h cooldown | Heartbeat every 5 min; forcible restart before cap; switch to `WorkManager` polling when paused |
+| One FGS type per service (no mixing mediaSync + dataSync) | One FGS per logical service (gossip / inference / MCP) |
+| `onTimeout()` (API 35+) called at cap with ~10s to clean up | Drain in-flight, persist state to DataStore, post "service paused" notification |
+| FGS started from background strictly forbidden | Cluster-node notification MUST be visible the entire FGS is running, with current-activity text |
+| No battery exemption | Design around doze-mode. Don't depend on it. |
+| User-initiated stop via notification action | Always include "Stop" action |
+
+### 2.10.2 Memory limits
+
+| Constraint | Workaround |
+|---|---|
+| 512 MB JVM heap on most 64-bit phones | **Offload model weights to native via `mmap`.** Java/Kotlin process holds state, native library holds weights |
+| 4 GB native heap on most devices | Sufficient for 13B Q4. 70B needs MoE sharding |
+| `onTrimMemory()` pressure | Save KV cache to disk at TRIM_MEMORY_RUNNING_LOW, restart on resume |
+| `largeHeap` flag ignored by most OEMs | Don't rely on it |
+| GPU memory shared with system | When eGPU attached, load model there. Phone GPU stays free. |
+
+### 2.10.3 Storage limits
+
+| Constraint | Workaround |
+|---|---|
+| App data invisible to user | Use `getExternalFilesDir()` for model weights so users see "Meshlit: 4.2 GB" in Settings → Storage |
+| Scoped storage (Android 11+) | SAF picker for cluster file access. Document the limitation in-app. |
+| Atomic writes required | Use `AtomicFile` or `commit()` |
+| Thumbnail cache | 50 MB cap, auto-evict |
+
+### 2.10.4 Networking limits
+
+| Constraint | Workaround |
+|---|---|
+| Metered vs unmetered unreliable | User-toggleable per-network setting in Meshlit. Don't auto-pick. |
+| Doze mode suspends network after 30 min idle | FGS whitelist keeps networking alive while FGS runs. Accept the pause when FGS is at the dataSync cap. |
+| Wi-Fi Direct deprecated | Use Wi-Fi Aware (NAN) where supported, fall back to LAN. Don't depend on Wi-Fi Direct. |
+| Multicast lock required for NSD | Acquire in FGS, release on stop. |
+| Cleartext HTTP blocked (Android 9+) | TLS everywhere. Tailscale for cross-network. Self-signed certs fine in LAN. |
+| No ports < 1024 without root | Use 8888–8899 (cluster) and 9100+ (gateway). |
+| NSD works on LAN, blocked across NAT | NSD for LAN, Tailscale/WG for cross-network. |
+| Hotspot NAT blocks inbound | Cluster nodes behind a hotspot cannot be discovered directly. Documented limitation. |
+
+### 2.10.5 Battery and thermal limits
+
+| Constraint | Workaround |
+|---|---|
+| Sustained high CPU throttles within 5–15 min | Throttle-aware scheduler: thermal status 4 → 50% threads; status 5 → refuse new jobs |
+| Doze restrictions on idle apps | Cluster gossip wakes every 15 min via WorkManager when idle |
+| No background location | Don't try to detect network changes automatically |
+
+### 2.10.6 UI limits
+
+| Constraint | Workaround |
+|---|---|
+| Compose recomposition cost | Use `derivedStateOf` and stable types in hot paths |
+| Large Lazy lists jank past 1000 items | Paginate history; use `key()` blocks on stable IDs |
+| Bitmap heap limits | Cluster avatars 256px max, downsampled |
+| Edge-to-edge mandatory (Android 15+) | `WindowCompat.setDecorFitsSystemWindows(false)` + inset handling |
+| Predictive back gesture required | Implement `OnBackPressedCallback` properly |
+
+### 2.10.7 Security sandbox
+
+| Constraint | Workaround |
+|---|---|
+| No raw sockets, no privileged ports | Use high port range (8888+); that's fine |
+| `POST_NOTIFICATIONS` runtime perm | Request with rationale on first notification dispatch |
+| `FOREGROUND_SERVICE_*` per type | Declare the right type for each service |
+| Keystore TEE-backed | Use Android Keystore directly (not `KeyChain`) for cluster join tokens |
+
+### 2.10.8 What this means for code today
+
+The constraints above translate directly into implementation rules:
+
+1. **Native (NDK) for inference.** JVM heap is too small for model weights. llama.cpp uses `mmap` to load models outside the heap. Non-negotiable.
+2. **One FGS per logical service.** Cluster gossip, inference engine, MCP server — each is its own FGS. Coordinated via DataStore + small in-process broker.
+3. **NSD for LAN, Tailscale for cross-network, no Wi-Fi Direct.** Match the constraint.
+4. **mmap model files.** Model loads via `ParcelFileDescriptor` → JNI → llama.cpp mmap.
+5. **`onTrimMemory` is the moment to save state.** KV cache to disk, restart on resume.
+6. **Scope file access.** SAF picker, never raw paths. Document the limitation.
+7. **High port range.** 8888–8899 cluster, 9100+ gateway.
+8. **TLS only.** Tailscale gives us this for free across WAN.
+9. **Compose stable types everywhere in hot paths.** Job list, peer list.
+10. **Don't fight the system.** When the OS says "stop," we stop. The cluster routes around the missing node.
+
+### 2.10.9 What's NOT a 2026 problem (deferred)
+
+We don't design for these yet — they're recorded so we don't lose
+them, but they're not shaping current code:
+
+- AI agents "gaming helpfulness score" — Phase 5+
+- Vouch decay timer tuning — runs as designed, no special handling
+- Token-to-fiat conversion — human verification at the gate is enough
+- Anti-Sybil heuristics tuning — needs adversarial testing post-launch
+- Cross-node tensor parallelism — explicitly forbidden by §0 principle 1
+- Public gateway with bearer tokens — Phase 4.5, design already done
+
+---
+
 ## 3. Tech stack
 
 | Layer | Choice | Notes |
