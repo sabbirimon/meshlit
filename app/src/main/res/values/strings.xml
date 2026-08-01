@@ -70,4 +70,41 @@
     <string name="fgs_inference_body">Serving prompts to the cluster</string>
     <string name="fgs_mcp_title">Meshlit — Tool node</string>
     <string name="fgs_mcp_body">Serving MCP tools to the cluster</string>
+
+    <!-- Capability tiers (auto-detected from SDK_INT) -->
+    <string name="capability_tier_label">Capability tier</string>
+    <string name="capability_tier_lite">Lite</string>
+    <string name="capability_tier_mid">Mid</string>
+    <string name="capability_tier_full">Full</string>
+    <string name="capability_tier_lite_desc">Android 6–12 · Bundled model · basic foreground service</string>
+    <string name="capability_tier_mid_desc">Android 13–14 · Bundled model · dataSync foreground service</string>
+    <string name="capability_tier_full_desc">Android 15+ · Bundled model · dataSync foreground service · hardware attestation</string>
+
+    <!-- Models editor (Settings → Models) -->
+    <string name="models_bundled_section">Bundled model</string>
+    <string name="models_bundled_name">Qwen2.5-1.5B-Instruct</string>
+    <string name="models_bundled_quant">Q4_K_M · Apache 2.0 · multilingual</string>
+    <string name="models_bundled_installed">Installed</string>
+    <string name="models_bundled_not_installed">Not installed</string>
+    <string name="models_no_asset">No bundled model found in the APK</string>
+    <string name="models_reextract_in_progress">Extracting…</string>
+    <string name="models_reextract_done">Model extracted and ready to load</string>
+    <string name="models_reextract_failed">Extraction failed — see logs</string>
+    <string name="models_reextract_button">Re-extract now</string>
+
+    <string name="models_override_section">Custom GGUF path</string>
+    <string name="models_override_path_label">Path to a GGUF on this device</string>
+    <string name="models_override_path_description">Use a model downloaded from Hugging Face, Ollama, or another node. When set, the bundled model is skipped.</string>
+    <string name="models_override_path_hint">/sdcard/Models/qwen2.5-3b-instruct-q4.gguf</string>
+    <string name="models_override_save">Save</string>
+    <string name="models_override_clear">Clear override</string>
+
+    <!-- Settings search -->
+    <string name="settings_search_clear">Clear search</string>
+
+    <!-- Battery optimization -->
+    <string name="battery_card_title">Battery optimization</string>
+    <string name="battery_card_body">Disable Android’s battery optimization for Meshlit so the foreground service isn’t killed in the background.</string>
+    <string name="battery_card_open_settings">Open system settings</string>
+    <string name="battery_card_oem_hint">If Meshlit isn’t in the standard list, your OEM has a separate battery screen.</string>
 </resources>

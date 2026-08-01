@@ -5,7 +5,7 @@ plugins {
 
 android {
     compileSdk = 37
-    defaultConfig { minSdk = 29 }
+    defaultConfig { minSdk = 23 }
     namespace = "com.meshlit.core.ssh"
 }
 

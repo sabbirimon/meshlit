@@ -10,7 +10,12 @@ android {
 
     defaultConfig {
         applicationId = "com.meshlit"
-        minSdk = 29
+        // Floor = API 23 (Android 6.0). The Ktor 3 server dependency was
+        // dropped in favor of NanoHTTPD specifically to keep this floor;
+        // the OkHttp client replaces the Ktor client for the same reason.
+        // androidx.core 1.19 requires API 23, and Compose BOM 2025.05
+        // requires it too.
+        minSdk = 23
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
@@ -34,11 +39,22 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // Required for `java.time.LocalTime` (API 26) and
+        // `ConcurrentHashMap.newKeySet` (API 24) on API 23-25.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    androidResources {
+        // Bundled GGUFs must NOT be compressed inside the APK so
+        // llama.cpp can mmap the file directly via AAsset_openFileDescriptor
+        // without paying the inflate cost on every random-access read.
+        // See BundledModelInstaller for the extraction pathway.
+        noCompress += "gguf"
     }
 
     packaging {
@@ -70,6 +86,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.material)
 
     // Compose
@@ -84,6 +101,18 @@ dependencies {
 
     // Logging
     implementation(libs.slf4j.api)
+
+    // JSON (for SettingsRepository / DeviceProfileRepository override blobs)
+    implementation(libs.kotlinx.serialization.json)
+
+    // OkHttp — the remote-inference client. OkHttp works on every
+    // supported minSdk (pure-Java), unlike Ktor 3 client which needs
+    // DEX 040 bytecode from API 33.
+    implementation(libs.okhttp.core)
+
+    // Core-library desugaring: required for java.time + ConcurrentHashMap
+    // on Android 6/7.
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Tests
     testImplementation(libs.junit)
