@@ -10,7 +10,12 @@ android {
 
     defaultConfig {
         applicationId = "com.meshlit"
-        minSdk = 29
+        // Bumped from 29 to 34 because D8 emits DEX 040 by default
+        // from API 34 onwards. Ktor 3.x uses spaces in some field
+        // SimpleNames (e.g. "use streaming syntax") which the
+        // pre-DEX-040 dexer rejects. minSdk 34 covers Android 14+,
+        // which is what Phase 1's physical-device test targets.
+        minSdk = 34
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
@@ -34,6 +39,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // Required for `coreLibraryDesugaring` and also flips D8
+        // into DEX 040 output, which Ktor 3.x needs.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures {
@@ -44,6 +52,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Netty (pulled in by Ktor server) ships duplicate
+            // META-INF descriptors across its many split JARs.
+            // Exclude them so the merge step doesn't fail.
+            excludes += listOf(
+                "META-INF/INDEX.LIST",
+                "META-INF/io.netty.versions.properties",
+                "META-INF/native-image/**",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+            )
         }
     }
 }
@@ -88,6 +107,21 @@ dependencies {
 
     // JSON (for SettingsRepository / DeviceProfileRepository override blobs)
     implementation(libs.kotlinx.serialization.json)
+
+    // Ktor client — remote inference dispatch (HTTP + SSE).
+    // Server-side Ktor lives in :core-inference; :app only needs the
+    // client pieces. OkHttp engine = battle-tested, plays well with
+    // Android's HTTP cache and proxy stacks.
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
+
+    // Core-library desugaring: flips D8 into DEX 040 output (Ktor 3
+    // uses spaces in some field SimpleNames that pre-DEX-040
+    // dexers reject).
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Tests
     testImplementation(libs.junit)
