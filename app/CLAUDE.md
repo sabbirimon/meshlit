@@ -16,7 +16,7 @@ session or you're unsure what phase we're in.
 > Update this line at the end of every session so the next session (or
 > agent) doesn't have to reconstruct state from git log.
 
-`PHASE: 0 — scaffolding not yet started`
+`PHASE: 1 — Kotlin engine/service/UI foundation complete; awaiting llama.cpp JNI integration and physical-device verification before phase-1-done`
 
 ## How this project handles conflicting scope choices
 
