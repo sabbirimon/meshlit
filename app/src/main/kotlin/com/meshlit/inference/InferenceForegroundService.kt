@@ -23,8 +23,14 @@ import com.meshlit.core.inference.InferenceEvent
 import com.meshlit.core.inference.InferenceRequest
 import com.meshlit.core.inference.InferenceResult
 import com.meshlit.core.inference.ModelInfo
+import com.meshlit.core.inference.net.InferenceHttpServer
 import com.meshlit.notifications.NotificationCategory
 import com.meshlit.notifications.NotificationCenter
+import com.meshlit.inference.ForwardingProxy
+import com.meshlit.inference.MiniRouter
+import com.meshlit.inference.PeerHealthCache
+import com.meshlit.inference.PeerRegistry
+import com.meshlit.inference.RemoteInferenceClientFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,6 +72,22 @@ class InferenceForegroundService : Service() {
     private lateinit var coordinator: InferenceCoordinator
     private lateinit var notificationCenter: NotificationCenter
 
+    /**
+     * Router stack wired in `onCreate`, torn down in `onDestroy`.
+     *  - [peerRegistry]      : DataStore-backed list of peer IPs.
+     *  - [clientFactory]     : shared HttpClient (one engine per process).
+     *  - [healthCache]       : per-peer health snapshot, refreshed every 30s.
+     *  - [miniRouter]        : capability-aware decision (LOCAL vs FORWARD).
+     *  - [forwardingProxy]   : streams peer SSE back through the server's outgoing channel.
+     *  - [httpServer]        : the embedded Ktor server itself.
+     */
+    private var peerRegistry: PeerRegistry? = null
+    private var clientFactory: RemoteInferenceClientFactory? = null
+    private var healthCache: PeerHealthCache? = null
+    private var miniRouter: MiniRouter? = null
+    private var forwardingProxy: ForwardingProxy? = null
+    private var httpServer: InferenceHttpServer? = null
+
     private val binder = LocalBinder()
 
     override fun onCreate() {
@@ -75,6 +97,36 @@ class InferenceForegroundService : Service() {
         notificationCenter = app.notificationCenter
         startInForeground()
         log.info("fgs.create", "InferenceForegroundService created")
+
+        // Build router stack and start the embedded HTTP/SSE server.
+        try {
+            val reg = app.peerRegistry
+            val factory = RemoteInferenceClientFactory()
+            val cache = PeerHealthCache(factory)
+            val router = MiniRouter(coordinator, reg, cache)
+            val proxy = ForwardingProxy(factory)
+            val server = InferenceHttpServer(
+                coordinator = coordinator,
+                router = router,
+                forwarder = proxy,
+                port = InferenceHttpServer.DEFAULT_PORT,
+            )
+            peerRegistry = reg
+            clientFactory = factory
+            healthCache = cache
+            miniRouter = router
+            forwardingProxy = proxy
+            httpServer = server
+            scope.launch { server.start(this) }
+            scope.launch { cache.refreshLoop(this, reg) }
+            log.info(
+                "fgs.router.start",
+                "router stack ready",
+                mapOf("port" to InferenceHttpServer.DEFAULT_PORT),
+            )
+        } catch (t: Throwable) {
+            log.warn("fgs.router.fail", "router stack init failed", mapOf("err" to (t.message ?: "")))
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -137,6 +189,18 @@ class InferenceForegroundService : Service() {
 
     override fun onDestroy() {
         log.info("fgs.destroy", "InferenceForegroundService destroying")
+        // Tear down the router stack in reverse construction order:
+        // server first (so no new requests land), then the factory
+        // (closes the shared HttpClient), then drop references.
+        runCatching { httpServer?.stop() }
+        runCatching { clientFactory?.close() }
+        httpServer = null
+        forwardingProxy = null
+        miniRouter = null
+        healthCache = null
+        clientFactory = null
+        peerRegistry = null
+
         coordinator.shutdown()
         scope.launch { coordinator.unloadModel() }
         scope.cancel()
