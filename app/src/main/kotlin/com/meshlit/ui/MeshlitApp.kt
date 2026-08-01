@@ -22,6 +22,7 @@ import com.meshlit.ui.nav.TopLevelDestination
 import com.meshlit.ui.screens.JobsScreen
 import com.meshlit.ui.screens.ScreenStub
 import com.meshlit.ui.screens.settings.CategoryScreen
+import com.meshlit.ui.screens.settings.ForwardingPeersScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
 import com.meshlit.ui.screens.settings.SettingsScreen
 
@@ -104,6 +105,13 @@ fun MeshlitApp() {
                         onBack = { navController.popBackStack() },
                     )
                 }
+            }
+
+            // Forwarding peers screen (Phase 1, task #7).
+            composable("settings/forwarding-peers") {
+                ForwardingPeersScreen(
+                    onBack = { navController.popBackStack() },
+                )
             }
         }
     }

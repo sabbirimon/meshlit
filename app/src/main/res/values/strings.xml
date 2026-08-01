@@ -42,6 +42,18 @@
     <string name="jobs_thinking">Thinking…</string>
     <string name="jobs_empty_state">Load a model, then enter a prompt to start local inference.</string>
     <string name="jobs_engine_stub_hint">Start the service and load a GGUF model to begin.</string>
+    <string name="jobs_dispatch_local">Local</string>
+    <string name="jobs_dispatch_remote">Remote (peer)</string>
+    <string name="jobs_remote_ip_label">Peer IP</string>
+    <string name="jobs_remote_ip_placeholder">192.168.1.42</string>
+    <string name="jobs_remote_dispatch_failed">Peer unreachable: %1$s</string>
+    <string name="jobs_remote_no_ip">Enter a peer IP for Remote dispatch.</string>
+
+    <!-- Forwarding peers (Settings → Network) -->
+    <string name="settings_network_forwarding_peers">Forwarding peers</string>
+    <string name="settings_network_forwarding_peers_hint">IPs this device forwards inference to when busy or unable to serve locally. The local server probes each peer every 30s to learn health.</string>
+    <string name="settings_network_forwarding_peers_empty">No forwarding peers yet. Add a peer IP above.</string>
+    <string name="settings_network_add_peer">Add peer</string>
 
     <!-- Models screen -->
     <string name="models_empty_title">No models installed</string>

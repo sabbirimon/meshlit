@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -34,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,10 +56,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.core.common.MeshlitResult
+import com.meshlit.core.inference.net.InferRequest
+import com.meshlit.inference.InferenceDispatchMode
 import com.meshlit.inference.InferenceForegroundService
+import com.meshlit.inference.RemoteInferenceClient
+import com.meshlit.inference.RemoteInferenceClientFactory
 import com.meshlit.inference.buildCancelIntent
 import com.meshlit.inference.buildInferIntent
+import com.meshlit.inference.defaultRequestHints
 import kotlinx.coroutines.launch
 
 /**
@@ -86,6 +95,27 @@ fun JobsScreen() {
     var prompt by remember { mutableStateOf("") }
     val history = remember { mutableStateListOf<PromptExchange>() }
     val currentReply = remember { mutableStateOf<PromptExchange?>(null) }
+
+    // Dispatch mode + peer IP. Phase 1: simple Local/Remote radio pair.
+    // Phase 2 will replace the IP field with a node picker once
+    // discovery is wired.
+    var dispatchMode by remember { mutableStateOf(InferenceDispatchMode.LOCAL) }
+    var remoteIp by remember { mutableStateOf("") }
+
+    // Stable factory used by remote dispatches. Owned by the app
+    // singleton so we share one HttpClient across the app.
+    val remoteFactory = remember {
+        // MeshlitApplication holds the factory long-term; we add a
+        // tiny throwaway here for Remote-mode Send calls so the FGS
+        // factory stays inside its lifecycle. Each Send call uses
+        // its own factory — the HttpClient is short-lived for a
+        // single request. Phase 2 moves this back to the FGS-owned
+        // factory once cluster nodes use it constantly.
+        RemoteInferenceClientFactory()
+    }
+    DisposableEffect(Unit) {
+        onDispose { remoteFactory.close() }
+    }
 
     // Bind to the foreground service. The binder gives us the coordinator.
     val binder = remember { mutableStateOf<InferenceForegroundService.LocalBinder?>(null) }
@@ -202,6 +232,51 @@ fun JobsScreen() {
 
             HorizontalDivider()
 
+            // Dispatch-mode toggle + IP field. Above the prompt input
+            // so users see *where* their prompt is going before they
+            // hit Send.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = dispatchMode == InferenceDispatchMode.LOCAL,
+                        onClick = { dispatchMode = InferenceDispatchMode.LOCAL },
+                        enabled = currentReply.value == null,
+                    )
+                    Text(
+                        text = stringResource(R.string.jobs_dispatch_local),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(end = 16.dp),
+                    )
+                    RadioButton(
+                        selected = dispatchMode == InferenceDispatchMode.REMOTE,
+                        onClick = { dispatchMode = InferenceDispatchMode.REMOTE },
+                        enabled = currentReply.value == null,
+                    )
+                    Text(
+                        text = stringResource(R.string.jobs_dispatch_remote),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                OutlinedTextField(
+                    value = remoteIp,
+                    onValueChange = { remoteIp = it.trim() },
+                    label = { Text(stringResource(R.string.jobs_remote_ip_label)) },
+                    placeholder = { Text(stringResource(R.string.jobs_remote_ip_placeholder)) },
+                    enabled = dispatchMode == InferenceDispatchMode.REMOTE && currentReply.value == null,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            HorizontalDivider()
+
             // Input row
             Row(
                 modifier = Modifier
@@ -224,11 +299,60 @@ fun JobsScreen() {
                         onClick = {
                             val p = prompt.trim()
                             if (p.isNotEmpty()) {
-                                context.startService(buildInferIntent(context, p))
-                                prompt = ""
+                                when (dispatchMode) {
+                                    InferenceDispatchMode.LOCAL -> {
+                                        context.startService(buildInferIntent(context, p))
+                                    }
+                                    InferenceDispatchMode.REMOTE -> {
+                                        if (remoteIp.isBlank()) return@IconButton
+                                        // Push the user prompt into the
+                                        // currentReply bubble up front so
+                                        // the UI has something to render
+                                        // while the SSE wire comes back.
+                                        currentReply.value = PromptExchange(
+                                            prompt = p,
+                                            reply = "",
+                                            finished = false,
+                                        )
+                                        prompt = ""
+                                        scope.launch {
+                                            dispatchRemote(p, remoteFactory, remoteIp) { event ->
+                                                when (event) {
+                                                    is RemoteEvent.Token -> {
+                                                        val cur = currentReply.value ?: return@dispatchRemote
+                                                        currentReply.value = cur.copy(reply = cur.reply + event.text)
+                                                    }
+                                                    is RemoteEvent.Done -> {
+                                                        val cur = currentReply.value ?: return@dispatchRemote
+                                                        val final = cur.copy(
+                                                            reply = if (cur.reply.isNotEmpty()) cur.reply else "[empty reply]",
+                                                            finished = true,
+                                                        )
+                                                        history.add(final)
+                                                        currentReply.value = null
+                                                    }
+                                                    is RemoteEvent.Error -> {
+                                                        val cur = currentReply.value ?: return@dispatchRemote
+                                                        history.add(
+                                                            cur.copy(
+                                                                reply = "[error: ${event.tag}]",
+                                                                finished = true,
+                                                            ),
+                                                        )
+                                                        currentReply.value = null
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if (dispatchMode == InferenceDispatchMode.LOCAL) {
+                                    prompt = ""
+                                }
                             }
                         },
-                        enabled = prompt.isNotBlank(),
+                        enabled = prompt.isNotBlank() &&
+                            (dispatchMode == InferenceDispatchMode.LOCAL || remoteIp.isNotBlank()),
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
@@ -238,7 +362,12 @@ fun JobsScreen() {
                     }
                 } else {
                     IconButton(
-                        onClick = { context.startService(buildCancelIntent(context)) },
+                        onClick = {
+                            // Cancel works locally; remote cancel is
+                            // handled by client disconnect (the server
+                            // detects it and stops inference).
+                            context.startService(buildCancelIntent(context))
+                        },
                     ) {
                         Icon(
                             imageVector = Icons.Default.Stop,
@@ -382,5 +511,41 @@ private fun EmptyState() {
                 modifier = Modifier.padding(24.dp),
             )
         }
+    }
+}
+
+/**
+ * One event surfaced by [dispatchRemote]. The Compose UI maps each
+ * variant onto a state mutation of `currentReply` / `history`.
+ */
+private sealed interface RemoteEvent {
+    data class Token(val text: String) : RemoteEvent
+    data class Done(val finishReason: String) : RemoteEvent
+    data class Error(val tag: String) : RemoteEvent
+}
+
+/**
+ * Open a remote inference client to [ip] and stream the SSE reply
+ * back through [onEvent]. Errors are surfaced as a synthetic
+ * `RemoteEvent.Error` so the UI can render a clean failure bubble
+ * instead of silently dropping the request.
+ */
+private suspend fun dispatchRemote(
+    prompt: String,
+    factory: RemoteInferenceClientFactory,
+    ip: String,
+    onEvent: suspend (RemoteEvent) -> Unit,
+) {
+    val client: RemoteInferenceClient = factory.build("http://$ip:8080")
+    val req = InferRequest(prompt = prompt, maxTokens = 256)
+    val result = client.streamInfer(
+        request = req,
+        hints = defaultRequestHints(),
+        onToken = { ev -> onEvent(RemoteEvent.Token(ev.text)) },
+        onDone = { ev -> onEvent(RemoteEvent.Done(ev.finishReason)) },
+        onError = { ev -> onEvent(RemoteEvent.Error(ev.tag)) },
+    )
+    if (result is MeshlitResult.Failure) {
+        onEvent(RemoteEvent.Error(result.error.tag))
     }
 }
