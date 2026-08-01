@@ -1,7 +1,6 @@
 package com.meshlit.ui.screens.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,26 +16,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,7 +70,6 @@ import com.meshlit.core.common.PeripheralDevice
 @Composable
 fun DeviceScreen(
     @Suppress("UNUSED_PARAMETER") onBack: () -> Unit,
-    onRefresh: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as MeshlitApplication
@@ -87,113 +79,84 @@ fun DeviceScreen(
     val state by viewModel.state.collectAsState()
     val host = app.hostOSDetection
 
-    // Sub-screen refresh button. The TopAppBar that hosts this is
-    // owned by [CategoryScreen], so we just expose this action and
-    // let the parent wire it into its top-bar `actions` slot if it
-    // wants to. For now we trigger refresh via a small button above
-    // the list so users can still re-run the probe.
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(16.dp),
+    ) {
+        item {
+            HostOSCard(host = host)
+            Spacer(Modifier.height(8.dp))
+        }
+
+        item {
             Text(
-                text = stringResource(R.string.settings_cat_device),
+                text = stringResource(R.string.device_section_hardware),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.primary,
             )
-            IconButton(onClick = {
-                onRefresh()
-                viewModel.refresh()
-            }) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.device_refresh_probe),
+        }
+        item {
+            HardwareCard(
+                effective = state.profile.effective,
+                detection = state.profile.detection,
+            )
+        }
+
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.device_section_peripherals),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        item {
+            PeripheralsCard(peripherals = state.profile.connectedPeripherals)
+        }
+
+        item {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.device_advanced_override),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.device_advanced_override_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(
+                    checked = state.advancedEnabled,
+                    onCheckedChange = { viewModel.setAdvancedEnabled(it) },
                 )
             }
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(16.dp),
-        ) {
+        if (state.advancedEnabled) {
             item {
-                HostOSCard(host = host)
-                Spacer(Modifier.height(8.dp))
-            }
-
-            item {
-                Text(
-                    text = stringResource(R.string.device_section_hardware),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            item {
-                HardwareCard(
+                OverrideEditorCard(
                     effective = state.profile.effective,
-                    detection = state.profile.detection,
+                    hasOverride = state.profile.hasOverride,
+                    onManufacturer = viewModel::setManualManufacturer,
+                    onModel = viewModel::setManualModelName,
+                    onChipset = viewModel::setManualChipset,
+                    onSocModel = viewModel::setManualSocModel,
+                    onGpu = viewModel::setManualGpu,
+                    onRam = viewModel::setManualRamMb,
+                    onCores = viewModel::setManualCpuCores,
+                    onNote = viewModel::setManualNote,
+                    onClearOverride = viewModel::clearOverride,
                 )
             }
-
-            item {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.device_section_peripherals),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            item {
-                PeripheralsCard(peripherals = state.profile.connectedPeripherals)
-            }
-
-            item {
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.device_advanced_override),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            text = stringResource(R.string.device_advanced_override_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    Switch(
-                        checked = state.advancedEnabled,
-                        onCheckedChange = { viewModel.setAdvancedEnabled(it) },
-                    )
-                }
-            }
-            if (state.advancedEnabled) {
-                item {
-                    OverrideEditorCard(
-                        effective = state.profile.effective,
-                        hasOverride = state.profile.hasOverride,
-                        onManufacturer = viewModel::setManualManufacturer,
-                        onModel = viewModel::setManualModelName,
-                        onChipset = viewModel::setManualChipset,
-                        onSocModel = viewModel::setManualSocModel,
-                        onGpu = viewModel::setManualGpu,
-                        onRam = viewModel::setManualRamMb,
-                        onCores = viewModel::setManualCpuCores,
-                        onNote = viewModel::setManualNote,
-                        onClearOverride = viewModel::clearOverride,
-                    )
-                }
-            }
-
-            item { Spacer(Modifier.height(32.dp)) }
         }
+
+        item { Spacer(Modifier.height(32.dp)) }
     }
 }
 

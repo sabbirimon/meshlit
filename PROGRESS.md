@@ -42,6 +42,39 @@ native llama.cpp integration remains before Phase 1 can be called end-to-end don
 - Jobs tab wired into root navigation.
 - `./gradlew :app:assembleDebug` is green.
 
+**Phase 1 HTTP dispatch (DONE, commits `2b2f6f8` through `7ca0721`):**
+- Embedded Ktor HTTP/SSE inference server in `:core-inference` (Netty engine
+  on `0.0.0.0:8080`), wired into `InferenceForegroundService`.
+- Capability-aware mini-router with `X-Meshlit-Hints` header, DataStore-backed
+  peer registry, 30s-refreshing peer health cache, and forward-and-stream
+  proxy. `:core-inference` stays independent of `:app` via `RouterRef` and
+  `Forwarder` interfaces.
+- Ktor OkHttp client + Local/Remote toggle + IP field on the Jobs screen.
+- Settings → Network → Forwarding peers screen (add/remove with IPv4
+  validation).
+- DEX 040 / R8 full mode / desugaring / Netty `META-INF` packaging excludes
+  baked into Gradle config so the Ktor 3 stack compiles cleanly.
+- Phase 1 client uses `bodyAsText()` for SSE parsing — line-by-line walk of
+  the full body. Phase 2 swaps in a streaming reader once incremental
+  updates are needed.
+
+**Phase 1 follow-up / fixups (DONE, commit `7b7578c`, this session):**
+- Fixed Settings double-header bug: `DeviceScreen` was rendering its own
+  `Scaffold` + `TopAppBar` inside `CategoryScreen`'s `Scaffold` + `TopAppBar`,
+  stacking two top bars and making the upper half of the screen unresponsive
+  to taps. Removed the inner scaffold; the parent now owns the only top bar.
+- Fixed JobsScreen binder staleness: the coordinator was read at composition
+  time when `binder.value` was still `null`, leaving `collectAsState()` and
+  the events `LaunchedEffect` permanently stuck on null. Now reads inside a
+  `LaunchedEffect(binder.value)` so the collectors re-subscribe when the
+  service binds.
+- Moved the Simple/Advanced toggle in `CategoryScreen` into a 3-dot
+  overflow menu in the TopAppBar's `actions` slot — freed the row that
+  previously sat below the top bar.
+- All screens (`JobsScreen`, `DeviceScreen`, `CategoryScreen`,
+  `ForwardingPeersScreen`) now use a single TopAppBar from their parent's
+  Scaffold; no inline section headers eat vertical space.
+
 **Phase 1 remaining:**
 - Build/vendor llama.cpp and implement the JNI C++ symbols declared by
   `LlamaCppInferenceEngine` (`nativeInit`, `nativeLoadModel`, `nativeInfer`,
@@ -53,10 +86,25 @@ native llama.cpp integration remains before Phase 1 can be called end-to-end don
 - Physical-device validation: real model response and 10+ minute background
   survival. Until these pass, do not tag `phase-1-done`.
 
+**Phase 1.5 / Phase 2 candidate (pending user's 2026-08-01 requests):**
+- CUDA + OpenCL + ROCm + OneAPI + Metal eGPU backend support
+  (extends `GpuFamily` + `DesktopBackend` enums in `:core-common`,
+  adds eGPU driver probe in `HostOSDetection`, exposes as a chooser
+  on Settings → Performance and Settings → Device). Requires the
+  llama.cpp NDK side to actually consume the chosen backend, so
+  this is blocked on the native integration.
+- Real model import: a Models tab flow that downloads a vetted
+  tiny GGUF (e.g. SmolLM-135M-Instruct Q4_K_M ≈90 MB, or TinyLlama
+  1.1B Q4_0 ≈700 MB) into the app's internal storage via OkHttp,
+  surfaces download progress, registers the path with the
+  coordinator's `loadModel(...)`. Today there is no "add model"
+  function inside the app and no model on the device — the
+  Jobs screen's status card is permanently stuck on Idle.
+
 **Git:**
 - Current branch: `phase/0.5-device-profile` (will branch to
   `phase/1-http-dispatch` for the task #7 series).
-- Latest implementation commit: `446f76b`.
+- Latest implementation commit: `7b7578c`.
 - Work is committed at logical phase boundaries; native integration should be
   a separate commit from the Kotlin engine/service/UI foundation.
 
@@ -180,6 +228,29 @@ Each entry is a one-line note on a non-obvious decision.
   correct, and matches Phase 1's <5s responses. The server flushes per
   event so the connection close still feels fast. Phase 2 swaps in a
   streaming reader once we actually need incremental UI updates.
+- **2026-08-01 — Two Settings/UX bugs surfaced on physical-device
+  testing (Huawei AAP-AN00, Android 16).** (a) `DeviceScreen` had its
+  own `Scaffold`+`TopAppBar` inside `CategoryScreen`'s, stacking two
+  top bars and breaking taps in the upper half. (b) `JobsScreen`
+  captured `binder.value?.coordinator()` at composition time when
+  `binder.value` was still null, leaving `collectAsState()` and the
+  events `LaunchedEffect` permanently stuck on null even after the
+  FGS bound successfully. Both fixed in commit `7b7578c`. Also moved
+  the Simple/Advanced toggle into a 3-dot overflow menu in
+  `CategoryScreen`'s top bar; sub-screens no longer own their own
+  top bars — the parent scaffold does. Lesson: any screen nested
+  inside a `NavHost` composable must NOT own its own Scaffold/TopAppBar
+  unless the parent's content slot is empty.
+- **2026-08-01 — Why Android 14+ became the minimum.** Ktor 3.2.0
+  requires DEX 040 dexer output. DEX 040 is the default from
+  `minSdk = 34` onwards, so Ktor 3 + embedded HTTP/SSE forced
+  `minSdk` to 34. Ktor 2.x's SSE API was broken at the versions we
+  tested, and backporting Ktor 3 to DEX 039 across its full bytecode
+  is high-risk. Re-evaluate when (a) the sandbox has access to a
+  pre-Android-14 device for CI validation or (b) llama.cpp ships
+  DEX 039-compatible Kotlin bindings that we could use directly
+  without Ktor. For now the Phase 1 acceptance test only needs two
+  Android 14+ devices, which is consistent with the user's hardware.
 
 ---
 
