@@ -10,11 +10,9 @@ android {
 
     defaultConfig {
         applicationId = "com.meshlit"
-        // Floor = API 23 (Android 6.0). The Ktor 3 server dependency was
-        // dropped in favor of NanoHTTPD specifically to keep this floor;
-        // the OkHttp client replaces the Ktor client for the same reason.
-        // androidx.core 1.19 requires API 23, and Compose BOM 2025.05
-        // requires it too.
+        // Floor = API 23 (Android 6.0). Ktor 3 was dropped for NanoHTTPD
+        // + OkHttp specifically to keep this floor; androidx.core 1.19
+        // and Compose BOM 2025.05 require it.
         minSdk = 23
         targetSdk = 36
         versionCode = 1

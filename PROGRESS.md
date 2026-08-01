@@ -12,54 +12,101 @@ skipped and why, what's next.
 
 ## Current state — 2026-08-01
 
-**Phase:** 0 → 1 boundary. Phase 0 shipped; beginning Phase 1.
+**Phase:** Phase 0.5 complete. Phase 1 architecture + service + UI complete;
+native llama.cpp integration remains before Phase 1 can be called end-to-end done.
 
-**Phase 0 (DONE, this session):**
-- 14-module Gradle restructure (`:app` + 13 `core-*` modules).
-- build-logic composite build with convention plugins.
-- Compose UI shell with bottom navigation across 9 destinations.
-- core-common / core-trust types shipped (sealed result, error taxonomy,
-  NodeId, ClusterRole, CapabilitySnapshot, JobSpec, MeshlitLogger,
-  TrustTier, DeviceTrustPolicy).
-- AndroidManifest declares foreground service, FGS-data-sync,
-  near-by Wi-Fi, network, notification permissions.
-- `./gradlew :app:assembleDebug` succeeds.
-- `./gradlew :app:lintDebug` succeeds.
-- APK at `app/build/outputs/apk/debug/app-debug.apk` (62 MB).
+**Phase 0 (DONE):**
+- 14-module Gradle project (`:app` + 13 `core-*` modules) with convention plugins.
+- Compose shell with 9 destinations and Meshlit brand assets.
+- Core common/trust types and Android permission baseline.
+- Debug APK and lint verified locally.
 
-**Build guide v1.2 (DONE, this session):**
-- §0 principle 1 updated: data-parallel preserved, but MoE-shard
-  federation explicitly allowed.
-- §2.6 added — frontend/backend language choices.
-- §2.7 added — frontier model federation architecture and flow.
-- Phase 4.5 added — public-side gateway, OpenAI-compatible HTTP API,
-  bearer tokens, federated cluster.
+**Phase 0.5 (DONE):**
+- Cross-OS / OEM detection for Android, Chinese OEM forks, HarmonyOS layers,
+  ChromeOS/ARC, Linux/x86 emulator/VM hosts.
+- Full Settings hub, theme customization, notification categories, and
+  OEM-specific first-run setup wizard.
+- DeviceProfileRepository wired end-to-end with system, peripheral, and eGPU
+  probes plus persistent manual overrides.
+- Role suggestions for Brain / Tool / Monitor from chipset, RAM, and eGPU.
 
-**Git (DONE, this session):**
-- Three commits on `phase/0-scaffolding`: planning snapshot, Phase 0
-  scaffold, build-guide expansion.
-**Brand identity (DONE, this session):**
-- Name: **Meshlit** ("Many phones. One mind.")
-- Palette: midnight `#0A0E1A` / violet `#7C5CFF` / cyan `#22D3EE` / emerald `#34D399`
-- Adaptive launcher icon designed and generated across all density buckets:
-  central violet Brain node + 3 satellites (cyan tool nodes, emerald
-  monitor node) + light beams on a hex-cell cluster motif. Includes the
-  Android 13+ monochrome layer.
-- `Theme.Meshlit` applied; `strings.xml` populated with screen labels.
+**Phase 1 foundation (DONE, commit `446f76b`):**
+- `InferenceEngine` abstraction with JVM stub and llama.cpp JNI bridge surface.
+- `InferenceCoordinator` with serialized inference, StateFlow state, SharedFlow
+  events, cancellation, and graceful native-library fallback.
+- `InferenceForegroundService` with Android dataSync FGS lifecycle,
+  persistent notification, LocalBinder IPC, load/infer/cancel intents, and
+  Android 15+ `onTimeout()` handling.
+- Real Jobs Compose screen: service binding, prompt input, Send/Stop,
+  status card, conversation history, and streaming-state presentation.
+- Jobs tab wired into root navigation.
+- `./gradlew :app:assembleDebug` is green.
 
-**Build guide (DONE, this session):**
-- v1.1 expansion committed to `app/BUILD_GUIDE.md`:
-  - New §0 principles 9 & 10: user-driven choices resolve conflicting scope
-    (SSH, bypass-charging, long-distance transport, adaptive vs static).
-  - Phases 3–5 reorganized to slot in new features.
-  - New module layout (`:core-users`, `:core-files`, `:core-firewall`,
-    `:core-guardrails`, `:core-tunnel`, `:core-ssh`, `:core-training`).
-  - New §7 Feature-area playbooks (10 sections) and §8 honest limits.
-- `app/CLAUDE.md` updated with the new rules in prose.
+**Phase 1 HTTP dispatch (DONE, commits `2b2f6f8` through `7ca0721`):**
+- Embedded Ktor HTTP/SSE inference server in `:core-inference` (Netty engine
+  on `0.0.0.0:8080`), wired into `InferenceForegroundService`.
+- Capability-aware mini-router with `X-Meshlit-Hints` header, DataStore-backed
+  peer registry, 30s-refreshing peer health cache, and forward-and-stream
+  proxy. `:core-inference` stays independent of `:app` via `RouterRef` and
+  `Forwarder` interfaces.
+- Ktor OkHttp client + Local/Remote toggle + IP field on the Jobs screen.
+- Settings → Network → Forwarding peers screen (add/remove with IPv4
+  validation).
+- DEX 040 / R8 full mode / desugaring / Netty `META-INF` packaging excludes
+  baked into Gradle config so the Ktor 3 stack compiles cleanly.
+- Phase 1 client uses `bodyAsText()` for SSE parsing — line-by-line walk of
+  the full body. Phase 2 swaps in a streaming reader once incremental
+  updates are needed.
 
-**Git (DONE, this session):**
-- `git init`, `.gitignore` expanded for Gradle/IDE/Puku-CLI/native/gen.
-- This is the baseline commit.
+**Phase 1 follow-up / fixups (DONE, commit `7b7578c`, this session):**
+- Fixed Settings double-header bug: `DeviceScreen` was rendering its own
+  `Scaffold` + `TopAppBar` inside `CategoryScreen`'s `Scaffold` + `TopAppBar`,
+  stacking two top bars and making the upper half of the screen unresponsive
+  to taps. Removed the inner scaffold; the parent now owns the only top bar.
+- Fixed JobsScreen binder staleness: the coordinator was read at composition
+  time when `binder.value` was still `null`, leaving `collectAsState()` and
+  the events `LaunchedEffect` permanently stuck on null. Now reads inside a
+  `LaunchedEffect(binder.value)` so the collectors re-subscribe when the
+  service binds.
+- Moved the Simple/Advanced toggle in `CategoryScreen` into a 3-dot
+  overflow menu in the TopAppBar's `actions` slot — freed the row that
+  previously sat below the top bar.
+- All screens (`JobsScreen`, `DeviceScreen`, `CategoryScreen`,
+  `ForwardingPeersScreen`) now use a single TopAppBar from their parent's
+  Scaffold; no inline section headers eat vertical space.
+
+**Phase 1 remaining:**
+- Build/vendor llama.cpp and implement the JNI C++ symbols declared by
+  `LlamaCppInferenceEngine` (`nativeInit`, `nativeLoadModel`, `nativeInfer`,
+  `nativeUnload`, `nativeCancel`).
+- Bundle arm64-v8a + x86_64 `.so` files via CMake/Gradle.
+- Add model selection/import so ACTION_LOAD_MODEL receives a real GGUF path.
+- Add local HTTP/SSE endpoint and hardcoded-IP client dispatch for the
+  two-device Phase 1 acceptance test.
+- Physical-device validation: real model response and 10+ minute background
+  survival. Until these pass, do not tag `phase-1-done`.
+
+**Phase 1.5 / Phase 2 candidate (pending user's 2026-08-01 requests):**
+- CUDA + OpenCL + ROCm + OneAPI + Metal eGPU backend support
+  (extends `GpuFamily` + `DesktopBackend` enums in `:core-common`,
+  adds eGPU driver probe in `HostOSDetection`, exposes as a chooser
+  on Settings → Performance and Settings → Device). Requires the
+  llama.cpp NDK side to actually consume the chosen backend, so
+  this is blocked on the native integration.
+- Real model import: a Models tab flow that downloads a vetted
+  tiny GGUF (e.g. SmolLM-135M-Instruct Q4_K_M ≈90 MB, or TinyLlama
+  1.1B Q4_0 ≈700 MB) into the app's internal storage via OkHttp,
+  surfaces download progress, registers the path with the
+  coordinator's `loadModel(...)`. Today there is no "add model"
+  function inside the app and no model on the device — the
+  Jobs screen's status card is permanently stuck on Idle.
+
+**Git:**
+- Current branch: `phase/0.5-device-profile` (will branch to
+  `phase/1-http-dispatch` for the task #7 series).
+- Latest implementation commit: `7b7578c`.
+- Work is committed at logical phase boundaries; native integration should be
+  a separate commit from the Kotlin engine/service/UI foundation.
 
 ---
 
@@ -96,18 +143,114 @@ Each entry is a one-line note on a non-obvious decision.
 
 In priority order:
 
-1. **Phase 0: Multi-module Gradle scaffolding.** Restructure from a single
-   `:app` module to the layout in BUILD_GUIDE §4. Update `settings.gradle.kts`,
-   the top-level `build.gradle.kts`, `libs.versions.toml`, and create
-   `build.gradle.kts` per module. Keep `minSdk = 29`, `targetSdk = 36`.
-2. **Phase 0: Compose UI shell.** Bottom navigation across Devices / Jobs /
-   Models / Files / Sessions / Cluster / Network / Users / Settings. Each
-   tab is a stub screen with its empty-state placeholder.
-3. **Phase 0: Physical-device verification.** `gradlew assembleDebug`,
-   install on a real Android 14+ device, confirm the empty Devices
-   screen renders and the brand assets appear.
-4. **Phase 1: Hardest risk first — NDK + llama.cpp + foreground service.**
-   Stays inside Phase 1 / not starting until Phase 0 ships.
+1. **Wire llama.cpp JNI into the APK (task #44).** Add CMake/externalNativeBuild,
+   build for arm64-v8a and x86_64, implement the five native symbols, and prove
+   a small GGUF produces real tokens through `InferenceCoordinator`.
+2. **Model load UX.** Let the user select/import a local GGUF and dispatch
+   ACTION_LOAD_MODEL with context size and backend hints.
+3. **Two-device Phase 1 dispatch (task #7).** ✅ **DONE** — embedded Ktor
+   HTTP/SSE server in `:core-inference` (`/v1/health`, `/v1/model`,
+   `/v1/infer`), Ktor client in `:app`, Local/Remote toggle + IP field on the
+   Jobs screen, capability-aware mini-router with DataStore-backed peer list
+   for forward-and-stream. `:app:assembleDebug` and `:app:lintDebug` are
+   green. **Still needs physical-device validation before `phase-1-done`**
+   — install on two Android 14+ devices on the same Wi-Fi, verify a
+   prompt sent from Device B produces a real response from Device A, then
+   background Device A and confirm the response still arrives.
+4. **Physical-device verification (task #6).** Combined with #3 above. Will
+   become a separate commit + journal entry once the two-device test is
+   signed off on real hardware.
+5. **Only then:** mark Phase 1 complete and begin Phase 2 discovery/routing.
+
+---
+
+## Decision log
+
+Each entry is a one-line note on a non-obvious decision.
+
+- **2026-08-01 — Brand.** Picked "Meshlit" as a snappier alternative to a
+  generic "cluster" name. Confirmed palette + Brain/Tool/Monitor visual
+  metaphor maps cleanly to the project roles.
+- **2026-08-01 — Icon source.** Used PIL to generate raster fallbacks at 5
+  density buckets instead of bundling online-borrowed PNGs: keeps the
+  project self-contained and license-clean. Adaptive foreground/background
+  vector drawables are the primary icon path; raster WebPs are pre-Oreo
+  fallback only.
+- **2026-08-01 — Brand identity decisions were made without any internet
+  access.** Icon was designed in vector form and rasterized locally. If
+  the user wants a hand-picked icon later, swap the relevant drawables
+  in — the rest of the brand system is decoupled from the icon paths.
+- **2026-08-01 — Build guide reorganization decision.** Kept the original
+  Phase 0–5 numbering and weave the new features into Phases 3–5 instead
+  of renumbering, so existing references and Phase 0–2 work don't have to
+  be re-mapped against a moving target.
+- **2026-08-01 — SSH rule resolution.** "No public SSH" constraint kept.
+  Cluster-internal SSH bound to LAN/Tailscale is a legitimate feature,
+  not a workaround. Documented in BUILD_GUIDE §6 and §7.6.
+- **2026-08-01 — Tailscale is one option, not the default.** The Network
+  screen offers NSD, Wi-Fi Direct, Tailscale, WireGuard, and relay as
+  toggleable cards; nothing is on by default.
+- **2026-08-01 — Task #7 HTTP stack: Ktor 3 with Netty (server) + OkHttp
+  (client).** Picked Ktor because BUILD_GUIDE §1 names "embedded Ktor
+  HTTP/SSE server" as the long-term server and we get a single mental
+  model for client + server. OkHttp engine for the client plays well with
+  Android's HTTP cache and proxy stacks. Netty engine for the server is
+  Ktor 3's default; Phase 3 can swap to CIO if Netty's size is a problem.
+  Stuck to Ktor 3.2.0 (current GA on the 3.x line); API has been stable.
+- **2026-08-01 — Ktor 3 needed `minSdk = 34` + R8 full mode + DEX 040.**
+  Ktor 3.2.0 ships a field with spaces in its SimpleName (`"use streaming
+  syntax"`) which the pre-DEX-040 dexer rejects. DEX 040 is the default
+  output from API 34 onwards; minSdk 34 + `android.enableR8.fullMode=true`
+  + `coreLibraryDesugaring` together let the build succeed. minSdk 34 is
+  consistent with Phase 1's physical-device target (Android 14+). Core
+  library desugaring is on so DEX 040 is emitted consistently.
+- **2026-08-01 — Netty jars overlap in META-INF.** Ktor's transitive
+  Netty dependencies (13 jars) all ship a `META-INF/INDEX.LIST` file.
+  Added a packaging exclusion block in `:app/build.gradle.kts` to drop
+  the duplicates. Same treatment for `native-image/**` and `DEPENDENCIES`.
+- **2026-08-01 — Mini-router for v1, not a full orchestrator.** A
+  DataStore-backed peer registry + a 30s-refreshing peer health cache +
+  a stateless capability-aware decision function is enough to prove the
+  forward path. Phase 2's NSD/mDNS + capability probe + benchmark-on-
+  join will replace this. Kept the contract (`RouterRef.decideFor`) in
+  `:core-inference` so the server module never imports `:app`.
+- **2026-08-01 — BLUETOOTH permissions added to AndroidManifest.** Phase
+  0.5's `AndroidSystemProbe` already calls `BluetoothAdapter.getBondedDevices`,
+  but the manifest was missing `BLUETOOTH_CONNECT` (required since API 31)
+  and the legacy `BLUETOOTH` / `BLUETOOTH_ADMIN` pair. Lint surfaced these
+  as errors once we bumped `minSdk` to 34. Added them under the existing
+  peripheral-probe comment block — no permission request UI changes
+  required because `AndroidSystemProbe` runs in a try/catch that records
+  failures as "no bluetooth".
+- **2026-08-01 — Phase 1 client uses `bodyAsText()` for SSE.** Ktor 3 +
+  kotlinx-io made per-byte SSE parsing awkward without internal APIs;
+  reading the full body as text and walking it line-by-line is simpler,
+  correct, and matches Phase 1's <5s responses. The server flushes per
+  event so the connection close still feels fast. Phase 2 swaps in a
+  streaming reader once we actually need incremental UI updates.
+- **2026-08-01 — Two Settings/UX bugs surfaced on physical-device
+  testing (Huawei AAP-AN00, Android 16).** (a) `DeviceScreen` had its
+  own `Scaffold`+`TopAppBar` inside `CategoryScreen`'s, stacking two
+  top bars and breaking taps in the upper half. (b) `JobsScreen`
+  captured `binder.value?.coordinator()` at composition time when
+  `binder.value` was still null, leaving `collectAsState()` and the
+  events `LaunchedEffect` permanently stuck on null even after the
+  FGS bound successfully. Both fixed in commit `7b7578c`. Also moved
+  the Simple/Advanced toggle into a 3-dot overflow menu in
+  `CategoryScreen`'s top bar; sub-screens no longer own their own
+  top bars — the parent scaffold does. Lesson: any screen nested
+  inside a `NavHost` composable must NOT own its own Scaffold/TopAppBar
+  unless the parent's content slot is empty.
+- **2026-08-01 — Why Android 14+ became the minimum.** Ktor 3.2.0
+  requires DEX 040 dexer output. DEX 040 is the default from
+  `minSdk = 34` onwards, so Ktor 3 + embedded HTTP/SSE forced
+  `minSdk` to 34. Ktor 2.x's SSE API was broken at the versions we
+  tested, and backporting Ktor 3 to DEX 039 across its full bytecode
+  is high-risk. Re-evaluate when (a) the sandbox has access to a
+  pre-Android-14 device for CI validation or (b) llama.cpp ships
+  DEX 039-compatible Kotlin bindings that we could use directly
+  without Ktor. For now the Phase 1 acceptance test only needs two
+  Android 14+ devices, which is consistent with the user's hardware.
 
 ---
 
@@ -125,27 +268,18 @@ In priority order:
 
 ---
 
-## Honest session-boundary note (added 2026-08-01)
+## Session-boundary handoff — 2026-08-01
 
-Autopilot for the full project is **not** a single session. The
-remaining work spans at least 6 more phase-cycles. Each requires
-on-device verification that I cannot perform in a sandboxed CLI
-environment — only the human can plug in a phone, run `adb install`,
-and confirm a 15-minute background survival test.
+The Kotlin architecture is intentionally usable without native binaries: when
+`libmeshlit_inference.so` is absent, the coordinator selects
+`JvmStubInferenceEngine` and the app remains testable. The next implementation
+session should not rewrite this layer. It should implement the native C++ side,
+then add model selection and HTTP/SSE dispatch around the existing coordinator.
 
-**Right now, the next agent should:**
-1. Read this PROGRESS.md.
-2. Read the `phase-0-done` tag state (git checkout phase-0-done after
-   it's tagged below).
-3. Begin Phase 1: NDK + llama.cpp + foreground service. The hardest
-   risk. The first prompt must round-trip Device-A → Device-B. Plan
-   on at least one full session for this phase.
-4. Tag `phase-1-done` only when the on-device test passes.
-
-**To tag Phase 0 done:**
-```
-git tag -a phase-0-done -m "Multi-module scaffold + Compose UI shell. APK builds, lint clean."
-```
+Do not claim Phase 1 is complete until a physical device produces a real GGUF
+response and the service survives 10+ minutes in the background. The sandbox
+can verify builds, but only a human with a device can complete that acceptance
+test.
 
 ---
 

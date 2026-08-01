@@ -25,6 +25,16 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
+    <!-- Bluetooth peripheral probe (Phase 0.5 device profile).
+         BLUETOOTH_CONNECT is required from API 31+; the scan/admin
+         pair is for legacy Bluetooth Classic discovery. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="31" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
     <!-- ADB for development flow only. The product keeps the ADB-debug flow
          out of the user-facing build. -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
@@ -60,6 +70,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Foreground service for hosting inference / MCP tool serving.
+             Android 14+ requires foregroundServiceType="dataSync". -->
+        <service
+            android:name=".inference.InferenceForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

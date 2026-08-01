@@ -28,6 +28,32 @@
     <!-- Jobs screen -->
     <string name="jobs_empty_title">No jobs running</string>
     <string name="jobs_empty_body">Send a prompt from any Brain device to see jobs flow across the cluster.</string>
+    <string name="jobs_prompt_hint">Enter a prompt</string>
+    <string name="jobs_send">Send prompt</string>
+    <string name="jobs_cancel">Stop generation</string>
+    <string name="jobs_refresh">Start or refresh inference service</string>
+    <string name="jobs_status_idle">No model loaded</string>
+    <string name="jobs_status_loading">Loading model</string>
+    <string name="jobs_status_ready">Ready</string>
+    <string name="jobs_status_generating">Generating</string>
+    <string name="jobs_status_error">Inference error</string>
+    <string name="jobs_role_you">You</string>
+    <string name="jobs_role_model">Model</string>
+    <string name="jobs_thinking">Thinking…</string>
+    <string name="jobs_empty_state">Load a model, then enter a prompt to start local inference.</string>
+    <string name="jobs_engine_stub_hint">Start the service and load a GGUF model to begin.</string>
+    <string name="jobs_dispatch_local">Local</string>
+    <string name="jobs_dispatch_remote">Remote (peer)</string>
+    <string name="jobs_remote_ip_label">Peer IP</string>
+    <string name="jobs_remote_ip_placeholder">192.168.1.42</string>
+    <string name="jobs_remote_dispatch_failed">Peer unreachable: %1$s</string>
+    <string name="jobs_remote_no_ip">Enter a peer IP for Remote dispatch.</string>
+
+    <!-- Forwarding peers (Settings → Network) -->
+    <string name="settings_network_forwarding_peers">Forwarding peers</string>
+    <string name="settings_network_forwarding_peers_hint">IPs this device forwards inference to when busy or unable to serve locally. The local server probes each peer every 30s to learn health.</string>
+    <string name="settings_network_forwarding_peers_empty">No forwarding peers yet. Add a peer IP above.</string>
+    <string name="settings_network_add_peer">Add peer</string>
 
     <!-- Models screen -->
     <string name="models_empty_title">No models installed</string>
@@ -58,6 +84,95 @@
     <string name="settings_trust_tier">Trust tier</string>
     <string name="settings_wan_relay">WAN relay</string>
     <string name="settings_about">About Meshlit</string>
+    <string name="settings_no_results">No settings match your search.</string>
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_simple_toggle">Simple</string>
+    <string name="settings_advanced_toggle">Advanced</string>
+
+    <!-- Settings categories -->
+    <string name="settings_cat_device">Device</string>
+    <string name="settings_cat_theme">Theme &amp; Display</string>
+    <string name="settings_cat_notifications">Notifications</string>
+    <string name="settings_cat_cluster">Cluster &amp; Network</string>
+    <string name="settings_cat_models">Models</string>
+    <string name="settings_cat_account">Account</string>
+    <string name="settings_cat_performance">Performance</string>
+    <string name="settings_cat_privacy">Privacy &amp; Security</string>
+    <string name="settings_cat_about">About</string>
+    <string name="settings_cat_developer">Developer</string>
+
+    <!-- Theme settings -->
+    <string name="settings_theme_section_appearance">Appearance</string>
+    <string name="settings_theme_section_typography">Typography &amp; layout</string>
+    <string name="settings_theme_section_accessibility">Accessibility</string>
+    <string name="settings_theme_section_danger">Reset</string>
+    <string name="settings_theme_accent_label">Accent color</string>
+    <string name="settings_theme_accent_desc">Brand hue — Meshlit Violet by default</string>
+    <string name="settings_theme_palette_label">Base palette</string>
+    <string name="settings_theme_palette_desc">Background and surface tones</string>
+    <string name="settings_theme_mode_label">When to use dark mode</string>
+    <string name="settings_theme_mode_desc">System, always, or auto by time of day</string>
+    <string name="settings_theme_font_label">Font scale</string>
+    <string name="settings_theme_font_desc">Resize all text — 0.85x to 1.5x</string>
+    <string name="settings_theme_density_label">Display density</string>
+    <string name="settings_theme_density_desc">Compact, default, comfortable</string>
+    <string name="settings_theme_animations_label">Animations</string>
+    <string name="settings_theme_animations_desc">Disable for battery or accessibility</string>
+    <string name="settings_theme_high_contrast_label">High contrast</string>
+    <string name="settings_theme_high_contrast_desc">Deeper accents and stronger outlines</string>
+    <string name="settings_theme_reset_label">Reset theme to defaults</string>
+    <string name="settings_theme_reset_desc">Clears accent, palette, scale, and accessibility overrides</string>
+    <string name="settings_theme_reset_confirm">Reset all theme settings to defaults?</string>
+
+    <!-- Category screen shell -->
+    <string name="settings_category_open_system">Open system settings</string>
+    <string name="settings_category_section_basic">Basic</string>
+    <string name="settings_category_section_advanced">Advanced</string>
+    <string name="settings_category_coming_soon">Coming in a later phase — the design is locked and tracked in the build guide.</string>
+
+    <!-- Linux/x86 detection -->
+    <string name="device_os_linux_x86">Linux x86/x64 (emulator / VM / ChromeOS ARC)</string>
+    <string name="device_os_linux_x86_desc">Detected via ro.product.cpu.abi and ro.kernel.qemu. Inference runs at full speed on x86_64 hosts; eGPU support is wider (CUDA, ROCm, oneAPI).</string>
+    <string name="settings_cat_os">Host OS</string>
+    <string name="settings_os_linux_x86_hint">Detected via ro.product.cpu.abi and ro.kernel.qemu. Inference runs at full speed on x86_64 hosts; eGPU support is wider (CUDA, ROCm, oneAPI).</string>
+
+    <!-- Device screen -->
+    <string name="device_section_hardware">Hardware</string>
+    <string name="device_section_peripherals">Peripherals</string>
+    <string name="device_no_peripherals">No USB or Bluetooth peripherals detected. Plug in a hub, eGPU, or storage device to see it here.</string>
+    <string name="device_advanced_override">Manual override</string>
+    <string name="device_advanced_override_desc">Correct auto-detect mistakes — most users can leave this off.</string>
+    <string name="device_override_active">Override active — your edits take precedence over the probe.</string>
+    <string name="device_override_inactive">No override — auto-detect values are in use.</string>
+    <string name="device_override_hint">Edit any field below to override the probe result. The override is persisted to DataStore and survives relaunch.</string>
+    <string name="device_clear_override">Clear override</string>
+    <string name="device_refresh_probe">Re-run probe</string>
+
+    <!-- First-run setup wizard -->
+    <string name="setup_title">Setup</string>
+    <string name="setup_explainer">A few quick permissions so this device stays reachable as a cluster node while backgrounded.</string>
+    <string name="setup_kills_fgs_warning">This OEM aggressively kills background services. Without these permissions, Meshlit may go offline within 30 minutes.</string>
+    <string name="setup_open_settings">Skip to app</string>
+    <string name="setup_skip">Skip for now</string>
+    <string name="setup_finish">Finish</string>
+    <string name="setup_take_me_there">Take me there</string>
+    <string name="setup_mark_done">Mark done</string>
+    <string name="setup_undo">Undo</string>
+    <string name="setup_step_notif_label">Allow notifications</string>
+    <string name="setup_step_notif_desc">So Meshlit can post inference-complete, peer-join, and security alerts while the app is backgrounded.</string>
+    <string name="setup_step_battery_label">Disable battery optimization</string>
+    <string name="setup_step_battery_desc">Lets Meshlit keep its foreground service running without the OS throttling it after 30 min idle.</string>
+    <string name="setup_step_saver_label">Add to protected apps</string>
+    <string name="setup_step_saver_desc">OEM-specific step. Some manufacturers require this in addition to the standard battery whitelist.</string>
+    <string name="setup_step_autostart_label">Allow autostart</string>
+    <string name="setup_step_autostart_desc">Lets Meshlit restart after a reboot — needed for cluster nodes that should always be online.</string>
+    <string name="setup_step_mi_push_label">Enable Mi Push</string>
+    <string name="setup_step_mi_push_desc">Xiaomi-specific. Without Mi Push, notifications take 5–15 minutes to arrive on MIUI / HyperOS.</string>
+    <string name="setup_step_hms_push_label">Enable HMS Push</string>
+    <string name="setup_step_hms_push_desc">Huawei-specific. Required for any notification delivery on EMUI / HarmonyOS devices without GMS.</string>
+    <string name="setup_step_harmonyos_label">Verify compatibility layer</string>
+    <string name="setup_step_harmonyos_desc">HarmonyOS NEXT runs Android apps via a compatibility layer. Some Meshlit features may not work — please confirm before continuing.</string>
 
     <!-- Permissions / notifications -->
     <string name="notif_channel_cluster">Cluster node</string>
@@ -102,9 +217,73 @@
     <!-- Settings search -->
     <string name="settings_search_clear">Clear search</string>
 
+    <!-- Capability tiers (auto-detected from SDK_INT) -->
+    <string name="capability_tier_label">Capability tier</string>
+    <string name="capability_tier_lite">Lite</string>
+    <string name="capability_tier_mid">Mid</string>
+    <string name="capability_tier_full">Full</string>
+    <string name="capability_tier_lite_desc">Android 6–12 · Bundled model · basic foreground service</string>
+    <string name="capability_tier_mid_desc">Android 13–14 · Bundled model · dataSync foreground service</string>
+    <string name="capability_tier_full_desc">Android 15+ · Bundled model · dataSync foreground service · hardware attestation</string>
+
+    <!-- Models editor (Settings → Models) -->
+    <string name="models_bundled_section">Bundled model</string>
+    <string name="models_bundled_name">Qwen2.5-1.5B-Instruct</string>
+    <string name="models_bundled_quant">Q4_K_M · Apache 2.0 · multilingual</string>
+    <string name="models_bundled_installed">Installed</string>
+    <string name="models_bundled_not_installed">Not installed</string>
+    <string name="models_no_asset">No bundled model found in the APK</string>
+    <string name="models_reextract_in_progress">Extracting…</string>
+    <string name="models_reextract_done">Model extracted and ready to load</string>
+    <string name="models_reextract_failed">Extraction failed — see logs</string>
+    <string name="models_reextract_button">Re-extract now</string>
+
+    <string name="models_override_section">Custom GGUF path</string>
+    <string name="models_override_path_label">Path to a GGUF on this device</string>
+    <string name="models_override_path_description">Use a model downloaded from Hugging Face, Ollama, or another node. When set, the bundled model is skipped.</string>
+    <string name="models_override_path_hint">/sdcard/Models/qwen2.5-3b-instruct-q4.gguf</string>
+    <string name="models_override_save">Save</string>
+    <string name="models_override_clear">Clear override</string>
+
+    <!-- Cluster capacity (Phase 2 foundation) -->
+    <string name="cluster_capacity_section">Cluster capacity</string>
+    <string name="cluster_capacity_total_ram">Total free RAM across the cluster: %1$d MB</string>
+    <string name="cluster_capacity_shard_peers">Peers that can host layers: %1$d</string>
+    <string name="cluster_capacity_per_tier">Tier breakdown — Lite: %1$d, Mid: %2$d, Full: %3$d</string>
+    <string name="cluster_capacity_bundled_fits_yes">Yes — bundled Qwen 1.5B fits on this device</string>
+    <string name="cluster_capacity_bundled_fits_no">No — bundled Qwen 1.5B does not fit on this device</string>
+
     <!-- Battery optimization -->
     <string name="battery_card_title">Battery optimization</string>
     <string name="battery_card_body">Disable Android’s battery optimization for Meshlit so the foreground service isn’t killed in the background.</string>
     <string name="battery_card_open_settings">Open system settings</string>
     <string name="battery_card_oem_hint">If Meshlit isn’t in the standard list, your OEM has a separate battery screen.</string>
+
+    <!-- Notification settings -->
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_explainer">Per-category controls. OS-level importance, sound, vibration, and lock-screen visibility are set per channel in the system settings.</string>
+    <string name="notif_toggle_sound">Sound</string>
+    <string name="notif_toggle_vibration">Vibration</string>
+    <string name="notif_cat_fgs_host">Cluster node (foreground service)</string>
+    <string name="notif_cat_fgs_host_desc">Persistent notification while this device is hosting inference or MCP tools.</string>
+    <string name="notif_cat_inference_complete">Inference complete</string>
+    <string name="notif_cat_inference_complete_desc">Notifies you when a prompt you sent has finished generating.</string>
+    <string name="notif_cat_peer_topology">Peer topology</string>
+    <string name="notif_cat_peer_topology_desc">Other cluster nodes joining or leaving.</string>
+    <string name="notif_cat_job_failed">Job failed</string>
+    <string name="notif_cat_job_failed_desc">Inference or training job ran out of memory, crashed, or hit a network error.</string>
+    <string name="notif_cat_brain_battery_low">Brain battery low</string>
+    <string name="notif_cat_brain_battery_low_desc">The cluster\'s primary BRAIN device is about to drop out on battery.</string>
+    <string name="notif_cat_model_import">Model imported</string>
+    <string name="notif_cat_model_import_desc">A new model finished downloading or importing and is ready to use.</string>
+    <string name="notif_cat_security_alert">Security alert</string>
+    <string name="notif_cat_security_alert_desc">Jailbreak attempts, unknown peer auth, or signature mismatches.</string>
+    <string name="notif_cat_tunnel_state">Tunnel state</string>
+    <string name="notif_cat_tunnel_state_desc">Tailscale or WireGuard tunnel up, down, or reconfigured.</string>
+    <string name="notif_cat_public_token_used">Public token used</string>
+    <string name="notif_cat_public_token_used_desc">An external caller used one of your bearer tokens to dispatch work.</string>
+    <string name="notif_cat_training_milestone">Training milestone</string>
+    <string name="notif_cat_training_milestone_desc">A fine-tune step finished, a checkpoint was saved, or loss plateaued.</string>
+    <string name="notif_cat_chipset_db_update">Chipset database updated</string>
+    <string name="notif_cat_chipset_db_update_desc">Background sync pulled a new chipset or eGPU definitions snapshot.</string>
 </resources>

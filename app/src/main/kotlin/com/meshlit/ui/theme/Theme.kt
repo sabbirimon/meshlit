@@ -2,69 +2,49 @@ package com.meshlit.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-
-private val MeshlitDarkScheme = darkColorScheme(
-    primary = MeshlitViolet,
-    onPrimary = MeshlitTextPrimary,
-    primaryContainer = MeshlitVioletDim,
-    onPrimaryContainer = MeshlitTextPrimary,
-    secondary = MeshlitCyan,
-    onSecondary = MeshlitMidnight,
-    secondaryContainer = MeshlitCyanDim,
-    onSecondaryContainer = MeshlitTextPrimary,
-    tertiary = MeshlitEmerald,
-    onTertiary = MeshlitMidnight,
-    tertiaryContainer = MeshlitEmeraldDim,
-    onTertiaryContainer = MeshlitTextPrimary,
-    background = MeshlitMidnight,
-    onBackground = MeshlitTextPrimary,
-    surface = MeshlitSurface,
-    onSurface = MeshlitTextPrimary,
-    surfaceVariant = MeshlitSurfaceVariant,
-    onSurfaceVariant = MeshlitTextSecondary,
-    outline = MeshlitOutline,
-    outlineVariant = MeshlitOutline,
-    error = MeshlitError,
-    onError = MeshlitTextPrimary,
-)
-
-private val MeshlitLightScheme = lightColorScheme(
-    primary = MeshlitViolet,
-    onPrimary = MeshlitTextPrimary,
-    primaryContainer = MeshlitVioletDim,
-    onPrimaryContainer = MeshlitTextPrimary,
-    secondary = MeshlitCyan,
-    onSecondary = MeshlitMidnight,
-    tertiary = MeshlitEmerald,
-    onTertiary = MeshlitMidnight,
-    background = MeshlitMidnight,
-    onBackground = MeshlitTextPrimary,
-    surface = MeshlitSurface,
-    onSurface = MeshlitTextPrimary,
-    surfaceVariant = MeshlitSurfaceVariant,
-    onSurfaceVariant = MeshlitTextSecondary,
-    outline = MeshlitOutline,
-    error = MeshlitError,
-    onError = MeshlitTextPrimary,
-)
+import androidx.compose.runtime.CompositionLocalProvider
 
 /**
- * Meshlit theme — always renders the dark palette regardless of system
- * preference, because the brand identity is built around the midnight
- * background. The `isSystemInDarkTheme` parameter is kept for API
- * symmetry but does not gate a light scheme.
+ * Meshlit theme entry point. Reads the user-configured
+ * [MeshlitThemeConfig] from the local (provided by [MeshlitApp] from
+ * settings DataStore), resolves it against system dark mode if
+ * [ThemeMode.SYSTEM] is selected, and applies the resulting
+ * [MeshlitThemeConfig] via CompositionLocalProvider so descendants
+ * can read both the resolved colors and the raw config.
+ *
+ * For previews and tests, use [MeshlitTheme] with an explicit config.
  */
 @Composable
 fun MeshlitTheme(
-    @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = isSystemInDarkTheme(),
+    config: MeshlitThemeConfig = LocalMeshlitThemeConfig.current,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = MeshlitDarkScheme,
-        typography = MeshlitTypography,
-        content = content,
-    )
+    val systemDark = isSystemInDarkTheme()
+    val effectiveConfig = when (config.themeMode) {
+        ThemeMode.SYSTEM -> config.copy(
+            basePalette = if (systemDark) config.basePalette
+                          else if (config.basePalette == BasePalette.MIDNIGHT) BasePalette.PAPER
+                          else config.basePalette
+        )
+        ThemeMode.LIGHT -> if (config.basePalette == BasePalette.MIDNIGHT) {
+            config.copy(basePalette = BasePalette.PAPER)
+        } else config
+        ThemeMode.DARK -> config
+        ThemeMode.AUTO_TIME -> {
+            val hour = java.time.LocalTime.now().hour
+            val isNight = hour in 19..23 || hour in 0..6
+            if (isNight) config
+            else if (config.basePalette == BasePalette.MIDNIGHT) config.copy(basePalette = BasePalette.PAPER)
+            else config
+        }
+    }
+    val colorScheme = buildColorScheme(effectiveConfig)
+    CompositionLocalProvider(LocalMeshlitThemeConfig provides effectiveConfig) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = MeshlitTypography,
+            content = content,
+        )
+    }
 }
