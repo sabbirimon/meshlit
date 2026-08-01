@@ -2,6 +2,9 @@ package com.meshlit
 
 import android.app.Application
 import android.os.Build
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import com.meshlit.core.common.HostOS
 import com.meshlit.core.common.HostOSDetection
 import com.meshlit.core.common.logger
@@ -11,6 +14,7 @@ import com.meshlit.diagnostics.AndroidHostOSProbe
 import com.meshlit.diagnostics.AndroidOemDetector
 import com.meshlit.diagnostics.AndroidPeripheralProbe
 import com.meshlit.diagnostics.AndroidSystemProbe
+import com.meshlit.inference.PeerRegistry
 import com.meshlit.notifications.NotificationCenter
 import com.meshlit.notifications.NotificationPreferences
 import com.meshlit.settings.DeviceProfileRepository
@@ -61,6 +65,14 @@ class MeshlitApplication : Application() {
     val firstRunSetupRepository: FirstRunSetupRepository by lazy {
         FirstRunSetupRepository(this)
     }
+
+    /** Backing DataStore for the forwarding-peer registry. Shared by
+     *  the FGS (writer + reader on the network path) and the Settings
+     *  → Network → Forwarding peers screen (user edits). */
+    val peerDataStore: DataStore<Preferences> by preferencesDataStore(name = "meshlit_forward_peers")
+
+    /** Peer registry singleton. Bound to [peerDataStore]. */
+    val peerRegistry: PeerRegistry by lazy { PeerRegistry(peerDataStore) }
 
     /**
      * Singleton inference coordinator. The foreground service picks
