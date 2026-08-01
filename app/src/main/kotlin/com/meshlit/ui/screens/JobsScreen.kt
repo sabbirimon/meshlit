@@ -144,12 +144,28 @@ fun JobsScreen() {
         onDispose { runCatching { context.unbindService(connection) } }
     }
 
-    val coordinatorState = binder.value?.coordinator()?.state?.collectAsState()
-    val coordinator = binder.value?.coordinator()
+    // Read the binder's coordinator *reactively*: `binder.value?.coordinator()`
+    // returns null on first composition (the bind hasn't completed), so the
+    // state/event collectors must re-evaluate whenever `binder.value` flips.
+    //
+    // Bug history: prior version captured `coordinator` and `coordinatorState`
+    // once at composition time, leaving the UI stuck on "No model loaded"
+    // forever — even after the FGS bound successfully. The fix is to read the
+    // coordinator inside `LaunchedEffect(binder.value)` so the effect re-runs
+    // on every binder change, and to re-key the StateFlow collector on the
+    // same value so it re-subscribes.
+    val binderValue = binder.value
+    val coordinator = binderValue?.coordinator()
+
+    // State<CoordinatorState?>. collectAsState(initial) is the standard
+    // Compose pattern for StateFlow. We pass `coordinator` as the key so
+    // the collector is rebuilt when the binder resolves.
+    val coordinatorState: com.meshlit.core.inference.CoordinatorState? =
+        coordinator?.state?.collectAsState(initial = com.meshlit.core.inference.CoordinatorState.Idle)?.value
 
     // Subscribe to events for streaming tokens.
-    LaunchedEffect(coordinator) {
-        val coord = coordinator ?: return@LaunchedEffect
+    LaunchedEffect(binderValue) {
+        val coord = binderValue?.coordinator() ?: return@LaunchedEffect
         coord.events.collect { event ->
             when (event) {
                 is com.meshlit.core.inference.InferenceEvent.GenerationStarted -> {
@@ -193,7 +209,7 @@ fun JobsScreen() {
         ) {
             // Status card
             StatusCard(
-                state = coordinatorState?.value,
+                state = coordinatorState,
                 onRefresh = {
                     scope.launch {
                         runCatching {

@@ -33,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -69,10 +68,17 @@ import com.meshlit.core.common.PeripheralDevice
  * The screen reads the resolved [DeviceProfile] from the repository;
  * the rest of the app uses [EffectiveDeviceInfo] (which is the
  * override-resolved view).
+ *
+ * NOTE: this composable does NOT provide its own Scaffold/TopAppBar —
+ * the parent [CategoryScreen] already supplies one. Providing a second
+ * Scaffold here caused two top bars to stack on top of each other,
+ * which made the upper half of the screen unresponsive to taps.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceScreen(onBack: () -> Unit) {
+fun DeviceScreen(
+    @Suppress("UNUSED_PARAMETER") onBack: () -> Unit,
+    onRefresh: () -> Unit = {},
+) {
     val context = LocalContext.current
     val app = context.applicationContext as MeshlitApplication
     val viewModel: DeviceScreenViewModel = viewModel(
@@ -81,33 +87,36 @@ fun DeviceScreen(onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val host = app.hostOSDetection
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_cat_device)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.device_refresh_probe),
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        LazyColumn(
+    // Sub-screen refresh button. The TopAppBar that hosts this is
+    // owned by [CategoryScreen], so we just expose this action and
+    // let the parent wire it into its top-bar `actions` slot if it
+    // wants to. For now we trigger refresh via a small button above
+    // the list so users can still re-run the probe.
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.settings_cat_device),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            IconButton(onClick = {
+                onRefresh()
+                viewModel.refresh()
+            }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.device_refresh_probe),
+                )
+            }
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(16.dp),
         ) {

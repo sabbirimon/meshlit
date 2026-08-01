@@ -14,7 +14,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,6 +58,7 @@ fun CategoryScreen(
     onBack: () -> Unit,
 ) {
     var advanced by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,6 +71,43 @@ fun CategoryScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = null,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.settings_simple_toggle)) },
+                            onClick = {
+                                advanced = false
+                                menuOpen = false
+                            },
+                            trailingIcon = {
+                                if (!advanced) {
+                                    Text("✓", style = MaterialTheme.typography.bodyMedium)
+                                }
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.settings_advanced_toggle)) },
+                            onClick = {
+                                advanced = true
+                                menuOpen = false
+                            },
+                            trailingIcon = {
+                                if (advanced) {
+                                    Text("✓", style = MaterialTheme.typography.bodyMedium)
+                                }
+                            },
+                        )
+                    }
+                },
             )
         },
     ) { innerPadding ->
@@ -75,15 +116,6 @@ fun CategoryScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            AdvancedToggle(
-                advanced = advanced,
-                onChange = { advanced = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-            HorizontalDivider()
-
             // Specialize per category — only Theme and Device are wired today.
             when (category) {
                 SettingsCategory.THEME -> {
