@@ -560,6 +560,15 @@ private fun AlternativeRow(
                         else MaterialTheme.colorScheme.tertiary,
             )
         }
+        // Phase 2 — surface the runtime this model would be carried by.
+        // Highlighted in tertiary so the user sees the format/runtime
+        // pairing without it competing with the download CTA below.
+        Text(
+            text = "runtime: ${entry.runtimeDisplayName}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.padding(top = 2.dp),
+        )
         Spacer(Modifier.height(6.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,

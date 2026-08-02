@@ -97,6 +97,9 @@
     <string name="jobs_thinking">Thinking…</string>
     <string name="jobs_empty_state">Load a model, then enter a prompt to start local inference.</string>
     <string name="jobs_engine_stub_hint">Demo engine — open Models and load a real model to generate actual replies.</string>
+    <string name="jobs_runtime_loading">Loading on %1$s</string>
+    <string name="jobs_runtime_generating">Generating on %1$s</string>
+    <string name="jobs_runtime_error">%1$s error</string>
     <string name="jobs_dispatch_local">Local</string>
     <string name="jobs_dispatch_remote">Remote (peer)</string>
     <string name="jobs_remote_ip_label">Peer IP</string>

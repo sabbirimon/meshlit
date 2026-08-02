@@ -531,7 +531,21 @@ private fun StatusCard(
                     Text(
                         text = when (s) {
                             is com.meshlit.core.inference.CoordinatorState.Ready ->
-                                s.model.modelName + " · ${s.model.parameterCount / 1_000_000}M params"
+                                s.model.modelName + " · ${s.model.parameterCount / 1_000_000}M params" +
+                                    // Phase 2 — surface the runtime name so the user
+                                    // sees *which* runtime is currently serving
+                                    // this model. Falls back to "" if no runtime
+                                    // has been resolved yet (e.g. before any load).
+                                    s.runtime?.let { " · ${it.displayName}" }.orEmpty()
+                            is com.meshlit.core.inference.CoordinatorState.Loading ->
+                                s.runtime?.let { stringResource(R.string.jobs_runtime_loading, it.displayName) }
+                                    ?: stringResource(R.string.jobs_engine_stub_hint)
+                            is com.meshlit.core.inference.CoordinatorState.Generating ->
+                                s.runtime?.let { stringResource(R.string.jobs_runtime_generating, it.displayName) }
+                                    ?: stringResource(R.string.jobs_engine_stub_hint)
+                            is com.meshlit.core.inference.CoordinatorState.Error ->
+                                s.runtime?.let { stringResource(R.string.jobs_runtime_error, it.displayName) }
+                                    ?: stringResource(R.string.jobs_engine_stub_hint)
                             else -> stringResource(R.string.jobs_engine_stub_hint)
                         },
                         style = MaterialTheme.typography.bodySmall,

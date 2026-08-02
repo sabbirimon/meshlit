@@ -137,6 +137,9 @@ class InferenceHttpServer(
                 port = boundPort,
                 capabilityTier = snap.capabilityTier,
                 engineTag = snap.engineTag ?: coordinator.engineTag,
+                runtimeId = coordinator.currentRuntime?.runtimeId,
+                runtimeDisplayName = coordinator.runtimeDisplayName,
+                fileFormat = coordinator.currentFormat?.extension,
                 loadedShards = snap.loadedShards,
                 metrics = snap.metrics,
             )

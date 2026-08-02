@@ -58,7 +58,24 @@ class InferenceCoordinator(
     private val llamaEngine = LlamaCppInferenceEngine()
     private val stubEngine = JvmStubInferenceEngine()
 
+    /**
+     * The active engine. Resolved once at startup but the latest
+     * runtime registry is consulted on every load so we can react
+     * when a candidate runtime is later shipped (Phase 2).
+     */
     private val engine: InferenceEngine = pickEngine()
+
+    /**
+     * Last resolved runtime for the most recent load. `null` if nothing
+     * has been loaded yet. Surfaced through [currentRuntime] so the UI
+     * can render the runtime name in the status card.
+     */
+    @Volatile private var lastRuntime: RuntimeEngine? = null
+    val currentRuntime: RuntimeEngine? get() = lastRuntime
+
+    /** Last format we resolved for a load. Null when nothing has been loaded. */
+    @Volatile private var lastFormat: FileFormat? = null
+    val currentFormat: FileFormat? get() = lastFormat
 
     private val inferMutex = Mutex()
 
@@ -94,12 +111,27 @@ class InferenceCoordinator(
         val loaded = llamaEngine.loadNativeLibrary()
         return if (loaded) {
             log.info("coord.engine_pick", "using llama.cpp engine")
+            // Phase 2 — also register the runtime so the UI can render
+            // the active runtime name in the status card without a
+            // loadModel having been called yet.
+            lastRuntime = RuntimeRegistry.ggufLlamaCpp(llamaEngine)
+            lastFormat = FileFormat.Gguf
             llamaEngine
         } else {
             log.info("coord.engine_pick", "falling back to stub engine (no native lib)")
+            // Stub engine doesn't bind to a specific format — it
+            // generates synthetic replies regardless. We register a
+            // synthetic "stub" runtime so the UI can show that.
+            lastRuntime = RuntimeRegistry.ggufLlamaCpp(stubEngine)
+            lastFormat = null
             stubEngine
         }
     }
+
+    /** Display name of the active runtime for the status card. */
+    val runtimeDisplayName: String
+        get() = lastRuntime?.displayName
+            ?: if (engine.engineTag == "stub") "Demo engine (stub)" else "Unknown runtime"
 
     /**
      * Load a model. Wraps [InferenceEngine.loadModel] and updates
@@ -112,6 +144,10 @@ class InferenceCoordinator(
      *    "all remaining layers" (the default for whole-model loads).
      *  - [manifest] carries KV cache + tokenizer metadata for the
      *    load. Engines that aren't shard-aware can ignore it.
+     *  - The runtime registry is consulted on every load. If the
+     *    file format isn't shippable yet (e.g. ONNX before Phase 2
+     *    ships), we return a typed failure rather than silently
+     *    falling back to the GGUF engine.
      */
     suspend fun loadModel(
         modelPath: String,
@@ -122,7 +158,41 @@ class InferenceCoordinator(
         layerEnd: Int = Int.MAX_VALUE,
         manifest: com.meshlit.core.inference.net.ShardManifest? = null,
     ): MeshlitResult<ModelInfo> {
-        _state.value = CoordinatorState.Loading(modelPath)
+        // Phase 2 — resolve the runtime for this file path. We do
+        // this *before* flipping the state to Loading so a bad
+        // extension results in a clean Error state instead of a
+        // Loading state that never completes.
+        val resolution = RuntimeRegistry.pickForPath(modelPath)
+        when (resolution) {
+            is RuntimeResolution.Found -> {
+                lastRuntime = resolution.runtime
+                lastFormat = resolution.format
+            }
+            is RuntimeResolution.NotShipped -> {
+                lastFormat = resolution.format
+                _state.value = CoordinatorState.Error(resolution.message)
+                _events.tryEmit(InferenceEvent.LoadFailed(resolution.message))
+                return MeshlitResult.Failure(
+                    com.meshlit.core.common.MeshlitError.Invalid(resolution.message),
+                )
+            }
+            is RuntimeResolution.Unsupported -> {
+                lastFormat = resolution.format
+                _state.value = CoordinatorState.Error(resolution.message)
+                _events.tryEmit(InferenceEvent.LoadFailed(resolution.message))
+                return MeshlitResult.Failure(
+                    com.meshlit.core.common.MeshlitError.Invalid(resolution.message),
+                )
+            }
+            is RuntimeResolution.UnknownFormat -> {
+                _state.value = CoordinatorState.Error(resolution.message)
+                _events.tryEmit(InferenceEvent.LoadFailed(resolution.message))
+                return MeshlitResult.Failure(
+                    com.meshlit.core.common.MeshlitError.Invalid(resolution.message),
+                )
+            }
+        }
+        _state.value = CoordinatorState.Loading(modelPath, lastRuntime, lastFormat)
         _events.tryEmit(InferenceEvent.LoadStarted(modelPath))
         val request = ModelLoadRequest(
             modelPath = modelPath,
@@ -135,8 +205,8 @@ class InferenceCoordinator(
         )
         val result = engine.loadModel(request)
         _state.value = when (result) {
-            is MeshlitResult.Success -> CoordinatorState.Ready(result.value)
-            is MeshlitResult.Failure -> CoordinatorState.Error(result.error.tag)
+            is MeshlitResult.Success -> CoordinatorState.Ready(result.value, lastRuntime, lastFormat)
+            is MeshlitResult.Failure -> CoordinatorState.Error(result.error.tag, lastRuntime, lastFormat)
         }
         _loadedShards.value = if (result is MeshlitResult.Success && manifest != null) {
             // The coordinator is hosting one slice of the manifest.
@@ -186,6 +256,8 @@ class InferenceCoordinator(
                 }
                 _state.value = CoordinatorState.Generating(
                     startedAtMs = System.currentTimeMillis(),
+                    runtime = lastRuntime,
+                    format = lastFormat,
                 )
                 _events.tryEmit(InferenceEvent.GenerationStarted(request.prompt))
                 // Run inference directly on the caller's coroutine so
@@ -200,7 +272,11 @@ class InferenceCoordinator(
                     val result = engine.infer(request)
                     _events.tryEmit(InferenceEvent.GenerationFinished(result))
                     if (engine.isReady()) {
-                        _state.value = CoordinatorState.Ready(engine.loadedModel()!!)
+                        _state.value = CoordinatorState.Ready(
+                            engine.loadedModel()!!,
+                            runtime = lastRuntime,
+                            format = lastFormat,
+                        )
                     }
                     result
                 } finally {
@@ -239,10 +315,16 @@ class InferenceCoordinator(
 /** Coarse state of the coordinator — what the UI binds to. */
 sealed interface CoordinatorState {
     data object Idle : CoordinatorState
-    data class Loading(val modelPath: String) : CoordinatorState
-    data class Ready(val model: ModelInfo) : CoordinatorState
-    data class Generating(val startedAtMs: Long) : CoordinatorState
-    data class Error(val message: String) : CoordinatorState
+    /**
+     * The runtime + format are surfaced here so the status card
+     * can render "Loading GGUF · llama.cpp" without a separate
+     * lookup. Both fields are nullable because the coordinator may
+     * not have resolved a runtime yet (e.g. before any load).
+     */
+    data class Loading(val modelPath: String, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState
+    data class Ready(val model: ModelInfo, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState
+    data class Generating(val startedAtMs: Long, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState
+    data class Error(val message: String, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState
 }
 
 /** Finer-grained events for UI log / debug overlay. */

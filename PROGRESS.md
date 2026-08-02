@@ -144,10 +144,37 @@ native llama.cpp integration remains before Phase 1 can be called end-to-end don
   function inside the app and no model on the device — the
   Jobs screen's status card is permanently stuck on Idle.
 
+**Phase 2 — multi-runtime engine abstraction (DONE, commit `1049953`+):**
+- New `core-inference/.../RuntimeEngine.kt`: `RuntimeEngine` interface,
+  `RuntimeStatus` enum (Shipped/Candidate/AppleOnly/Unavailable),
+  sealed `FileFormat` (Gguf/Onnx/Safetensors/Tflite/Mlx/Coreml),
+  `RuntimeRegistry` static catalog with 6 entries, and
+  `RuntimeResolution` sealed result type for path / format queries.
+- `InferenceCoordinator.loadModel(...)` now consults the registry
+  before flipping state to Loading. Non-shippable formats surface
+  a typed Error ("ONNX models need the ONNX · ORT Mobile runtime,
+  which is not bundled yet (Phase 2, ≈14 MB APK)") instead of
+  silently falling back to GGUF.
+- `CoordinatorState.{Loading,Ready,Generating,Error}` now carry
+  `runtime: RuntimeEngine?` and `format: FileFormat?` so the Jobs
+  status card renders "Loading on GGUF · llama.cpp" without a
+  separate lookup.
+- `HealthResponse` (the `/v1/health` wire type) extended with
+  `runtimeId`, `runtimeDisplayName`, `fileFormat` so cluster peers
+  can see which runtime each device is running.
+- `ModelCatalog.Entry` gained a `fileFormat: FileFormat` field with
+  a derived `runtimeDisplayName` helper. Catalog now includes a
+  Phi-3.5-mini-instruct ONNX row as a Phase 2 candidate so users
+  see an actual non-GGUF entry in the picker.
+- `AlternativeRow` (Models screen) now shows the runtime under each
+  catalog row ("runtime: ONNX · ORT Mobile (Phase 2)").
+- Unit tests in `RuntimeRegistryTest` cover path detection, format
+  resolution, shipped/candidate counts, and case-insensitive
+  extension matching.
+
 **Git:**
-- Current branch: `phase/0.5-device-profile` (will branch to
-  `phase/1-http-dispatch` for the task #7 series).
-- Latest implementation commit: `7b7578c`.
+- Current branch: `main` (Phase 1 + Phase 2 arch merged).
+- Latest implementation commit: TBD.
 - Work is committed at logical phase boundaries; native integration should be
   a separate commit from the Kotlin engine/service/UI foundation.
 

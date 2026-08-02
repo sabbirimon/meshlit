@@ -87,6 +87,15 @@ data class HealthResponse(
     val port: Int,
     val capabilityTier: CapabilityTier? = null,
     val engineTag: String? = null,
+    /**
+     * Phase 2 — multi-runtime support. The runtime + format the
+     * coordinator has resolved for the most recent load (or the
+     * default startup runtime if nothing has been loaded yet). Older
+     * peers ignore this field.
+     */
+    val runtimeId: String? = null,
+    val runtimeDisplayName: String? = null,
+    val fileFormat: String? = null,
     val loadedShards: List<String> = emptyList(),
     val metrics: MetricsSnapshot? = null,
 )

@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.meshlit.core.common.logger
+import com.meshlit.core.inference.FileFormat
+import com.meshlit.core.inference.RuntimeRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -59,7 +61,24 @@ object ModelCatalog {
         val approxSizeMb: Long,
         val strengths: List<String>,
         val language: String,
-    )
+        /**
+         * Phase 2 — file format the model is distributed in. Today every
+         * shipped model is GGUF; the field exists so the registry can
+         * surface non-GGUF candidates and the UI can route them to the
+         * correct runtime before the .so / .aar is linked.
+         */
+        val fileFormat: FileFormat = FileFormat.Gguf,
+    ) {
+        /** The runtime that would carry this model. Resolved via the
+         *  [RuntimeRegistry] so the source of truth stays in one place. */
+        val runtimeDisplayName: String
+            get() = when (val r = RuntimeRegistry.pickForFormat(fileFormat)) {
+                is com.meshlit.core.inference.RuntimeResolution.Found -> r.runtime.displayName
+                is com.meshlit.core.inference.RuntimeResolution.NotShipped -> r.runtime.displayName + " (Phase 2)"
+                is com.meshlit.core.inference.RuntimeResolution.Unsupported -> "Unsupported format"
+                is com.meshlit.core.inference.RuntimeResolution.UnknownFormat -> "Unknown format"
+            }
+    }
 
     val all: List<Entry> = listOf(
         Entry(
@@ -72,6 +91,7 @@ object ModelCatalog {
             approxSizeMb = 1100L,
             strengths = listOf("multilingual", "general"),
             language = "EN/ZH/ES/FR/DE/…",
+            fileFormat = FileFormat.Gguf,
         ),
         Entry(
             id = "smollm2-1.7b-instruct-q4_k_m",
@@ -83,6 +103,7 @@ object ModelCatalog {
             approxSizeMb = 1100L,
             strengths = listOf("small", "chat"),
             language = "English-first",
+            fileFormat = FileFormat.Gguf,
         ),
         Entry(
             id = "llama-3.2-1b-instruct-q4_k_m",
@@ -94,6 +115,7 @@ object ModelCatalog {
             approxSizeMb = 900L,
             strengths = listOf("multilingual", "fast"),
             language = "EN/ES/FR/DE/IT/PT/…",
+            fileFormat = FileFormat.Gguf,
         ),
         Entry(
             id = "deepseek-r1-distill-qwen-1.5b-q4_k_m",
@@ -105,6 +127,24 @@ object ModelCatalog {
             approxSizeMb = 1100L,
             strengths = listOf("reasoning", "chain-of-thought"),
             language = "EN/ZH",
+            fileFormat = FileFormat.Gguf,
+        ),
+        // Phase 2 candidate — ONNX-distributed Phi-3.5-mini. Listed so
+        // the user sees what an ONNX row looks like and what runtime
+        // would carry it. The download is gated by the runtime being
+        // shipped (today: no). Surfacing it in the catalog means the
+        // format/runtime link is visible end-to-end.
+        Entry(
+            id = "phi-3.5-mini-onnx",
+            displayName = "Phi-3.5-mini-instruct · ONNX",
+            origin = "USA",
+            license = "MIT",
+            family = "Phi 3.5",
+            url = "https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx",
+            approxSizeMb = 2400L,
+            strengths = listOf("reasoning", "general"),
+            language = "EN",
+            fileFormat = FileFormat.Onnx,
         ),
     )
 
