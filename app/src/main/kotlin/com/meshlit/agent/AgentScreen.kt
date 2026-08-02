@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -602,11 +603,17 @@ private fun UserBubble(text: String) {
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                // SelectionContainer lets the user long-press to
+                // select & copy the bubble text. Wrapped only around
+                // the message body so the role label stays
+                // non-selectable (it's just chrome).
+                SelectionContainer {
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
         }
     }
@@ -651,11 +658,26 @@ private fun AgentBubble(msg: AgentMessageImpl) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    Text(
-                        text = display,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    // SelectionContainer lets the user long-press to
+                    // select & copy. We skip the wrap while the
+                    // message is actively streaming so the selection
+                    // anchor doesn't fight with the per-token
+                    // recomposition.
+                    if (isStreaming) {
+                        Text(
+                            text = display,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    } else {
+                        SelectionContainer {
+                            Text(
+                                text = display,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
                 }
                 if (msg.codeBlocks.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))

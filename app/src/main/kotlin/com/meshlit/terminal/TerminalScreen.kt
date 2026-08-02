@@ -331,13 +331,33 @@ private fun TerminalLineRow(line: TerminalLine) {
         TerminalLine.Kind.KEY -> "  "
         TerminalLine.Kind.SUCCESS -> "✓ "
     }
+    // Surface a small timestamp prefix on ERROR and SUCCESS lines so
+    // the user can tell *when* a happy/sad event happened without
+    // scanning the wall-clock. INFO/KEY/STDOUT lines skip it because
+    // they fire in tight bursts and the prefix would dominate.
+    val ts = when (line.kind) {
+        TerminalLine.Kind.ERROR, TerminalLine.Kind.SUCCESS, TerminalLine.Kind.HEADER ->
+            formatClock(line.timestampMs) + " "
+        else -> ""
+    }
     Text(
-        text = prefix + line.text,
+        text = ts + prefix + line.text,
         style = TextStyle(
             color = color,
             fontFamily = FontFamily.Monospace,
             fontSize = MaterialTheme.typography.bodySmall.fontSize,
             fontWeight = weight,
         ),
+    )
+}
+
+/** Compact HH:mm:ss for in-line timestamps. Uses the device's local
+ *  timezone so the user sees the time their wrist says it is. */
+private fun formatClock(ms: Long): String {
+    val cal = java.util.Calendar.getInstance().apply { timeInMillis = ms }
+    return "%02d:%02d:%02d".format(
+        cal.get(java.util.Calendar.HOUR_OF_DAY),
+        cal.get(java.util.Calendar.MINUTE),
+        cal.get(java.util.Calendar.SECOND),
     )
 }

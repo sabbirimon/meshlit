@@ -14,6 +14,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -607,12 +608,29 @@ private fun Bubble(role: String, text: String, streaming: Boolean = false) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
-            Text(
-                text = text.ifEmpty { stringResource(R.string.jobs_thinking) },
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            // SelectionContainer around the bubble body so the user
+            // can long-press a finished reply and copy a snippet. We
+            // skip the wrap while streaming for the same reason as
+            // the Agent bubble — the per-token recomposition fights
+            // with the selection anchor.
+            val body = text.ifEmpty { stringResource(R.string.jobs_thinking) }
+            if (streaming) {
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            } else {
+                SelectionContainer {
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
         }
     }
 }
