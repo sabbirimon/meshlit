@@ -36,8 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.meshlit.MeshlitApplication
 import com.meshlit.R
 
 /**
@@ -56,12 +58,21 @@ import com.meshlit.R
 @Composable
 fun SettingsScreen(
     onOpenCategory: (SettingsCategory) -> Unit,
+    onOpenDrawer: () -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val tier = (context.applicationContext as MeshlitApplication).capabilityTier
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.screen_settings)) })
+            com.meshlit.ui.components.MeshlitHeader(
+                title = stringResource(R.string.screen_settings),
+                subtitle = null,
+                tier = tier,
+                active = false,
+                onOpenDrawer = onOpenDrawer,
+            )
         },
     ) { innerPadding ->
         Column(

@@ -12,15 +12,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.meshlit.MeshlitApplication
 import com.meshlit.ui.nav.TopLevelDestination
 
 /**
@@ -33,52 +36,70 @@ fun ScreenStub(
     icon: ImageVector,
     titleOverride: String? = null,
     bodyOverride: String? = null,
+    onOpenDrawer: () -> Unit = {},
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        Column(
+    val context = LocalContext.current
+    val title = titleOverride ?: stringResource(id = titleResFor(destination))
+    val body = bodyOverride ?: stringResource(id = bodyResFor(destination))
+    Scaffold(
+        topBar = {
+            com.meshlit.ui.components.MeshlitHeader(
+                title = title,
+                subtitle = null,
+                tier = (context.applicationContext as MeshlitApplication).capabilityTier,
+                active = false,
+                onOpenDrawer = onOpenDrawer,
+            )
+        },
+    ) { innerPadding ->
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp, vertical = 48.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .padding(innerPadding),
+            color = MaterialTheme.colorScheme.background,
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                modifier = Modifier.size(96.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp, vertical = 48.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(44.dp),
-                    )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    modifier = Modifier.size(96.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(44.dp),
+                        )
+                    }
                 }
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(32.dp))
+                Text(
+                    text = "Phase 0 — empty-state scaffold",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
             }
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = titleOverride ?: stringResource(id = titleResFor(destination)),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = bodyOverride ?: stringResource(id = bodyResFor(destination)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(32.dp))
-            Text(
-                text = "Phase 0 — empty-state scaffold",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.tertiary,
-            )
         }
     }
 }
@@ -86,6 +107,7 @@ fun ScreenStub(
 private fun titleResFor(d: TopLevelDestination): Int = when (d) {
     TopLevelDestination.Devices -> com.meshlit.R.string.devices_empty_title
     TopLevelDestination.Jobs -> com.meshlit.R.string.jobs_empty_title
+    TopLevelDestination.Agent -> com.meshlit.R.string.agent_empty_title
     TopLevelDestination.Models -> com.meshlit.R.string.models_empty_title
     TopLevelDestination.Files -> com.meshlit.R.string.files_empty_title
     TopLevelDestination.Sessions -> com.meshlit.R.string.sessions_empty_title
@@ -98,6 +120,7 @@ private fun titleResFor(d: TopLevelDestination): Int = when (d) {
 private fun bodyResFor(d: TopLevelDestination): Int = when (d) {
     TopLevelDestination.Devices -> com.meshlit.R.string.devices_empty_body
     TopLevelDestination.Jobs -> com.meshlit.R.string.jobs_empty_body
+    TopLevelDestination.Agent -> com.meshlit.R.string.agent_empty_body
     TopLevelDestination.Models -> com.meshlit.R.string.models_empty_body
     TopLevelDestination.Files -> com.meshlit.R.string.files_empty_body
     TopLevelDestination.Sessions -> com.meshlit.R.string.sessions_empty_body

@@ -1,30 +1,44 @@
 package com.meshlit.ui
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.Icon
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.meshlit.MeshlitApplication
+import com.meshlit.agent.AgentScreen
+import com.meshlit.ui.components.MeshlitBottomBar
+import com.meshlit.ui.components.MeshlitDrawerContent
+import com.meshlit.ui.components.QuickAction
+import com.meshlit.ui.components.tierAccentColor
 import com.meshlit.ui.nav.TopLevelDestination
+import com.meshlit.ui.screens.DevicesScreen
 import com.meshlit.ui.screens.JobsScreen
+import com.meshlit.ui.screens.LogScreen
+import com.meshlit.ui.screens.MetricsScreen
+import com.meshlit.terminal.TerminalScreen
 import com.meshlit.ui.screens.ScreenStub
 import com.meshlit.ui.screens.settings.CategoryScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
+import com.meshlit.ui.screens.settings.ModelsScreen
 import com.meshlit.ui.screens.settings.SettingsScreen
+import kotlinx.coroutines.launch
 
 /**
  * Root composable for the app. Hosts the bottom navigation and routes
@@ -32,86 +46,147 @@ import com.meshlit.ui.screens.settings.SettingsScreen
  * stub) which then routes into a [CategoryScreen] per category.
  *
  * Navigation hierarchy:
- *   NavHost
- *   ├── top-level destination 1..9 (stubs or full screens)
- *   └── settings/category/{DEVICE|THEME|...} (deep links from search)
+ *   ModalNavigationDrawer
+ *   └── Scaffold (bottom nav)
+ *       ├── NavHost
+ *       │   ├── top-level destination 1..9 (stubs or full screens)
+ *       │   └── settings/category/{DEVICE|THEME|...} (deep links)
+ *       └── NavigationBar (bottom)
+ *
+ * The drawer is opened by left-edge swipe or by tapping the hamburger
+ * icon in the per-screen header. Each screen opts in by accepting the
+ * [onOpenDrawer] callback exposed via the screen's first parameter.
  */
 @Composable
 fun MeshlitApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: TopLevelDestination.Devices.route
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val capabilityTier = (context.applicationContext as MeshlitApplication).capabilityTier
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                TopLevelDestination.all.forEach { dest ->
-                    val selected = backStackEntry?.destination
-                        ?.hierarchy
-                        ?.any { it.route == dest.route } == true
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            if (currentRoute != dest.route) {
-                                navController.navigate(dest.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = dest.icon,
-                                contentDescription = stringResource(dest.labelRes),
-                            )
-                        },
-                        label = { Text(stringResource(dest.labelRes)) },
-                        colors = NavigationBarItemDefaults.colors(),
-                    )
-                }
+    val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
+    val closeDrawer: () -> Unit = { scope.launch { drawerState.close() } }
+
+    val navigateTo: (TopLevelDestination) -> Unit = { dest ->
+        navController.navigate(dest.route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
             }
+            launchSingleTop = true
+            restoreState = true
         }
-    ) { innerPadding: PaddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = TopLevelDestination.Devices.route,
-            modifier = Modifier.padding(innerPadding),
-        ) {
-            TopLevelDestination.all.forEach { dest ->
-                composable(dest.route) {
-                    // Settings tab uses the real Settings hub; Jobs tab binds
-                    // to the inference foreground service. Everything else
-                    // remains a stub for now.
-                    when (dest) {
-                        TopLevelDestination.Settings -> SettingsScreen(
-                            onOpenCategory = { cat ->
-                                navController.navigate("settings/category/${cat.name}")
-                            },
-                        )
-                        TopLevelDestination.Jobs -> JobsScreen()
-                        else -> ScreenStub(destination = dest, icon = dest.icon)
+        closeDrawer()
+    }
+
+    val onQuickAction: (QuickAction) -> Unit = { action ->
+        closeDrawer()
+        when (action) {
+            QuickAction.SYNC -> navController.navigate(TopLevelDestination.Cluster.route)
+            QuickAction.BOOST -> navController.navigate(TopLevelDestination.Jobs.route)
+            QuickAction.ABOUT -> navController.navigate(TopLevelDestination.Settings.route)
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            MeshlitDrawerContent(
+                currentRoute = currentRoute,
+                tier = capabilityTier,
+                onSelectDestination = navigateTo,
+                onQuickAction = onQuickAction,
+                modifier = Modifier.padding(end = 0.dp),
+            )
+        },
+    ) {
+        Scaffold(
+            // Child screens own their status-bar insets through their
+            // own topBar / MeshlitHeader. The root scaffold only owns
+            // the bottom navigation; consuming status bars here caused
+            // a double top inset (a large empty gap above every header).
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            bottomBar = {
+                MeshlitBottomBar(
+                    destinations = TopLevelDestination.all,
+                    currentRoute = currentRoute,
+                    accentColor = tierAccentColor(capabilityTier),
+                    onSelect = { dest ->
+                        if (currentRoute != dest.route) {
+                            navigateTo(dest)
+                        }
+                    },
+                )
+            }
+        ) { innerPadding: PaddingValues ->
+            NavHost(
+                navController = navController,
+                startDestination = TopLevelDestination.Devices.route,
+                modifier = Modifier.padding(innerPadding),
+            ) {
+                TopLevelDestination.all.forEach { dest ->
+                    composable(dest.route) {
+                        // Settings tab uses the real Settings hub; Jobs tab binds
+                        // to the inference foreground service; Cluster tab hosts
+                        // the metrics screen. Everything else remains a stub
+                        // for now.
+                        when (dest) {
+                            TopLevelDestination.Settings -> SettingsScreen(
+                                onOpenDrawer = openDrawer,
+                                onOpenCategory = { cat ->
+                                    navController.navigate("settings/category/${cat.name}")
+                                },
+                            )
+                            TopLevelDestination.Devices -> DevicesScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Jobs -> JobsScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Agent -> AgentScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Models -> ModelsScreen(onBack = openDrawer)
+                            TopLevelDestination.Sessions -> TerminalScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Cluster -> MetricsScreen(
+                                onOpenDrawer = openDrawer,
+                                onBack = { navController.popBackStack() },
+                            )
+                            else -> ScreenStub(
+                                destination = dest,
+                                icon = dest.icon,
+                                onOpenDrawer = openDrawer,
+                            )
+                        }
                     }
                 }
-            }
 
-            // Deep links from Settings → Category.
-            SettingsCategory.entries.forEach { cat ->
-                composable("settings/category/${cat.name}") {
-                    CategoryScreen(
-                        category = cat,
+                // Deep links from Settings → Category.
+                SettingsCategory.entries.forEach { cat ->
+                    composable("settings/category/${cat.name}") {
+                        CategoryScreen(
+                            category = cat,
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+                }
+
+                // Forwarding peers screen (Phase 1, task #7).
+                composable("settings/forwarding-peers") {
+                    ForwardingPeersScreen(
                         onBack = { navController.popBackStack() },
                     )
                 }
-            }
 
-            // Forwarding peers screen (Phase 1, task #7).
-            composable("settings/forwarding-peers") {
-                ForwardingPeersScreen(
-                    onBack = { navController.popBackStack() },
-                )
+                // Cluster metrics (Phase M.3).
+                composable("metrics") {
+                    MetricsScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Log viewer (Phase M.4).
+                composable("logs") {
+                    LogScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
             }
         }
     }

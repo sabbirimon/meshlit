@@ -5,6 +5,7 @@
     <!-- Top-level screens -->
     <string name="screen_devices">Devices</string>
     <string name="screen_jobs">Jobs</string>
+    <string name="screen_agent">Agent</string>
     <string name="screen_models">Models</string>
     <string name="screen_files">Files</string>
     <string name="screen_sessions">Sessions</string>
@@ -12,6 +13,60 @@
     <string name="screen_network">Network</string>
     <string name="screen_users">Users</string>
     <string name="screen_settings">Settings</string>
+
+    <!-- Metrics screen -->
+    <string name="metrics_title">Cluster metrics</string>
+    <string name="metrics_subtitle">Live view of jobs, peer health, and failures across the cluster</string>
+    <string name="metrics_open">Open metrics</string>
+    <string name="metrics_queue_depth">Jobs waiting</string>
+    <string name="metrics_queue_depth_zero">No jobs waiting</string>
+    <string name="metrics_total_jobs">Total jobs</string>
+    <string name="metrics_success_jobs">Successful</string>
+    <string name="metrics_failure_jobs">Failed</string>
+    <string name="metrics_tokens_generated">Tokens generated</string>
+    <string name="metrics_tokens_per_second">Average tokens/sec</string>
+    <string name="metrics_uptime">Uptime</string>
+    <string name="metrics_sparkline_caption">Queue depth — last 60 seconds</string>
+    <string name="metrics_failure_breakdown">Failures by tag</string>
+    <string name="metrics_no_failures">No failures since process start</string>
+    <string name="metrics_peers_section">Peer health</string>
+    <string name="metrics_no_peers">No peers are advertising on this network yet</string>
+    <string name="metrics_peer_ok">Healthy</string>
+    <string name="metrics_peer_stale">Stale</string>
+    <string name="metrics_peer_model_loaded">Model loaded</string>
+    <string name="metrics_peer_model_unloaded">Model unloaded</string>
+
+    <!-- Log screen -->
+    <string name="logs_title">Logs</string>
+    <string name="logs_filter_query_label">Search</string>
+    <string name="logs_filter_query_hint">Tag or message text…</string>
+    <string name="logs_filter_tag_any">All tags</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_export">Export</string>
+    <string name="logs_empty">No log entries match the current filter</string>
+    <string name="logs_open">Open logs</string>
+
+    <!-- Scripts screen -->
+    <string name="scripts_title">Scripts</string>
+    <string name="scripts_library">Library</string>
+    <string name="scripts_run">Run</string>
+    <string name="scripts_empty">No saved scripts. Tap “Add” to write your first playbook.</string>
+    <string name="scripts_add">Add</string>
+    <string name="scripts_run_selected">Run selected</string>
+    <string name="scripts_save">Save</string>
+    <string name="scripts_cancel">Cancel</string>
+    <string name="scripts_editor_hint">Script name</string>
+    <string name="scripts_editor_description_hint">Description (optional)</string>
+    <string name="scripts_editor_json_hint">Steps JSON — see docs for the schema</string>
+    <string name="scripts_seed_demo">Add demo</string>
+    <string name="scripts_upload">Push to peers</string>
+    <string name="scripts_event_start">Started</string>
+    <string name="scripts_event_step_ok">Step OK</string>
+    <string name="scripts_event_step_fail">Step failed</string>
+    <string name="scripts_event_done">Done</string>
+    <string name="scripts_event_done_failed">Done with errors</string>
+    <string name="scripts_running">Running…</string>
+    <string name="scripts_idle">Idle</string>
 
     <!-- Device screen -->
     <string name="devices_empty_title">No devices on the cluster yet</string>
@@ -41,13 +96,20 @@
     <string name="jobs_role_model">Model</string>
     <string name="jobs_thinking">Thinking…</string>
     <string name="jobs_empty_state">Load a model, then enter a prompt to start local inference.</string>
-    <string name="jobs_engine_stub_hint">Start the service and load a GGUF model to begin.</string>
+    <string name="jobs_engine_stub_hint">Demo engine — open Models and load a real model to generate actual replies.</string>
     <string name="jobs_dispatch_local">Local</string>
     <string name="jobs_dispatch_remote">Remote (peer)</string>
     <string name="jobs_remote_ip_label">Peer IP</string>
     <string name="jobs_remote_ip_placeholder">192.168.1.42</string>
     <string name="jobs_remote_dispatch_failed">Peer unreachable: %1$s</string>
     <string name="jobs_remote_no_ip">Enter a peer IP for Remote dispatch.</string>
+    <string name="jobs_stub_banner">Demo engine active — replies are placeholders. Load a model from the Models tab.</string>
+    <string name="jobs_model_picker_label">Model</string>
+    <string name="jobs_service_start">Start</string>
+    <string name="jobs_service_stop">Stop</string>
+    <string name="jobs_model_bundled">Bundled · %1$s</string>
+    <string name="jobs_model_no_models">No models available — open Models tab</string>
+    <string name="jobs_model_params">%1$s · %2$dM params</string>
 
     <!-- Forwarding peers (Settings → Network) -->
     <string name="settings_network_forwarding_peers">Forwarding peers</string>
@@ -214,37 +276,6 @@
     <string name="models_override_save">Save</string>
     <string name="models_override_clear">Clear override</string>
 
-    <!-- Settings search -->
-    <string name="settings_search_clear">Clear search</string>
-
-    <!-- Capability tiers (auto-detected from SDK_INT) -->
-    <string name="capability_tier_label">Capability tier</string>
-    <string name="capability_tier_lite">Lite</string>
-    <string name="capability_tier_mid">Mid</string>
-    <string name="capability_tier_full">Full</string>
-    <string name="capability_tier_lite_desc">Android 6–12 · Bundled model · basic foreground service</string>
-    <string name="capability_tier_mid_desc">Android 13–14 · Bundled model · dataSync foreground service</string>
-    <string name="capability_tier_full_desc">Android 15+ · Bundled model · dataSync foreground service · hardware attestation</string>
-
-    <!-- Models editor (Settings → Models) -->
-    <string name="models_bundled_section">Bundled model</string>
-    <string name="models_bundled_name">Qwen2.5-1.5B-Instruct</string>
-    <string name="models_bundled_quant">Q4_K_M · Apache 2.0 · multilingual</string>
-    <string name="models_bundled_installed">Installed</string>
-    <string name="models_bundled_not_installed">Not installed</string>
-    <string name="models_no_asset">No bundled model found in the APK</string>
-    <string name="models_reextract_in_progress">Extracting…</string>
-    <string name="models_reextract_done">Model extracted and ready to load</string>
-    <string name="models_reextract_failed">Extraction failed — see logs</string>
-    <string name="models_reextract_button">Re-extract now</string>
-
-    <string name="models_override_section">Custom GGUF path</string>
-    <string name="models_override_path_label">Path to a GGUF on this device</string>
-    <string name="models_override_path_description">Use a model downloaded from Hugging Face, Ollama, or another node. When set, the bundled model is skipped.</string>
-    <string name="models_override_path_hint">/sdcard/Models/qwen2.5-3b-instruct-q4.gguf</string>
-    <string name="models_override_save">Save</string>
-    <string name="models_override_clear">Clear override</string>
-
     <!-- Cluster capacity (Phase 2 foundation) -->
     <string name="cluster_capacity_section">Cluster capacity</string>
     <string name="cluster_capacity_total_ram">Total free RAM across the cluster: %1$d MB</string>
@@ -258,6 +289,76 @@
     <string name="battery_card_body">Disable Android’s battery optimization for Meshlit so the foreground service isn’t killed in the background.</string>
     <string name="battery_card_open_settings">Open system settings</string>
     <string name="battery_card_oem_hint">If Meshlit isn’t in the standard list, your OEM has a separate battery screen.</string>
+
+    <!-- Terminal (Sessions tab) -->
+    <string name="terminal_title">Terminal</string>
+    <string name="terminal_subtitle">Meshlit command line</string>
+    <string name="terminal_prompt_prefix">$</string>
+    <string name="terminal_hint">Type a command (try `help`)</string>
+    <string name="terminal_send">Send</string>
+    <string name="terminal_clear">Clear</string>
+    <string name="terminal_welcome">Welcome to the Meshlit terminal. Type `help` to see available commands.</string>
+    <string name="terminal_unknown_cmd">Unknown command: %1$s. Type `help` for a list.</string>
+    <string name="terminal_help_header">Available commands:</string>
+    <string name="terminal_cmd_help">help</string>
+    <string name="terminal_cmd_help_desc">Show this help message</string>
+    <string name="terminal_cmd_status">status</string>
+    <string name="terminal_cmd_status_desc">Show local node status (model, engine, tier)</string>
+    <string name="terminal_cmd_peers">peers</string>
+    <string name="terminal_cmd_peers_desc">List discovered peers and their health</string>
+    <string name="terminal_cmd_metrics">metrics</string>
+    <string name="terminal_cmd_metrics_desc">Print the current metrics snapshot</string>
+    <string name="terminal_cmd_model">model</string>
+    <string name="terminal_cmd_model_desc">Show the currently loaded model info</string>
+    <string name="terminal_cmd_logs">logs [n]</string>
+    <string name="terminal_cmd_logs_desc">Tail the last n log lines (default 20)</string>
+    <string name="terminal_cmd_clear">clear</string>
+    <string name="terminal_cmd_clear_desc">Clear the terminal screen</string>
+    <string name="terminal_cmd_whoami">whoami</string>
+    <string name="terminal_cmd_whoami_desc">Print this device\'s display name + tier</string>
+    <string name="terminal_cmd_version">version</string>
+    <string name="terminal_cmd_version_desc">Print Meshlit version + capabilities</string>
+    <string name="terminal_cmd_run">run &lt;prompt&gt;</string>
+    <string name="terminal_cmd_run_desc">Dispatch an inference job to the cluster</string>
+    <string name="terminal_cmd_echo">echo &lt;text&gt;</string>
+    <string name="terminal_cmd_echo_desc">Print text to the terminal</string>
+    <string name="terminal_dispatch_started">Dispatched: \"%1$s\" — streaming below…</string>
+    <string name="terminal_dispatch_done">Done in %1$dms, %2$d tokens</string>
+
+    <!-- Agent (Claude-Code-style chat + code-gen + autopilot) -->
+    <string name="agent_title">Agent</string>
+    <string name="agent_subtitle">Chat, code, autopilot</string>
+    <string name="agent_empty_title">Start a task</string>
+    <string name="agent_empty_body">Type a question, a coding task, or paste a file path. The agent will plan, propose code, and execute steps until done.</string>
+    <string name="agent_input_hint">Ask anything or describe a task…</string>
+    <string name="agent_send">Send</string>
+    <string name="agent_stop">Stop</string>
+    <string name="agent_clear">New chat</string>
+    <string name="agent_autopilot">Autopilot</string>
+    <string name="agent_autopilot_on">Autopilot: ON</string>
+    <string name="agent_autopilot_off">Autopilot: OFF</string>
+    <string name="agent_autopilot_explainer">Let the agent iterate without asking for confirmation between steps.</string>
+    <string name="agent_mode_chat">Chat</string>
+    <string name="agent_mode_code">Code</string>
+    <string name="agent_mode_plan">Plan</string>
+    <string name="agent_role_user">You</string>
+    <string name="agent_role_agent">Agent</string>
+    <string name="agent_role_system">System</string>
+    <string name="agent_working">Working…</string>
+    <string name="agent_thinking">Thinking…</string>
+    <string name="agent_applied_code">Applied code block</string>
+    <string name="agent_copy">Copy</string>
+    <string name="agent_apply">Apply</string>
+    <string name="agent_revert">Revert</string>
+    <string name="agent_plan_intro">Plan mode: the agent will outline steps before executing. Tap Execute to run.</string>
+    <string name="agent_execute">Execute plan</string>
+    <string name="agent_no_model">No model loaded — open Jobs and try again after the FGS auto-load finishes.</string>
+    <string name="agent_error">Error: %1$s</string>
+    <string name="agent_token_count">%1$d tokens · %2$dms</string>
+    <string name="agent_active_model">Active model</string>
+    <string name="agent_choose_model">Choose</string>
+    <string name="agent_no_models_available">No models available — import one from Models</string>
+    <string name="models_import">Import model</string>
 
     <!-- Notification settings -->
     <string name="notifications_title">Notifications</string>
@@ -286,4 +387,98 @@
     <string name="notif_cat_training_milestone_desc">A fine-tune step finished, a checkpoint was saved, or loss plateaued.</string>
     <string name="notif_cat_chipset_db_update">Chipset database updated</string>
     <string name="notif_cat_chipset_db_update_desc">Background sync pulled a new chipset or eGPU definitions snapshot.</string>
+
+    <!-- Devices screen (network-scope feature) -->
+    <string name="devices_title">Devices</string>
+    <string name="devices_subtitle">Scope: %1$s</string>
+    <string name="devices_add">Add</string>
+    <string name="devices_scope_header">Network scope</string>
+    <string name="devices_scope_hint">Active scope: %1$s. Choose where this phone is allowed to send inference requests.</string>
+    <string name="devices_endpoints_header">Endpoints</string>
+    <string name="devices_empty_local">No local peers on this LAN yet. Open Meshlit on another phone nearby to add it.</string>
+    <string name="devices_empty_internet">No internet endpoints configured. Paste an OpenAI-compatible URL via the + button.</string>
+    <string name="devices_empty_vpn">No VPN endpoints configured. Add a Tailscale or WireGuard address via the + button.</string>
+    <string name="devices_empty_group">No group endpoints yet. Scan a friend\'s QR code to add them to your group.</string>
+    <string name="devices_empty_custom">No custom endpoints yet. Paste a URL — supports CDN, FTP, or private server.</string>
+    <string name="devices_active">Active</string>
+    <string name="devices_last_seen">seen %1$s ago</string>
+    <string name="devices_never_seen">never seen</string>
+    <string name="devices_edit">Edit endpoint</string>
+    <string name="devices_remove">Remove endpoint</string>
+    <string name="devices_trust_label">Trust this endpoint</string>
+    <string name="devices_use_as_active">Use as active endpoint</string>
+    <string name="devices_add_title">Add inference endpoint</string>
+    <string name="devices_edit_title">Edit inference endpoint</string>
+    <string name="devices_field_name">Display name</string>
+    <string name="devices_field_url">Base URL (https://…)</string>
+    <string name="devices_field_api_key">API key (optional)</string>
+    <string name="devices_field_protocol">Protocol</string>
+    <string name="devices_field_insecure">Allow plain HTTP (private networks only)</string>
+    <string name="devices_field_trust">Trust by default</string>
+    <string name="devices_cancel">Cancel</string>
+    <string name="devices_save">Save</string>
+    <string name="devices_pairing_header">This device</string>
+    <string name="devices_pairing_body">%1$s is advertising on this address. Other phones can scan your QR to join.</string>
+    <string name="devices_show_qr">Show my QR</string>
+    <string name="devices_copy_payload">Copy payload</string>
+    <string name="devices_qr_title">Pair with a phone</string>
+    <string name="devices_qr_unavailable">QR encoder unavailable</string>
+    <string name="devices_qr_paste_hint">Or paste a pairing string you copied from another device:</string>
+    <string name="devices_qr_add_pasted">Add from text</string>
+    <string name="devices_qr_scan">Scan</string>
+
+    <!-- VPN scope (Devices → VPN) -->
+    <string name="devices_vpn_import_header">Import a VPN profile</string>
+    <string name="devices_vpn_import_body">Pick a WireGuard .conf or OpenVPN .ovpn file from your device. The host:port is extracted automatically and saved as an endpoint.</string>
+    <string name="devices_vpn_import_file">Import profile file</string>
+    <string name="devices_vpn_imported">Imported: %1$s</string>
+    <string name="devices_vpn_import_failed">Could not read this profile — see logs.</string>
+    <string name="devices_vpn_manual_header">Or add manually</string>
+    <string name="devices_vpn_name">Provider name</string>
+    <string name="devices_vpn_host">Host or IP</string>
+    <string name="devices_vpn_port">Port</string>
+    <string name="devices_vpn_save">Save endpoint</string>
+    <string name="devices_vpn_invalid">Host is required.</string>
+
+    <!-- Agent export / share context -->
+    <string name="agent_export">Export</string>
+    <string name="agent_export_title">Save or share this conversation</string>
+    <string name="agent_export_save_files">Save as file</string>
+    <string name="agent_export_share_text">Share as text</string>
+    <string name="agent_export_save_code">Save code blocks</string>
+    <string name="agent_export_save_image">Save image</string>
+    <string name="agent_export_done">Saved to %1$s</string>
+    <string name="agent_export_failed">Export failed: %1$s</string>
+    <string name="agent_share_chooser">Share conversation</string>
+
+    <!-- Engine support -->
+    <string name="engine_supported_formats">Supported formats</string>
+    <string name="engine_supported_formats_body">Meshlit currently ships a llama.cpp runtime that runs GGUF files. ONNX, TensorFlow Lite, MLX, and SafeTensors are not bundled — adding a second engine doubles the APK size, so they’re a Phase 3 decision.</string>
+    <string name="engine_supported_formats_intro">A file format is the on-disk model container; a runtime is the native engine that loads it. Meshlit ships one runtime (llama.cpp) that reads one format (GGUF). APK size is not a blocker — multi-runtime is on the roadmap.</string>
+    <string name="engine_supported_formats_gguf_runtime">llama.cpp</string>
+    <string name="engine_supported_formats_gguf_status">Shipped</string>
+    <string name="engine_supported_formats_onnx_status">Phase 2 — ONNX Runtime Mobile</string>
+    <string name="engine_supported_formats_safetensors_status">Phase 2 — candle / burn</string>
+    <string name="engine_supported_formats_tflite_status">Phase 2 — LiteRT</string>
+    <string name="engine_supported_formats_mlx_status">Apple-only — MLX-LM</string>
+    <string name="engine_supported_formats_coreml_status">Apple-only — Core ML</string>
+    <string name="models_format_gguf">GGUF</string>
+    <string name="models_format_onnx">ONNX</string>
+    <string name="models_format_safetensors">SafeTensors</string>
+    <string name="models_format_tflite">TFLite</string>
+    <string name="models_format_mlx">MLX</string>
+    <string name="models_format_coreml">Core ML</string>
+    <string name="models_alternative_label">Or import an open-weight alternative</string>
+    <string name="models_alternative_smol">SmolLM2-1.7B-Instruct (USA, Apache 2.0, English-first)</string>
+    <string name="models_alternative_qwen">Qwen2.5-1.5B-Instruct (China, Apache 2.0, multilingual)</string>
+    <string name="models_alternative_deepseek">DeepSeek-R1-Distill-Qwen-1.5B (China, MIT, reasoning)</string>
+    <string name="models_alternative_llama">Llama-3.2-1B-Instruct (USA, Llama community, multilingual)</string>
+    <string name="models_download_started">Downloading %1$s…</string>
+    <string name="models_download_progress">%1$d%% — %2$s</string>
+    <string name="models_download_done">Saved to %1$s</string>
+    <string name="models_download_failed">Download failed: %1$s</string>
+    <string name="models_download_failed_network">No internet — check Wi-Fi and retry</string>
+    <string name="models_download_failed_ssl">Hugging Face certificate rejected</string>
+    <string name="models_download_failed_timeout">Server timed out — retry</string>
+    <string name="models_already_imported">Already imported</string>
 </resources>

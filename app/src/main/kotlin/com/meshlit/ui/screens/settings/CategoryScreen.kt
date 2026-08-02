@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +58,10 @@ fun CategoryScreen(
     category: SettingsCategory,
     onBack: () -> Unit,
 ) {
-    var advanced by remember { mutableStateOf(false) }
+    // rememberSaveable keeps the toggle state across config changes
+    // and process death. Per-category via the route key so toggling
+    // "advanced" on Device doesn't affect Theme.
+    var advanced by rememberSaveable(category) { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
@@ -210,9 +214,14 @@ private data class Section(
 )
 
 /**
- * Group the indexed settings for a [SettingsCategory] into a "Basic"
- * and "Advanced" section. Phase 1 marks every setting as Basic; Phase
- * 2 will tag each entry with a tier so the toggle has meaning.
+ * Filters the indexed settings for a [SettingsCategory] down to those
+ * that should show on the current "advanced" surface.
+ *
+ *  - `advanced = false` → curated Simple surface; only entries tagged
+ *    `advanced = false` are visible.
+ *  - `advanced = true`  → all entries for the category, in the index
+ *    order, no separate "Advanced" sub-section (the toggle itself is
+ *    the visual signal that power-user knobs are now shown).
  */
 @Composable
 private fun categorySections(
@@ -222,21 +231,15 @@ private fun categorySections(
     val all = SettingsSearchIndex.all().filter { it.category == category }
     if (all.isEmpty()) return emptyList()
 
-    // Phase 1: every setting shows in Simple mode. Advanced mode
-    // adds a "Developer" sub-section for the DEVELOPER category
-    // and exposes all tagged-advanced entries across categories.
-    val basic = all.filter { !advanced || !it.tag.startsWith("dev.") }
+    val visible = if (advanced) all else all.filter { !it.advanced }
+    if (visible.isEmpty()) return emptyList()
     return listOf(
-        Section(title = stringResource(R.string.settings_category_section_basic), matches = basic),
-    ) + if (advanced) {
-        val advancedMatches = all.filter { it.tag.startsWith("dev.") || it.tag.startsWith("about.") }
-        if (advancedMatches.isNotEmpty()) {
-            listOf(
-                Section(
-                    title = stringResource(R.string.settings_category_section_advanced),
-                    matches = advancedMatches,
-                ),
-            )
-        } else emptyList()
-    } else emptyList()
+        Section(
+            title = stringResource(
+                if (advanced) R.string.settings_category_section_advanced
+                else R.string.settings_category_section_basic,
+            ),
+            matches = visible,
+        ),
+    )
 }

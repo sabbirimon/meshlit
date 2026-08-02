@@ -26,6 +26,13 @@ object SettingsSearchIndex {
          *  specific toggle (e.g. "high_contrast") rather than just the
          *  category screen. */
         val tag: String,
+        /**
+         * Whether this entry is hidden behind the category's "Advanced"
+         * toggle. The curated Simple surface should only show entries
+         * with `advanced = false`. Defaults to `false` so adding a new
+         * entry doesn't accidentally hide it.
+         */
+        val advanced: Boolean = false,
     )
 
     private val entries: List<Match> = listOf(
@@ -53,42 +60,49 @@ object SettingsSearchIndex {
             label = "Chipset override",
             description = "Manually pick a chipset if auto-detect was wrong",
             tag = "device.chipset",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVICE,
             label = "External GPU (eGPU)",
             description = "AMD, NVIDIA, Intel, Moore Threads, Biren, Huawei Ascend, Cambricon, etc.",
             tag = "device.egpu",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVICE,
             label = "eGPU backend",
             description = "Vulkan, OpenCL, CUDA, ROCm, CANN, MLU — pick which driver to use",
             tag = "device.egpu_backend",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVICE,
             label = "Peripherals",
             description = "USB host devices, hubs, eGPUs, storage",
             tag = "device.peripherals",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVICE,
             label = "Host OS",
             description = "Detected runtime — Android, Linux x86, Waydroid, ChromeOS ARC, Android-x86, Genymotion/Bluestacks, Anbox",
             tag = "device.host_os",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVICE,
             label = "Host ABI",
             description = "arm64-v8a, x86_64, x86, riscv64 — drives SIMD path selection in llama.cpp",
             tag = "device.host_abi",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVICE,
             label = "Desktop eGPU backend",
             description = "CUDA / ROCm / oneAPI / Vulkan — picked automatically when running on Linux x86_64",
             tag = "device.desktop_backend",
+            advanced = true,
         ),
 
         // ---- THEME ----
@@ -121,6 +135,7 @@ object SettingsSearchIndex {
             label = "Display density",
             description = "Compact, default, comfortable — 0.85x to 1.3x",
             tag = "theme.density",
+            advanced = true,
         ),
         Match(
             SettingsCategory.THEME,
@@ -139,6 +154,7 @@ object SettingsSearchIndex {
             label = "Reset theme to defaults",
             description = "Clear all theme and display overrides",
             tag = "theme.reset",
+            advanced = true,
         ),
 
         // ---- NOTIFICATIONS ----
@@ -189,18 +205,21 @@ object SettingsSearchIndex {
             label = "Tunnel state",
             description = "Tailscale / WireGuard up, down, reconfigured",
             tag = "notif.tunnel",
+            advanced = true,
         ),
         Match(
             SettingsCategory.NOTIFICATIONS,
             label = "Public token used",
             description = "An external caller used one of your bearer tokens",
             tag = "notif.token_used",
+            advanced = true,
         ),
         Match(
             SettingsCategory.NOTIFICATIONS,
             label = "Training milestone",
             description = "Fine-tune step, checkpoint, loss plateau",
             tag = "notif.training",
+            advanced = true,
         ),
 
         // ---- CLUSTER ----
@@ -233,12 +252,14 @@ object SettingsSearchIndex {
             label = "WAN relay",
             description = "Reach cluster over cellular / public Wi-Fi via trusted relay",
             tag = "cluster.wan_relay",
+            advanced = true,
         ),
         Match(
             SettingsCategory.CLUSTER,
             label = "Local firewall",
             description = "Per-port incoming connection policy",
             tag = "cluster.firewall",
+            advanced = true,
         ),
 
         // ---- MODELS ----
@@ -259,12 +280,14 @@ object SettingsSearchIndex {
             label = "Model storage path",
             description = "Where downloaded GGUF files live on disk",
             tag = "models.path",
+            advanced = true,
         ),
         Match(
             SettingsCategory.MODELS,
             label = "HuggingFace mirror",
             description = "Endpoint used when importing from HuggingFace",
             tag = "models.hf_mirror",
+            advanced = true,
         ),
 
         // ---- ACCOUNT ----
@@ -285,6 +308,7 @@ object SettingsSearchIndex {
             label = "Audit trail",
             description = "Who dispatched work to your cluster and when",
             tag = "account.audit",
+            advanced = true,
         ),
 
         // ---- PERFORMANCE ----
@@ -305,18 +329,21 @@ object SettingsSearchIndex {
             label = "Batch size",
             description = "Tokens processed per inference batch",
             tag = "perf.batch_size",
+            advanced = true,
         ),
         Match(
             SettingsCategory.PERFORMANCE,
             label = "Thermal policy",
             description = "Throttle, pause, or step-down on temperature threshold",
             tag = "perf.thermal",
+            advanced = true,
         ),
         Match(
             SettingsCategory.PERFORMANCE,
             label = "Memory ceiling",
             description = "Hard cap on resident memory usage for inference",
             tag = "perf.mem_ceiling",
+            advanced = true,
         ),
 
         // ---- PRIVACY ----
@@ -337,12 +364,14 @@ object SettingsSearchIndex {
             label = "Telemetry",
             description = "Anonymous usage metrics shared with Meshlit foundation",
             tag = "privacy.telemetry",
+            advanced = true,
         ),
         Match(
             SettingsCategory.PRIVACY,
             label = "Prompt guardrails",
             description = "Jailbreak filters, profanity, PII detection",
             tag = "privacy.guardrails",
+            advanced = true,
         ),
 
         // ---- ABOUT ----
@@ -363,44 +392,54 @@ object SettingsSearchIndex {
             label = "Third-party",
             description = "llama.cpp, ggml, MCP SDK, llama.cpp-server, ONNX runtime",
             tag = "about.thirdparty",
+            advanced = true,
         ),
         Match(
             SettingsCategory.ABOUT,
             label = "Acknowledgements",
             description = "HuggingFace, Ollama, OpenAI, Anthropic, Mistral, Meta",
             tag = "about.acknowledgements",
+            advanced = true,
         ),
 
         // ---- DEVELOPER ----
+        // All developer entries are advanced by definition — they are
+        // intentionally tucked behind the toggle so a casual user
+        // doesn't accidentally enable verbose logs or mock-cluster.
         Match(
             SettingsCategory.DEVELOPER,
             label = "Verbose logs",
             description = "Trace / debug level for all subsystems",
             tag = "dev.verbose_logs",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVELOPER,
             label = "Sample rate",
             description = "How often to capture metrics / traces",
             tag = "dev.sample_rate",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVELOPER,
             label = "Debug overlay",
             description = "Show FPS, memory, and routing decisions on screen",
             tag = "dev.overlay",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVELOPER,
             label = "Mock cluster",
             description = "Spin up a virtual cluster of 1-5 nodes for testing",
             tag = "dev.mock_cluster",
+            advanced = true,
         ),
         Match(
             SettingsCategory.DEVELOPER,
             label = "Force kill inference",
             description = "Immediately stop the foreground service — debug only",
             tag = "dev.force_kill",
+            advanced = true,
         ),
     )
 

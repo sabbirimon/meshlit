@@ -4,220 +4,270 @@ import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.logger
 import com.meshlit.core.inference.InferenceCoordinator
 import com.meshlit.core.inference.InferenceRequest
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
-import io.ktor.server.netty.NettyApplicationEngine
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.request.receive
-import io.ktor.server.response.header
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondTextWriter
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.routing
+import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
 
 /**
- * Embedded HTTP/SSE server that exposes the local [InferenceCoordinator]
- * to peers on the LAN. Started by `InferenceForegroundService.onCreate`
- * and stopped in `onDestroy`.
+ * Embedded HTTP/SSE inference server. Lives in `:core-inference` and
+ * is started by the foreground service in `onCreate`, stopped in
+ * `onDestroy`.
  *
- * Endpoints:
+ * We use NanoHTTPD instead of Ktor 3 because Ktor 3.x emits bytecode
+ * that requires DEX 040 (default from API 33). The user-mandated
+ * `minSdk = 23` floor needs DEX 039-friendly code; NanoHTTPD is
+ * pure-Java and works on Android 6+.
+ *
+ * Endpoints (same shape as the Ktor version that lived here before
+ * the Phase 2 merge):
  *  - `GET  /v1/health`  → JSON snapshot of engine + port.
  *  - `GET  /v1/model`   → JSON snapshot of the loaded model.
  *  - `POST /v1/infer`   → `text/event-stream` SSE reply. One
- *    `event: token` per generated token, then `event: done`.
+ *    `event: token` per generated token, then `event: done` or
+ *    `event: error`.
  *
  * Routing:
- *  - Before serving locally, the server calls the injected
- *    [RouterRef.decideFor]. If the router says FORWARD, the request
- *    is proxied through the injected [Forwarder] to a peer; the
- *    original caller cannot tell the difference.
+ *  - Before serving locally, the server calls [router.decideFor].
+ *    If the router says FORWARD, the request is proxied via
+ *    [forwarder] to a peer; the original caller cannot tell the
+ *    difference.
  *
  * Concurrency:
- *  - The Ktor engine runs on its own thread pool. The SSE stream for
- *    a single request is driven by the engine thread; tokens are
- *    pushed via a `Channel` from the inference engine callback.
+ *  - NanoHTTPD spawns one thread per request. SSE output is driven
+ *    from that thread via a piped `PipedInputStream` returned to the
+ *    client; the inference engine callback writes events into the
+ *    pipe.
  *  - The coordinator's `infer()` is already serialized through its
- *    internal mutex, so concurrent /v1/infer requests simply queue.
- *
- * Lifecycle:
- *  - [start] is `suspend` because Ktor 3's `embeddedServer` requires
- *    its `start(wait=true)` call to be inside a coroutine.
- *  - [stop] is non-suspending; it triggers the engine shutdown.
- *  - Calling [start] twice without [stop] in between is a programming
- *    error and will log a warning.
+ *    internal mutex, so concurrent /v1/infer requests queue.
  */
 class InferenceHttpServer(
     private val coordinator: InferenceCoordinator,
     private val router: RouterRef,
     private val forwarder: Forwarder,
+    private val enricher: HealthEnricher = HealthEnricher.NONE,
+    private val lifecycle: JobLifecycle = JobLifecycle.NOOP,
     private val port: Int = DEFAULT_PORT,
     private val host: String = DEFAULT_HOST,
 ) {
 
     private val log = logger("InferenceHttpServer")
 
-    @Volatile private var engine: io.ktor.server.engine.EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
+    @Volatile private var delegate: Delegate? = null
 
-    val boundPort: Int get() = port
+    val boundPort: Int get() = delegate?.listeningPort?.let { if (it > 0) it else port } ?: port
 
     /**
      * Start the server. Suspends until [stop] is called or the
-     * coroutine is cancelled. Returns when the server is bound and
-     * accepting connections.
-     *
-     * The launched engine is owned by the caller's scope — passing
-     * [scope] ensures [stop] can target the right Job.
+     * coroutine is cancelled. The actual NanoHTTPD instance is
+     * created on a worker thread.
      */
-    suspend fun start(scope: CoroutineScope) {
-        if (engine != null) {
+    fun start() {
+        if (delegate != null) {
             log.warn("http.start.duplicate", "start() called twice without stop()")
             return
         }
-        val srv = embeddedServer(Netty, port = port, host = host) {
-            install(ContentNegotiation) {
-                json(Json {
-                    ignoreUnknownKeys = true
-                    encodeDefaults = true
-                })
-            }
-            routing {
-                get("/v1/health") {
-                    val resp = HealthResponse(
-                        status = "ok",
-                        engine = coordinator.engineTag,
-                        port = port,
-                    )
-                    call.respond(resp)
-                }
-
-                get("/v1/model") {
-                    val info = coordinator.loadedModel()
-                    if (info == null) {
-                        call.respond(ModelStateResponse(loaded = false))
-                    } else {
-                        call.respond(
-                            ModelStateResponse(
-                                loaded = true,
-                                name = info.modelName,
-                                contextSize = info.contextSize,
-                                parameterCount = info.parameterCount,
-                                quantization = info.quantization,
-                            ),
-                        )
-                    }
-                }
-
-                post("/v1/infer") {
-                    val req = try {
-                        call.receive<InferRequest>()
-                    } catch (t: Throwable) {
-                        log.warn("http.infer.bad_request", "bad /v1/infer body", mapOf("err" to t.message.orEmpty()))
-                        call.respond(HttpStatusCode.BadRequest, mapOf("error" to (t.message ?: "bad request")))
-                        return@post
-                    }
-
-                    val hints = RequestHints.parse(call.request.headers["X-Meshlit-Hints"])
-                    val decision = try {
-                        router.decideFor(req, hints)
-                    } catch (t: Throwable) {
-                        log.warn("http.router.fail", "router threw; falling back to local", mapOf("err" to t.message.orEmpty()))
-                        RouterDecision.local(reason = "router-error-fallback")
-                    }
-
-                    streamInfer(call, req, hints, decision)
-                }
-            }
-        }
-        engine = srv
-        log.info("http.start", "embedded inference HTTP server bound", mapOf("host" to host, "port" to port))
-        // Start non-blocking; the engine runs on its own thread pool.
-        // We still suspend the caller's coroutine until stop().
-        scope.launch {
-            try {
-                srv.start(wait = true)
-            } catch (t: Throwable) {
-                log.warn("http.start.exception", "engine start threw", mapOf("err" to t.message.orEmpty()))
-            }
-        }
+        val d = Delegate()
+        delegate = d
+        log.info("http.start", "NanoHTTPD inference server starting", mapOf("host" to host, "port" to port))
+        d.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
     }
 
     /**
-     * Stop the server. Safe to call from any thread. No-op when the
-     * server isn't running.
+     * Stop the server. Safe to call from any thread.
      */
     fun stop() {
-        val srv = engine ?: return
-        engine = null
+        val d = delegate ?: return
+        delegate = null
         try {
-            // graceful: 500ms quiescence, 1000ms timeout total.
-            srv.stop(500, 1000)
-            log.info("http.stop", "embedded inference HTTP server stopped", mapOf("port" to port))
+            d.stop()
+            log.info("http.stop", "NanoHTTPD inference server stopped", mapOf("port" to port))
         } catch (t: Throwable) {
             log.warn("http.stop.exception", "stop threw", mapOf("err" to t.message.orEmpty()))
         }
     }
 
     /**
-     * Run the actual inference pipeline for one /v1/infer request.
-     *
-     * Flow:
-     *  1. If router says LOCAL → call `coordinator.infer`, push
-     *     `event: token` per token, then `event: done`.
-     *  2. If router says FORWARD → call `forwarder.forwardAndStream`,
-     *     pipe tokens through to the original caller's SSE channel.
-     *  3. On any error mid-stream, push `event: error` then close.
-     *
-     * Both branches share the same SSE response shape so callers
-     * don't need to care which path served them.
+     * Inner NanoHTTPD subclass that wires the three routes. Lives as
+     * an inner class so we can call back into [coordinator] / [router]
+     * / [forwarder] directly.
      */
-    private suspend fun streamInfer(
-        call: io.ktor.server.application.ApplicationCall,
-        req: InferRequest,
-        hints: RequestHints?,
-        decision: RouterDecision,
-    ) {
-        // Decide forwarding up front so we can set the headers before
-        // starting the streaming body.
-        val peer: String? = when (decision.where) {
-            RouterDecision.Where.LOCAL -> null
-            RouterDecision.Where.FORWARD -> decision.peerBaseUrl?.takeIf { it.isNotBlank() }
-        }
-        val forwarded = (peer != null).toString()
-        call.response.header(HEADER_FORWARDED, forwarded)
-        call.response.header(HEADER_ROUTER_REASON, decision.reason)
-        call.response.header("X-Accel-Buffering", "no")
-        call.response.header("Cache-Control", "no-cache")
+    private inner class Delegate : NanoHTTPD(host, port) {
 
-        // respondTextWriter is the streaming responder: it must be
-        // the last statement in the handler. Inside the lambda we
-        // drive the SSE body directly via the underlying writer.
-        call.respondTextWriter(contentType = ContentType.Text.EventStream) {
-            // `this` here is a Writer (java.io.Writer) per Ktor's
-            // signature. We push events with explicit flushes so the
-            // client sees tokens as they arrive.
-            suspend fun emitEvent(name: String, payload: Any) {
-                val json = when (payload) {
-                    is InferTokenEvent -> Json.encodeToString(InferTokenEvent.serializer(), payload)
-                    is InferDoneEvent -> Json.encodeToString(InferDoneEvent.serializer(), payload)
-                    is InferErrorEvent -> Json.encodeToString(InferErrorEvent.serializer(), payload)
-                    else -> error("no serializer for ${payload::class}")
+        override fun serve(session: IHTTPSession): Response {
+            val uri = session.uri.trimEnd('/').ifBlank { "/" }
+            return try {
+                when {
+                    session.method == Method.GET && uri.endsWith("/v1/health") -> handleHealth()
+                    session.method == Method.GET && uri.endsWith("/v1/model") -> handleModel()
+                    session.method == Method.POST && uri.endsWith("/v1/infer") -> handleInfer(session)
+                    else -> newFixedLengthResponse(
+                        Response.Status.NOT_FOUND,
+                        MIME_PLAINTEXT,
+                        "not found",
+                    )
                 }
-                write("event: $name\ndata: $json\n\n")
-                flush()
+            } catch (t: Throwable) {
+                log.error("http.unhandled", "unhandled serve() exception", t)
+                newFixedLengthResponse(
+                    Response.Status.INTERNAL_ERROR,
+                    MIME_PLAINTEXT,
+                    "internal: ${t.message ?: ""}",
+                )
             }
+        }
 
-            if (peer == null) {
+        private fun handleHealth(): Response {
+            // The enricher is consulted once per reply. It's cheap
+            // (just reads from in-memory flows) and we don't want a
+            // slow enricher to block /v1/health.
+            val snap = try {
+                enricher.snapshot()
+            } catch (t: Throwable) {
+                log.warn("http.health.enricher.fail", "HealthEnricher threw; replying without enrichment", mapOf("err" to (t.message ?: "")))
+                HealthEnricher.HealthSnapshot()
+            }
+            val resp = HealthResponse(
+                status = "ok",
+                engine = coordinator.engineTag,
+                port = boundPort,
+                capabilityTier = snap.capabilityTier,
+                engineTag = snap.engineTag ?: coordinator.engineTag,
+                loadedShards = snap.loadedShards,
+                metrics = snap.metrics,
+            )
+            val body = json.encodeToString(HealthResponse.serializer(), resp)
+            return newFixedLengthResponse(Response.Status.OK, "application/json", body)
+        }
+
+        private fun handleModel(): Response {
+            val info = coordinator.loadedModel()
+            val resp = if (info == null) {
+                ModelStateResponse(loaded = false)
+            } else {
+                // Surface the layer range so the planner can pick
+                // sharded assignments without an out-of-band query.
+                // For a whole-model load the range collapses to
+                // [0, totalLayers) once the manifest exists.
+                val ranges = if (info.layerEnd != Int.MAX_VALUE && info.layerStart >= 0) {
+                    listOf(ShardRange(layerStart = info.layerStart, layerEnd = info.layerEnd))
+                } else emptyList()
+                ModelStateResponse(
+                    loaded = true,
+                    name = info.modelName,
+                    contextSize = info.contextSize,
+                    parameterCount = info.parameterCount,
+                    quantization = info.quantization,
+                    shardRanges = ranges,
+                )
+            }
+            val body = json.encodeToString(ModelStateResponse.serializer(), resp)
+            return newFixedLengthResponse(Response.Status.OK, "application/json", body)
+        }
+
+        private fun handleInfer(session: IHTTPSession): Response {
+            val bodyText = readBody(session)
+            val req = try {
+                json.decodeFromString(InferRequest.serializer(), bodyText)
+            } catch (t: Throwable) {
+                log.warn("http.infer.bad_request", "bad /v1/infer body", mapOf("err" to (t.message ?: "")))
+                return newFixedLengthResponse(
+                    Response.Status.BAD_REQUEST,
+                    "application/json",
+                    """{"error":"${(t.message ?: "bad request").replace("\"", "\\\"")}"}""",
+                )
+            }
+            val hints = RequestHints.parse(session.headers["x-meshlit-hints"])
+            val decision = try {
+                // decideFor is a suspend function; serve() is not. The
+                // inference loop is already serialized through the
+                // coordinator's mutex, so blocking this NanoHTTPD
+                // worker thread is safe.
+                runBlocking { router.decideFor(req, hints) }
+            } catch (t: Throwable) {
+                log.warn("http.router.fail", "router threw; falling back to local", mapOf("err" to (t.message ?: "")))
+                RouterDecision.local(reason = "router-error-fallback")
+            }
+            return streamInferResponse(req, hints, decision)
+        }
+
+        /**
+         * Build a chunked SSE response backed by a piped stream. The
+         * inference engine callback writes `event: token` / `event:
+         * done` / `event: error` lines into the pipe; NanoHTTPD
+         * pushes them to the client as they arrive.
+         *
+         * The router decision is honored by switching the
+         * coordinator path to the [forwarder] when FORWARD was
+         * chosen.
+         */
+        private fun streamInferResponse(
+            req: InferRequest,
+            hints: RequestHints?,
+            decision: RouterDecision,
+        ): Response {
+            val peer: String? = when (decision.where) {
+                RouterDecision.Where.LOCAL -> null
+                RouterDecision.Where.FORWARD -> decision.peerBaseUrl?.takeIf { it.isNotBlank() }
+            }
+            val pipedIn = PipedInputStream(64 * 1024)
+            val pipedOut = PipedOutputStream(pipedIn)
+            // Lifecycle hooks bookend the inference job so the
+            // MetricsRegistry / MetricsScreen see accurate timings.
+            val jobToken = lifecycle.start()
+            // We write to pipedOut from a worker thread; NanoHTTPD
+            // reads from pipedIn as the chunked response body. When
+            // the writer closes pipedOut, NanoHTTPD sees EOF and
+            // closes the connection cleanly.
+            Thread({
                 val started = System.currentTimeMillis()
-                var anyToken = false
+                var outcome: JobLifecycle.Outcome = JobLifecycle.Outcome.Failure("no_tokens", "infer produced no events")
+                try {
+                    outcome = if (peer == null) {
+                        runLocal(req, pipedOut)
+                    } else {
+                        runForward(peer, req, hints, pipedOut)
+                    }
+                    pipedOut.close()
+                    log.info(
+                        "http.infer.done",
+                        "/v1/infer completed",
+                        mapOf(
+                            "peer" to (peer ?: "local"),
+                            "ms" to (System.currentTimeMillis() - started),
+                            "outcome" to outcome::class.simpleName.orEmpty(),
+                        ),
+                    )
+                } catch (t: Throwable) {
+                    log.warn("http.infer.stream.exception", "SSE writer threw", mapOf("err" to (t.message ?: "")))
+                    outcome = JobLifecycle.Outcome.Failure("sse_writer_exception", t.message ?: "")
+                    try { pipedOut.close() } catch (_: Throwable) { /* swallow */ }
+                    try { pipedIn.close() } catch (_: Throwable) { /* swallow */ }
+                } finally {
+                    try { lifecycle.end(jobToken, outcome) } catch (_: Throwable) { /* swallow */ }
+                }
+            }, "meshlit-infer-sse").apply { isDaemon = true; start() }
+            val response = newChunkedResponse(Response.Status.OK, "text/event-stream", pipedIn)
+            response.addHeader("X-Accel-Buffering", "no")
+            response.addHeader("Cache-Control", "no-cache")
+            response.addHeader(HEADER_FORWARDED, (peer != null).toString())
+            response.addHeader(HEADER_ROUTER_REASON, decision.reason)
+            return response
+        }
+
+        /**
+         * Run the inference locally and return the final
+         * [JobLifecycle.Outcome] so the HTTP caller can record it.
+         */
+        private fun runLocal(req: InferRequest, sink: java.io.OutputStream): JobLifecycle.Outcome {
+            // runBlocking because the inference loop is a suspend
+            // function but NanoHTTPD's serve() is plain. The SSE
+            // writer thread is dedicated; blocking it is fine.
+            return runBlocking {
                 val result = coordinator.infer(
                     InferenceRequest(
                         prompt = req.prompt,
@@ -228,15 +278,14 @@ class InferenceHttpServer(
                         repeatPenalty = req.repeatPenalty,
                         stopSequences = req.stopSequences,
                         seed = req.seed,
-                        onToken = { token ->
-                            anyToken = true
-                            emitEvent(SseEvents.TOKEN, InferTokenEvent(text = token))
-                        },
+                        onToken = { token -> emitEvent(sink, SseEvents.TOKEN, InferTokenEvent(text = token)) },
                     ),
                 )
+                sink.flush()
                 when (result) {
                     is MeshlitResult.Success -> {
                         emitEvent(
+                            sink,
                             SseEvents.DONE,
                             InferDoneEvent(
                                 finishReason = result.value.finishReason.tag,
@@ -245,57 +294,98 @@ class InferenceHttpServer(
                                 tokensPerSecond = result.value.tokensPerSecond,
                             ),
                         )
+                        JobLifecycle.Outcome.Success(
+                            generatedTokens = result.value.generatedTokens,
+                            tokensPerSecond = result.value.tokensPerSecond,
+                        )
                     }
                     is MeshlitResult.Failure -> {
                         emitEvent(
+                            sink,
                             SseEvents.ERROR,
                             InferErrorEvent(tag = result.error.tag, message = result.error.message ?: ""),
                         )
+                        JobLifecycle.Outcome.Failure(
+                            tag = result.error.tag,
+                            message = result.error.message ?: "",
+                        )
                     }
                 }
-                flush()
-                log.info(
-                    "http.infer.local",
-                    "/v1/infer local completed",
-                    mapOf(
-                        "anyToken" to anyToken,
-                        "ms" to (System.currentTimeMillis() - started),
-                    ),
-                )
-            } else {
-                val started = System.currentTimeMillis()
-                val outcome = forwarder.forwardAndStream(
+            }
+        }
+
+        private fun runForward(
+            peer: String,
+            req: InferRequest,
+            hints: RequestHints?,
+            sink: java.io.OutputStream,
+        ): JobLifecycle.Outcome {
+            return runBlocking {
+                var capturedTokens = 0
+                var lastTps = 0f
+                var capturedTag: String? = null
+                var capturedMsg: String? = null
+                forwarder.forwardAndStream(
                     peerBaseUrl = peer,
                     request = req,
                     hints = hints,
-                    onToken = { ev -> emitEvent(SseEvents.TOKEN, ev) },
-                    onDone = { ev -> emitEvent(SseEvents.DONE, ev) },
-                    onError = { ev -> emitEvent(SseEvents.ERROR, ev) },
+                    onToken = { ev -> emitEvent(sink, SseEvents.TOKEN, ev) },
+                    onDone = { ev ->
+                        capturedTokens = ev.generatedTokens
+                        lastTps = ev.tokensPerSecond
+                        emitEvent(sink, SseEvents.DONE, ev)
+                    },
+                    onError = { ev ->
+                        capturedTag = ev.tag
+                        capturedMsg = ev.message
+                        emitEvent(sink, SseEvents.ERROR, ev)
+                    },
                 )
-                flush()
-                if (outcome.isSuccess) {
-                    log.info(
-                        "http.infer.forward.ok",
-                        "/v1/infer forward ok",
-                        mapOf("peer" to peer, "ms" to (System.currentTimeMillis() - started)),
-                    )
+                sink.flush()
+                if (capturedTag != null) {
+                    JobLifecycle.Outcome.Failure(capturedTag!!, capturedMsg ?: "")
                 } else {
-                    log.warn(
-                        "http.infer.forward.fail",
-                        "/v1/infer forward failed",
-                        mapOf(
-                            "peer" to peer,
-                            "ms" to (System.currentTimeMillis() - started),
-                            "err" to (outcome.exceptionOrNull()?.message.orEmpty()),
-                        ),
-                    )
+                    JobLifecycle.Outcome.Success(capturedTokens, lastTps)
                 }
+            }
+        }
+
+        private fun emitEvent(sink: java.io.OutputStream, name: String, payload: Any) {
+            val jsonBody = when (payload) {
+                is InferTokenEvent -> Json.encodeToString(InferTokenEvent.serializer(), payload)
+                is InferDoneEvent -> Json.encodeToString(InferDoneEvent.serializer(), payload)
+                is InferErrorEvent -> Json.encodeToString(InferErrorEvent.serializer(), payload)
+                else -> error("no serializer for ${payload::class}")
+            }
+            val line = "event: $name\ndata: $jsonBody\n\n"
+            synchronized(sink) {
+                sink.write(line.toByteArray(Charsets.UTF_8))
+                sink.flush()
+            }
+        }
+
+        private fun readBody(session: IHTTPSession): String {
+            val files = mutableMapOf<String, String>()
+            try {
+                session.parseBody(files)
+            } catch (t: Throwable) {
+                log.warn("http.infer.parse_body", "parseBody failed", mapOf("err" to (t.message ?: "")))
+            }
+            // POST JSON comes through as a "postData" parameter when
+            // the Content-Length is set and the body is small enough.
+            val direct = session.parameters["postData"]?.firstOrNull()
+            if (direct != null) return direct
+            // Fallback: read from input stream.
+            return try {
+                session.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
+            } catch (t: Throwable) {
+                ""
             }
         }
     }
 
     companion object {
-        /** Default port for the embedded server. Phase 1 hardcoded; Phase 2 picks from registry. */
+        /** Default port for the embedded server. */
         const val DEFAULT_PORT = 8080
 
         /** Bind address. 0.0.0.0 = reachable from the LAN; 127.0.0.1 = loopback only. */
@@ -305,5 +395,10 @@ class InferenceHttpServer(
         const val HEADER_FORWARDED = "X-Meshlit-Forwarded"
         const val HEADER_ROUTER_REASON = "X-Meshlit-Router-Reason"
         const val HEADER_HINTS = "X-Meshlit-Hints"
+
+        private val json = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+        }
     }
 }

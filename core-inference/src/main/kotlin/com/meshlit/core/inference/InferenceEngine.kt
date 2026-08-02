@@ -60,6 +60,25 @@ data class ModelLoadRequest(
     val threads: Int = 0,
     val useMmap: Boolean = true,
     val backendHints: BackendHints = BackendHints.CpuOnly,
+    /**
+     * Inclusive layer start for a sharded load. `0` is the default
+     * and means "load the embed + first layer". The JNI layer uses
+     * this to filter tensor descriptors before allocating buffers.
+     */
+    val layerStart: Int = 0,
+    /**
+     * Exclusive layer end. `Int.MAX_VALUE` means "all remaining
+     * layers". Pair with [layerStart] to load only your shard's
+     * slice of the GGUF.
+     */
+    val layerEnd: Int = Int.MAX_VALUE,
+    /**
+     * Shard manifest the load is part of. Required when
+     * [layerStart]/[layerEnd] restrict the load; optional otherwise.
+     * Carries KV cache size + tokenizer refs so the engine knows
+     * how much RAM to reserve and what vocab to load.
+     */
+    val manifest: com.meshlit.core.inference.net.ShardManifest? = null,
 )
 
 /** Per-backend hints gathered from the device profile. The engine
@@ -108,6 +127,12 @@ data class ModelInfo(
     val embeddingDim: Int,
     val sizeBytes: Long,
     val loadedAtMs: Long,
+    /** Inclusive layer start this device is hosting. `0` for a
+     *  whole-model load. Used by the `/v1/model` endpoint and the
+     *  planner to make sharding decisions. */
+    val layerStart: Int = 0,
+    /** Exclusive layer end. `Int.MAX_VALUE` for whole-model loads. */
+    val layerEnd: Int = Int.MAX_VALUE,
 )
 
 /** One inference call. The [onToken] callback fires for each generated

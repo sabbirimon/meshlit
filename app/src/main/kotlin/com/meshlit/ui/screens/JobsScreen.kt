@@ -5,6 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,18 +31,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -66,7 +80,9 @@ import com.meshlit.inference.RemoteInferenceClient
 import com.meshlit.inference.RemoteInferenceClientFactory
 import com.meshlit.inference.buildCancelIntent
 import com.meshlit.inference.buildInferIntent
+import com.meshlit.inference.buildLoadModelIntent
 import com.meshlit.inference.defaultRequestHints
+import com.meshlit.ui.motion.MeshlitMotion
 import kotlinx.coroutines.launch
 
 /**
@@ -87,8 +103,11 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JobsScreen() {
+fun JobsScreen(
+    onOpenDrawer: () -> Unit = {},
+) {
     val context = LocalContext.current
+    val app = remember(context) { context.applicationContext as com.meshlit.MeshlitApplication }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -199,7 +218,13 @@ fun JobsScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.screen_jobs)) })
+            com.meshlit.ui.components.MeshlitHeader(
+                title = stringResource(R.string.screen_jobs),
+                subtitle = if (currentReply.value != null) "generating…" else null,
+                tier = (context.applicationContext as com.meshlit.MeshlitApplication).capabilityTier,
+                active = currentReply.value != null,
+                onOpenDrawer = onOpenDrawer,
+            )
         },
     ) { innerPadding ->
         Column(
@@ -207,6 +232,53 @@ fun JobsScreen() {
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            // Stub banner — only visible when the engine is the demo
+            // stub. Tells the user up front that replies are
+            // placeholders, so the streaming bubble below doesn't
+            // look like a broken model.
+            val isStub = remember { app.inferenceCoordinator.engineTag == "stub" }
+            AnimatedVisibility(
+                visible = isStub,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.jobs_stub_banner),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
+            }
+
+            // Controls row: model picker + Start/Stop service toggle.
+            // The picker lists bundled + imported GGUFs; tapping a row
+            // dispatches `buildLoadModelIntent` to the FGS. The toggle
+            // button label flips between "Start" and "Stop" based on
+            // the live `CoordinatorState`.
+            ControlsRow(
+                app = app,
+                state = coordinatorState,
+                onLoadModel = { path ->
+                    context.startService(buildLoadModelIntent(context, path))
+                },
+                onStart = {
+                    runCatching {
+                        InferenceForegroundService.startForInference(context)
+                    }
+                },
+                onStop = {
+                    InferenceForegroundService.stop(context)
+                },
+            )
+
             // Status card
             StatusCard(
                 state = coordinatorState,
@@ -430,18 +502,41 @@ private fun StatusCard(
             Column(modifier = Modifier
                 .weight(1f)
                 .padding(start = 12.dp)) {
-                Text(
-                    text = state?.let { describeState(it) } ?: stringResource(R.string.jobs_status_idle),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    text = when (state) {
-                        is com.meshlit.core.inference.CoordinatorState.Ready ->
-                            state.model.modelName + " · ${state.model.parameterCount / 1_000_000}M params"
-                        else -> stringResource(R.string.jobs_engine_stub_hint)
+                // Crossfade the title + subtitle as `state` changes so
+                // the card doesn't snap between "Loading…" → "Ready"
+                // → "Generating…" without a transition.
+                val stateKey = state?.let { describeState(it) }
+                    ?: stringResource(R.string.jobs_status_idle)
+                AnimatedContent(
+                    targetState = stateKey,
+                    transitionSpec = {
+                        (fadeIn() + slideInVertically { it / 2 })
+                            .togetherWith(fadeOut() + slideOutVertically { -it / 2 })
                     },
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                    label = "jobs-status-title",
+                ) { value ->
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                }
+                AnimatedContent(
+                    targetState = state,
+                    transitionSpec = {
+                        (fadeIn() + slideInVertically { it / 2 })
+                            .togetherWith(fadeOut() + slideOutVertically { -it / 2 })
+                    },
+                    label = "jobs-status-subtitle",
+                ) { s ->
+                    Text(
+                        text = when (s) {
+                            is com.meshlit.core.inference.CoordinatorState.Ready ->
+                                s.model.modelName + " · ${s.model.parameterCount / 1_000_000}M params"
+                            else -> stringResource(R.string.jobs_engine_stub_hint)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
             IconButton(onClick = onRefresh) {
                 Icon(
@@ -563,5 +658,123 @@ private suspend fun dispatchRemote(
     )
     if (result is MeshlitResult.Failure) {
         onEvent(RemoteEvent.Error(result.error.tag))
+    }
+}
+
+/**
+ * Top-of-screen controls: an OutlinedButton ("Model") that opens a
+ * dropdown of every available GGUF (bundled + imported + custom
+ * override), plus a primary FilledTonalButton that flips between
+ * "Start" and "Stop" depending on the live `CoordinatorState`.
+ *
+ * No persistence here — picking a model dispatches `buildLoadModelIntent`
+ * to the FGS, which is the single source of truth for the active model.
+ * The dropdown is rebuilt each time it opens so freshly imported GGUFs
+ * show up without a screen-level refresh.
+ */
+@Composable
+private fun ControlsRow(
+    app: MeshlitApplication,
+    state: com.meshlit.core.inference.CoordinatorState?,
+    onLoadModel: (String) -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+) {
+    val pickerEntries = remember {
+        buildList<Pair<String, String>> {
+            // Bundled model — only listed if it has been extracted.
+            app.bundledModelPath()?.let { bundled ->
+                val name = bundled.name
+                add("Bundled · $name" to bundled.absolutePath)
+            }
+            // Imported models from the catalog.
+            com.meshlit.models.ModelCatalog.importedFiles(app).forEach { f ->
+                add(f.name.replaceAfterLast('.', "gguf").removeSuffix(".gguf") to f.absolutePath)
+            }
+            // Custom override path (if set and not already listed).
+            val customPath = app.settingsRepository.customModelPathSync()
+            if (customPath.isNotBlank() && none { it.second == customPath }) {
+                val file = java.io.File(customPath)
+                if (file.exists()) {
+                    add(file.name to customPath)
+                }
+            }
+        }
+    }
+    var menuOpen by remember { mutableStateOf(false) }
+    val isRunning = state is com.meshlit.core.inference.CoordinatorState.Loading ||
+        state is com.meshlit.core.inference.CoordinatorState.Generating
+    val isLive = state is com.meshlit.core.inference.CoordinatorState.Ready ||
+        state is com.meshlit.core.inference.CoordinatorState.Generating
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = { menuOpen = true },
+                enabled = pickerEntries.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.jobs_model_picker_label),
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                )
+                Icon(
+                    imageVector = Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                )
+            }
+            DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { menuOpen = false },
+            ) {
+                if (pickerEntries.isEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.jobs_model_no_models)) },
+                        onClick = { menuOpen = false },
+                    )
+                }
+                pickerEntries.forEach { (label, path) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            menuOpen = false
+                            onLoadModel(path)
+                        },
+                    )
+                }
+            }
+        }
+        // Animated label flip between "Start" and "Stop".
+        AnimatedContent(
+            targetState = if (isLive) "stop" else "start",
+            transitionSpec = {
+                (fadeIn() + slideInVertically { it / 2 })
+                    .togetherWith(fadeOut() + slideOutVertically { -it / 2 })
+            },
+            label = "jobs-service-toggle",
+        ) { which ->
+            if (which == "stop") {
+                FilledTonalButton(
+                    onClick = onStop,
+                    enabled = state is com.meshlit.core.inference.CoordinatorState.Ready ||
+                        state is com.meshlit.core.inference.CoordinatorState.Generating,
+                ) {
+                    Text(stringResource(R.string.jobs_service_stop))
+                }
+            } else {
+                FilledTonalButton(
+                    onClick = onStart,
+                    enabled = !isRunning,
+                ) {
+                    Text(stringResource(R.string.jobs_service_start))
+                }
+            }
+        }
     }
 }

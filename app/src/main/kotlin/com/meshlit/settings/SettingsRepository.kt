@@ -8,12 +8,18 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.meshlit.core.common.EndpointProtocol
+import com.meshlit.core.common.NetworkScope
+import com.meshlit.core.common.RemoteEndpoint
 import com.meshlit.ui.theme.AccentHue
 import com.meshlit.ui.theme.BasePalette
 import com.meshlit.ui.theme.MeshlitThemeConfig
 import com.meshlit.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 /**
  * Persistent settings storage. Backed by DataStore (Preferences
@@ -50,6 +56,102 @@ class SettingsRepository(private val context: Context) {
 
     /** Empty string == no override (bundled model is used). */
     val customModelPathFlow: Flow<String> = store.data.map { it[Keys.customModelPath] ?: "" }
+
+    // --- Network-scope feature ------------------------------------------
+    //
+    // The user can flip between five scopes (LOCAL, INTERNET, VPN,
+    // GROUP, CUSTOM). We persist the active scope, the list of
+    // manually-added endpoints, and which one is currently selected
+    // as the "primary" target. The default scope is GROUP so first-
+    // run users get a privacy-preserving configuration without
+    // doing anything.
+
+    val networkScopeFlow: Flow<NetworkScope> = store.data.map { prefs ->
+        NetworkScope.entries.firstOrNull { it.name == prefs[Keys.networkScope] }
+            ?: NetworkScope.Default
+    }
+
+    val remoteEndpointsFlow: Flow<List<RemoteEndpoint>> = store.data.map { prefs ->
+        decodeEndpoints(prefs[Keys.remoteEndpoints])
+    }
+
+    val activeEndpointIdFlow: Flow<String> = store.data.map { prefs ->
+        prefs[Keys.activeEndpointId] ?: ""
+    }
+
+    suspend fun setNetworkScope(scope: NetworkScope) {
+        store.edit { it[Keys.networkScope] = scope.name }
+    }
+
+    suspend fun setActiveEndpoint(id: String) {
+        store.edit { it[Keys.activeEndpointId] = id }
+    }
+
+    /**
+     * Insert or update an endpoint by [RemoteEndpoint.id]. Preserves
+     * `lastSeenMs` and `addedAtMs` if the endpoint already exists so
+     * the trust state and timestamps survive edits.
+     */
+    suspend fun upsertEndpoint(endpoint: RemoteEndpoint) {
+        store.edit { prefs ->
+            val current = decodeEndpoints(prefs[Keys.remoteEndpoints]).toMutableList()
+            val existingIdx = current.indexOfFirst { it.id == endpoint.id }
+            val now = System.currentTimeMillis()
+            val merged = if (existingIdx >= 0) {
+                val prior = current[existingIdx]
+                current[existingIdx] = endpoint.copy(
+                    addedAtMs = if (prior.addedAtMs == 0L) now else prior.addedAtMs,
+                    lastSeenMs = if (endpoint.lastSeenMs == 0L) prior.lastSeenMs else endpoint.lastSeenMs,
+                )
+            } else {
+                endpoint.copy(addedAtMs = if (endpoint.addedAtMs == 0L) now else endpoint.addedAtMs)
+            }
+            prefs[Keys.remoteEndpoints] = encodeEndpoints(current)
+        }
+    }
+
+    suspend fun removeEndpoint(id: String) {
+        store.edit { prefs ->
+            val current = decodeEndpoints(prefs[Keys.remoteEndpoints])
+                .filter { it.id != id }
+            prefs[Keys.remoteEndpoints] = encodeEndpoints(current)
+            if (prefs[Keys.activeEndpointId] == id) {
+                prefs.remove(Keys.activeEndpointId)
+            }
+        }
+    }
+
+    suspend fun markEndpointSeen(id: String) {
+        store.edit { prefs ->
+            val now = System.currentTimeMillis()
+            val current = decodeEndpoints(prefs[Keys.remoteEndpoints]).map { ep ->
+                if (ep.id == id) ep.copy(lastSeenMs = now) else ep
+            }
+            prefs[Keys.remoteEndpoints] = encodeEndpoints(current)
+        }
+    }
+
+    suspend fun trustEndpoint(id: String, trusted: Boolean) {
+        store.edit { prefs ->
+            val current = decodeEndpoints(prefs[Keys.remoteEndpoints]).map { ep ->
+                if (ep.id == id) ep.copy(trusted = trusted) else ep
+            }
+            prefs[Keys.remoteEndpoints] = encodeEndpoints(current)
+        }
+    }
+
+    /**
+     * Synchronous read of the user's custom model path. Used by the
+     * foreground service's auto-load path so it doesn't have to
+     * subscribe to the flow just to make a one-time decision at
+     * startup. Returns an empty string if no custom path is set.
+     *
+     * Wrapped in [runBlocking] because DataStore is async-only; the
+     * FGS startup is already on a coroutine scope so this is cheap.
+     */
+    fun customModelPathSync(): String = runCatching {
+        kotlinx.coroutines.runBlocking { customModelPathFlow.first() }
+    }.getOrDefault("")
 
     suspend fun setAccentHue(hue: AccentHue) {
         store.edit { it[Keys.accentHue] = hue.name }
@@ -93,6 +195,16 @@ class SettingsRepository(private val context: Context) {
         store.edit { it.clear() }
     }
 
+    private fun decodeEndpoints(raw: String?): List<RemoteEndpoint> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return runCatching {
+            json.decodeFromString(ListSerializer(RemoteEndpoint.serializer()), raw)
+        }.getOrDefault(emptyList())
+    }
+
+    private fun encodeEndpoints(endpoints: List<RemoteEndpoint>): String =
+        json.encodeToString(ListSerializer(RemoteEndpoint.serializer()), endpoints)
+
     private object Keys {
         val accentHue = stringPreferencesKey("theme.accent_hue")
         val basePalette = stringPreferencesKey("theme.base_palette")
@@ -102,6 +214,16 @@ class SettingsRepository(private val context: Context) {
         val animationsEnabled = booleanPreferencesKey("theme.animations_enabled")
         val highContrast = booleanPreferencesKey("theme.high_contrast")
         val customModelPath = stringPreferencesKey("model.custom_path")
+        val networkScope = stringPreferencesKey("network.scope")
+        val remoteEndpoints = stringPreferencesKey("network.remote_endpoints")
+        val activeEndpointId = stringPreferencesKey("network.active_endpoint_id")
+    }
+
+    companion object {
+        private val json = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+        }
     }
 }
 

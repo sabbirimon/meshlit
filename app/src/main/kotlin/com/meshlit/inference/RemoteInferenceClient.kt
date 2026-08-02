@@ -11,84 +11,69 @@ import com.meshlit.core.inference.net.InferRequest
 import com.meshlit.core.inference.net.InferTokenEvent
 import com.meshlit.core.inference.net.ModelStateResponse
 import com.meshlit.core.inference.net.SseEvents
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.HttpRequestTimeoutException
-import io.ktor.client.request.get
-import io.ktor.client.request.headers
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 
 /**
  * Single-use HTTP/SSE client for talking to one peer. Construct via
  * [RemoteInferenceClientFactory.build]; the factory owns the shared
- * [HttpClient] so we don't open multiple engines.
+ * [OkHttpClient] so we don't open multiple engines.
+ *
+ * We use OkHttp directly (not Ktor client) because Ktor 3's bytecode
+ * requires DEX 040 (default from API 33) which would break the
+ * user-mandated `minSdk = 23` floor. OkHttp is pure-Java and dexes
+ * everywhere.
  *
  * Each [streamInfer] call opens one HTTP request and reads the SSE
  * stream to completion. Errors are caught and returned as
- * [MeshlitResult.Failure] — no exceptions leak to callers, which is
- * the cluster contract: every node can vanish mid-call.
+ * [MeshlitResult.Failure] — no exceptions leak to callers.
  *
- * Lifetime: a single [streamInfer] call. The [HttpClient] it borrows
- * from the factory is shared across all calls; closing happens on
- * factory shutdown (FGS `onDestroy`).
+ * SSE parsing: we use a true line-streaming reader that fires
+ * callbacks as soon as a complete event is parsed, instead of
+ * buffering the whole body.
  */
 class RemoteInferenceClient internal constructor(
     private val baseUrl: String,
-    private val client: HttpClient,
+    private val client: OkHttpClient,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
     private val log = logger("RemoteInferenceClient")
 
-    /**
-     * Hit `GET /v1/health`. Returns a [MeshlitResult] so the caller
-     * can react without try/catch.
-     */
     suspend fun health(): MeshlitResult<HealthResponse> = withContext(dispatcher) {
         runCall("health") {
-            val resp: HttpResponse = client.get("$baseUrl/v1/health")
-            json.decodeFromString(HealthResponse.serializer(), resp.bodyAsText())
+            val req = Request.Builder()
+                .url("$baseUrl/v1/health")
+                .get()
+                .build()
+            client.newCall(req).execute().use { resp ->
+                resp.requireOk("health")
+                json.decodeFromString(HealthResponse.serializer(), resp.body!!.string())
+            }
         }
     }
 
-    /**
-     * Hit `GET /v1/model`. Returns a [MeshlitResult].
-     */
     suspend fun modelState(): MeshlitResult<ModelStateResponse> = withContext(dispatcher) {
         runCall("modelState") {
-            val resp: HttpResponse = client.get("$baseUrl/v1/model")
-            json.decodeFromString(ModelStateResponse.serializer(), resp.bodyAsText())
+            val req = Request.Builder()
+                .url("$baseUrl/v1/model")
+                .get()
+                .build()
+            client.newCall(req).execute().use { resp ->
+                resp.requireOk("modelState")
+                json.decodeFromString(ModelStateResponse.serializer(), resp.body!!.string())
+            }
         }
     }
 
-    /**
-     * Stream one inference. Opens a POST to `/v1/infer`, parses SSE
-     * events as they arrive, and fires:
-     *  - [onToken] per `event: token`
-     *  - [onDone]  on `event: done`
-     *  - [onError] on `event: error`
-     *
-     * If [hints] is non-null, the `X-Meshlit-Hints` header is set so
-     * the server-side router can decide whether to serve locally or
-     * forward to another peer.
-     *
-     * Implementation note: Ktor 3 + kotlinx-io makes per-byte SSE
-     * parsing awkward without internal APIs. For Phase 1 we read the
-     * whole body as text and parse the well-formed SSE block; the
-     * server flushes per event so a long-running inference still
-     * looks like "tokens arrived" to the user, just delayed by the
-     * final HTTP close. Phase 2 swaps in a streaming reader.
-     */
     suspend fun streamInfer(
         request: InferRequest,
         hints: RequestHints? = null,
@@ -97,26 +82,29 @@ class RemoteInferenceClient internal constructor(
         onError: suspend (InferErrorEvent) -> Unit,
     ): MeshlitResult<Unit> = withContext(dispatcher) {
         try {
-            val response: HttpResponse = client.post("$baseUrl/v1/infer") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-                hints?.let { h ->
-                    headers {
-                        append(InferenceHttpServer.HEADER_HINTS, h.toHeaderValue())
-                    }
+            val body = json.encodeToString(InferRequest.serializer(), request)
+                .toRequestBody(JSON_MEDIA)
+            val reqBuilder = Request.Builder()
+                .url("$baseUrl/v1/infer")
+                .post(body)
+            hints?.let { reqBuilder.header(InferenceHttpServer.HEADER_HINTS, it.toHeaderValue()) }
+            client.newCall(reqBuilder.build()).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    val tag = "peer.status.${resp.code}"
+                    log.warn("streamInfer.bad_status", "non-OK status", mapOf("status" to resp.code))
+                    return@withContext MeshlitResult.Failure(MeshlitError.Network(tag))
                 }
+                val source = resp.body?.source()
+                if (source == null) {
+                    log.warn("streamInfer.empty_body", "peer returned empty body")
+                    return@withContext MeshlitResult.Failure(MeshlitError.Network("peer.empty_body"))
+                }
+                parseSse(source, onToken, onDone, onError)
+                MeshlitResult.Success(Unit)
             }
-            if (response.status != HttpStatusCode.OK) {
-                val tag = "peer.status.${response.status.value}"
-                log.warn("streamInfer.bad_status", "non-OK status", mapOf("status" to response.status.value))
-                return@withContext MeshlitResult.Failure(MeshlitError.Network(tag))
-            }
-            val body = response.bodyAsText()
-            parseSse(body, onToken, onDone, onError)
-            MeshlitResult.Success(Unit)
         } catch (ce: CancellationException) {
-            throw ce  // cooperative cancellation
-        } catch (t: HttpRequestTimeoutException) {
+            throw ce
+        } catch (t: java.net.SocketTimeoutException) {
             log.warn("streamInfer.timeout", "peer request timed out", mapOf("err" to (t.message ?: "")))
             MeshlitResult.Failure(MeshlitError.Network("peer.timeout"))
         } catch (t: Throwable) {
@@ -125,26 +113,18 @@ class RemoteInferenceClient internal constructor(
         }
     }
 
-    /**
-     * SSE parser. Walks the [body] line by line. SSE events come as:
-     *
-     *     event: <name>\n
-     *     data: <json>\n
-     *     \n
-     *
-     * We accumulate per-event fields, then dispatch when we see the
-     * blank line.
-     */
     private suspend fun parseSse(
-        body: String,
+        source: okio.BufferedSource,
         onToken: suspend (InferTokenEvent) -> Unit,
         onDone: suspend (InferDoneEvent) -> Unit,
         onError: suspend (InferErrorEvent) -> Unit,
     ) {
         var pendingEvent: String? = null
         val pendingData = StringBuilder()
-        for (rawLine in body.split(Regex("\r\n|\n|\r"))) {
-            val line = rawLine
+        // OkHttp's BufferedSource exposes readUtf8Line which respects
+        // both \n and \r\n — perfect for SSE.
+        while (!source.exhausted()) {
+            val line = source.readUtf8Line() ?: break
             when {
                 line.isEmpty() -> {
                     val name = pendingEvent
@@ -163,14 +143,9 @@ class RemoteInferenceClient internal constructor(
                     if (pendingData.isNotEmpty()) pendingData.append('\n')
                     pendingData.append(piece.trimStart())
                 }
-                line.startsWith(":") -> {
-                    // SSE comment line; ignore.
-                }
-                // Anything else (e.g. id:, retry:) is irrelevant for
-                // our wire.
+                line.startsWith(":") -> { /* SSE comment */ }
             }
         }
-        // Flush any trailing event without a terminator.
         val name = pendingEvent
         val data = pendingData.toString()
         if (name != null && data.isNotEmpty()) {
@@ -190,7 +165,6 @@ class RemoteInferenceClient internal constructor(
                 SseEvents.TOKEN -> onToken(json.decodeFromString(InferTokenEvent.serializer(), data))
                 SseEvents.DONE -> onDone(json.decodeFromString(InferDoneEvent.serializer(), data))
                 SseEvents.ERROR -> onError(json.decodeFromString(InferErrorEvent.serializer(), data))
-                // Unknown event: log and ignore.
                 else -> log.info("sse.unknown", "unknown event name", mapOf("name" to name))
             }
         } catch (t: Throwable) {
@@ -198,10 +172,6 @@ class RemoteInferenceClient internal constructor(
         }
     }
 
-    /**
-     * Convenience helper to run a typed GET, returning a typed
-     * MeshlitResult.
-     */
     private suspend inline fun <T> runCall(
         label: String,
         block: () -> T,
@@ -210,7 +180,7 @@ class RemoteInferenceClient internal constructor(
             return MeshlitResult.Success(block())
         } catch (ce: CancellationException) {
             throw ce
-        } catch (t: HttpRequestTimeoutException) {
+        } catch (t: java.net.SocketTimeoutException) {
             log.warn("$label.timeout", "peer request timed out", mapOf("err" to (t.message ?: "")))
             return MeshlitResult.Failure(MeshlitError.Network("peer.$label.timeout"))
         } catch (t: Throwable) {
@@ -219,7 +189,16 @@ class RemoteInferenceClient internal constructor(
         }
     }
 
+    private fun Response.requireOk(label: String) {
+        if (!isSuccessful) {
+            val tag = "peer.$label.status.${code}"
+            log.warn("$label.bad_status", "non-OK status", mapOf("status" to code))
+            throw MeshlitError.Network(tag) as Throwable
+        }
+    }
+
     companion object {
+        private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
         private val json = Json {
             ignoreUnknownKeys = true
             encodeDefaults = true

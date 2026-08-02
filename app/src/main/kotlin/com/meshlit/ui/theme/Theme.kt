@@ -1,9 +1,13 @@
 package com.meshlit.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Meshlit theme entry point. Reads the user-configured
@@ -13,6 +17,12 @@ import androidx.compose.runtime.CompositionLocalProvider
  * [MeshlitThemeConfig] via CompositionLocalProvider so descendants
  * can read both the resolved colors and the raw config.
  *
+ * Dynamic color (Android 12+ / Material You): when the user hasn't
+ * picked a custom accent palette we sample the system wallpaper
+ * palette via [dynamicLightColorScheme] / [dynamicDarkColorScheme].
+ * Users with the curated Meshlit palette bypass this so the brand
+ * stays recognizable.
+ *
  * For previews and tests, use [MeshlitTheme] with an explicit config.
  */
 @Composable
@@ -21,6 +31,9 @@ fun MeshlitTheme(
     content: @Composable () -> Unit,
 ) {
     val systemDark = isSystemInDarkTheme()
+    val useDynamicColor = config.basePalette == BasePalette.MIDNIGHT &&
+        config.accentHue == AccentHue.MESHLIT &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val effectiveConfig = when (config.themeMode) {
         ThemeMode.SYSTEM -> config.copy(
             basePalette = if (systemDark) config.basePalette
@@ -39,7 +52,13 @@ fun MeshlitTheme(
             else config
         }
     }
-    val colorScheme = buildColorScheme(effectiveConfig)
+    val context = LocalContext.current
+    val colorScheme = if (useDynamicColor) {
+        if (systemDark) dynamicDarkColorScheme(context)
+        else dynamicLightColorScheme(context)
+    } else {
+        buildColorScheme(effectiveConfig)
+    }
     CompositionLocalProvider(LocalMeshlitThemeConfig provides effectiveConfig) {
         MaterialTheme(
             colorScheme = colorScheme,

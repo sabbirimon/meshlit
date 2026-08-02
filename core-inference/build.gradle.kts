@@ -7,6 +7,12 @@ android {
     compileSdk = 37
     defaultConfig { minSdk = 23 }
     namespace = "com.meshlit.core.inference"
+
+    // Bundled GGUFs are uncompressed inside the APK so llama.cpp can
+    // mmap them directly via AAsset_openFileDescriptor.
+    androidResources {
+        noCompress += "gguf"
+    }
 }
 
 dependencies {
@@ -14,13 +20,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.core.ktx)
 
-    // Embedded HTTP/SSE inference server. Netty engine is the Ktor 3
-    // default; ships with `ktor-server-core`. Phase 1 stays in-process.
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.netty)
-    implementation(libs.ktor.server.content.negotiation)
-    implementation(libs.ktor.server.sse)
-    implementation(libs.ktor.serialization.kotlinx.json)
+    // Embedded HTTP/SSE inference server. We use NanoHTTPD (pure-Java)
+    // instead of Ktor 3 because Ktor's bytecode requires DEX 040
+    // output (default from API 33) which would block the user's
+    // minSdk = 23 floor.
+    implementation(libs.nanohttpd.core)
+
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)

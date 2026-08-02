@@ -108,6 +108,11 @@ dependencies {
     // DEX 040 bytecode from API 33.
     implementation(libs.okhttp.core)
 
+    // QR pairing code generation. The core artifact is pure Java and
+    // only adds the QR encoder; scanning is delegated to any installed
+    // barcode-scanner app with a manual paste fallback.
+    implementation(libs.zxing.core)
+
     // Core-library desugaring: required for java.time + ConcurrentHashMap
     // on Android 6/7.
     coreLibraryDesugaring(libs.desugar.jdk.libs)

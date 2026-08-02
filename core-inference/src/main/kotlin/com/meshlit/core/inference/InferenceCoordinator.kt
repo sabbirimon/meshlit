@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * Owns the singleton [InferenceEngine] instance for the lifetime of
@@ -68,6 +69,19 @@ class InferenceCoordinator(
     private val _state = MutableStateFlow<CoordinatorState>(CoordinatorState.Idle)
     val state: StateFlow<CoordinatorState> = _state.asStateFlow()
 
+    /**
+     * Phase 2 — the shard refs this device is currently hosting.
+     * Backed by the coordinator's `loadedShards` field; updated by
+     * `loadModel(..., manifest = ...)` when a sharded load completes.
+     *
+     * Empty for whole-model loads. Each entry maps 1:1 onto a
+     * `ShardRef` and is replicated on the wire via `/v1/model`
+     * `shardRanges` so the planner can pick a replacement peer
+     * without an out-of-band query.
+     */
+    private val _loadedShards = MutableStateFlow<List<com.meshlit.core.inference.net.ShardRef>>(emptyList())
+    val loadedShards: StateFlow<List<com.meshlit.core.inference.net.ShardRef>> = _loadedShards.asStateFlow()
+
     private val _events = MutableSharedFlow<InferenceEvent>(extraBufferCapacity = 64)
     val events: SharedFlow<InferenceEvent> = _events.asSharedFlow()
 
@@ -91,12 +105,22 @@ class InferenceCoordinator(
      * Load a model. Wraps [InferenceEngine.loadModel] and updates
      * [state]. The caller passes a [BackendHints] derived from
      * the device profile (chipset, GPU, eGPU).
+     *
+     * Phase 2 extension:
+     *  - [layerStart] / [layerEnd] restrict the load to a single
+     *    shard's layer range. `layerEnd = Int.MAX_VALUE` means
+     *    "all remaining layers" (the default for whole-model loads).
+     *  - [manifest] carries KV cache + tokenizer metadata for the
+     *    load. Engines that aren't shard-aware can ignore it.
      */
     suspend fun loadModel(
         modelPath: String,
         contextSize: Int = 4096,
         gpuLayers: Int = 0,
         hints: BackendHints = BackendHints.CpuOnly,
+        layerStart: Int = 0,
+        layerEnd: Int = Int.MAX_VALUE,
+        manifest: com.meshlit.core.inference.net.ShardManifest? = null,
     ): MeshlitResult<ModelInfo> {
         _state.value = CoordinatorState.Loading(modelPath)
         _events.tryEmit(InferenceEvent.LoadStarted(modelPath))
@@ -105,12 +129,31 @@ class InferenceCoordinator(
             contextSize = contextSize,
             gpuLayers = gpuLayers,
             backendHints = hints,
+            layerStart = layerStart,
+            layerEnd = layerEnd,
+            manifest = manifest,
         )
         val result = engine.loadModel(request)
         _state.value = when (result) {
             is MeshlitResult.Success -> CoordinatorState.Ready(result.value)
             is MeshlitResult.Failure -> CoordinatorState.Error(result.error.tag)
         }
+        _loadedShards.value = if (result is MeshlitResult.Success && manifest != null) {
+            // The coordinator is hosting one slice of the manifest.
+            // Surface it so the planner can route follow-on work here.
+            val role = manifest.shards.firstOrNull {
+                it.layerStart == layerStart && it.layerEnd == layerEnd
+            }?.stageRole ?: com.meshlit.core.inference.net.StageRole.MiddleStage(0)
+            listOf(
+                com.meshlit.core.inference.net.ShardRef(
+                    modelId = manifest.modelId,
+                    layerStart = layerStart,
+                    layerEnd = if (layerEnd == Int.MAX_VALUE) manifest.totalLayers else layerEnd,
+                    stageRole = role,
+                    sha256 = manifest.modelSha256,
+                ),
+            )
+        } else emptyList()
         _events.tryEmit(
             when (result) {
                 is MeshlitResult.Success -> InferenceEvent.LoadSucceeded(result.value)
@@ -145,14 +188,20 @@ class InferenceCoordinator(
                     startedAtMs = System.currentTimeMillis(),
                 )
                 _events.tryEmit(InferenceEvent.GenerationStarted(request.prompt))
-                val job = scope.launch {
-                    val result = engine.infer(request)
-                    _events.tryEmit(InferenceEvent.GenerationFinished(result))
-                    _state.value = CoordinatorState.Ready(engine.loadedModel()!!)
-                }
-                currentJob = job
+                // Run inference directly on the caller's coroutine so
+                // [cancel] (which cancels the FGS-bound job) propagates
+                // through `coroutineContext.ensureActive()` in the
+                // engine's per-token loop. We used to wrap this in
+                // `scope.launch` *and* call engine.infer inline, which
+                // fired every onToken callback twice — visible to the
+                // user as duplicated agent replies.
+                currentJob = coroutineContext[Job]
                 try {
                     val result = engine.infer(request)
+                    _events.tryEmit(InferenceEvent.GenerationFinished(result))
+                    if (engine.isReady()) {
+                        _state.value = CoordinatorState.Ready(engine.loadedModel()!!)
+                    }
                     result
                 } finally {
                     currentJob = null

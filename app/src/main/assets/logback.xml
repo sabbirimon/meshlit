@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  logback-android config for Meshlit.
+
+  Emits to logcat for `adb logcat Meshlit:V *:S`. The in-memory ring
+  buffer used by `LogScreen` is fed separately by
+  `AppLoggerFactory.appLogger(name)`, so this config deliberately
+  doesn't define a second appender.
+-->
+<configuration>
+    <appender name="logcat" class="ch.qos.logback.classic.android.LogcatAppender">
+        <tagEncoder>
+            <pattern>%logger{12}</pattern>
+        </tagEncoder>
+        <encoder>
+            <pattern>[%thread] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="logcat" />
+    </root>
+
+    <!-- Meshlit modules get INFO+ in logcat. -->
+    <logger name="com.meshlit" level="INFO" />
+    <logger name="MeshlitApplication" level="INFO" />
+    <logger name="InferenceHttpServer" level="INFO" />
+    <logger name="InferenceForegroundService" level="INFO" />
+    <logger name="PeerHealthCache" level="INFO" />
+    <logger name="MiniRouter" level="INFO" />
+    <logger name="RemoteInferenceClient" level="INFO" />
+    <logger name="RemoteInferenceClientFactory" level="INFO" />
+    <logger name="MetricsRegistry" level="INFO" />
+    <logger name="ForwardingProxy" level="INFO" />
+    <logger name="BundledModelInstaller" level="INFO" />
+</configuration>

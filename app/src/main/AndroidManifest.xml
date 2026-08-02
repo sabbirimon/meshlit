@@ -40,6 +40,24 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
+    <!-- Storage / media. Modern Android (13+) split media into per-type
+         grants; legacy READ/WRITE_EXTERNAL_STORAGE covers older devices.
+         Without these, the system Settings → Apps → Meshlit only shows 4
+         permission groups even though the app imports models from disk
+         and saves log/code exports. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Android 14+: lets the user grant "selected photos" instead of
+         full photo library access. Meshlit uses this when the Agent
+         screen lets the user attach an image to a prompt. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+
     <queries>
         <!-- For Wi-Fi Direct / Aware discovery on supporting devices. -->
         <intent>
@@ -77,6 +95,19 @@
             android:name=".inference.InferenceForegroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Phase M.4 — share exported log files via FileProvider so the
+             receiver app can read them. Authority must match the one used
+             by `LogScreen.exportLogs`. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

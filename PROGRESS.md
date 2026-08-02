@@ -10,6 +10,49 @@ skipped and why, what's next.
 
 ---
 
+## Current state — 2026-08-02
+
+**This session:**
+- Added a dedicated Claude-Code-style Agent tab with Chat / Code / Plan modes,
+  streaming responses, code-block extraction, Copy actions, Stop/Clear, and
+  Autopilot continuation.
+- Fixed the Agent "No model loaded" bug by making
+  `InferenceForegroundService` use the application-scoped
+  `InferenceCoordinator` instead of creating an isolated coordinator.
+- Added an Agent model-selection dropdown that lists the bundled GGUF,
+  imported GGUFs, and the saved custom-path override. Selecting a model calls
+  `InferenceCoordinator.loadModel(...)` directly.
+- Added real model import to the top-level Models tab: a `+ Import model` FAB
+  launches the Android Storage Access Framework, copies the selected GGUF into
+  `filesDir/imported-models/`, and persists it as the custom model path.
+- Diagnosed the "model repeats my question without spaces" report via ADB:
+  `/v1/health` reports `engineTag=stub`; no `libmeshlit_inference.so` is bundled.
+  The old `JvmStubInferenceEngine` intentionally echoed prompt tokens. It now
+  emits a clearly-labelled non-echo demo reply and has a regression unit test.
+  Real semantic answers still require the llama.cpp native bridge or a remote
+  model endpoint.
+- Added model/device network scopes: Local only, Internet, VPN/Tailscale,
+  selective group, and Custom endpoint. Endpoints persist in DataStore and
+  support Meshlit SSE, OpenAI-compatible, raw FTP, raw CDN, and custom
+  protocols.
+- Replaced the Devices stub with a full endpoint-management UI: manual
+  IP/port/URL paste, API-key field, trust toggle, active endpoint selection,
+  QR pairing generation, pairing-payload paste, and `+ Add` FAB.
+- Tightened the shared header (2 dp vertical padding, 40 dp menu target,
+  smaller title/subtitle typography) to remove excess top padding.
+- Added ZXing core for QR-code generation. No camera dependency is bundled;
+  QR scanning delegates to an installed scanner with text-paste fallback.
+- `./gradlew :app:assembleDebug` and `:core-inference:testDebugUnitTest` are
+  green. Updated APK installed successfully over ADB.
+
+**Known native-engine limitation:**
+- The shipped APK still uses `JvmStubInferenceEngine`; the bundled Qwen GGUF is
+  extracted and registered, but it is not executed by a real model runtime.
+  Phase 1 is not semantically complete until a llama.cpp JNI `.so` or a
+  compatible prebuilt AAR is integrated.
+
+---
+
 ## Current state — 2026-08-01
 
 **Phase:** Phase 0.5 complete. Phase 1 architecture + service + UI complete;

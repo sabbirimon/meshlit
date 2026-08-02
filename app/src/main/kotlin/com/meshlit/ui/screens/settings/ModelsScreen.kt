@@ -1,5 +1,14 @@
 package com.meshlit.ui.screens.settings
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,19 +17,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,6 +45,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -89,12 +107,44 @@ fun ModelsScreen(
                 },
             )
         },
+        floatingActionButton = {
+            val pickFile = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri != null) {
+                    val resolved = copyUriToInternal(app, uri)
+                    if (resolved != null) {
+                        pathField = resolved.absolutePath
+                        scope.launch {
+                            app.settingsRepository.setCustomModelPath(resolved.absolutePath)
+                        }
+                    }
+                }
+            }
+            FloatingActionButton(
+                onClick = {
+                    runCatching {
+                        pickFile.launch(arrayOf("*/*"))
+                    }
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.models_import),
+                )
+            }
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp,
+                bottom = 160.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "tier") {
@@ -145,6 +195,119 @@ fun ModelsScreen(
                         }
                     },
                     status = installStatus,
+                )
+            }
+
+            item(key = "formats-header") {
+                SectionHeader(text = stringResource(R.string.engine_supported_formats))
+            }
+            item(key = "formats-card") {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.engine_supported_formats_intro),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        engineFormats.forEachIndexed { idx, row ->
+                            EngineFormatRowView(row = row)
+                            if (idx != engineFormats.lastIndex) {
+                                Spacer(Modifier.height(8.dp))
+                                HorizontalDivider()
+                                Spacer(Modifier.height(8.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            item(key = "alternatives-header") {
+                SectionHeader(text = stringResource(R.string.models_alternative_label))
+            }
+            item(key = "alternatives-list") {
+                // Per-row state lives at the screen level so that
+                // a successful download invalidates the row that ran
+                // it. A `mutableStateMapOf` keyed by `entry.id`
+                // recomposes any row whose value changes.
+                val installedIds = remember {
+                    mutableStateMapOf<String, Boolean>().apply {
+                        com.meshlit.models.ModelCatalog.all.forEach { entry ->
+                            this[entry.id] = java.io.File(
+                                app.filesDir,
+                                "imported-models/${entry.id}.gguf",
+                            ).exists()
+                        }
+                    }
+                }
+                val rowStatus = remember { mutableStateMapOf<String, DownloadStatus>() }
+                AlternativeModelsCard(
+                    app = app,
+                    installedIds = installedIds,
+                    rowStatus = rowStatus,
+                    onPick = { entry ->
+                        scope.launch {
+                            rowStatus[entry.id] = DownloadStatus.Running(0)
+                            val outcome = com.meshlit.models.ModelCatalog.download(
+                                app,
+                                entry,
+                                onProgress = { pct ->
+                                    rowStatus[entry.id] = DownloadStatus.Running(pct.toInt())
+                                },
+                            )
+                            if (outcome.isSuccess) {
+                                val file = outcome.file!!
+                                installedIds[entry.id] = true
+                                app.settingsRepository.setCustomModelPath(file.absolutePath)
+                                rowStatus[entry.id] = DownloadStatus.Done(file.absolutePath)
+                                Toast.makeText(
+                                    app,
+                                    app.resources.getString(
+                                        R.string.models_download_done,
+                                        file.absolutePath,
+                                    ),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            } else {
+                                rowStatus[entry.id] = DownloadStatus.Failed(
+                                    outcome.errorMessage ?: "unknown",
+                                )
+                                Toast.makeText(
+                                    app,
+                                    app.resources.getString(
+                                        R.string.models_download_failed,
+                                        outcome.errorMessage ?: "unknown",
+                                    ),
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        }
+                    },
+                    onDelete = { entry ->
+                        val file = java.io.File(
+                            app.filesDir,
+                            "imported-models/${entry.id}.gguf",
+                        )
+                        if (file.exists() && file.delete()) {
+                            installedIds[entry.id] = false
+                            rowStatus[entry.id] = DownloadStatus.Idle
+                            // If the deleted file was the active model
+                            // path, drop the override so the FGS falls
+                            // back to the bundled model on next load.
+                            scope.launch {
+                                val current = app.settingsRepository
+                                    .customModelPathSync()
+                                if (current == file.absolutePath) {
+                                    app.settingsRepository.setCustomModelPath("")
+                                }
+                            }
+                            Toast.makeText(
+                                app,
+                                "Deleted ${entry.displayName}",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
                 )
             }
 
@@ -204,6 +367,33 @@ fun ModelsScreen(
             }
         }
     }
+}
+
+/**
+ * Resolve a SAF-picked content URI to a real file under the app's
+ * internal `filesDir/imported-models/` directory. The engine needs a
+ * regular filesystem path (not a content:// URI) to mmap the GGUF.
+ *
+ * Returns null if the URI is unreadable or empty. The caller is
+ * expected to surface the failure in a snackbar / status line.
+ */
+private fun copyUriToInternal(app: MeshlitApplication, uri: android.net.Uri): java.io.File? {
+    val resolver = app.contentResolver
+    val name = runCatching {
+        resolver.query(uri, null, null, null, null)?.use { cursor ->
+            val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0 && cursor.moveToFirst()) cursor.getString(idx) else "model.gguf"
+        }
+    }.getOrNull() ?: "model.gguf"
+    val safeName = name.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    val destDir = java.io.File(app.filesDir, "imported-models").apply { mkdirs() }
+    val dest = java.io.File(destDir, safeName)
+    return runCatching {
+        resolver.openInputStream(uri)?.use { input ->
+            dest.outputStream().use { output -> input.copyTo(output) }
+        } ?: return null
+        dest
+    }.getOrNull()
 }
 
 @Composable
@@ -286,4 +476,204 @@ private fun BundledModelCard(
             }
         }
     }
+}
+
+/** Per-row download state. Driven by `mutableStateMapOf` so any
+ *  row that flips to a new state recomposes immediately. */
+sealed interface DownloadStatus {
+    data object Idle : DownloadStatus
+    data class Running(val progress: Int) : DownloadStatus
+    data class Done(val absolutePath: String) : DownloadStatus
+    data class Failed(val reason: String) : DownloadStatus
+}
+
+@Composable
+private fun AlternativeModelsCard(
+    app: MeshlitApplication,
+    installedIds: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Boolean>,
+    rowStatus: androidx.compose.runtime.snapshots.SnapshotStateMap<String, DownloadStatus>,
+    onPick: (com.meshlit.models.ModelCatalog.Entry) -> Unit,
+    onDelete: (com.meshlit.models.ModelCatalog.Entry) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            com.meshlit.models.ModelCatalog.all.forEach { entry ->
+                val installed = installedIds[entry.id] == true
+                val status = rowStatus[entry.id] ?: DownloadStatus.Idle
+                AlternativeRow(
+                    entry = entry,
+                    isInstalled = installed,
+                    status = status,
+                    onDownload = { onPick(entry) },
+                    onDelete = { onDelete(entry) },
+                )
+                if (entry != com.meshlit.models.ModelCatalog.all.last()) {
+                    HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlternativeRow(
+    entry: com.meshlit.models.ModelCatalog.Entry,
+    isInstalled: Boolean,
+    status: DownloadStatus,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val originFlag = when (entry.origin) {
+        "USA" -> "\uD83C\uDDFA\uD83C\uDDF8"
+        "China" -> "\uD83C\uDDE8\uD83C\uDDF3"
+        else -> ""
+    }
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = entry.displayName,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "$originFlag ${entry.origin}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "${entry.license} · ~${entry.approxSizeMb} MB · ${entry.language}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (isInstalled) "✓" else entry.family,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isInstalled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.tertiary,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            // Download button: disabled while a download is in flight
+            // or the model is already imported.
+            val isRunning = status is DownloadStatus.Running
+            OutlinedButton(
+                onClick = onDownload,
+                enabled = !isInstalled && !isRunning,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = when {
+                        isRunning -> "Downloading…"
+                        isInstalled -> "Already imported"
+                        else -> "Download"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+            // Delete button: only visible when the model is installed
+            // and no download is in flight. Fades in via AnimatedVisibility.
+            AnimatedVisibility(
+                visible = isInstalled && !isRunning,
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)) +
+                    expandVertically(animationSpec = tween(durationMillis = 200)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 200)) +
+                    shrinkVertically(animationSpec = tween(durationMillis = 200)),
+            ) {
+                FilledTonalButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = null,
+                    )
+                }
+            }
+        }
+        // Status panel — animated reveal so the user sees the row
+        // wake up when a download starts.
+        AnimatedVisibility(
+            visible = status !is DownloadStatus.Idle,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            DownloadStatusPanel(status = status, displayName = entry.displayName)
+        }
+    }
+}
+
+@Composable
+private fun DownloadStatusPanel(
+    status: DownloadStatus,
+    displayName: String,
+) {
+    when (status) {
+        is DownloadStatus.Idle -> Unit
+        is DownloadStatus.Running -> {
+            Column(modifier = Modifier.padding(top = 6.dp)) {
+                Text(
+                    text = stringResource(R.string.models_download_progress, status.progress, displayName),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { (status.progress.coerceIn(0, 100)) / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+        is DownloadStatus.Done -> {
+            Text(
+                text = stringResource(R.string.models_download_done, status.absolutePath),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        is DownloadStatus.Failed -> {
+            Text(
+                text = stringResource(R.string.models_download_failed, status.reason),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+/** Render one row of the supported-formats card. */
+@Composable
+private fun EngineFormatRowView(row: EngineFormatRow) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = row.formatLabel(),
+            style = MaterialTheme.typography.titleSmall,
+            color = if (row.isShipped) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = row.statusLabel(),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (row.isShipped) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Text(
+        text = "runtime: ${row.runtimeLabel()}",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 2.dp),
+    )
 }

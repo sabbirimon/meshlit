@@ -90,7 +90,7 @@ class JvmStubInferenceEngine(
             )
             val started = System.currentTimeMillis()
             val prompt = request.prompt.trim()
-            val tokens = tokenize(prompt)
+            val tokens = synthesizeDemoResponse(prompt)
             val toEmit = tokens.take(request.maxTokens.coerceAtLeast(1))
             val finalText = StringBuilder()
             var stopReason = FinishReason.NATURAL_STOP
@@ -119,7 +119,7 @@ class JvmStubInferenceEngine(
                 finalText.length.toFloat() * 1000f / durationMs
             else 0f
             val result = InferenceResult(
-                promptTokens = tokens.size,
+                promptTokens = toEmit.size,
                 generatedTokens = finalText.length,
                 totalDurationMs = durationMs,
                 tokensPerSecond = tps,
@@ -141,10 +141,46 @@ class JvmStubInferenceEngine(
         }
 
     /**
-     * Split a prompt into word-tokens. Real llama.cpp uses BPE; the
-     * stub is intentionally trivial so it works on every device
-     * with zero dependencies.
+     * Build a non-trivial demo reply from the prompt. Reads as a
+     * reply, not a build-state apology: it acknowledges the prompt
+     * in plain English and tells the user to load a real model.
+     *
+     * Why the simpler shape: the previous four-branch `closing`
+     * rotation produced textbook-style copy ("the llama.cpp native
+     * runtime is not yet linked into this APK"), which reads as
+     * "the APK is broken" rather than "demo engine". The Jobs /
+     * Agent / Terminal screens all surface this string verbatim, so
+     * the wording lands in front of every user. Cleaning it up
+     * costs us nothing.
+     *
+     * Not a real model. Once llama.cpp ships, the JNI engine
+     * becomes authoritative and this stub is only used in unit
+     * tests and on devices that don't have the .so.
      */
+    private fun synthesizeDemoResponse(prompt: String): List<String> {
+        if (prompt.isEmpty()) {
+            return listOf("(stub) ", "ready", " when", " you", " are", ".")
+        }
+        val words = prompt.split(Regex("\\s+"))
+            .map { it.trim().filter { ch -> ch.isLetterOrDigit() } }
+            .filter { it.isNotEmpty() }
+        val topic = if (words.isNotEmpty()) words.take(3).joinToString(" ") else "input"
+        val out = mutableListOf<String>()
+        fun emit(chunk: String) { out.add(chunk) }
+        emit("(stub) ")
+        emit("Got it — ")
+        emit("\"${topic}\"")
+        emit(" — this is a placeholder reply. ")
+        emit("Open the Models tab and load a real model to get an actual answer.")
+        return out
+    }
+
+    /**
+     * Old "tokenize by whitespace" helper kept around only because
+     * some unit tests may still reference it. Internally the stub
+     * now uses [synthesizeDemoResponse] instead of echoing input.
+     */
+    @Suppress("unused")
     private fun tokenize(prompt: String): List<String> {
         if (prompt.isEmpty()) return listOf("(empty prompt)")
         val raw = prompt.split(Regex("(?<=\\s)|(?=\\s)"))

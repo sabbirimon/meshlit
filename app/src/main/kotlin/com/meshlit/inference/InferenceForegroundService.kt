@@ -24,6 +24,7 @@ import com.meshlit.core.inference.InferenceRequest
 import com.meshlit.core.inference.InferenceResult
 import com.meshlit.core.inference.ModelInfo
 import com.meshlit.core.inference.net.InferenceHttpServer
+import com.meshlit.core.inference.net.RawTcpActivationServer
 import com.meshlit.notifications.NotificationCategory
 import com.meshlit.notifications.NotificationCenter
 import com.meshlit.inference.ForwardingProxy
@@ -31,6 +32,7 @@ import com.meshlit.inference.MiniRouter
 import com.meshlit.inference.PeerHealthCache
 import com.meshlit.inference.PeerRegistry
 import com.meshlit.inference.RemoteInferenceClientFactory
+import com.meshlit.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -87,16 +89,31 @@ class InferenceForegroundService : Service() {
     private var miniRouter: MiniRouter? = null
     private var forwardingProxy: ForwardingProxy? = null
     private var httpServer: InferenceHttpServer? = null
+    private var metricsRegistry: MetricsRegistry? = null
+    private var activationServer: RawTcpActivationServer? = null
 
     private val binder = LocalBinder()
 
     override fun onCreate() {
         super.onCreate()
         val app = applicationContext as MeshlitApplication
-        coordinator = InferenceCoordinator()
+        // Use the app-scoped coordinator so every screen (Agent, Jobs,
+        // Terminal) talks to the same engine instance. Previously this
+        // service created a private coordinator which meant AgentSession
+        // never saw the loaded model — it would always surface the
+        // "No model loaded" error.
+        coordinator = app.inferenceCoordinator
         notificationCenter = app.notificationCenter
         startInForeground()
         log.info("fgs.create", "InferenceForegroundService created")
+
+        // Auto-load the bundled model if extraction is finished by the
+        // time the FGS starts. Extraction is async; if the file isn't
+        // ready yet, the Jobs screen's Send button will retry (or
+        // Models → Re-extract does it manually). The bundled-model
+        // path is the default; a custom path the user has saved in
+        // Settings wins when present.
+        scope.launch { autoLoadDefaultModel(app) }
 
         // Build router stack and start the embedded HTTP/SSE server.
         try {
@@ -105,19 +122,51 @@ class InferenceForegroundService : Service() {
             val cache = PeerHealthCache(factory)
             val router = MiniRouter(coordinator, reg, cache)
             val proxy = ForwardingProxy(factory)
+            val enricher = HealthEnricherImpl(
+                tierProvider = { app.capabilityTier },
+                engineTagProvider = { coordinator.engineTag },
+                metrics = app.metricsRegistry,
+                loadedShardsProvider = { coordinator.loadedShards.value },
+            )
+            val jobLifecycle = AppJobLifecycle(app.metricsRegistry)
             val server = InferenceHttpServer(
                 coordinator = coordinator,
                 router = router,
                 forwarder = proxy,
+                enricher = enricher,
+                lifecycle = jobLifecycle,
                 port = InferenceHttpServer.DEFAULT_PORT,
             )
             peerRegistry = reg
             clientFactory = factory
             healthCache = cache
+            app.setActivePeerHealthCache(cache)
             miniRouter = router
             forwardingProxy = proxy
+            metricsRegistry = app.metricsRegistry
             httpServer = server
-            scope.launch { server.start(this) }
+            // Raw-TCP activation transport server. Inbound channels
+            // are wired into a list — Phase 2.3 will hand each one
+            // to the ShardForwarder that owns the upstream peer. For
+            // now we just log the connection so we can verify the
+            // wire format round-trips.
+            val activation = RawTcpActivationServer(ACTIVATION_PORT) { ch ->
+                log.info(
+                    "fgs.activation.channel",
+                    "activation channel opened",
+                    mapOf("port" to ACTIVATION_PORT),
+                )
+                // Channels are short-lived (one per peer handshake);
+                // we don't keep a strong ref because we don't have a
+                // consumer yet.
+            }
+            activation.start()
+            activationServer = activation
+            // NanoHTTPD's start() blocks on the calling thread until
+            // stop() is called. We launch it on the FGS scope so it
+            // runs on its own daemon thread and shuts down cleanly
+            // when the service is destroyed.
+            scope.launch { server.start() }
             scope.launch { cache.refreshLoop(this, reg) }
             log.info(
                 "fgs.router.start",
@@ -187,14 +236,75 @@ class InferenceForegroundService : Service() {
         ))
     }
 
+    /**
+     * Pick a model to load on FGS startup. Resolution order:
+     *  1. User-configured custom path (Settings → Models).
+     *  2. Bundled GGUF that was extracted on app launch.
+     *  3. Nothing — wait for an explicit Load command.
+     *
+     * If the bundled file isn't ready yet (extraction still running
+     * on the app scope), we poll for up to ~30s. After that we give
+     * up — the user can hit Re-extract from Models or the Jobs Send
+     * button will re-evaluate next time.
+     */
+    private suspend fun autoLoadDefaultModel(app: MeshlitApplication) {
+        val settingsRepo: SettingsRepository = app.settingsRepository
+        val customPath = settingsRepo.customModelPathSync()
+        if (customPath.isNullOrBlank()) {
+            // Bundled-model path. Wait up to 30s for extraction to land.
+            val deadline = System.currentTimeMillis() + 30_000L
+            while (app.bundledModelPath() == null && System.currentTimeMillis() < deadline) {
+                kotlinx.coroutines.delay(500L)
+            }
+        }
+        val customPathNow = settingsRepo.customModelPathSync()
+        val bundledFile = app.bundledModelPath()
+        val target = when {
+            !customPathNow.isNullOrBlank() -> {
+                val f = java.io.File(customPathNow)
+                if (f.exists() && f.length() > 0L) f else null
+            }
+            bundledFile != null && bundledFile.exists() && bundledFile.length() > 0L -> bundledFile
+            else -> null
+        }
+        if (target == null) {
+            log.info("fgs.auto_load.skip", "no model to auto-load")
+            return
+        }
+        // Don't double-load if the coordinator is already in Ready state
+        // (e.g. the user bound and unbound, then we come back up).
+        if (coordinator.state.value is com.meshlit.core.inference.CoordinatorState.Ready) {
+            log.info("fgs.auto_load.skip", "coordinator already Ready")
+            return
+        }
+        log.info(
+            "fgs.auto_load.start",
+            "auto-loading model on FGS startup",
+            mapOf("path" to target.absolutePath, "source" to if (customPathNow.isNullOrBlank()) "bundled" else "custom"),
+        )
+        val result = coordinator.loadModel(
+            modelPath = target.absolutePath,
+            contextSize = 4096,
+            gpuLayers = 0,
+            hints = com.meshlit.core.inference.BackendHints.CpuOnly,
+        )
+        if (result is com.meshlit.core.common.MeshlitResult.Success) {
+            log.info("fgs.auto_load.ok", "auto-load ok")
+        } else if (result is com.meshlit.core.common.MeshlitResult.Failure) {
+            log.warn("fgs.auto_load.fail", "auto-load failed: ${result.error.tag}")
+        }
+    }
+
     override fun onDestroy() {
         log.info("fgs.destroy", "InferenceForegroundService destroying")
         // Tear down the router stack in reverse construction order:
         // server first (so no new requests land), then the factory
         // (closes the shared HttpClient), then drop references.
         runCatching { httpServer?.stop() }
+        runCatching { activationServer?.close() }
         runCatching { clientFactory?.close() }
         httpServer = null
+        activationServer = null
         forwardingProxy = null
         miniRouter = null
         healthCache = null
@@ -260,6 +370,10 @@ class InferenceForegroundService : Service() {
 
     companion object {
         const val NOTIFICATION_ID = 1001
+
+        /** Default port for the raw-TCP activation transport. Picked
+         *  away from the HTTP port (8080) so they coexist on one phone. */
+        const val ACTIVATION_PORT = 9090
 
         const val ACTION_LOAD_MODEL = "com.meshlit.inference.LOAD_MODEL"
         const val ACTION_INFER = "com.meshlit.inference.INFER"
