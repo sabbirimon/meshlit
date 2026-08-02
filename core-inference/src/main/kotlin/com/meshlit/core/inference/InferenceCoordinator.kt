@@ -56,6 +56,7 @@ class InferenceCoordinator(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
     private val llamaEngine = LlamaCppInferenceEngine()
+    private val onnxEngine = OnnxOrtInferenceEngine()
     private val stubEngine = JvmStubInferenceEngine()
 
     /**
@@ -108,24 +109,34 @@ class InferenceCoordinator(
             log.info("coord.engine_pick", "forcing stub engine (system property set)")
             return stubEngine
         }
-        val loaded = llamaEngine.loadNativeLibrary()
-        return if (loaded) {
+        // Phase 2.x — try GGUF first (the historically shipped
+        // runtime), then ONNX (newly shipped). The first to come
+        // up wins; if both fail, we fall back to the stub so the
+        // app stays launchable.
+        val llamaLoaded = llamaEngine.loadNativeLibrary()
+        if (llamaLoaded) {
             log.info("coord.engine_pick", "using llama.cpp engine")
             // Phase 2 — also register the runtime so the UI can render
             // the active runtime name in the status card without a
             // loadModel having been called yet.
             lastRuntime = RuntimeRegistry.ggufLlamaCpp(llamaEngine)
             lastFormat = FileFormat.Gguf
-            llamaEngine
-        } else {
-            log.info("coord.engine_pick", "falling back to stub engine (no native lib)")
-            // Stub engine doesn't bind to a specific format — it
-            // generates synthetic replies regardless. We register a
-            // synthetic "stub" runtime so the UI can show that.
-            lastRuntime = RuntimeRegistry.ggufLlamaCpp(stubEngine)
-            lastFormat = null
-            stubEngine
+            return llamaEngine
         }
+        val onnxLoaded = onnxEngine.loadNativeLibrary()
+        if (onnxLoaded) {
+            log.info("coord.engine_pick", "using onnx-ort engine")
+            lastRuntime = RuntimeRegistry.onnxOrt(onnxEngine)
+            lastFormat = FileFormat.Onnx
+            return onnxEngine
+        }
+        log.info("coord.engine_pick", "falling back to stub engine (no native lib)")
+        // Stub engine doesn't bind to a specific format — it
+        // generates synthetic replies regardless. We register a
+        // synthetic "stub" runtime so the UI can show that.
+        lastRuntime = RuntimeRegistry.ggufLlamaCpp(stubEngine)
+        lastFormat = null
+        return stubEngine
     }
 
     /** Display name of the active runtime for the status card. */

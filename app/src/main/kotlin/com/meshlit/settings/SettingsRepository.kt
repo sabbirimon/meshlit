@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.meshlit.core.common.EndpointProtocol
@@ -56,6 +57,21 @@ class SettingsRepository(private val context: Context) {
 
     /** Empty string == no override (bundled model is used). */
     val customModelPathFlow: Flow<String> = store.data.map { it[Keys.customModelPath] ?: "" }
+
+    /**
+     * Phase 2.x — the version of the runtime registry the user has
+     * seen. We bump this every time a runtime is added or promoted
+     * (shipped / candidate / apple-only). The Models screen reads
+     * it on entry to decide whether to show the "new runtime
+     * available" banner.
+     */
+    val runtimeRegistryVersionFlow: Flow<Int> = store.data.map {
+        it[Keys.runtimeRegistryVersion] ?: 0
+    }
+
+    suspend fun setRuntimeRegistryVersionSeen(version: Int) {
+        store.edit { it[Keys.runtimeRegistryVersion] = version }
+    }
 
     // --- Network-scope feature ------------------------------------------
     //
@@ -217,6 +233,7 @@ class SettingsRepository(private val context: Context) {
         val networkScope = stringPreferencesKey("network.scope")
         val remoteEndpoints = stringPreferencesKey("network.remote_endpoints")
         val activeEndpointId = stringPreferencesKey("network.active_endpoint_id")
+        val runtimeRegistryVersion = intPreferencesKey("runtime.registry_version")
     }
 
     companion object {

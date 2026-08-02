@@ -128,6 +128,59 @@ data class ShardRange(
 )
 
 /**
+ * Phase 2 — body of `GET /v1/runtimes`. Carries the full runtime
+ * catalog this device is willing to host, the runtime the device is
+ * *currently* using (may differ from the catalog when a runtime
+ * promotion happened mid-session), and a small summary so callers
+ * can pick peers without parsing the full list.
+ *
+ * The wire format is intentionally compact: peers running on
+ * metered connections (cellular) should be able to answer the
+ * "which peer hosts runtime X?" question with a single small
+ * request. The full descriptor list is still useful for the
+ * planner in `:app` to draw the device roster.
+ */
+@Serializable
+data class RuntimesResponse(
+    /** The runtime this device is currently serving from. May be `null`
+     *  if no load has been attempted yet (e.g. fresh start). */
+    val deviceRuntimeId: String? = null,
+    /** Human-readable name of the active runtime. */
+    val deviceRuntimeDisplayName: String? = null,
+    /** Full catalog of runtimes this APK ships or knows about. */
+    val runtimes: List<RuntimeDescriptor> = emptyList(),
+    /** Cheap summary for routing decisions. */
+    val summary: RuntimeCatalogSummary = RuntimeCatalogSummary(),
+)
+
+/**
+ * One entry in the runtime catalog. Mirrors
+ * [com.meshlit.core.inference.RuntimeEngine] 1:1 but lives in the
+ * wire package so peers don't need to import a sealed type.
+ */
+@Serializable
+data class RuntimeDescriptor(
+    val runtimeId: String,
+    val displayName: String,
+    /** One of: "shipped", "candidate", "apple_only", "unavailable". */
+    val status: String,
+    /** File extensions this runtime can load, e.g. ["gguf"]. */
+    val supportedFormats: List<String> = emptyList(),
+    /** Approximate native lib size contribution in bytes. 0 for
+     *  Apple-only / unavailable runtimes. */
+    val approxApkFootprintBytes: Long = 0L,
+)
+
+/** Compact summary of the catalog. Used by peers to pick a target
+ *  device without parsing the full descriptor list. */
+@Serializable
+data class RuntimeCatalogSummary(
+    val shippedCount: Int = 0,
+    val candidateCount: Int = 0,
+    val appleOnlyCount: Int = 0,
+)
+
+/**
  * Lightweight in-process snapshot shipped with every `/v1/health`
  * reply. All counters are monotonic since process start.
  *

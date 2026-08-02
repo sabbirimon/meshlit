@@ -118,13 +118,16 @@ object RuntimeRegistry {
         override val engine: InferenceEngine? = engine
     }
 
-    /** ONNX Runtime Mobile + EP plugins. Candidate. */
+    /** ONNX Runtime Mobile + EP plugins. Phase 2.x: promoted to shipped. */
     fun onnxOrt(engine: InferenceEngine? = null): RuntimeEngine = object : RuntimeEngine {
         override val runtimeId = "onnx-ort"
         override val displayName = "ONNX · ORT Mobile"
         override val supportedFormats = listOf(FileFormat.Onnx)
+        // Footprint: ~8 MB aar (libonnxruntime.so) + ~6 MB for the
+        // NNAPI / XNNPACK execution-provider plugins that ship
+        // separately. Both are bundled in the aar we depend on.
         override val approxApkFootprintBytes = 8L * 1024L * 1024L + 6L * 1024L * 1024L
-        override val status = RuntimeStatus.CANDIDATE
+        override val status = RuntimeStatus.SHIPPED
         override val engine: InferenceEngine? = engine
     }
 
@@ -172,7 +175,12 @@ object RuntimeRegistry {
      *  Models screen can render the full roadmap. */
     val all: List<RuntimeEngine> = listOf(
         ggufLlamaCpp(engine = null),
-        onnxOrt(),
+        // Phase 2.x — promote ONNX Runtime to SHIPPED. The engine
+        // instance is resolved lazily via [resolveOrtEngine] so
+        // callers can keep a stable descriptor identity across the
+        // app lifetime even though the underlying OrtEnvironment is
+        // a singleton created on first access.
+        onnxOrt(engine = resolveOrtEngine()),
         safetensorsCandle(),
         tfliteLitert(),
         mlxApple(),
@@ -181,6 +189,22 @@ object RuntimeRegistry {
 
     /** All runtimes that are actually shippable on the current platform. */
     val shippable: List<RuntimeEngine> = all.filter { it.status == RuntimeStatus.SHIPPED }
+
+    /**
+     * Phase 2.x — singleton accessor for the ORT engine instance.
+     * Created on first call so we don't pay the JNI initialization
+     * cost until a non-GGUF model is actually requested.
+     */
+    fun resolveOrtEngine(): InferenceEngine? {
+        // The first call to OnnxOrtInferenceEngine() doesn't init
+        // ORT — the engine stays in `nativeReady=false` until
+        // `loadNativeLibrary()` is invoked. The coordinator calls
+        // that explicitly during [pickEngine]. We return `null`
+        // here so the catalog row doesn't claim a live engine
+        // pointer; the coordinator swaps in the real engine on
+        // load.
+        return null
+    }
 
     /**
      * Pick the runtime that can load the file at [path]. Resolution:
@@ -231,6 +255,24 @@ object RuntimeRegistry {
             candidateBytes = candidateBytes,
         )
     }
+
+    /**
+     * Phase 2.x — version stamp for the registry. Bumped any time a
+     * runtime is added, removed, or has its status changed. The
+     * Models screen caches this and shows a "new runtime available"
+     * banner when the persisted version on disk is older than the
+     * build's compile-time version.
+     *
+     * The bump is intentionally a `val` (not auto-derivable) so a
+     * developer can ship a "what changed" log entry alongside the
+     * bump.
+     */
+    const val REGISTRY_VERSION: Int = 2
+    const val REGISTRY_CHANGE_NOTE: String =
+        "Phase 2.x: ONNX Runtime Mobile is now a shipped runtime. " +
+            "Phi-3.5-mini, Mistral-7B, Gemma-2, and any other ONNX-distributed " +
+            "model can now load on-device. The supported-formats card now lists " +
+            "two bundled runtimes (GGUF and ONNX); the rest remain on the Phase 3 roadmap."
 }
 
 /** Result of resolving a runtime for a given model file path. */

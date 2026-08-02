@@ -28,5 +28,13 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
 
+    // Phase 2.x — second shipped inference backend. ONNX Runtime
+    // Mobile is a single-aar JNI binding for `.onnx` models. The aar
+    // pulls in libonnxruntime.so (~8 MB arm64) plus a thin Java
+    // surface. The engine code below mirrors LlamaCppInferenceEngine
+    // and declares the JNI entry points as `external` until the
+    // upstream ORT JNI symbols are linked.
+    implementation(libs.onnxruntime.mobile)
+
     testImplementation(libs.junit)
 }

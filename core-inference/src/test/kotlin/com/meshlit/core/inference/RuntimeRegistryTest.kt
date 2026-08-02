@@ -25,17 +25,17 @@ class RuntimeRegistryTest {
     }
 
     @Test
-    fun `onnx path resolves to candidate (not shipped)`() {
+    fun `onnx path resolves to shipped runtime`() {
+        // Phase 2.x — ONNX is now bundled, so a .onnx path should
+        // resolve to a Found resolution pointing at the shipped
+        // runtime, not a NotShipped candidate.
         val path = "/data/local/tmp/phi-3.5-mini.onnx"
         val r = RuntimeRegistry.pickForPath(path)
-        assertTrue("expected NotShipped, got $r", r is RuntimeResolution.NotShipped)
-        r as RuntimeResolution.NotShipped
+        assertTrue("expected Found, got $r", r is RuntimeResolution.Found)
+        r as RuntimeResolution.Found
         assertEquals("onnx-ort", r.runtime.runtimeId)
+        assertEquals(RuntimeStatus.SHIPPED, r.runtime.status)
         assertEquals(FileFormat.Onnx, r.format)
-        assertTrue(
-            "NotShipped message should mention Phase 2",
-            r.message.contains("Phase 2"),
-        )
     }
 
     @Test
@@ -91,9 +91,11 @@ class RuntimeRegistryTest {
     }
 
     @Test
-    fun `registry ships exactly one runtime today`() {
-        assertEquals(1, RuntimeRegistry.shippable.size)
-        assertEquals("gguf-llama.cpp", RuntimeRegistry.shippable.first().runtimeId)
+    fun `registry ships gguf and onnx runtimes today`() {
+        // Phase 2.x — both GGUF (llama.cpp) and ONNX (ORT Mobile) are
+        // bundled. Other formats remain Phase 2/3 candidates.
+        val ids = RuntimeRegistry.shippable.map { it.runtimeId }.toSet()
+        assertEquals(setOf("gguf-llama.cpp", "onnx-ort"), ids)
     }
 
     @Test
@@ -115,11 +117,17 @@ class RuntimeRegistryTest {
     @Test
     fun `summary reports shipped and candidate counts`() {
         val s = RuntimeRegistry.summary()
-        assertEquals(1, s.shippedCount)
-        assertEquals(3, s.candidateCount)  // onnx-ort, safetensors-candle, tflite-litert
+        // Phase 2.x — both gguf-llama.cpp and onnx-ort are shipped.
+        assertEquals(2, s.shippedCount)
+        // SafeTensors + TFLite are still Phase 2 candidates.
+        assertEquals(2, s.candidateCount)
         assertEquals(2, s.appleOnlyCount)  // mlx-apple, coreml-apple
-        assertTrue("shipped APK footprint should be ≥ 12 MB", s.shippedBytes >= 12L * 1024L * 1024L)
-        assertTrue("candidate APK footprint should be ≥ 17 MB", s.candidateBytes >= 17L * 1024L * 1024L)
+        // Shipped footprint: 12 MB (llama.cpp) + 14 MB (ORT aar + EP)
+        // = 26 MB. We assert ≥ 26 MB so a future footprint tune-up
+        // doesn't silently regress.
+        assertTrue("shipped APK footprint should be ≥ 26 MB", s.shippedBytes >= 26L * 1024L * 1024L)
+        // Candidate footprint: 6 MB (candle) + 3 MB (litert) = 9 MB.
+        assertTrue("candidate APK footprint should be ≥ 9 MB", s.candidateBytes >= 9L * 1024L * 1024L)
     }
 
     @Test

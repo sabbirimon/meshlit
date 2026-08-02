@@ -10,6 +10,7 @@ import com.meshlit.core.inference.net.InferErrorEvent
 import com.meshlit.core.inference.net.InferRequest
 import com.meshlit.core.inference.net.InferTokenEvent
 import com.meshlit.core.inference.net.ModelStateResponse
+import com.meshlit.core.inference.net.RuntimesResponse
 import com.meshlit.core.inference.net.SseEvents
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -70,6 +71,25 @@ class RemoteInferenceClient internal constructor(
             client.newCall(req).execute().use { resp ->
                 resp.requireOk("modelState")
                 json.decodeFromString(ModelStateResponse.serializer(), resp.body!!.string())
+            }
+        }
+    }
+
+    /**
+     * `GET /v1/runtimes` — fetch the catalog of runtimes this peer
+     * is willing to host. Used by the planner when picking a sharded
+     * assignment: pick the peer that ships the runtime the layer
+     * slice needs.
+     */
+    suspend fun runtimes(): MeshlitResult<RuntimesResponse> = withContext(dispatcher) {
+        runCall("runtimes") {
+            val req = Request.Builder()
+                .url("$baseUrl/v1/runtimes")
+                .get()
+                .build()
+            client.newCall(req).execute().use { resp ->
+                resp.requireOk("runtimes")
+                json.decodeFromString(RuntimesResponse.serializer(), resp.body!!.string())
             }
         }
     }

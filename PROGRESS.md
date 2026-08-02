@@ -10,9 +10,61 @@ skipped and why, what's next.
 
 ---
 
-## Current state — 2026-08-02
+## Current state — 2026-08-02 (Phase 2.x)
 
 **This session:**
+- **HTTP `/v1/runtimes` endpoint.** New wire types `RuntimesResponse`,
+  `RuntimeDescriptor`, `RuntimeCatalogSummary` added to
+  `core-inference/net/InferenceWire.kt`. `InferenceHttpServer` exposes
+  `GET /v1/runtimes` returning the full `RuntimeRegistry` catalog with
+  shipped/candidate/apple-only counts. Health endpoint also extended with
+  `runtimeId`, `runtimeDisplayName`, `fileFormat` so peers can render the
+  active backend without an extra round-trip. App-side `RemoteInferenceClient`
+  gained a `suspend fun runtimes()` returning `MeshlitResult<RuntimesResponse>`.
+  Wire-format pinned by `RuntimesResponseRoundTripTest` (5 tests).
+- **Runtime upgrade notifications.** `RuntimeRegistry` now carries
+  `REGISTRY_VERSION = 2` and a `REGISTRY_CHANGE_NOTE`. `SettingsRepository`
+  exposes a `runtimeRegistryVersionFlow` plus a
+  `setRuntimeRegistryVersionSeen(version)` setter backed by DataStore. The
+  Models screen renders a dismissable Material 3 banner with a `NewReleases`
+  icon and animated reveal (`AnimatedVisibility`) when the on-device version
+  lags behind the catalog's. Dismissed state persists across launches.
+- **ONNX Runtime Mobile integration — second shipped runtime.**
+  `OnnxOrtInferenceEngine` now implements `InferenceEngine` and is registered
+  as `RuntimeStatus.SHIPPED` for `FileFormat.Onnx`. The engine probes the ORT
+  aar via `Class.forName("ai.onnxruntime.OrtEnvironment")` on coordinator
+  startup and falls back to `JvmStubInferenceEngine` if the `.so` is missing.
+  Wired the `onnxruntime-mobile` dependency (`com.microsoft.onnxruntime:
+  onnxruntime-mobile:1.18.0`) into `:core-inference`. APK now bundles
+  `lib/arm64-v8a/libonnxruntime.so` (~3.7 MB), `libonnxruntime4j_jni.so`
+  (~770 KB), plus armv7 and x86 variants. `InferenceCoordinator.pickEngine`
+  tries llama.cpp first, then ORT, then falls back to the stub. Layer-shard
+  loads are explicitly rejected with a typed `MeshlitError.Invalid` carrying
+  `onnx.sharded.unsupported: ... Phase 3` so the coordinator can route the
+  user to a Phase 3 build or a different runtime.
+- 9 new unit tests in `OnnxOrtInferenceEngineTest` covering tag, ready state,
+  sharded-load rejection, infer-before-load typed error, API surface regression,
+  registry advertisement, unload safety, `loadNativeLibrary` failure path,
+  and `TokenCallback` cross-runtime parity with the llama.cpp engine.
+- `./gradlew :app:assembleDebug` is green (1.03 GB APK). All 32
+  `:core-inference` unit tests pass.
+
+**Architectural notes:**
+- The JNI surface (`nativeLoadModel`, `nativeInfer`, `nativeUnload`) is
+  declared but not linked — today's call path is ORT's pure-Java API. A
+  future Phase 3 build that wants to skip the ORT aar for a hand-built
+  `libonnxruntime.so` can drop in the C++ symbols without touching the
+  engine API.
+- The runtime-upgrade banner is opt-out by design — once the user has
+  acknowledged the new registry version it won't reappear unless the
+  catalog version increments again. This avoids nagging the user on every
+  launch when the runtime count hasn't changed.
+
+---
+
+## Current state — 2026-08-02 (Phase 1 follow-ups)
+
+**Earlier this session:**
 - Added a dedicated Claude-Code-style Agent tab with Chat / Code / Plan modes,
   streaming responses, code-block extraction, Copy actions, Stop/Clear, and
   Autopilot continuation.

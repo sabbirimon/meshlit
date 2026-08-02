@@ -23,8 +23,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,6 +38,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -49,6 +52,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +63,7 @@ import com.meshlit.MeshlitApplication
 import com.meshlit.R
 import com.meshlit.capability.CapabilityBadge
 import com.meshlit.core.inference.BundledModelInstaller
+import com.meshlit.core.inference.RuntimeRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -157,6 +162,68 @@ fun ModelsScreen(
                         style = MaterialTheme.typography.labelMedium,
                     )
                     CapabilityBadge(app = app)
+                }
+            }
+            // Phase 2.x — runtime-upgrade banner. Surfaces a one-liner
+            // when the on-disk registry version is older than the
+            // build's compile-time REGISTRY_VERSION. Dismissed by
+            // tapping the close icon; persists the seen version so we
+            // don't nag on every visit.
+            item(key = "runtime_upgrade_banner") {
+                val seenVersion by app.settingsRepository.runtimeRegistryVersionFlow
+                    .collectAsState(initial = 0)
+                val dismissed = rememberSaveable { mutableStateOf(false) }
+                val show = !dismissed.value && seenVersion < RuntimeRegistry.REGISTRY_VERSION
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = show,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.NewReleases,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Runtime catalog updated (v${RuntimeRegistry.REGISTRY_VERSION})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                                Text(
+                                    text = RuntimeRegistry.REGISTRY_CHANGE_NOTE,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    dismissed.value = true
+                                    scope.launch {
+                                        app.settingsRepository.setRuntimeRegistryVersionSeen(
+                                            RuntimeRegistry.REGISTRY_VERSION,
+                                        )
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

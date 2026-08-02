@@ -105,6 +105,7 @@ class InferenceHttpServer(
                     session.method == Method.GET && uri.endsWith("/v1/health") -> handleHealth()
                     session.method == Method.GET && uri.endsWith("/v1/model") -> handleModel()
                     session.method == Method.POST && uri.endsWith("/v1/infer") -> handleInfer(session)
+                    session.method == Method.GET && uri.endsWith("/v1/runtimes") -> handleRuntimes()
                     else -> newFixedLengthResponse(
                         Response.Status.NOT_FOUND,
                         MIME_PLAINTEXT,
@@ -144,6 +145,41 @@ class InferenceHttpServer(
                 metrics = snap.metrics,
             )
             val body = json.encodeToString(HealthResponse.serializer(), resp)
+            return newFixedLengthResponse(Response.Status.OK, "application/json", body)
+        }
+
+        /**
+         * `GET /v1/runtimes` — catalog of every runtime this device
+         * is willing to host, including ones that are not yet shipped
+         * (Phase 2 candidates). Cluster peers use this to ask
+         * "which peer hosts runtime X?" before sending a sharded
+         * job. The catalog is static (compiled into the APK) so the
+         * response is cheap and cacheable.
+         */
+        private fun handleRuntimes(): Response {
+            val resp = RuntimesResponse(
+                deviceRuntimeId = coordinator.currentRuntime?.runtimeId,
+                deviceRuntimeDisplayName = coordinator.runtimeDisplayName,
+                runtimes = com.meshlit.core.inference.RuntimeRegistry.all.map { rt ->
+                    RuntimeDescriptor(
+                        runtimeId = rt.runtimeId,
+                        displayName = rt.displayName,
+                        status = rt.status.tag,
+                        supportedFormats = rt.supportedFormats.map { it.extension },
+                        approxApkFootprintBytes = rt.approxApkFootprintBytes,
+                    )
+                },
+                summary = RuntimeCatalogSummary(
+                    shippedCount = com.meshlit.core.inference.RuntimeRegistry.shippable.size,
+                    candidateCount = com.meshlit.core.inference.RuntimeRegistry.all.count {
+                        it.status == com.meshlit.core.inference.RuntimeStatus.CANDIDATE
+                    },
+                    appleOnlyCount = com.meshlit.core.inference.RuntimeRegistry.all.count {
+                        it.status == com.meshlit.core.inference.RuntimeStatus.APPLE_ONLY
+                    },
+                ),
+            )
+            val body = json.encodeToString(RuntimesResponse.serializer(), resp)
             return newFixedLengthResponse(Response.Status.OK, "application/json", body)
         }
 
