@@ -58,6 +58,12 @@
          screen lets the user attach an image to a prompt. -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
+    <!-- Microphone capture for the Voice screen (Phase 2.x — STT/TTS/VAD).
+         The core-inference library also declares this in its manifest, but
+         the app needs it here so the runtime grant appears under the app's
+         permission list rather than the SDK's. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <queries>
         <!-- For Wi-Fi Direct / Aware discovery on supporting devices. -->
         <intent>

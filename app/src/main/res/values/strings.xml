@@ -13,6 +13,73 @@
     <string name="screen_network">Network</string>
     <string name="screen_users">Users</string>
     <string name="screen_settings">Settings</string>
+    <!-- Phase 2.x — full SDK surface screens -->
+    <string name="screen_voice">Voice</string>
+    <string name="screen_structured">JSON</string>
+    <string name="screen_catalog">Catalog</string>
+    <string name="screen_vision">Vision</string>
+
+    <!-- Voice screen -->
+    <string name="voice_title">Voice (STT + TTS + VAD)</string>
+    <string name="voice_subtitle">Speak — transcribe — reply. Uses RunAnywhere\'s sherpa-onnx STT/TTS and VAD models.</string>
+    <string name="voice_permission_required">Microphone access is required to transcribe speech.</string>
+    <string name="voice_permission_grant">Grant microphone</string>
+    <string name="voice_permission_settings">Open settings</string>
+    <string name="voice_listening">Listening… tap mic to stop</string>
+    <string name="voice_idle">Tap mic to start</string>
+    <string name="voice_speak">Speak</string>
+    <string name="voice_stop">Stop</string>
+    <string name="voice_clear">Clear</string>
+    <string name="voice_text_hint">Transcript (also editable)</string>
+    <string name="voice_partial">partial</string>
+    <string name="voice_final">final</string>
+    <string name="voice_stt_failed">Speech-to-text failed. Try again or type below.</string>
+    <string name="voice_tts_failed">Speech synthesis failed.</string>
+
+    <!-- Structured screen -->
+    <string name="structured_title">Structured output + tools</string>
+    <string name="structured_subtitle">JSON-schema generation and tool calling against Meshlit\'s MCP tools.</string>
+    <string name="structured_schema">Schema</string>
+    <string name="structured_run">Run</string>
+    <string name="structured_tools_toggle">Allow tool calling</string>
+    <string name="structured_prompt_hint">Describe what to extract…</string>
+    <string name="structured_partial">Building JSON…</string>
+    <string name="structured_valid">Valid JSON</string>
+    <string name="structured_invalid">Validation failed</string>
+    <string name="structured_section_result">Result</string>
+    <string name="structured_section_tools">Tool calls</string>
+    <string name="structured_failed">Generation failed.</string>
+    <string name="structured_template_contact">Contact</string>
+    <string name="structured_template_todo">Todo</string>
+    <string name="structured_template_summary">Summary</string>
+    <string name="structured_template_sentiment">Sentiment</string>
+    <string name="structured_template_custom">Custom JSON…</string>
+
+    <!-- Catalog screen -->
+    <string name="catalog_title">Live model catalog</string>
+    <string name="catalog_subtitle">Pulled from RunAnywhere\'s CDN registry. Falls back to the curated list when offline.</string>
+    <string name="catalog_refresh">Refresh registry</string>
+    <string name="catalog_search_hint">Search by name or family…</string>
+    <string name="catalog_offline_banner">Offline — showing the curated list. Pull to refresh.</string>
+    <string name="catalog_empty">No models match the current filter.</string>
+    <string name="catalog_get">Get</string>
+    <string name="catalog_load">Load</string>
+    <string name="catalog_loaded">Loaded</string>
+    <string name="catalog_failed">Failed to refresh the registry — keeping the existing list.</string>
+
+    <!-- Vision screen -->
+    <string name="vision_title">Vision (image → text)</string>
+    <string name="vision_subtitle">Pick an image, ask a question. Streams a caption from the VLM.</string>
+    <string name="vision_pick">Pick image</string>
+    <string name="vision_run">Run</string>
+    <string name="vision_prompt_hint">What\'s in this image?</string>
+    <string name="vision_loading">Encoding image…</string>
+    <string name="vision_streaming">Streaming tokens…</string>
+    <string name="vision_done">Done</string>
+    <string name="vision_failed">VLM generation failed.</string>
+    <string name="vision_backend_missing">VLM backend not yet shipped — UI is wired and waiting on the RunAnywhere vision AAR.</string>
+    <string name="vision_section_meta">Timing</string>
+    <string name="vision_section_result">Caption</string>
 
     <!-- Metrics screen -->
     <string name="metrics_title">Cluster metrics</string>

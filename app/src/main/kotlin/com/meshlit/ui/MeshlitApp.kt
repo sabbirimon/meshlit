@@ -27,12 +27,16 @@ import com.meshlit.ui.components.MeshlitDrawerContent
 import com.meshlit.ui.components.QuickAction
 import com.meshlit.ui.components.tierAccentColor
 import com.meshlit.ui.nav.TopLevelDestination
+import com.meshlit.ui.screens.CatalogScreen
 import com.meshlit.ui.screens.DevicesScreen
 import com.meshlit.ui.screens.JobsScreen
 import com.meshlit.ui.screens.LogScreen
 import com.meshlit.ui.screens.MetricsScreen
 import com.meshlit.terminal.TerminalScreen
 import com.meshlit.ui.screens.ScreenStub
+import com.meshlit.ui.screens.StructuredScreen
+import com.meshlit.ui.screens.VisionScreen
+import com.meshlit.ui.screens.VoiceScreen
 import com.meshlit.ui.screens.settings.CategoryScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
@@ -148,6 +152,11 @@ fun MeshlitApp() {
                                 onOpenDrawer = openDrawer,
                                 onBack = { navController.popBackStack() },
                             )
+                            // Phase 2.x — full SDK surface screens
+                            TopLevelDestination.Voice -> VoiceScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Structured -> StructuredScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Catalog -> CatalogScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Vision -> VisionScreen(onOpenDrawer = openDrawer)
                             else -> ScreenStub(
                                 destination = dest,
                                 icon = dest.icon,

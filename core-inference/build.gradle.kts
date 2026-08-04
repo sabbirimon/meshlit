@@ -32,23 +32,19 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
 
-    // Phase 2.x — second shipped inference backend. ONNX Runtime
-    // Mobile is a single-aar JNI binding for `.onnx` models. The aar
-    // pulls in libonnxruntime.so (~8 MB arm64) plus a thin Java
-    // surface. The engine code below mirrors LlamaCppInferenceEngine
-    // and declares the JNI entry points as `external` until the
-    // upstream ORT JNI symbols are linked.
-    implementation(libs.onnxruntime.mobile)
-
     // RunAnywhere SDK — Phase 2.x on-device LLM runtime.
     // The core artifact gives us `RunAnywhere.initialize(...)` plus
     // download/load/generate flows. The llama.cpp backend artifact
     // pulls in libllama.so per ABI and is what actually executes the
-    // model. See `RunAnywhereInferenceEngine` for the integration
-    // surface that wraps these calls behind Meshlit's
-    // [InferenceEngine] contract.
+    // model. The ONNX backend pulls in sherpa-onnx for STT/TTS/VAD
+    // on the Voice screen — see `RunAnywhereVoiceEngine` for the
+    // integration surface. Note: `runanywhere-onnx` already bundles
+    // libonnxruntime.so per ABI, so we intentionally do NOT also
+    // depend on `onnxruntime-mobile` — the two AARs both ship the
+    // same native lib and AGP's merger rejects the duplicate.
     implementation(libs.runanywhere.sdk)
     implementation(libs.runanywhere.llamacpp)
+    implementation(libs.runanywhere.onnx)
 
     testImplementation(libs.junit)
 }

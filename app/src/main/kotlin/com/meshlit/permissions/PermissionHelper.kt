@@ -166,6 +166,58 @@ object PermissionHelper {
         return true
     }
 
+    // -------------------------------------------------------------------
+    // Microphone permission (Phase 2.x — Voice screen).
+    //
+    // `RECORD_AUDIO` is a runtime permission from API 23 onwards and
+    // the only one the Voice screen needs. The SDK's STT engine throws
+    // `SecurityException` from `AudioRecord.<init>` if it isn't held,
+    // so the screen must check + request *before* subscribing to the
+    // capture flow. Mirrors the notifications pattern above so the
+    // Voice screen's permission flow is consistent with the rest of
+    // the app.
+    // -------------------------------------------------------------------
+
+    /** True when the app holds `RECORD_AUDIO`. The Voice screen
+     *  binds its mic button's enabled-state to this. */
+    fun hasMicrophonePermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Fire the `RECORD_AUDIO` dialog if the user hasn't granted it
+     * yet. Returns `true` if a dialog was requested, `false` if the
+     * permission was already held or the user previously checked
+     * "Don't ask again" — in the latter case the screen must
+     * deep-link to App Settings via [openAppSettings].
+     */
+    fun requestMicrophoneIfNeeded(activity: Activity): Boolean {
+        if (hasMicrophonePermission(activity)) return false
+        log.info("perm.mic.request", "requesting RECORD_AUDIO")
+        ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            REQ_MIC,
+        )
+        return true
+    }
+
+    /** True if the user has permanently denied `RECORD_AUDIO`.
+     *  After this returns true, [requestMicrophoneIfNeeded] won't
+     *  surface the dialog; the Voice screen needs to call
+     *  [openAppSettings] instead. */
+    fun isMicrophonePermanentlyDenied(activity: Activity): Boolean {
+        if (hasMicrophonePermission(activity)) return false
+        return !ActivityCompat.shouldShowRequestPermissionRationale(
+            activity,
+            Manifest.permission.RECORD_AUDIO,
+        )
+    }
+
     private const val REQ_NOTIFICATIONS = 0xA51F
     private const val REQ_MEDIA = 0xA52E
+    private const val REQ_MIC = 0xA52F
 }

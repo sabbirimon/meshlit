@@ -203,4 +203,8 @@ val TopLevelDestination.shortLabel: String
         TopLevelDestination.Network -> "Network"
         TopLevelDestination.Users -> "Users"
         TopLevelDestination.Settings -> "Settings"
+        TopLevelDestination.Voice -> "Voice"
+        TopLevelDestination.Structured -> "JSON"
+        TopLevelDestination.Catalog -> "Catalog"
+        TopLevelDestination.Vision -> "Vision"
     }

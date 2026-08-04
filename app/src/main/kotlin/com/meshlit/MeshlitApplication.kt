@@ -11,7 +11,12 @@ import com.meshlit.core.common.HostOS
 import com.meshlit.core.common.HostOSDetection
 import com.meshlit.core.common.logger
 import com.meshlit.core.inference.BundledModelInstaller
+import com.meshlit.core.inference.ContextProvider
 import com.meshlit.core.inference.InferenceCoordinator
+import com.meshlit.core.inference.RunAnywhereCatalogEngine
+import com.meshlit.core.inference.RunAnywhereStructuredEngine
+import com.meshlit.core.inference.RunAnywhereVisionEngine
+import com.meshlit.core.inference.RunAnywhereVoiceEngine
 import com.meshlit.diagnostics.AndroidEGpuProbe
 import com.meshlit.diagnostics.AndroidHostOSProbe
 import com.meshlit.diagnostics.AndroidOemDetector
@@ -111,6 +116,42 @@ class MeshlitApplication : Application() {
      * starting the service first.
      */
     val inferenceCoordinator: InferenceCoordinator by lazy { InferenceCoordinator() }
+
+    // -------------------------------------------------------------------
+    // Phase 2.x — full SDK surface (voice, vision, structured, catalog).
+    //
+    // Each of these wrappers is a thin facade over the RunAnywhere SDK's
+    // extension-function namespaces (STT/TTS/VAD, structured output +
+    // tool calling, model registry, VLM). The screen composables read
+    // them straight from this singleton; the FGS doesn't need them
+    // because the LLM-side work goes through `inferenceCoordinator`.
+    // -------------------------------------------------------------------
+
+    /** Voice (STT + TTS + VAD) engine. Owns its own `AudioRecord` /
+     *  `AudioTrack` lifecycles. The Voice screen is its only consumer. */
+    val voiceEngine: RunAnywhereVoiceEngine by lazy {
+        RunAnywhereVoiceEngine.get()
+    }
+
+    /** Structured-output + tool-calling engine. The Structured screen
+     *  uses it for JSON-schema generation and Meshlit's MCP tools. */
+    val structuredEngine: RunAnywhereStructuredEngine by lazy {
+        RunAnywhereStructuredEngine.get()
+    }
+
+    /** Vision (VLM) engine. The Vision screen wires the image picker
+     *  and prompt field against this; the screen renders a
+     *  `BackendMissing` card until the VLM native AAR lands. */
+    val visionEngine: RunAnywhereVisionEngine by lazy {
+        RunAnywhereVisionEngine.get()
+    }
+
+    /** Dynamic catalog engine. Reads the SDK's live model registry
+     *  with a fallback to [com.meshlit.inference.RunAnywhereCatalog.all]
+     *  when the registry is unreachable. */
+    val catalogEngine: RunAnywhereCatalogEngine by lazy {
+        RunAnywhereCatalogEngine.get()
+    }
 
     /**
      * Process-wide metrics counters. Phase M — read by the
@@ -279,6 +320,30 @@ class MeshlitApplication : Application() {
         // because it just plugs a handful of jars + native libs into
         // the SDK's static state and does not yet touch the network.
         inferenceCoordinator.runAnywhereEngine().initialize(this)
+
+        // Phase 2.x — install the four wrapper engines on the
+        // application context. Each `install()` is a one-shot CAS so
+        // repeated calls (e.g. on a configuration change) are no-ops.
+        // The Voice engine needs `ContextProvider.install()` first so
+        // its permission check can grab the application context.
+        ContextProvider.install(this)
+        RunAnywhereVoiceEngine.install()
+        RunAnywhereStructuredEngine.install()
+        RunAnywhereVisionEngine.install()
+        RunAnywhereCatalogEngine.install(offlineFallback = {
+            com.meshlit.inference.RunAnywhereCatalog.all.map { entry ->
+                RunAnywhereCatalogEngine.Entry(
+                    id = entry.id,
+                    displayName = entry.displayName,
+                    origin = entry.origin,
+                    license = entry.license,
+                    family = entry.family,
+                    approxSizeMb = entry.approxSizeMb,
+                    language = entry.language,
+                    strengths = entry.strengths,
+                )
+            }
+        })
 
         // Kick off the system probe + bundled-model extraction on the
         // app scope. Both run in parallel; the FGS reads the cached

@@ -85,11 +85,11 @@ runanywhere-sdk = { group = "io.github.sanchitmonga22", name = "runanywhere-sdk"
 # we still declare both so version conflicts surface at sync time.
 runanywhere-llamacpp = { group = "io.github.sanchitmonga22", name = "runanywhere-llamacpp", version.ref = "runanywhere" }
 
-# RunAnywhere ONNX backend. Optional — STT/TTS/VAD. ~25 MB. Pulled
-# in so the same SDK can drive STT later without re-resolving
-# dependencies. Kept here commented out by default; uncomment to
-# enable voice / STT features.
-# runanywhere-onnx = { group = "io.github.sanchitmonga22", name = "runanywhere-onnx", version.ref = "runanywhere" }
+# RunAnywhere ONNX backend. Required for STT/TTS/VAD on the
+# Voice screen. ~25 MB across 4 ABIs. Pulls in sherpa-onnx
+# transitively for the inference runtime. Pulled in uncommented
+# because the Voice screen now requires it.
+runanywhere-onnx = { group = "io.github.sanchitmonga22", name = "runanywhere-onnx", version.ref = "runanywhere" }
 
 # Desugaring JDK libs
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugar" }

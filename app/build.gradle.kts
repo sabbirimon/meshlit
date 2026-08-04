@@ -10,10 +10,14 @@ android {
 
     defaultConfig {
         applicationId = "com.meshlit"
-        // Floor = API 23 (Android 6.0). Ktor 3 was dropped for NanoHTTPD
-        // + OkHttp specifically to keep this floor; androidx.core 1.19
-        // and Compose BOM 2025.05 require it.
-        minSdk = 23
+        // Floor = API 24 (Android 7.0). The RunAnywhere SDK 0.20.12
+        // ships `libllama.so` with API 24+ symbol requirements (and
+        // uses java.time on cold paths); `:core-inference` already
+        // declares 24 as its floor, and the manifest merger refuses
+        // to lower this module below the library floor. Bumping from
+        // the previous 23 is acceptable — every device that ran the
+        // 23-floor build also runs 24.
+        minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"

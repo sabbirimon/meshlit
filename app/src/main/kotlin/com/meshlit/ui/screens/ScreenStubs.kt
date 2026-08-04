@@ -115,6 +115,10 @@ private fun titleResFor(d: TopLevelDestination): Int = when (d) {
     TopLevelDestination.Network -> com.meshlit.R.string.network_empty_title
     TopLevelDestination.Users -> com.meshlit.R.string.users_empty_title
     TopLevelDestination.Settings -> com.meshlit.R.string.settings_about
+    TopLevelDestination.Voice -> com.meshlit.R.string.voice_title
+    TopLevelDestination.Structured -> com.meshlit.R.string.structured_title
+    TopLevelDestination.Catalog -> com.meshlit.R.string.catalog_title
+    TopLevelDestination.Vision -> com.meshlit.R.string.vision_title
 }
 
 private fun bodyResFor(d: TopLevelDestination): Int = when (d) {
@@ -128,4 +132,8 @@ private fun bodyResFor(d: TopLevelDestination): Int = when (d) {
     TopLevelDestination.Network -> com.meshlit.R.string.network_empty_body
     TopLevelDestination.Users -> com.meshlit.R.string.users_empty_body
     TopLevelDestination.Settings -> com.meshlit.R.string.app_tagline
+    TopLevelDestination.Voice -> com.meshlit.R.string.voice_subtitle
+    TopLevelDestination.Structured -> com.meshlit.R.string.structured_subtitle
+    TopLevelDestination.Catalog -> com.meshlit.R.string.catalog_subtitle
+    TopLevelDestination.Vision -> com.meshlit.R.string.vision_subtitle
 }
