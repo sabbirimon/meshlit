@@ -223,7 +223,7 @@ meshlit/
 ### Quickstart
 
 ```bash
-git clone https://github.com/yourname/meshlit
+git clone https://github.com/sabbirimon/meshlit
 cd meshlit
 ./gradlew :app:assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
