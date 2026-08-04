@@ -113,6 +113,22 @@
     <string name="jobs_model_bundled">Bundled · %1$s</string>
     <string name="jobs_model_no_models">No models available — open Models tab</string>
     <string name="jobs_model_params">%1$s · %2$dM params</string>
+    <string name="jobs_model_picker_installing">Installing bundled model…</string>
+    <string name="jobs_model_picker_install_failed">Bundled model unavailable — open Models tab to import one.</string>
+
+    <!-- RunAnywhere SDK model catalog (Phase 2.x). The Jobs screen
+         picker surfaces a "Download starter model" entry when no
+         GGUF is on disk; tapping it kicks off a streaming download
+         from RunAnywhere's catalog and auto-loads the result. -->
+    <string name="jobs_model_download_runanywhere">Download starter model (RunAnywhere)</string>
+    <string name="jobs_model_download_progress">Downloading model — %1$d%%</string>
+    <string name="jobs_model_download_done">Downloaded — loading model…</string>
+    <string name="jobs_model_download_failed">Download failed — %1$s</string>
+    <string name="jobs_model_download_no_network">Download needs an internet connection.</string>
+    <string name="jobs_service_start_brand">▶  Start service</string>
+    <string name="jobs_service_stop_brand">■  Stop service</string>
+    <string name="jobs_service_starting">Starting…</string>
+    <string name="jobs_service_stopping">Stopping…</string>
 
     <!-- Forwarding peers (Settings → Network) -->
     <string name="settings_network_forwarding_peers">Forwarding peers</string>
@@ -484,4 +500,26 @@
     <string name="models_download_failed_ssl">Hugging Face certificate rejected</string>
     <string name="models_download_failed_timeout">Server timed out — retry</string>
     <string name="models_already_imported">Already imported</string>
+
+    <!-- RunAnywhere catalog (Phase 2.x). The Models screen surfaces
+         a curated set of SDK-known model ids alongside the bundled
+         extractor; tapping "Get" streams weights from the
+         RunAnywhere CDN and auto-loads the result into the FGS. -->
+    <string name="models_runanywhere_section_title">RunAnywhere catalog</string>
+    <string name="models_runanywhere_section_subtitle">Cloud-free LLM downloads — paid by the SDK, served locally.</string>
+    <string name="models_runanywhere_get_cta">Get</string>
+    <string name="models_runanywhere_getting_button">Downloading…</string>
+    <string name="models_runanywhere_installed_button">Loaded</string>
+    <string name="models_runanywhere_runtime_label">runtime: RunAnywhere · llama.cpp</string>
+
+    <!-- First-run banner (Phase 2.x). Rendered at the top of the
+         Models screen until the user has dismissed it or
+         extracted the bundled GGUF. Single CTA: extracts the
+         bundled 1.5 B Qwen GGUF from the APK into the device's
+         internal storage and auto-loads it. -->
+    <string name="models_first_run_banner_title">Welcome to Meshlit</string>
+    <string name="models_first_run_banner_body">Meshlit ships with Qwen2.5-1.5B. Tap to extract and load — no internet required.</string>
+    <string name="models_first_run_banner_cta">Extract bundled model</string>
+    <string name="models_first_run_banner_extracting">Extracting bundled model…</string>
+    <string name="models_first_run_banner_dismiss">Dismiss</string>
 </resources>

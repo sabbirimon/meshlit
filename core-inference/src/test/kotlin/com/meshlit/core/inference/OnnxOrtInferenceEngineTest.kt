@@ -160,4 +160,42 @@ class OnnxOrtInferenceEngineTest {
         assertNotNull(llamaTokenCb)
         assertNotNull(onnxTokenCb)
     }
+
+    @Test
+    fun `loadModel on missing file returns typed file_missing error`() = runBlocking {
+        // Phase 2.x — when the user picks an ONNX path that doesn't
+        // exist on disk (e.g. bundled .gguf backed by an ORT-flavoured
+        // assistant), the engine must surface a typed
+        // `onnx.file_missing` error instead of crashing the JNI
+        // surface or pretending the load succeeded.
+        val e = OnnxOrtInferenceEngine()
+        val readyField = OnnxOrtInferenceEngine::class.java.getDeclaredField("nativeReady")
+        readyField.isAccessible = true
+        readyField.setBoolean(e, true)
+
+        val req = ModelLoadRequest(modelPath = "/definitely/not/a/file.onnx")
+        val result = e.loadModel(req)
+        assertTrue(result is MeshlitResult.Failure)
+        result as MeshlitResult.Failure
+        assertTrue(
+            "missing-file error should mention file_missing, got: ${result.error.tag}",
+            result.error.tag.contains("file_missing"),
+        )
+    }
+
+    @Test
+    fun `nativeLoadModel and friends are no longer declared as external fun`() {
+        // Regression check — Phase 2.x dropped the `external fun`
+        // declarations because no native `.so` actually exports them.
+        // Re-adding them without a corresponding JNI bridge caused
+        // UnsatisfiedLinkError crashes on the first load attempt.
+        // This test guards against a future refactor accidentally
+        // reintroducing them as `private external fun`.
+        val cls = OnnxOrtInferenceEngine::class.java
+        val externalMethods = cls.declaredMethods.filter { java.lang.reflect.Modifier.isNative(it.modifiers) }
+        assertTrue(
+            "no method should declare the `native` modifier today, got: ${externalMethods.map { it.name }}",
+            externalMethods.isEmpty(),
+        )
+    }
 }

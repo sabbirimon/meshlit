@@ -89,8 +89,21 @@ class TerminalSession(
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
     private var currentGroupId: Long = 0L
+    private var currentGroupStartedAtMs: Long = 0L
     private val currentGroupLines = mutableListOf<TerminalLine>()
     private var currentGroupCommand: String = ""
+
+    /**
+     * Monotonic counter for `currentGroupId`. We used to call
+     * `System.currentTimeMillis()` here, but two `startGroup()` calls
+     * in the same millisecond (e.g. typing fast or batched dispatches
+     * in tests) produced duplicate ids, which crashed the
+     * LazyColumn key check on the screen with
+     * `Key "X" was already used`. Phase 2.1 keeps the timestamp for
+     * the visible `startedAtMs` field but uses this counter for the
+     * Compose key.
+     */
+    private val groupIdCounter = java.util.concurrent.atomic.AtomicLong(0L)
 
     init {
         // Welcome banner. Cheap; just one group with one line.
@@ -100,7 +113,8 @@ class TerminalSession(
     }
 
     private fun startGroup(command: String) {
-        currentGroupId = System.currentTimeMillis()
+        currentGroupId = groupIdCounter.incrementAndGet()
+        currentGroupStartedAtMs = System.currentTimeMillis()
         currentGroupCommand = command
         currentGroupLines.clear()
     }
@@ -110,7 +124,7 @@ class TerminalSession(
         val group = TerminalGroup(
             id = currentGroupId,
             command = currentGroupCommand,
-            startedAtMs = currentGroupId,
+            startedAtMs = currentGroupStartedAtMs,
             lines = currentGroupLines.toList(),
         )
         val current = _groups.value
@@ -132,7 +146,7 @@ class TerminalSession(
         val partial = TerminalGroup(
             id = currentGroupId,
             command = currentGroupCommand,
-            startedAtMs = currentGroupId,
+            startedAtMs = currentGroupStartedAtMs,
             lines = currentGroupLines.toList(),
         )
         val current = _groups.value

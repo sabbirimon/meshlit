@@ -272,6 +272,14 @@ class MeshlitApplication : Application() {
         // eagerly so the FGS can post without a race.
         notificationCenter.toString()
 
+        // Phase 2.x — Register the RunAnywhere SDK at process start
+        // so the Jobs screen can route GGUF loads to a real on-device
+        // LLM runtime rather than the placeholder stub. The init call
+        // is idempotent and synchronous; safe to run inline in onCreate
+        // because it just plugs a handful of jars + native libs into
+        // the SDK's static state and does not yet touch the network.
+        inferenceCoordinator.runAnywhereEngine().initialize(this)
+
         // Kick off the system probe + bundled-model extraction on the
         // app scope. Both run in parallel; the FGS reads the cached
         // model path once the FGS binds. We don't block app start on

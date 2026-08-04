@@ -1,2 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- RunAnywhere SDK downloads model weights over HTTPS on first
+         load. The host app already declares INTERNET; we re-declare
+         it here so that the inference module can be lifted out of
+         the host APK (e.g. into a feature module) without losing
+         the permission. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+</manifest>

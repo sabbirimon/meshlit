@@ -60,6 +60,16 @@ class InferenceCoordinator(
     private val stubEngine = JvmStubInferenceEngine()
 
     /**
+     * Phase 2.x — RunAnywhere-backed engine. The host calls
+     * [RunAnywhereInferenceEngine.initialize] at app start (in
+     * `MeshlitApplication.onCreate`); once initialised, this engine
+     * takes priority over the placeholder llama.cpp engine for GGUF
+     * loads because the SDK actually executes the model rather
+     * than returning the JNI-not-implemented error path.
+     */
+    private val runAnywhereEngine = RunAnywhereInferenceEngine()
+
+    /**
      * The active engine. Resolved once at startup but the latest
      * runtime registry is consulted on every load so we can react
      * when a candidate runtime is later shipped (Phase 2).
@@ -107,37 +117,115 @@ class InferenceCoordinator(
         val forceStub = System.getProperty("meshlit.inference.stub") == "true"
         if (forceStub) {
             log.info("coord.engine_pick", "forcing stub engine (system property set)")
+            lastRuntime = RuntimeRegistry.ggufLlamaCpp(stubEngine)
+            lastFormat = null
             return stubEngine
         }
-        // Phase 2.x — try GGUF first (the historically shipped
-        // runtime), then ONNX (newly shipped). The first to come
-        // up wins; if both fail, we fall back to the stub so the
-        // app stays launchable.
-        val llamaLoaded = llamaEngine.loadNativeLibrary()
-        if (llamaLoaded) {
-            log.info("coord.engine_pick", "using llama.cpp engine")
-            // Phase 2 — also register the runtime so the UI can render
-            // the active runtime name in the status card without a
-            // loadModel having been called yet.
-            lastRuntime = RuntimeRegistry.ggufLlamaCpp(llamaEngine)
-            lastFormat = FileFormat.Gguf
-            return llamaEngine
+        // Phase 2.x — probe every shipped runtime, remember which
+        // ones came up, then bind each load to the matching engine.
+        // We *don't* keep a single active engine anymore: the
+        // coordinator dispatches per-load based on the file path so
+        // a `.gguf` shipped asset lands on llama.cpp (when present)
+        // and an externally-imported `.onnx` lands on ORT — without
+        // either crashing the other.
+        val llamaOk = runCatching { llamaEngine.loadNativeLibrary() }.getOrDefault(false)
+        val onnxOk = runCatching { onnxEngine.loadNativeLibrary() }.getOrDefault(false)
+        // RunAnywhere is *not* probed here — its `initialize(context)`
+        // call needs an Android `Context`, which the coordinator
+        // doesn't have (it's a plain Kotlin object). The host calls
+        // `MeshlitApplication.onCreate` → `RunAnywhereInferenceEngine.initialize`
+        // before the coordinator picks up any work; `isReady()`
+        // returns true once that's happened and `engineFor(.gguf)`
+        // then routes GGUF loads here.
+        //
+        // We deliberately do NOT mark the engine as "available" yet
+        // because the SDK hasn't been registered. It self-registers
+        // at app start; if `isReady()` is still false at load time
+        // we fall through to the placeholder llama.cpp engine, which
+        // returns a typed `Native` error explaining the SDK isn't
+        // up. That's the same failure mode users saw before — except
+        // now it routes through RunAnywhere first, so the moment
+        // `MeshlitApplication.onCreate` succeeds the load lands on
+        // a real model with no coordinator changes.
+        // Keep a compatibility pointer for `engineTag` and friends.
+        // The actual load path goes through `engineFor(format)` below.
+        val fallbackEngine = when {
+            llamaOk -> {
+                log.info("coord.engine_pick", "engine_for_gguf=llama.cpp")
+                lastRuntime = RuntimeRegistry.ggufLlamaCpp(llamaEngine)
+                lastFormat = FileFormat.Gguf
+                llamaEngine as InferenceEngine
+            }
+            onnxOk -> {
+                log.info("coord.engine_pick", "engine_for_onnx=onnx-ort (no llama.cpp)")
+                lastRuntime = RuntimeRegistry.onnxOrt(onnxEngine)
+                lastFormat = FileFormat.Onnx
+                onnxEngine as InferenceEngine
+            }
+            else -> {
+                log.info("coord.engine_pick", "falling back to stub engine (no native lib)")
+                lastRuntime = RuntimeRegistry.ggufLlamaCpp(stubEngine)
+                lastFormat = null
+                stubEngine as InferenceEngine
+            }
         }
-        val onnxLoaded = onnxEngine.loadNativeLibrary()
-        if (onnxLoaded) {
-            log.info("coord.engine_pick", "using onnx-ort engine")
-            lastRuntime = RuntimeRegistry.onnxOrt(onnxEngine)
-            lastFormat = FileFormat.Onnx
-            return onnxEngine
-        }
-        log.info("coord.engine_pick", "falling back to stub engine (no native lib)")
-        // Stub engine doesn't bind to a specific format — it
-        // generates synthetic replies regardless. We register a
-        // synthetic "stub" runtime so the UI can show that.
-        lastRuntime = RuntimeRegistry.ggufLlamaCpp(stubEngine)
-        lastFormat = null
-        return stubEngine
+        // Pre-warm: pickEngine previously returned the live engine
+        // and lazy-loaded everything else; now we just remember
+        // which engines came up so `engineFor(format)` can dispatch.
+        llamaAvailable = llamaOk
+        onnxAvailable = onnxOk
+        return fallbackEngine
     }
+
+    /** Available native bindings, set once by [pickEngine]. */
+    @Volatile private var llamaAvailable: Boolean = false
+    @Volatile private var onnxAvailable: Boolean = false
+
+    /**
+     * Resolve the runtime engine for a given file format and path.
+     * Falls back through:
+     *  1. RunAnywhere (Phase 2.x) if the path starts with the
+     *     `runanywhere:` scheme, or if the format is GGUF and the
+     *     SDK has been initialised at app start. The scheme prefix
+     *     is the explicit "load by SDK id" path used when the user
+     *     downloads a model from the RunAnywhere catalog and we
+     *     don't have a local file path to hand the coordinator.
+     *  2. llama.cpp if the format is GGUF and the placeholder .so
+     *     is available.
+     *  3. onnx-ort if the format is Onnx and that engine is available
+     *  4. The JvmStub engine for everything else (or when nothing
+     *     native shipped). The stub synthesizes a friendly placeholder
+     *     reply so the UI stays launchable without a real model.
+     */
+    private fun engineFor(modelPath: String): InferenceEngine {
+        if (modelPath.startsWith(RUNANYWHERE_SCHEME)) {
+            return runAnywhereEngine
+        }
+        val fmt = FileFormat.detect(modelPath)
+        return when (fmt) {
+            FileFormat.Gguf -> when {
+                runAnywhereEngine.isReady() -> runAnywhereEngine
+                llamaAvailable -> llamaEngine
+                else -> stubEngine
+            }
+            FileFormat.Onnx -> if (onnxAvailable) onnxEngine else stubEngine
+            // SafeTensors / TFLite / MLX / CoreML / unknown all
+            // route to the stub until a Phase 3 build ships an
+            // actual implementation. We never silently drop a load —
+            // the stub returns a recognisable placeholder so the UI
+            // can tell the user "no engine for this format yet".
+            else -> stubEngine
+        }
+    }
+
+    /**
+     * Phase 2.x — explicit accessor for the RunAnywhere-backed engine.
+     * The Models screen uses this to drive `downloadModelById(...)`
+     * directly, since the SDK's download flow isn't a normal
+     * `loadModel` operation (it streams weights from the network
+     * rather than reading a local file).
+     */
+    fun runAnywhereEngine(): RunAnywhereInferenceEngine = runAnywhereEngine
 
     /** Display name of the active runtime for the status card. */
     val runtimeDisplayName: String
@@ -214,7 +302,13 @@ class InferenceCoordinator(
             layerEnd = layerEnd,
             manifest = manifest,
         )
-        val result = engine.loadModel(request)
+        // Pick the runtime engine for this file's format. If a
+        // bundle shipped a GGUF but only the ORT engine came up
+        // native-ready, the load lands on the stub instead of
+        // crashing on the wrong engine. The stub still produces a
+        // recognisable placeholder so the UI never goes blank.
+        val targetEngine = engineFor(modelPath)
+        val result = targetEngine.loadModel(request)
         _state.value = when (result) {
             is MeshlitResult.Success -> CoordinatorState.Ready(result.value, lastRuntime, lastFormat)
             is MeshlitResult.Failure -> CoordinatorState.Error(result.error.tag, lastRuntime, lastFormat)
@@ -245,12 +339,31 @@ class InferenceCoordinator(
     }
 
     suspend fun unloadModel() {
-        engine.unloadModel()
+        // Unload every engine that might have a session open. Cheap
+        // when nothing is loaded — each engine's unload is a no-op.
+        // Phase 2.x — also unload the RunAnywhere-backed engine so
+        // the next load doesn't reuse a stale descriptor.
+        runAnywhereEngine.unloadModel()
+        llamaEngine.unloadModel()
+        onnxEngine.unloadModel()
+        stubEngine.unloadModel()
         _state.value = CoordinatorState.Idle
         _events.tryEmit(InferenceEvent.Unloaded)
     }
 
-    fun loadedModel(): ModelInfo? = engine.loadedModel()
+    fun loadedModel(): ModelInfo? {
+        // The user-facing "what's currently loaded" question is
+        // answered by whichever engine actually has a model. We
+        // check in priority order: stub is always available but
+        // doesn't track loaded state, so we skip it unless both
+        // native engines are empty. Phase 2.x — RunAnywhere wins
+        // when it has a model loaded (so the status card reflects
+        // the real on-device model rather than the placeholder).
+        runAnywhereEngine.loadedModel()?.let { return it }
+        llamaEngine.loadedModel()?.let { return it }
+        onnxEngine.loadedModel()?.let { return it }
+        return stubEngine.loadedModel()
+    }
 
     /**
      * Dispatch an inference. Serialized — concurrent callers wait on
@@ -260,7 +373,12 @@ class InferenceCoordinator(
     suspend fun infer(request: InferenceRequest): MeshlitResult<InferenceResult> =
         inferMutex.withLock {
             withContext(dispatcher) {
-                if (!engine.isReady()) {
+                // Pick the engine that currently holds the loaded
+                // model. Falls through to the stub if no native
+                // engine has a session — that gives us a recognisable
+                // placeholder reply instead of an opaque "not loaded".
+                val targetEngine = pickEngineForInfer(request)
+                if (!targetEngine.isReady()) {
                     return@withContext MeshlitResult.Failure(
                         com.meshlit.core.common.MeshlitError.Invalid("coord.inference.not_loaded"),
                     )
@@ -280,11 +398,11 @@ class InferenceCoordinator(
                 // user as duplicated agent replies.
                 currentJob = coroutineContext[Job]
                 try {
-                    val result = engine.infer(request)
+                    val result = targetEngine.infer(request)
                     _events.tryEmit(InferenceEvent.GenerationFinished(result))
-                    if (engine.isReady()) {
+                    if (targetEngine.isReady()) {
                         _state.value = CoordinatorState.Ready(
-                            engine.loadedModel()!!,
+                            targetEngine.loadedModel()!!,
                             runtime = lastRuntime,
                             format = lastFormat,
                         )
@@ -295,6 +413,24 @@ class InferenceCoordinator(
                 }
             }
         }
+
+    /** Pick the engine that should run an inference, preferring the one
+     *  that currently has a session loaded. Falls through to the stub so
+     *  the user always gets a reply.
+     *
+     *  Phase 2.x — RunAnywhere takes priority when it has a model
+     *  loaded because the placeholder llama.cpp engine never actually
+     *  serves tokens (its JNI surface is declared but unimplemented).
+     *  Without this priority, `infer()` would route to llama.cpp and
+     *  return a typed `Native` error after the user successfully
+     *  downloaded and loaded a model via RunAnywhere.
+     */
+    private fun pickEngineForInfer(request: InferenceRequest): InferenceEngine {
+        if (runAnywhereEngine.isReady()) return runAnywhereEngine
+        if (llamaEngine.isReady()) return llamaEngine
+        if (onnxEngine.isReady()) return onnxEngine
+        return stubEngine
+    }
 
     /** Cancel the current inference. No-op when nothing is running. */
     fun cancel() {
@@ -319,7 +455,11 @@ class InferenceCoordinator(
 
     fun shutdown() {
         cancel()
-        scope.launch { engine.unloadModel() }
+        scope.launch {
+            llamaEngine.unloadModel()
+            onnxEngine.unloadModel()
+            stubEngine.unloadModel()
+        }
     }
 }
 
@@ -347,3 +487,16 @@ sealed interface InferenceEvent {
     data class GenerationStarted(val prompt: String) : InferenceEvent
     data class GenerationFinished(val result: MeshlitResult<InferenceResult>) : InferenceEvent
 }
+
+/**
+ * Path prefix that signals to [InferenceCoordinator] "this is a
+ * RunAnywhere SDK model id, dispatch to [RunAnywhereInferenceEngine]
+ * regardless of file extension". The model id follows the prefix,
+ * e.g. `runanywhere:smollm2-360m-instruct-q8_0`.
+ *
+ * Used by the Jobs screen when the user picks "Download starter
+ * model" — the SDK owns the file path on disk and we don't want to
+ * leak its filesystem layout back into the coordinator's
+ * `FileFormat.detect(...)` logic.
+ */
+const val RUNANYWHERE_SCHEME = "runanywhere:"

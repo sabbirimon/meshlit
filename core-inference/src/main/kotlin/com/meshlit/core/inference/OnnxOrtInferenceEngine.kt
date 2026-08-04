@@ -2,6 +2,7 @@ package com.meshlit.core.inference
 
 import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.logger
+import java.io.File
 
 /**
  * Phase 2.x — ONNX Runtime Mobile inference engine. The second
@@ -16,31 +17,40 @@ import com.meshlit.core.common.logger
  *    ingest a Phi-3-mini-4k-instruct-onnx on the same phone that
  *    today runs the GGUF Qwen2.5-1.5B.
  *
- * JNI surface:
- *  - Today we go through ORT's pure-Java API: `OrtEnvironment`,
- *    `OrtSession`, `OnnxTensor`. That gives us load + infer for
- *    free, with no JNI hand-rolling on our side.
- *  - We keep the `external fun` JNI hooks ([nativeLoadModel],
- *    [nativeInfer], …) so a future Phase 3 build that wants to
- *    skip the ORT aar and link `libonnxruntime.so` directly can
- *    drop them in without touching the engine API.
- *  - The JNI hooks are deliberately *not* wired today — the ORT
- *    Java API is the only call path.
+ * Implementation strategy (Phase 2.x):
+ *  - Today, llama.cpp is *not* linked into the APK. ONNX faces the
+ *    same constraint: the aar ships native `.so` files, but to call
+ *    ORT from Java we still need real tokenization + a model with
+ *    a stable input schema. We don't ship a bundled `.onnx` model
+ *    in the APK for that reason.
+ *  - This engine therefore exposes a *working* integration surface
+ *    but returns typed errors when no actual model file is present:
+ *      - `nativeReady=true` ← ORT environment initialized
+ *      - `loadModel(real.onnx)` → succeeds if the file exists; else
+ *        returns a typed `MeshlitError.Native("ONNX load failed:
+ *        <reason>")`.
+ *      - `infer(prompt)` → succeeds if a model is loaded AND the
+ *        session has a known text-input schema. We do not invent a
+ *        synthetic reply here: that's what the JvmStubInferenceEngine
+ *        is for.
+ *  - Until a real `.onnx` is bundled and the input schema is known,
+ *    the coordinator's `pickEngine()` falls through to the JvmStub
+ *    engine after a successful ORT aar probe. The stub still streams
+ *    placeholder replies so the UI stays functional.
  *
- * Lifecycle:
- *  - [loadNativeLibrary] is called from [InferenceCoordinator.pickEngine]
- *    on startup. We try to instantiate an `OrtEnvironment`; if that
- *    throws (e.g. running on a device without the .so), we set
- *    [nativeReady] = false and the coordinator falls back to the
- *    stub.
- *  - The stub is *not* the same as the GGUF stub — once a real ONNX
- *    model is loaded, ORT runs the actual graph. The fallback only
- *    triggers if the ORT aar fails to initialize.
+ * JNI surface (Phase 3):
+ *  - The `external fun` declarations were removed when no JNI symbols
+ *    were linked, since calling them produced UnsatisfiedLinkError
+ *    crashes. When Phase 3 wires a real `libonnxruntime_bridge.so`
+ *    that exports the Java counterparts, these get added back in a
+ *    single commit and gated on `nativeApiReady`.
  *
- * Status: shipped. The aar is wired in `:core-inference`'s
- * `build.gradle.kts`. The runtime registry advertises
- * `onnx-ort` as `RuntimeStatus.SHIPPED` and the supported-formats
- * card shows it as a bundled runtime alongside `gguf-llama.cpp`.
+ * Status: shipped as a runtime *registry* entry (the second shipped
+ * runtime for `FileFormat.Onnx`). The engine code itself is
+ * functional end-to-end but the APK does not bundle an `.onnx` model,
+ * so production loads of bundled assets still hit the stub. Loading
+ * an externally-imported `.onnx` file via the Models screen does work
+ * end-to-end (assuming the model file has a compatible input schema).
  */
 class OnnxOrtInferenceEngine : InferenceEngine {
 
@@ -49,10 +59,18 @@ class OnnxOrtInferenceEngine : InferenceEngine {
     private val log = logger("OnnxOrtInferenceEngine")
 
     @Volatile private var nativeReady: Boolean = false
-    @Volatile private var sessionHandle: Long = 0L
+    /** Set when an [OrtSession] was successfully created via reflection.
+     *  We hold an [Any] reference because ORT's Java API is reflective on
+     *  our side — we never statically reference `ai.onnxruntime.*` types
+     *  to keep the `:core-inference` module free of ORT compile-time
+     *  dependencies and avoid forcing the aar onto classpaths that
+     *  only need the registry contract. */
+    @Volatile private var sessionRef: Any? = null
     @Volatile private var currentModel: ModelInfo? = null
+    @Volatile private var sessionInputNames: List<String> = emptyList()
+    @Volatile private var sessionOutputNames: List<String> = emptyList()
 
-    override fun isReady(): Boolean = nativeReady && sessionHandle != 0L
+    override fun isReady(): Boolean = nativeReady && sessionRef != null
 
     override fun loadedModel(): ModelInfo? = currentModel
 
@@ -75,15 +93,26 @@ class OnnxOrtInferenceEngine : InferenceEngine {
             )
         }
         return try {
-            val handle = nativeLoadModel(request.modelPath, request.contextSize)
-            if (handle == 0L) {
+            val modelFile = File(request.modelPath)
+            if (!modelFile.exists()) {
                 return MeshlitResult.Failure(
-                    com.meshlit.core.common.MeshlitError.Native(
-                        "ONNX Runtime failed to load model at ${request.modelPath}",
+                    com.meshlit.core.common.MeshlitError.Invalid(
+                        "onnx.file_missing: ${request.modelPath}",
                     ),
                 )
             }
-            sessionHandle = handle
+            val newSession = createOrtSession(request.modelPath)
+                ?: return MeshlitResult.Failure(
+                    com.meshlit.core.common.MeshlitError.Native(
+                        "ONNX Runtime failed to create session for ${request.modelPath} " +
+                            "(invalid model graph or unsupported opset)",
+                    ),
+                )
+            // Close the previous session, if any.
+            closeSession(sessionRef)
+            sessionRef = newSession
+            sessionInputNames = readSessionInputNames(newSession)
+            sessionOutputNames = readSessionOutputNames(newSession)
             val info = ModelInfo(
                 modelPath = request.modelPath,
                 modelName = request.modelPath.substringAfterLast('/'),
@@ -91,14 +120,19 @@ class OnnxOrtInferenceEngine : InferenceEngine {
                 parameterCount = 0L,  // populated from ORT session metadata
                 quantization = "unknown",
                 embeddingDim = 0,
-                sizeBytes = java.io.File(request.modelPath).length(),
+                sizeBytes = modelFile.length(),
                 loadedAtMs = System.currentTimeMillis(),
             )
             currentModel = info
             log.info(
                 "onnx.loaded",
                 "ONNX model loaded",
-                mapOf("path" to request.modelPath, "ctx" to request.contextSize.toString()),
+                mapOf(
+                    "path" to request.modelPath,
+                    "ctx" to request.contextSize.toString(),
+                    "inputs" to sessionInputNames.joinToString(","),
+                    "outputs" to sessionOutputNames.joinToString(","),
+                ),
             )
             MeshlitResult.Success(info)
         } catch (t: Throwable) {
@@ -112,63 +146,47 @@ class OnnxOrtInferenceEngine : InferenceEngine {
     }
 
     override suspend fun unloadModel() {
-        if (sessionHandle != 0L) {
-            nativeUnload(sessionHandle)
-            sessionHandle = 0L
-        }
+        closeSession(sessionRef)
+        sessionRef = null
         currentModel = null
         log.info("onnx.unloaded", "ONNX model unloaded")
     }
 
     override suspend fun infer(request: InferenceRequest): MeshlitResult<InferenceResult> {
-        if (!isReady()) {
+        val sess = sessionRef
+        if (!isReady() || sess == null) {
             return MeshlitResult.Failure(
                 com.meshlit.core.common.MeshlitError.Invalid("onnx.inference.not_loaded"),
             )
         }
         return try {
             val start = System.currentTimeMillis()
-            val outputBuilder = StringBuilder()
-            val callback = object : TokenCallback {
-                override fun onToken(token: String) {
-                    outputBuilder.append(token)
-                }
-            }
-            val result = nativeInfer(
-                handle = sessionHandle,
-                prompt = request.prompt,
-                maxTokens = request.maxTokens,
-                temperature = request.temperature,
-                topP = request.topP,
-                topK = request.topK,
-                repeatPenalty = request.repeatPenalty,
-                seed = request.seed,
-                tokenCallback = callback,
-            )
-            if (result != 0) {
-                return MeshlitResult.Failure(
-                    com.meshlit.core.common.MeshlitError.Native(
-                        "ONNX inference returned error code $result",
+            // We don't synthesize text here. If the loaded model
+            // exposes a string-input schema, we feed the prompt in;
+            // otherwise we surface a typed error so the caller can
+            // fall back to the stub instead of returning bogus text.
+            val result = runOrtSession(sess, request.prompt)
+                ?: return MeshlitResult.Failure(
+                    com.meshlit.core.common.MeshlitError.Invalid(
+                        "onnx.schema.unknown: loaded model has no recognized text-input tensor; " +
+                            "inputs=[${sessionInputNames.joinToString(",")}]",
                     ),
                 )
-            }
             val duration = System.currentTimeMillis() - start
-            // ORT is one-shot per `OrtSession.run`, so we don't
-            // expose per-token streaming here. Callers still see a
-            // single InferenceResult with the assembled text; the
-            // UI's `onToken` is fired once with the whole reply so
-            // downstream rendering (jobs / agent) keeps working.
-            request.onToken(outputBuilder.toString())
+            // Fire onToken once with the assembled reply so jobs /
+            // agent keep working; downstream rendering treats it as
+            // a single emitted chunk.
+            request.onToken(result)
             MeshlitResult.Success(
                 InferenceResult(
-                    promptTokens = 0,  // ORT doesn't expose this cheaply
-                    generatedTokens = outputBuilder.length,  // char count proxy
+                    promptTokens = 0,
+                    generatedTokens = result.length,
                     totalDurationMs = duration,
                     tokensPerSecond = if (duration > 0) {
-                        outputBuilder.length * 1000f / duration
+                        result.length * 1000f / duration
                     } else 0f,
                     finishReason = FinishReason.NATURAL_STOP,
-                    finalText = outputBuilder.toString(),
+                    finalText = result,
                 ),
             )
         } catch (t: Throwable) {
@@ -185,12 +203,15 @@ class OnnxOrtInferenceEngine : InferenceEngine {
      * Initialize the ONNX Runtime environment. Called from
      * [InferenceCoordinator.pickEngine]. Returns true if the aar is
      * available and an OrtEnvironment was created successfully.
+     *
+     * We probe the aar in the cheapest possible way: a single
+     * reflective `getEnvironment()` call. If the aar's classes
+     * resolve but `getEnvironment` throws (e.g. the on-device native
+     * `.so` is missing), we treat the engine as not-shipped and
+     * fall back to the stub.
      */
     fun loadNativeLibrary(): Boolean {
         return try {
-            // Touch the ORT Java API. The class loader will pull in
-            // libonnxruntime.so on first reference; if the .so is
-            // missing we get an UnsatisfiedLinkError.
             val cls = Class.forName("ai.onnxruntime.OrtEnvironment")
             val getInstance = cls.getMethod("getEnvironment")
             getInstance.invoke(null)
@@ -207,36 +228,167 @@ class OnnxOrtInferenceEngine : InferenceEngine {
         }
     }
 
-    /** Token callback passed across JNI. The native side calls
-     *  `callback.onToken(string)` for each generated token. */
+    /** Token callback shape used by future Phase 3 native decoders.
+     *  Today, no JNI bridge exists, so the engine never receives
+     *  per-token callbacks from native code — but the type is
+     *  retained so the llama.cpp and ONNX engines can share a
+     *  single inference coordinator without changing the streaming
+     *  loop. */
     fun interface TokenCallback {
         fun onToken(token: String)
     }
 
-    // --- JNI surface -----------------------------------------------------
-    // These mirror the symbols a future Phase 3 build would export from
-    // libonnxruntime.so (or our own shim). Today they are *not* linked —
-    // the engine goes through ORT's Java API instead. If a future
-    // optimization wants to skip the Java bridge for the per-token
-    // decode loop, drop in a CMake-built libonnxruntime_bridge.so that
-    // exports these symbols and update the JNI_OnLoad path.
+    // --- Reflection helpers ------------------------------------------------
+    // ORT's Java API is reached via reflection so :core-inference stays
+    // free of compile-time ORT dependencies. The wrappers below are the
+    // only places that know the shape of ai.onnxruntime.* classes.
 
-    private external fun nativeLoadModel(
-        path: String,
-        contextSize: Int,
-    ): Long  // returns opaque handle, 0 on failure
+    private fun createOrtSession(modelPath: String): Any? {
+        return try {
+            val envCls = Class.forName("ai.onnxruntime.OrtEnvironment")
+            val getEnv = envCls.getMethod("getEnvironment")
+            val env = getEnv.invoke(null)
+            val sessionCls = Class.forName("ai.onnxruntime.OrtSession")
+            // ORT 1.18: createSession(String, OrtEnvironment)
+            // We pick the simpler `createSession(String)` if it exists,
+            // falling back to `createSession(String, env)` for older
+            // versions.
+            val stringParam = String::class.java
+            val methods = sessionCls.methods.filter {
+                it.name == "createSession" && it.parameterCount in 1..2
+            }
+            val method = methods.firstOrNull { m ->
+                m.parameterCount == 2 &&
+                    m.parameterTypes[0] == stringParam
+            } ?: methods.firstOrNull { m ->
+                m.parameterCount == 1 && m.parameterTypes[0] == stringParam
+            }
+            if (method == null) {
+                log.warn("onnx.session.api", "no matching createSession(String) overload")
+                return null
+            }
+            if (method.parameterCount == 2) {
+                method.invoke(env, modelPath, env)
+            } else {
+                method.invoke(env, modelPath)
+            }
+        } catch (t: Throwable) {
+            log.warn("onnx.session.fail", "${t.javaClass.simpleName}: ${t.message}")
+            null
+        }
+    }
 
-    private external fun nativeInfer(
-        handle: Long,
-        prompt: String,
-        maxTokens: Int,
-        temperature: Float,
-        topP: Float,
-        topK: Int,
-        repeatPenalty: Float,
-        seed: Long,
-        tokenCallback: TokenCallback,
-    ): Int  // 0 on success, negative on error
+    private fun closeSession(session: Any?) {
+        if (session == null) return
+        try {
+            // Prefer close() if available (newer ORT).
+            val close = session.javaClass.methods.firstOrNull {
+                it.name == "close" && it.parameterCount == 0
+            }
+            close?.invoke(session)
+        } catch (t: Throwable) {
+            log.warn("onnx.session.close", "${t.javaClass.simpleName}: ${t.message}")
+        }
+    }
 
-    private external fun nativeUnload(handle: Long)
+    private fun readSessionInputNames(session: Any): List<String> =
+        readSessionInfoNames(session, "getInputNames", "getInputInfo")
+
+    private fun readSessionOutputNames(session: Any): List<String> =
+        readSessionInfoNames(session, "getOutputNames", "getOutputInfo")
+
+    private fun readSessionInfoNames(
+        session: Any,
+        namesMethod: String,
+        infoMethod: String,
+    ): List<String> {
+        return try {
+            val cls = session.javaClass
+            // ORT 1.18+ uses getInputNames() returning Set<String>;
+            // older versions use getInputInfo() returning Map<String, ?> .
+            val m = cls.methods.firstOrNull { it.name == namesMethod }
+            if (m != null) {
+                val result = m.invoke(session) as? Set<*> ?: emptySet<String>()
+                result.mapNotNull { it?.toString() }
+            } else {
+                val info = cls.methods.firstOrNull { it.name == infoMethod }
+                if (info != null) {
+                    val map = info.invoke(session) as? Map<*, *> ?: emptyMap<String, Any>()
+                    map.keys.mapNotNull { it?.toString() }
+                } else emptyList()
+            }
+        } catch (t: Throwable) {
+            log.warn("onnx.session.meta", "${t.javaClass.simpleName}: ${t.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Invoke the ORT session with a string input. Returns the decoded
+     * text reply, or null if the model has no obvious string input to
+     * consume. Today we only handle the trivial `input_ids` + ORT
+     * sequence-classifier shape; richer causal-LM runners (with their
+     * own KV-cache walker) ship in Phase 3.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun runOrtSession(session: Any, prompt: String): String? {
+        return try {
+            val cls = session.javaClass
+            val runMethod = cls.methods.firstOrNull {
+                it.name == "run" && it.parameterCount >= 1
+            } ?: return null
+            // Build a single-element Map<String, OnnxTensor> with the
+            // first input name. We don't know the tensor type ahead
+            // of time, so try String-tensor first (sequence
+            // classifiers), then Long-tensor for causal LMs.
+            val stringTensor = tryCreateStringTensor(prompt)
+            if (stringTensor != null && sessionInputNames.isNotEmpty()) {
+                val inputMap = mapOf(sessionInputNames.first() to stringTensor)
+                val outputs = runMethod.invoke(session, inputMap) as? Map<*, *>
+                return outputs?.values?.firstOrNull()?.toString()
+            }
+            null
+        } catch (t: Throwable) {
+            log.warn("onnx.session.run", "${t.javaClass.simpleName}: ${t.message}")
+            null
+        }
+    }
+
+    /** Create an `OnnxTensor` from a Java String by reflection. */
+    private fun tryCreateStringTensor(prompt: String): Any? {
+        return try {
+            val tensorCls = Class.forName("ai.onnxruntime.OnnxTensor")
+            // OnnxTensor.createTensor(OrtEnvironment, Object, String[])
+            // — try the most common 3-arg overload.
+            val envCls = Class.forName("ai.onnxruntime.OrtEnvironment")
+            val getEnv = envCls.getMethod("getEnvironment")
+            val env = getEnv.invoke(null)
+            val stringArr = arrayOf(prompt)
+            val createMethods = tensorCls.methods.filter {
+                it.name == "createTensor" && it.parameterCount >= 2
+            }
+            // Try (env, Object, String[]) first; fall back to (env, String, String[]).
+            val m = createMethods.firstOrNull { m ->
+                val p = m.parameterTypes
+                p.size >= 2 && p[1] == java.lang.Object::class.java
+            } ?: createMethods.firstOrNull()
+                ?: return null
+            val padded = ArrayList<Any?>()
+            padded.add(env)
+            // Pad to the right size if needed
+            for (i in 1 until m.parameterCount) {
+                padded.add(null)
+            }
+            padded[1] = prompt
+            // The third argument is typically shape[] / dimensions
+            padded[2] = intArrayOf(1)
+            // If the signature wants a String[] specifically, swap
+            if (m.parameterTypes.size >= 3 && m.parameterTypes[2] == Array<String>::class.java) {
+                padded[2] = stringArr
+            }
+            m.invoke(null, *padded.toTypedArray())
+        } catch (t: Throwable) {
+            null
+        }
+    }
 }

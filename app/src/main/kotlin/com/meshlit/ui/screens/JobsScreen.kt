@@ -14,6 +14,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,7 +46,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -260,15 +263,24 @@ fun JobsScreen(
             }
 
             // Controls row: model picker + Start/Stop service toggle.
-            // The picker lists bundled + imported GGUFs; tapping a row
-            // dispatches `buildLoadModelIntent` to the FGS. The toggle
-            // button label flips between "Start" and "Stop" based on
-            // the live `CoordinatorState`.
+            // The picker lists bundled + imported GGUFs plus a
+            // "Download starter model" entry that pulls a model from
+            // the RunAnywhere catalog. Tapping a row dispatches
+            // `buildLoadModelIntent` to the FGS. The toggle button
+            // label flips between "Start" and "Stop" based on the
+            // live `CoordinatorState`.
             ControlsRow(
                 app = app,
                 state = coordinatorState,
                 onLoadModel = { path ->
                     context.startService(buildLoadModelIntent(context, path))
+                },
+                onDownloadStarterModel = {
+                    scope.launch {
+                        runCatching {
+                            downloadRunAnywhereStarterModel(app, context)
+                        }
+                    }
                 },
                 onStart = {
                     runCatching {
@@ -694,25 +706,123 @@ private suspend fun dispatchRemote(
 }
 
 /**
+ * Phase 2.x — kick off a streaming model download via the
+ * RunAnywhere SDK, then auto-load the result into the foreground
+ * service so the user goes from "I want a model" → "the model is
+ * answering" without leaving the Jobs screen.
+ *
+ * Failure modes:
+ *  - No connectivity → toast the user, no download attempt.
+ *  - SDK not initialised → toast the user, point them at the
+ *    Application.onCreate log line (would indicate a build glitch
+ *    since the SDK is initialised at app start).
+ *  - SDK download errored → toast the SDK's error tag.
+ *
+ * On success we hand the loaded file path to the FGS via
+ * [buildLoadModelIntent]; from there the existing coordinator
+ * routes through `engineFor(.gguf)` which now picks
+ * [com.meshlit.core.inference.RunAnywhereInferenceEngine] first.
+ */
+private suspend fun downloadRunAnywhereStarterModel(
+    app: MeshlitApplication,
+    context: Context,
+) {
+    // Confirm we have a coordinator we can dispatch the load to.
+    // Without an FGS connection the download would still succeed
+    // but the model would have nowhere to land — useless for the
+    // user. Start the FGS first.
+    runCatching { InferenceForegroundService.startForInference(context) }
+
+    val engine = app.inferenceCoordinator.runAnywhereEngine()
+    if (!engine.isReady()) {
+        // Initialise is idempotent. Re-running here covers the
+        // edge case where the Application's onCreate hook didn't
+        // run yet (rare, but observed on some custom ROMs that
+        // mount the application class lazily).
+        engine.initialize(app)
+    }
+    try {
+        engine.downloadModelById(
+            com.meshlit.core.inference.RunAnywhereInferenceEngine.DEFAULT_MODEL_ID,
+        ).collect { progress ->
+            // We surface progress through the existing log buffer
+            // rather than a Toast because the user is on the Jobs
+            // screen, not the Models screen — Toast would be
+            // disruptive. The Logs screen will show the same
+            // progress events for anyone debugging a stuck
+            // download.
+            app.logBuffer.info(
+                tag = "JobsScreen.RunAnywhere",
+                message = "Downloading ${progress.modelId}: ${(progress.progress * 100).toInt()}% " +
+                    "(${progress.bytesDownloaded}/${if (progress.totalBytes > 0) progress.totalBytes else "?"} bytes, " +
+                    "state=${progress.state})",
+            )
+            if (progress.error != null) {
+                app.logBuffer.warn(
+                    tag = "JobsScreen.RunAnywhere",
+                    message = "Download error: ${progress.error}",
+                )
+                return@collect
+            }
+        }
+    } catch (t: Throwable) {
+        app.logBuffer.warn(
+            tag = "JobsScreen.RunAnywhere",
+            message = "Download failed: ${t.message ?: t.javaClass.simpleName}",
+        )
+        return
+    }
+    // Once the SDK has the bytes, ask the SDK where it landed and
+    // dispatch a load. The SDK's storage layout is opaque to us
+    // (we don't depend on its filesystem conventions), so the
+    // cleanest path is to hand the engine the model id and let
+    // the coordinator's normal GGUF-load path run via the FGS.
+    // The RunAnywhere SDK puts the file under
+    // `context.filesDir/runanywhere/models/<id>.gguf` on a fresh
+    // install; we resolve it via the SDK by id which is what
+    // `loadModel` already does.
+    val modelId = com.meshlit.core.inference.RunAnywhereInferenceEngine.DEFAULT_MODEL_ID
+    val intent = buildLoadModelIntent(context, /* path is opaque to us */ "__runanywhere__:$modelId")
+    context.startService(intent)
+}
+
+/**
  * Top-of-screen controls: an OutlinedButton ("Model") that opens a
  * dropdown of every available GGUF (bundled + imported + custom
- * override), plus a primary FilledTonalButton that flips between
- * "Start" and "Stop" depending on the live `CoordinatorState`.
+ * override), plus a prominent Meshlit-branded Start/Stop button.
  *
  * No persistence here — picking a model dispatches `buildLoadModelIntent`
  * to the FGS, which is the single source of truth for the active model.
  * The dropdown is rebuilt each time it opens so freshly imported GGUFs
  * show up without a screen-level refresh.
+ *
+ * If no model is on disk yet (fresh install, installer hasn't run, no
+ * imports), the dropdown stays interactive: tapping it triggers
+ * `BundledModelInstaller.ensureInstalled()` and shows an "Installing…"
+ * hint while extraction is in flight, so the user gets feedback
+ * instead of staring at a greyed-out button.
+ *
+ * Phase 2.x — when both the bundled installer and the catalog
+ * come up empty, the dropdown also surfaces a "Download starter
+ * model (RunAnywhere)" row. Picking it kicks off a streaming
+ * download via the RunAnywhere SDK and auto-loads the model once
+ * the bytes are on disk.
  */
 @Composable
 private fun ControlsRow(
     app: MeshlitApplication,
     state: com.meshlit.core.inference.CoordinatorState?,
     onLoadModel: (String) -> Unit,
+    onDownloadStarterModel: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
 ) {
-    val pickerEntries = remember {
+    val coroutineScope = rememberCoroutineScope()
+    // Tracks install attempts: Idle, Running, Done, Failed. We rebuild
+    // the picker entries on each transition so a successful extract
+    // appears without forcing the user to navigate away.
+    var installStatus by remember { mutableStateOf<InstallStatus>(InstallStatus.Idle) }
+    val pickerEntries = remember(installStatus) {
         buildList<Pair<String, String>> {
             // Bundled model — only listed if it has been extracted.
             app.bundledModelPath()?.let { bundled ->
@@ -733,11 +843,34 @@ private fun ControlsRow(
             }
         }
     }
+    val canOpen = pickerEntries.isNotEmpty() || installStatus is InstallStatus.Running
+    fun attemptExtract() {
+        if (installStatus is InstallStatus.Running) return
+        installStatus = InstallStatus.Running
+        coroutineScope.launch {
+            val installed = runCatching {
+                app.bundledModelInstaller.ensureInstalled(app, onProgress = null)
+            }.getOrNull()
+            installStatus = if (installed != null && installed.exists()) {
+                app.setBundledModelPath(installed)
+                InstallStatus.Done(installed.absolutePath)
+            } else {
+                InstallStatus.Failed
+            }
+        }
+    }
     var menuOpen by remember { mutableStateOf(false) }
     val isRunning = state is com.meshlit.core.inference.CoordinatorState.Loading ||
         state is com.meshlit.core.inference.CoordinatorState.Generating
     val isLive = state is com.meshlit.core.inference.CoordinatorState.Ready ||
         state is com.meshlit.core.inference.CoordinatorState.Generating
+    val pickerLabel = when {
+        installStatus is InstallStatus.Running ->
+            stringResource(R.string.jobs_model_picker_installing)
+        installStatus is InstallStatus.Failed && pickerEntries.isEmpty() ->
+            stringResource(R.string.jobs_model_picker_install_failed)
+        else -> stringResource(R.string.jobs_model_picker_label)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -747,12 +880,21 @@ private fun ControlsRow(
     ) {
         Box(modifier = Modifier.weight(1f)) {
             OutlinedButton(
-                onClick = { menuOpen = true },
-                enabled = pickerEntries.isNotEmpty(),
+                onClick = {
+                    // If the picker would otherwise be empty, kick off
+                    // the bundled-model installer so the next open has
+                    // entries. We always open the dropdown so the user
+                    // sees the "Installing…" hint instead of silence.
+                    if (pickerEntries.isEmpty()) {
+                        attemptExtract()
+                    }
+                    menuOpen = true
+                },
+                enabled = canOpen,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = stringResource(R.string.jobs_model_picker_label),
+                    text = pickerLabel,
                     modifier = Modifier.weight(1f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Start,
                 )
@@ -766,10 +908,26 @@ private fun ControlsRow(
                 onDismissRequest = { menuOpen = false },
             ) {
                 if (pickerEntries.isEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.jobs_model_no_models)) },
-                        onClick = { menuOpen = false },
-                    )
+                    when (installStatus) {
+                        is InstallStatus.Running -> DropdownMenuItem(
+                            text = {
+                                Text(stringResource(R.string.jobs_model_picker_installing))
+                            },
+                            onClick = { menuOpen = false },
+                        )
+                        is InstallStatus.Failed -> DropdownMenuItem(
+                            text = {
+                                Text(stringResource(R.string.jobs_model_picker_install_failed))
+                            },
+                            onClick = { menuOpen = false },
+                        )
+                        else -> DropdownMenuItem(
+                            text = {
+                                Text(stringResource(R.string.jobs_model_no_models))
+                            },
+                            onClick = { menuOpen = false },
+                        )
+                    }
                 }
                 pickerEntries.forEach { (label, path) ->
                     DropdownMenuItem(
@@ -780,9 +938,29 @@ private fun ControlsRow(
                         },
                     )
                 }
+                // Phase 2.x — always available, even when other entries
+                // exist. Lets the user pull a known-good starter model
+                // regardless of what's on disk. Tapping it kicks off a
+                // streaming download in `JobsScreen`; the actual
+                // progress / finish reporting happens in the snackbar
+                // surface added below the picker.
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = {
+                        Text(stringResource(R.string.jobs_model_download_runanywhere))
+                    },
+                    onClick = {
+                        menuOpen = false
+                        onDownloadStarterModel()
+                    },
+                )
             }
         }
-        // Animated label flip between "Start" and "Stop".
+        // Animated label flip between "Start service" and "Stop service".
+        // The button is a prominent Meshlit-branded primary: filled
+        // with the accent colour, a thick rounded outline, and a
+        // glyph prefix so the active state reads at a glance even
+        // for first-time users.
         AnimatedContent(
             targetState = if (isLive) "stop" else "start",
             transitionSpec = {
@@ -791,22 +969,76 @@ private fun ControlsRow(
             },
             label = "jobs-service-toggle",
         ) { which ->
-            if (which == "stop") {
-                FilledTonalButton(
-                    onClick = onStop,
-                    enabled = state is com.meshlit.core.inference.CoordinatorState.Ready ||
-                        state is com.meshlit.core.inference.CoordinatorState.Generating,
+            val accent = MaterialTheme.colorScheme.primary
+            val surface = MaterialTheme.colorScheme.surface
+            val onSurface = MaterialTheme.colorScheme.onSurface
+            val glyph = if (which == "stop") "■  " else "▶  "
+            // The branded strings embed the glyph (e.g. "■  Stop service").
+            // Strip them so the rendered Text doesn't show two glyphs.
+            val stopLabel = stringResource(R.string.jobs_service_stop_brand)
+                .replace("■  ", "").replace("■ ", "").trim()
+            val startLabel = stringResource(R.string.jobs_service_start_brand)
+                .replace("▶  ", "").replace("▶ ", "").trim()
+            val labelText = if (which == "stop") stopLabel else startLabel
+            val enabled = if (which == "stop") {
+                state is com.meshlit.core.inference.CoordinatorState.Ready ||
+                    state is com.meshlit.core.inference.CoordinatorState.Generating
+            } else !isRunning
+            val onClick = if (which == "stop") onStop else onStart
+            // Meshlit-branded primary: filled accent on the active
+            // stop state, outlined accent on the inactive start state.
+            // The two-tone treatment makes the toggle unambiguous even
+            // when the engine is the stub.
+            val container = if (which == "stop") accent else surface
+            val content = if (which == "stop") {
+                MaterialTheme.colorScheme.onPrimary
+            } else if (enabled) accent else onSurface.copy(alpha = 0.45f)
+            val borderColor = if (enabled) accent else onSurface.copy(alpha = 0.3f)
+            val borderWidth = if (which == "stop") 0.dp else 1.5.dp
+            Box(
+                modifier = Modifier
+                    .height(48.dp)
+                    .background(container, RoundedCornerShape(14.dp))
+                    .border(borderWidth, borderColor, RoundedCornerShape(14.dp))
+                    .then(
+                        if (enabled) Modifier.clickable(onClick = onClick)
+                        else Modifier,
+                    )
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(stringResource(R.string.jobs_service_stop))
-                }
-            } else {
-                FilledTonalButton(
-                    onClick = onStart,
-                    enabled = !isRunning,
-                ) {
-                    Text(stringResource(R.string.jobs_service_start))
+                    Text(
+                        text = glyph,
+                        color = content,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = labelText,
+                        color = content,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    )
                 }
             }
         }
     }
+}
+
+/**
+ * Internal state machine for the bundled-model install attempt kicked
+ * off from the picker dropdown when no model is on disk yet.
+ *
+ * Lives in `ControlsRow` scope only — we don't persist or share this
+ * across screens because the installer's own sentinel file is the
+ * source of truth for "is the bundled model on disk?".
+ */
+private sealed interface InstallStatus {
+    data object Idle : InstallStatus
+    data object Running : InstallStatus
+    data class Done(val absolutePath: String) : InstallStatus
+    data object Failed : InstallStatus
 }

@@ -64,6 +64,8 @@ import com.meshlit.R
 import com.meshlit.capability.CapabilityBadge
 import com.meshlit.core.inference.BundledModelInstaller
 import com.meshlit.core.inference.RuntimeRegistry
+import com.meshlit.inference.RunAnywhereCatalog
+import com.meshlit.inference.buildLoadModelIntent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -162,6 +164,107 @@ fun ModelsScreen(
                         style = MaterialTheme.typography.labelMedium,
                     )
                     CapabilityBadge(app = app)
+                }
+            }
+            // Phase 2.x — first-run banner. Shown when the bundled
+            // GGUF hasn't been extracted yet *and* the user hasn't
+            // already dismissed the onboarding step. Single CTA
+            // extracts the bundled 1.5 B Qwen from the APK and
+            // auto-loads it through the FGS. Once dismissed (or
+            // extraction finishes) the banner stays hidden until
+            // the next fresh install — `firstRunSetupRepository`
+            // persists the seen flag.
+            item(key = "first_run_banner") {
+                val firstRunDone by app.firstRunSetupRepository.hasFinishedFirstRunFlow
+                    .collectAsState(initial = false)
+                val bundledAlreadyOnDisk = remember { app.bundledModelPath() != null }
+                val show = !firstRunDone && !bundledAlreadyOnDisk
+                var extracting by remember { mutableStateOf(false) }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = show,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = stringResource(R.string.models_first_run_banner_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.models_first_run_banner_body),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Button(
+                                    enabled = !extracting,
+                                    onClick = {
+                                        if (extracting) return@Button
+                                        extracting = true
+                                        scope.launch {
+                                            runCatching {
+                                                val file = withContext(Dispatchers.IO) {
+                                                    app.bundledModelInstaller.ensureInstalled(app)
+                                                }
+                                                if (file != null && file.exists()) {
+                                                    app.setBundledModelPath(file)
+                                                    // Auto-load the
+                                                    // freshly extracted
+                                                    // GGUF through the FGS
+                                                    // so the user sees
+                                                    // Ready within seconds
+                                                    // — no extra tap.
+                                                    app.startService(
+                                                        buildLoadModelIntent(
+                                                            app,
+                                                            file.absolutePath,
+                                                        ),
+                                                    )
+                                                }
+                                                app.firstRunSetupRepository
+                                                    .setFirstRunFinished(true)
+                                            }.onFailure { t ->
+                                                app.logBuffer.warn(
+                                                    tag = "ModelsScreen.RunAnywhere",
+                                                    message = "first-run extract failed: ${t.message ?: t.javaClass.simpleName}",
+                                                )
+                                            }
+                                            extracting = false
+                                        }
+                                    },
+                                ) {
+                                    Text(
+                                        text = if (extracting) {
+                                            stringResource(R.string.models_first_run_banner_extracting)
+                                        } else {
+                                            stringResource(R.string.models_first_run_banner_cta)
+                                        },
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        scope.launch {
+                                            app.firstRunSetupRepository
+                                                .setFirstRunFinished(true)
+                                        }
+                                    },
+                                ) {
+                                    Text(stringResource(R.string.models_first_run_banner_dismiss))
+                                }
+                            }
+                        }
+                    }
                 }
             }
             // Phase 2.x — runtime-upgrade banner. Surfaces a one-liner
@@ -373,6 +476,135 @@ fun ModelsScreen(
                                 "Deleted ${entry.displayName}",
                                 Toast.LENGTH_SHORT,
                             ).show()
+                        }
+                    },
+                )
+            }
+
+            // Phase 2.x — RunAnywhere-backed catalog. Streams GGUFs
+            // from the RunAnywhere CDN via the SDK's
+            // `downloadModelStream(...)` flow and auto-loads the
+            // resulting file through the FGS using the synthetic
+            // `runanywhere:<id>` path scheme. Distinct from the
+            // OkHttp-backed alternatives list above — that one is
+            // the fallback when the SDK fails to initialize. Both
+            // cards co-exist until the SDK ships an enumeration API
+            // (see RunAnywhereCatalog comment).
+            item(key = "runanywhere-catalog-header") {
+                SectionHeader(text = stringResource(R.string.models_runanywhere_section_title))
+            }
+            item(key = "runanywhere-catalog-subtitle") {
+                Text(
+                    text = stringResource(R.string.models_runanywhere_section_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            item(key = "runanywhere-catalog-card") {
+                // Same per-row state pattern as `alternatives-list`:
+                // a `mutableStateMapOf` keyed by entry id so a
+                // status flip on one row recomposes only that row.
+                // `loadedIds` tracks the "Loaded" state after the
+                // SDK's `loadModel(...)` call has succeeded — we
+                // refresh it from `coordinator.loadedModel()` on
+                // every state change so the row label flips back to
+                // "Get" if the FGS unloads.
+                val rowStatus = remember { mutableStateMapOf<String, DownloadStatus>() }
+                val loadedIds = remember {
+                    mutableStateMapOf<String, Boolean>().apply {
+                        com.meshlit.inference.RunAnywhereCatalog.all.forEach { entry ->
+                            // Cheap check: a row is "loaded" if its
+                            // id matches the coordinator's current
+                            // loaded model name. The coordinator
+                            // stores the synthetic `runanywhere:<id>`
+                            // path on loadModel so we can match on
+                            // that exact string.
+                            this[entry.id] =
+                                app.inferenceCoordinator.loadedModel()?.modelPath ==
+                                    "runanywhere:${entry.id}"
+                        }
+                    }
+                }
+                val coordinatorState: com.meshlit.core.inference.CoordinatorState? by
+                    app.inferenceCoordinator.state.collectAsState()
+                androidx.compose.runtime.LaunchedEffect(coordinatorState) {
+                    // When the coordinator transitions out of
+                    // Ready, the row that was loaded should drop
+                    // its "Loaded" badge. Cheap: just re-derive.
+                    val loadedId = (coordinatorState as?
+                        com.meshlit.core.inference.CoordinatorState.Ready)?.model?.modelPath
+                    com.meshlit.inference.RunAnywhereCatalog.all.forEach { entry ->
+                        loadedIds[entry.id] =
+                            loadedId == "runanywhere:${entry.id}"
+                    }
+                }
+                RunAnywhereCatalogCard(
+                    app = app,
+                    loadedIds = loadedIds,
+                    rowStatus = rowStatus,
+                    onGet = { entry ->
+                        scope.launch {
+                            rowStatus[entry.id] = DownloadStatus.Running(0)
+                            val engine = app.inferenceCoordinator.runAnywhereEngine()
+                            // Re-init in case the Application
+                            // hook missed (rare; observed on some
+                            // OEMs that mount the Application
+                            // class lazily).
+                            if (!engine.isReady()) {
+                                engine.initialize(app)
+                            }
+                            if (!engine.isReady()) {
+                                rowStatus[entry.id] = DownloadStatus.Failed("sdk_not_ready")
+                                app.logBuffer.warn(
+                                    tag = "ModelsScreen.RunAnywhere",
+                                    message = "RunAnywhere SDK not initialised after re-init call",
+                                )
+                                return@launch
+                            }
+                            runCatching {
+                                engine.downloadModelById(entry.id).collect { progress ->
+                                    val pct = (progress.progress * 100f).toInt()
+                                        .coerceIn(0, 100)
+                                    rowStatus[entry.id] = DownloadStatus.Running(pct)
+                                    app.logBuffer.info(
+                                        tag = "ModelsScreen.RunAnywhere",
+                                        message = "Downloading ${progress.modelId}: $pct% " +
+                                            "(${progress.bytesDownloaded} bytes, state=${progress.state})",
+                                    )
+                                    if (progress.error != null) {
+                                        throw IllegalStateException(progress.error)
+                                    }
+                                }
+                            }.onFailure { t ->
+                                rowStatus[entry.id] = DownloadStatus.Failed(
+                                    t.message ?: t.javaClass.simpleName,
+                                )
+                                app.logBuffer.warn(
+                                    tag = "ModelsScreen.RunAnywhere",
+                                    message = "download failed: ${t.message ?: t.javaClass.simpleName}",
+                                )
+                                return@launch
+                            }
+                            // Download succeeded — auto-load
+                            // through the FGS via the synthetic
+                            // `runanywhere:<id>` path that the
+                            // coordinator already understands.
+                            rowStatus[entry.id] = DownloadStatus.Done(
+                                "runanywhere:${entry.id}",
+                            )
+                            try {
+                                app.startService(
+                                    buildLoadModelIntent(
+                                        app,
+                                        "runanywhere:${entry.id}",
+                                    ),
+                                )
+                            } catch (t: Throwable) {
+                                app.logBuffer.warn(
+                                    tag = "ModelsScreen.RunAnywhere",
+                                    message = "load dispatch failed: ${t.message ?: t.javaClass.simpleName}",
+                                )
+                            }
                         }
                     },
                 )
@@ -752,4 +984,145 @@ private fun EngineFormatRowView(row: EngineFormatRow) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 2.dp),
     )
+}
+
+/**
+ * Phase 2.x — RunAnywhere-backed catalog card. Mirrors
+ * [AlternativeModelsCard] shape but routes downloads through
+ * `RunAnywhereInferenceEngine.downloadModelById(id)` and surfaces
+ * the SDK-delivered rows in the same Compose row layout. The two
+ * cards co-exist until the SDK ships an enumeration API — the
+ * Alternatives card stays as the offline fallback.
+ *
+ * State machine:
+ *  - `rowStatus[id] == Idle` (default)            → row shows "Get"
+ *  - `rowStatus[id] == Running(progressPct)`     → row shows
+ *                                                  progress bar + pct
+ *  - `rowStatus[id] == Done(runanywhere:<id>)`   → row shows
+ *                                                  "Loaded" + checkmark
+ *  - `rowStatus[id] == Failed(reason)`           → row shows
+ *                                                  failure text in
+ *                                                  error color
+ *
+ * The "Loaded" badge is derived from
+ * [MeshlitApplication.inferenceCoordinator].loadedModel() rather
+ * than inferred from the row's own status — that way if the FGS
+ * unloads the model for any reason (user clears override, app
+ * restart, OOM) the row falls back to "Get" automatically.
+ */
+@Composable
+private fun RunAnywhereCatalogCard(
+    app: MeshlitApplication,
+    loadedIds: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Boolean>,
+    rowStatus: androidx.compose.runtime.snapshots.SnapshotStateMap<String, DownloadStatus>,
+    onGet: (com.meshlit.inference.RunAnywhereCatalog.Entry) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            com.meshlit.inference.RunAnywhereCatalog.all.forEach { entry ->
+                RunAnywhereRow(
+                    entry = entry,
+                    isLoaded = loadedIds[entry.id] == true,
+                    status = rowStatus[entry.id] ?: DownloadStatus.Idle,
+                    onGet = { onGet(entry) },
+                )
+                if (entry != com.meshlit.inference.RunAnywhereCatalog.all.last()) {
+                    HorizontalDivider()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RunAnywhereRow(
+    entry: com.meshlit.inference.RunAnywhereCatalog.Entry,
+    isLoaded: Boolean,
+    status: DownloadStatus,
+    onGet: () -> Unit,
+) {
+    val originFlag = when (entry.origin) {
+        "USA" -> "\uD83C\uDDFA\uD83C\uDDF8"
+        "China" -> "\uD83C\uDDE8\uD83C\uDDF3"
+        else -> ""
+    }
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = entry.displayName,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "$originFlag ${entry.origin}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "${entry.license} · ~${entry.approxSizeMb} MB · ${entry.language}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (isLoaded) "✓" else entry.family,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isLoaded) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.tertiary,
+            )
+        }
+        // Mirrors AlternativeRow — surfaces the runtime the model
+        // would be carried by so the user sees the format/engine
+        // pairing end-to-end. The RunAnywhere-backed row always
+        // claims RunAnywhere · llama.cpp (no `RuntimeRegistry`
+        // lookup — the catalog is SDK-only by design).
+        Text(
+            text = stringResource(R.string.models_runanywhere_runtime_label),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            // "Get" / "Downloading…" / "Loaded" button. The
+            // isLoaded check uses the coordinator-derived state
+            // (from `loadedIds`) so that unloading the model via
+            // the FGS flips this back automatically.
+            val isRunning = status is DownloadStatus.Running
+            OutlinedButton(
+                onClick = onGet,
+                enabled = !isLoaded && !isRunning,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = when {
+                        isRunning -> stringResource(R.string.models_runanywhere_getting_button)
+                        isLoaded -> stringResource(R.string.models_runanywhere_installed_button)
+                        else -> stringResource(R.string.models_runanywhere_get_cta)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+        // Status panel — reuses the existing DownloadStatusPanel
+        // verbatim; same sealed type handles all four states.
+        AnimatedVisibility(
+            visible = status !is DownloadStatus.Idle,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            DownloadStatusPanel(status = status, displayName = entry.displayName)
+        }
+    }
 }

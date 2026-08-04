@@ -5,7 +5,11 @@ plugins {
 
 android {
     compileSdk = 37
-    defaultConfig { minSdk = 23 }
+    // minSdk = 24 — RunAnywhere SDK requires API 24+ (Android 7.0+).
+    // The previous floor of 23 was kept when NanoHTTPD was the only
+    // third-party native surface; the RunAnywhere integration raises
+    // it by one API level which has a negligible install-base impact.
+    defaultConfig { minSdk = 24 }
     namespace = "com.meshlit.core.inference"
 
     // Bundled GGUFs are uncompressed inside the APK so llama.cpp can
@@ -35,6 +39,16 @@ dependencies {
     // and declares the JNI entry points as `external` until the
     // upstream ORT JNI symbols are linked.
     implementation(libs.onnxruntime.mobile)
+
+    // RunAnywhere SDK — Phase 2.x on-device LLM runtime.
+    // The core artifact gives us `RunAnywhere.initialize(...)` plus
+    // download/load/generate flows. The llama.cpp backend artifact
+    // pulls in libllama.so per ABI and is what actually executes the
+    // model. See `RunAnywhereInferenceEngine` for the integration
+    // surface that wraps these calls behind Meshlit's
+    // [InferenceEngine] contract.
+    implementation(libs.runanywhere.sdk)
+    implementation(libs.runanywhere.llamacpp)
 
     testImplementation(libs.junit)
 }
