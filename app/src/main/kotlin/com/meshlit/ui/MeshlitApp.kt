@@ -44,8 +44,14 @@ import com.meshlit.ui.screens.ScreenStub
 import com.meshlit.ui.screens.StructuredScreen
 import com.meshlit.ui.screens.VisionScreen
 import com.meshlit.ui.screens.VoiceScreen
+import com.meshlit.ui.screens.cloud.AgentLoopMode
+import com.meshlit.ui.screens.cloud.AgentTerminalScreen
+import com.meshlit.ui.screens.cloud.AddCustomCloudResult
+import com.meshlit.ui.screens.cloud.AddCustomCloudScreen
+import com.meshlit.ui.screens.cloud.CloudHubScreen
 import com.meshlit.ui.screens.settings.CategoryScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
+import com.meshlit.ui.screens.settings.RagSettingsScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
 import com.meshlit.ui.screens.settings.ModelsScreen
 import com.meshlit.ui.screens.settings.SettingsScreen
@@ -199,6 +205,14 @@ fun MeshlitApp() {
                             TopLevelDestination.Structured -> StructuredScreen(onOpenDrawer = openDrawer)
                             TopLevelDestination.Catalog -> CatalogScreen(onOpenDrawer = openDrawer)
                             TopLevelDestination.Vision -> VisionScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Cloud -> CloudHubScreen(
+                                onOpenDrawer = openDrawer,
+                                onOpenAddCustom = { navController.navigate("cloud/add") },
+                                onOpenTerminal = { providerId ->
+                                    val arg = providerId ?: ""
+                                    navController.navigate("cloud/terminal?providerId=$arg")
+                                },
+                            )
                             else -> ScreenStub(
                                 destination = dest,
                                 icon = dest.icon,
@@ -236,6 +250,96 @@ fun MeshlitApp() {
                 composable("logs") {
                     LogScreen(
                         onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Cloud MCP — Add Custom provider form.
+                composable("cloud/add") {
+                    AddCustomCloudScreen(
+                        onBack = { navController.popBackStack() },
+                        onSave = { result: AddCustomCloudResult ->
+                            // Wire to coordinator. For now we just pop
+                            // back; the coordinator will be installed in
+                            // MeshlitApplication and picked up via the
+                            // ViewModel layer in the follow-up phase.
+                            val app = context.applicationContext as MeshlitApplication
+                            app.cloudCoordinator.connect(
+                                com.meshlit.core.cloudmcp.ProviderConfig(
+                                    id = result.name.lowercase().replace(" ", "-"),
+                                    name = result.name,
+                                    kind = com.meshlit.core.cloudmcp.ProviderKind.Custom,
+                                    baseUrl = result.endpoint,
+                                    authKind = result.authKind,
+                                    credentialRef = if (result.token.isNotBlank()) {
+                                        "${result.name.lowercase()}/token"
+                                    } else {
+                                        ""
+                                    },
+                                    ragNamespace = result.ragNamespace,
+                                    openApiSpecUrl = result.openApiUrl,
+                                ),
+                            )
+                            if (result.token.isNotBlank()) {
+                                app.cloudCredentialStore.put(
+                                    result.name.lowercase(),
+                                    "token",
+                                    result.token,
+                                )
+                            }
+                            navController.popBackStack()
+                        },
+                    )
+                }
+
+                // Cloud MCP — Agent Terminal (Live / Step log).
+                composable(
+                    route = "cloud/terminal?providerId={providerId}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("providerId") {
+                            type = androidx.navigation.NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        },
+                    ),
+                ) { backStack ->
+                    val providerId = backStack.arguments?.getString("providerId")
+                    val app = context.applicationContext as MeshlitApplication
+                    AgentTerminalScreen(
+                        providerId = providerId,
+                        loopMode = app.settingsRepository.loopModeFlowNow(),
+                        ragMode = app.settingsRepository.ragModeFlowNow(),
+                        ragDecision = null,
+                        onBack = { navController.popBackStack() },
+                        onLoopModeChange = { mode ->
+                            app.appScope.launch {
+                                app.settingsRepository.setLoopMode(mode)
+                            }
+                        },
+                        onSend = { prompt ->
+                            app.runAgentPrompt(
+                                providerId = providerId,
+                                prompt = prompt,
+                            )
+                        },
+                    )
+                }
+
+                // Cloud MCP — Settings → RAG / Loop mode.
+                composable("settings/rag") {
+                    val app = context.applicationContext as MeshlitApplication
+                    RagSettingsScreen(
+                        initialRagMode = app.settingsRepository.ragModeFlowNow(),
+                        initialLoopMode = app.settingsRepository.loopModeFlowNow(),
+                        onRagModeChange = { mode ->
+                            app.appScope.launch {
+                                app.settingsRepository.setRagMode(mode)
+                            }
+                        },
+                        onLoopModeChange = { mode ->
+                            app.appScope.launch {
+                                app.settingsRepository.setLoopMode(mode)
+                            }
+                        },
                     )
                 }
             }

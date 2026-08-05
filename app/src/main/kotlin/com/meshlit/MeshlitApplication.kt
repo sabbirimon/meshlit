@@ -24,6 +24,7 @@ import com.meshlit.core.inference.RunAnywhereCatalogEngine
 import com.meshlit.core.inference.RunAnywhereStructuredEngine
 import com.meshlit.core.inference.RunAnywhereVisionEngine
 import com.meshlit.core.inference.RunAnywhereVoiceEngine
+import com.meshlit.core.trust.CloudCredentialStore
 import com.meshlit.core.trust.DeviceTrustPolicy
 import com.meshlit.core.trust.FileBackedTrustStore
 import com.meshlit.core.trust.LocalTrustPolicy
@@ -68,7 +69,7 @@ class MeshlitApplication : Application() {
     private val log = AppLoggerFactory.appLogger("MeshlitApplication")
 
     /** Long-lived scope for IO-bound app-level work (preference writes, channel syncs). */
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /** Computed once per process. Cheap but not free. */
     val capabilityTier: CapabilityTier by lazy { currentCapabilityTier() }
@@ -410,6 +411,141 @@ class MeshlitApplication : Application() {
             registryProvider = { mcpToolRegistry },
             poolProvider = { mcpClientPool },
         )
+    }
+
+    // -------------------------------------------------------------------
+    // Cloud MCP (Phase Cloud).
+    //
+    // The cloud coordinator owns one SSE session per connected provider
+    // and the merged ToolRegistry the agent loop pulls from. The
+    // credential store lives in :core-trust and is backed by the
+    // Android Keystore (AES256/GCM) via EncryptedCredentialStore.
+    //
+    // NaraRouter is the OpenAI-compatible LLM gateway the agent loop
+    // uses by default. The API key is stored under the `nara-llm`
+    // providerId so it shows up in the Cloud Hub UI alongside the
+    // other providers.
+    // -------------------------------------------------------------------
+
+    /** Encrypted (Keystore-backed) credential store for cloud-MCP
+        *  providers. Tokens never hit plain DataStore. */
+    val cloudCredentialStore: CloudCredentialStore by lazy {
+        CloudCredentialStore(this)
+    }
+
+    /** Process-wide HTTP client used by the cloud-MCP transport and
+        *  the NaraRouter LLM client. The 30-second read timeout matches
+        *  the SSE keep-alive cadence so a stalled stream is surfaced
+        *  before the user has time to give up. */
+    val cloudHttpClient: okhttp3.OkHttpClient by lazy {
+        okhttp3.OkHttpClient.Builder()
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+    }
+
+    /** Coordinator. Owns SSE transports + tool registry. */
+    val cloudCoordinator: com.meshlit.core.cloudmcp.CloudMcpCoordinator by lazy {
+        com.meshlit.core.cloudmcp.CloudMcpCoordinator(
+            httpClient = cloudHttpClient,
+            credentialStore = cloudCredentialStore,
+        )
+    }
+
+    /** NaraRouter LLM client. Lazy because the API key is loaded
+        *  from the credential store on first use. */
+    val naraRouterClient: com.meshlit.core.cloudmcp.llm.NaraRouterClient by lazy {
+        com.meshlit.core.cloudmcp.llm.NaraRouterClient(
+            httpClient = cloudHttpClient,
+            apiKey = cloudCredentialStore.get("nara-llm", "token") ?: "",
+        )
+    }
+
+    /** Process-wide RAG selection policy. The agent loop calls
+        *  `resolve()` before every retrieval. */
+    val ragSelectionPolicy: com.meshlit.core.cloudmcp.rag.RagBackendSelectionPolicy by lazy {
+        com.meshlit.core.cloudmcp.rag.RagBackendSelectionPolicy()
+    }
+
+    /** Local RAG store (in-memory stub for v1; will be replaced by
+        *  Room in the persistence follow-up). */
+    val localRagStore: com.meshlit.core.cloudmcp.rag.LocalRagStore by lazy {
+        com.meshlit.core.cloudmcp.rag.LocalRagStore(this)
+    }
+
+    /** Remote RAG store. Hits the provider's MCP server for
+        *  embeddings + similarity. Provider URL + credential
+        *  resolution are pushed in at connect time; the store
+        *  itself only owns the HTTP client. */
+    val remoteRagStore: com.meshlit.core.cloudmcp.rag.RemoteRagStore by lazy {
+        com.meshlit.core.cloudmcp.rag.RemoteRagStore(
+            httpClient = cloudHttpClient,
+            credentialProvider = { providerBaseUrl, credential ->
+                cloudCredentialStore.get(credential ?: "")
+            },
+        )
+    }
+
+    /**
+     * Run a single agent prompt against NaraRouter using the
+     * merged tool registry. Emits events into the
+     * [com.meshlit.core.cloudmcp.CloudMcpCoordinator.events] flow
+     * the Agent Terminal UI consumes.
+     *
+     * Provider-scoped prompts route tool calls to that provider's
+     * session; a null `providerId` runs a global prompt.
+     */
+    fun runAgentPrompt(
+        providerId: String?,
+        prompt: String,
+    ) {
+        val model = com.meshlit.core.cloudmcp.llm.NaraRouterModel.Default
+        val messages = listOf(
+            com.meshlit.core.cloudmcp.llm.OpenAIMessage(
+                role = "user",
+                content = prompt,
+            ),
+        )
+        val tools = cloudCoordinator.toolRegistry.ordered()
+        appScope.launch {
+            naraRouterClient.chatCompletions(
+                providerId = providerId ?: "nara",
+                model = model,
+                messages = messages,
+                tools = tools,
+            ).collect { chunk ->
+                when (chunk) {
+                    is com.meshlit.core.cloudmcp.llm.LlmChunk.Text ->
+                        cloudCoordinator.tryEmit(
+                            com.meshlit.core.cloudmcp.McpEvent.Thought(
+                                providerId = chunk.providerId,
+                                text = chunk.delta,
+                            ),
+                        )
+                    is com.meshlit.core.cloudmcp.llm.LlmChunk.ToolCall ->
+                        cloudCoordinator.tryEmit(
+                            com.meshlit.core.cloudmcp.McpEvent.ToolCall(
+                                providerId = chunk.providerId,
+                                callId = chunk.callId,
+                                name = chunk.name,
+                                args = chunk.args,
+                            ),
+                        )
+                    is com.meshlit.core.cloudmcp.llm.LlmChunk.Error ->
+                        cloudCoordinator.tryEmit(
+                            com.meshlit.core.cloudmcp.McpEvent.Error(
+                                providerId = chunk.providerId,
+                                message = chunk.message,
+                            ),
+                        )
+                    is com.meshlit.core.cloudmcp.llm.LlmChunk.Done ->
+                        cloudCoordinator.tryEmit(
+                            com.meshlit.core.cloudmcp.McpEvent.Done(providerId = chunk.providerId),
+                        )
+                }
+            }
+        }
     }
 
     override fun onCreate() {

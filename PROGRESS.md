@@ -490,5 +490,98 @@ test.
 
 ---
 
+## Current state — 2026-08-06 (Phase Cloud — Multi-Cloud MCP Agent)
+
+**This session:** Added a multi-cloud control surface over the
+existing local-first inference stack. The user wanted to grow
+Meshlit from a device-only app into a true control plane driven by a
+cloud-hosted LLM agent.
+
+**New module `:core-cloud-mcp`** — owns:
+- `CloudMcpCoordinator` + per-provider `CloudMcpSession` —
+  SSE-over-HTTPS transport (hand-rolled `SseParser`, no
+  `okhttp3.sse` to stay consistent with `RemoteInferenceClient`).
+  JSON-RPC 2.0 envelopes for `initialize` / `tools/list` /
+  `tools/call`.
+- `ToolRegistry` — process-wide merge of every connected
+  provider's tools, surfaced to the LLM as a single OpenAI-style
+  `tools[]`.
+- `McpEvent` — sealed event surface (`Connected / Disconnected /
+  Thought / ToolCall / ToolResult / Error / Done`) the agent-loop
+  UI consumes.
+- `OpenApiSpecParser` — Swagger 2.0 + OpenAPI 3.x → `McpTool`
+  list. The Add Custom Cloud form fetches the user's spec URL,
+  parses it, and pre-populates the tool list before save.
+- `CloudMcpForegroundService` — long-lived SSE background
+  service, `foregroundServiceType="dataSync"`, mirrors
+  `InferenceForegroundService`'s `WakeLock` lifecycle.
+- `llm/NaraRouterClient` — streaming OpenAI-compatible chat
+  completions. Default model is DeepSeek V4 Flash (5M tokens/day
+  free, no credit card). Streams `LlmChunk.Text` /
+  `LlmChunk.ToolCall` / `LlmChunk.Done` — the agent loop turns
+  `ToolCall` chunks into `tools/call` requests against the
+  matching `CloudMcpSession`.
+- `rag/LocalRagStore` — in-memory cosine-similarity stub. The
+  `Room + sqlite-vss` follow-up PR wires KSP and switches the
+  store to a real DAO without changing call sites.
+- `rag/RemoteRagStore` — talks to each provider's MCP server for
+  embeddings + similarity. Provider URL + credential resolution
+  are pushed in at connect time.
+- `rag/RagBackendSelectionPolicy` — `Local / Remote / Auto /
+  Ask` selection. `Ask` mode emits `RagPermissionRequest` events
+  the UI resolves via a confirmation dialog.
+
+**Security** — New `:core-trust` files
+`EncryptedCredentialStore` (AES256/GCM via Android Keystore) +
+`CloudCredentialStore` (namespaced `cloud-mcp/<id>/` wrapper).
+Cloud tokens never hit plain DataStore.
+
+**Build wiring** — `:settings.gradle.kts` includes the new
+module; `:app/build.gradle.kts` adds `implementation(project(
+":core-cloud-mcp"))`; `:core-trust/build.gradle.kts` adds
+`androidx.security:security-crypto:1.1.0-alpha06`. Version bumped
+**0.1.0 → 0.2.0** (versionCode 1 → 2) so the Play Store surfaces
+the new build.
+
+**UI** — Three new screens in `:app/ui/screens/cloud/`:
+- `CloudHubScreen` — horizontal `LazyRow` of provider cards
+  (AWS / DigitalOcean / Azure / GCP / Custom), the
+  `RagIndicatorChip` pinned to the header, "Open Agent
+  Terminal" + "Add Custom Cloud" CTAs.
+- `AddCustomCloudScreen` — provider name + MCP endpoint +
+  OpenAPI spec URL + auth profile radio (Bearer / OAuth2 /
+  AWS-IAM / None) + token (password-masked) + RAG namespace.
+  Test Protocol Handshake + Save Provider actions.
+- `AgentTerminalScreen` — vertical card list of `McpEvent`s,
+  Live-stream (reverse-LazyColumn) vs Step-by-step log
+  (static numbered list) toggle, composer that fires
+  `app.runAgentPrompt(...)` against NaraRouter.
+
+**Navigation** — `Cloud` is a new `TopLevelDestination` in the
+**drawer-only** set (`barItems` stays at 9). Deep links added:
+`cloud/add`, `cloud/terminal?providerId={id}`,
+`settings/rag`.
+
+**Settings → RAG** — New `RagSettingsScreen` reachable from
+Settings → Cloud with RAG mode (Local / Remote / Auto / Ask) +
+agent-loop display mode (Live / Step). Persisted in
+`SettingsRepository` under `cloud.rag_mode` + `cloud.loop_mode`.
+
+**Out of scope (follow-up PRs):**
+- OAuth2 + AWS-IAM auth flows — BearerToken ships first.
+- Pinecone / Qdrant / Milvus native SDKs — first version uses the
+  provider's MCP server for retrieval (no native SDK).
+- Multi-session Agent Terminal history — single-session for v1.
+- Room + sqlite-vss persistence for `LocalRagStore`.
+- KSP wiring for Room annotation processor.
+
+**Verification:**
+- `./gradlew :app:assembleDebug` → green. APK builds.
+- `:core-cloud-mcp` + `:core-trust` unit tests pass.
+- `adb shell run-as com.meshlit ls shared_prefs/cloud_mcp_credentials.xml`
+  → file exists, encrypted bytes only.
+
+---
+
 *This file is the journal; `app/BUILD_GUIDE.md` is the spec; `app/CLAUDE.md`
 is the operating manual for the next agent.*

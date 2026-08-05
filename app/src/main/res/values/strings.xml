@@ -668,4 +668,47 @@
     <string name="ra_search_filter_placeholder">name, family, origin, language, runtime</string>
     <string name="ra_post_notifications_rationale">Allow notifications to see download progress.</string>
     <string name="ra_open_models_picker">Open Models picker…</string>
+
+    <!-- Cloud Hub + multi-cloud MCP control center -->
+    <string name="screen_cloud">Cloud</string>
+    <string name="cloud_hub_connected">Connected infrastructure</string>
+    <string name="cloud_hub_agent_workspace">AI Agent workspace</string>
+    <string name="cloud_provider_connected">Connected</string>
+    <string name="cloud_provider_disconnected">Disconnected</string>
+    <string name="cloud_add_custom">Add Custom Cloud</string>
+    <string name="cloud_add_custom_subtitle">Point at a private MCP bridge — bearer, OAuth2, or AWS IAM</string>
+    <string name="cloud_provider_name">Provider name</string>
+    <string name="cloud_endpoint_label">MCP bridge endpoint</string>
+    <string name="cloud_openapi_label">OpenAPI spec URL (optional)</string>
+    <string name="cloud_auth_profile">Authentication profile</string>
+    <string name="cloud_auth_bearer">Bearer</string>
+    <string name="cloud_auth_oauth">OAuth2</string>
+    <string name="cloud_auth_aws_iam">AWS IAM</string>
+    <string name="cloud_token_label">Token</string>
+    <string name="cloud_rag_namespace">RAG knowledge-base namespace</string>
+    <string name="cloud_test_handshake">Test handshake</string>
+    <string name="cloud_save_provider">Save provider</string>
+    <string name="cloud_open_terminal">Open Agent Terminal</string>
+    <string name="cloud_open_terminal_subtitle">Stream thoughts, tool calls, and observations live</string>
+    <string name="cloud_prompt_hint">Ask the agent anything…</string>
+    <string name="cloud_send">Send</string>
+    <string name="cloud_terminal_empty">No events yet — send a prompt to start the loop.</string>
+    <string name="cloud_terminal_thought">Thought: %1$s</string>
+    <string name="cloud_terminal_tool_call">Tool call: %1$s(%2$s)</string>
+    <string name="cloud_terminal_tool_result">Result: %1$s</string>
+    <string name="cloud_terminal_error">Error: %1$s</string>
+    <string name="cloud_loop_live">Live stream</string>
+    <string name="cloud_loop_step">Step-by-step log</string>
+    <string name="cloud_settings_rag_title">RAG backend</string>
+    <string name="cloud_settings_rag_subtitle">Where the agent retrieves context from</string>
+    <string name="cloud_settings_loop_title">Agent loop display</string>
+    <string name="cloud_settings_loop_subtitle">Live stream scrolls into view; step log renders a static numbered list</string>
+    <string name="cloud_rag_local">Local</string>
+    <string name="cloud_rag_remote">Remote</string>
+    <string name="cloud_rag_auto">Auto</string>
+    <string name="cloud_rag_auto_local">Auto · Local</string>
+    <string name="cloud_rag_auto_remote">Auto · Remote</string>
+    <string name="cloud_rag_ask">Ask</string>
+    <string name="cloud_nararouter_model">NaraRouter model</string>
+    <string name="cloud_settings_section">Cloud &amp; agent</string>
 </resources>

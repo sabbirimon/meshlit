@@ -102,6 +102,14 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Cloud-MCP SSE foreground service — keeps the agentic
+             loop's connection alive when the user backgrounds the
+             app. Same type as the inference FGS. -->
+        <service
+            android:name="com.meshlit.core.cloudmcp.CloudMcpForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Phase M.4 — share exported log files via FileProvider so the
              receiver app can read them. Authority must match the one used
              by `LogScreen.exportLogs`. -->

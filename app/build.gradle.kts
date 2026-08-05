@@ -19,8 +19,8 @@ android {
         // 23-floor build also runs 24.
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -74,6 +74,7 @@ dependencies {
     implementation(project(":core-discovery"))
     implementation(project(":core-inference"))
     implementation(project(":core-mcp"))
+    implementation(project(":core-cloud-mcp"))
     implementation(project(":core-training"))
     implementation(project(":core-files"))
     implementation(project(":core-ssh"))
@@ -81,6 +82,10 @@ dependencies {
     implementation(project(":core-guardrails"))
     implementation(project(":core-tunnel"))
     implementation(project(":core-users"))
+    implementation(project(":core-terminal"))
+    implementation(project(":core-advanced-engines"))
+    implementation(project(":feature-advanced"))
+    implementation(project(":feature-ghosty"))
 
     // AndroidX
     implementation(libs.androidx.core.ktx)

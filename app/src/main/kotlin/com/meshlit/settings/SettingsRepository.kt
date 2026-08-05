@@ -12,6 +12,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.meshlit.core.common.EndpointProtocol
 import com.meshlit.core.common.NetworkScope
 import com.meshlit.core.common.RemoteEndpoint
+import com.meshlit.core.cloudmcp.rag.RagMode
 import com.meshlit.ui.theme.AccentHue
 import com.meshlit.ui.theme.BasePalette
 import com.meshlit.ui.theme.MeshlitThemeConfig
@@ -71,6 +72,54 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setRuntimeRegistryVersionSeen(version: Int) {
         store.edit { it[Keys.runtimeRegistryVersion] = version }
+    }
+
+    // --- Cloud MCP (Phase Cloud) ---------------------------------------
+    //
+    // RAG backend selection mode (Local / Remote / Auto / Ask) and the
+    // Agent Terminal loop display mode (Live / Step). The flow form
+    // is consumed by the Settings → RAG screen; the sync form is
+    // read by the Agent Terminal Composable when it enters the
+    // composition so the toggle doesn't have to wait for the first
+    // emission to render.
+
+    /**
+     * Active RAG backend selection mode. Default is [RagMode.Auto]
+     * so a fresh install routes local-first when enough docs are
+     * on-device, and remote otherwise.
+     */
+    val ragModeFlow: Flow<RagMode> = store.data.map { prefs ->
+        RagMode.entries.firstOrNull { it.name == prefs[Keys.ragMode] }
+            ?: RagMode.Auto
+    }
+
+    /** Sync accessor for first-frame rendering. */
+    fun ragModeFlowNow(): RagMode = runCatching {
+        kotlinx.coroutines.runBlocking { ragModeFlow.first() }
+    }.getOrDefault(RagMode.Auto)
+
+    suspend fun setRagMode(mode: RagMode) {
+        store.edit { it[Keys.ragMode] = mode.name }
+    }
+
+    /**
+     * Active agent-loop display mode. The terminal Composable
+     * reads this on every recomposition.
+     */
+    val loopModeFlow: Flow<String> = store.data.map { prefs ->
+        prefs[Keys.loopMode] ?: "Live"
+    }
+
+    /** Sync accessor — the Agent Terminal uses this on first frame. */
+    fun loopModeFlowNow(): com.meshlit.ui.screens.cloud.AgentLoopMode = runCatching {
+        kotlinx.coroutines.runBlocking { loopModeFlow.first() }
+    }.getOrDefault("Live").let { raw ->
+        runCatching { com.meshlit.ui.screens.cloud.AgentLoopMode.valueOf(raw) }
+            .getOrDefault(com.meshlit.ui.screens.cloud.AgentLoopMode.Live)
+    }
+
+    suspend fun setLoopMode(mode: com.meshlit.ui.screens.cloud.AgentLoopMode) {
+        store.edit { it[Keys.loopMode] = mode.name }
     }
 
     // --- Network-scope feature ------------------------------------------
@@ -234,6 +283,8 @@ class SettingsRepository(private val context: Context) {
         val remoteEndpoints = stringPreferencesKey("network.remote_endpoints")
         val activeEndpointId = stringPreferencesKey("network.active_endpoint_id")
         val runtimeRegistryVersion = intPreferencesKey("runtime.registry_version")
+        val ragMode = stringPreferencesKey("cloud.rag_mode")
+        val loopMode = stringPreferencesKey("cloud.loop_mode")
     }
 
     companion object {
