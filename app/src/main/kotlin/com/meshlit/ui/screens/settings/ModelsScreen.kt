@@ -25,11 +25,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,11 +39,34 @@ import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
 import com.meshlit.capability.CapabilityBadge
+import com.meshlit.core.inference.ModelPredicates
 import com.meshlit.core.inference.RuntimeRegistry
-import com.meshlit.inference.RunAnywhereCatalog
 import com.meshlit.models.ModelCatalog
+import com.meshlit.ui.components.RaListCard
+import com.meshlit.ui.theme.RaOrange
+import com.meshlit.ui.theme.RaSurface
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Storage
 
+/**
+ * Models picker. Now wired to the RunAnywhere-parity ViewModel +
+ * `RaListCard` + `ModelTrailingAction` state machine. The screen
+ * remains a thin shell that:
+ *
+ *  - observes `ModelSelectionState` (single source of truth for
+ *    `models`, `currentModelId`, `busyModelId`, `progressPercent`,
+ *    `error`, `activeFramework`, `searchQuery`)
+ *  - delegates "RunAnywhere catalog" downloads to the VM
+ *  - delegates "Alternative imports" downloads to the screen-level
+ *    coroutine (the VM reuses the same `_state` to track `busyModelId`
+ *    / `progressPercent` so the row's `ModelTrailingAction` doesn't
+ *    need a second source)
+ *  - shows `ModelFilterRow`, `ConfirmDeleteDialog`, and `ErrorDialog`
+ *    driven by VM state
+ *  - hides the bundled + Top-pick cards during search or when a
+ *    backend filter is active (mirrors upstream rule)
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelsScreen(onBack: () -> Unit) {
@@ -50,39 +74,49 @@ fun ModelsScreen(onBack: () -> Unit) {
     val app = remember(context) { context.applicationContext as MeshlitApplication }
     val scope = rememberCoroutineScope()
 
-    // Per-row download status — one map per catalog so each row's
-    // recomposition is bounded to that row's id.
+    val (vm, state) = rememberModelSelectionState()
+
+    // Alternative-import downloads still happen at the screen level
+    // (they stream a single GGUF via OkHttp, not the SDK). We track
+    // status + on-disk presence here so the row's `ModelTrailingAction`
+    // gets a consistent view of "busy + percent".
     val altStatus = remember { mutableStateMapOf<String, DownloadStatus>() }
     val altInstalled = remember { mutableStateMapOf<String, Boolean>() }
-    val runStatus = remember { mutableStateMapOf<String, DownloadStatus>() }
-    val runLoaded = remember { mutableStateMapOf<String, Boolean>() }
+    val altJobs = remember { mutableStateMapOf<String, kotlinx.coroutines.Job>() }
+    val altRateTracker = remember { mutableStateMapOf<String, ByteRateTracker>() }
+
+    // Bundled-model re-extract status — separate from the VM because
+    // it's a one-shot APK→files-dir copy, not an SDK download.
     var installStatus by remember { mutableStateOf<String?>(null) }
 
-    // Per-row download handle — set when a fetch is in flight so the
-    // user can cancel mid-download. Holding the Job (not the
-    // coroutine) keeps the UI composable stateless and lets the
-    // cancel button dispose the underlying OKHttp call.
-    val altJobs = remember { mutableStateMapOf<String, kotlinx.coroutines.Job>() }
-    val runJobs = remember { mutableStateMapOf<String, kotlinx.coroutines.Job>() }
+    // Pending-delete confirmation. Set on row trash tap, cleared on
+    // dialog dismiss / confirm. Mirrors upstream
+    // `ModelSelectionSheet.pendingDelete`.
+    var pendingDelete by remember { mutableStateOf<ModelSelectionEntry?>(null) }
 
-    /**
-     * Approximate transfer rate tracker. The row's `onProgress`
-     * supplies cumulative bytes — we sample the delta over time so
-     * the UI can show "12.4 MB/s" while the download is running.
-     */
-    val altRateTracker = remember { mutableStateMapOf<String, ByteRateTracker>() }
-    val runRateTracker = remember { mutableStateMapOf<String, ByteRateTracker>() }
+    // ── Filter / search ──────────────────────────────────────────
+    val query = state.searchQuery
+    val activeFramework = state.activeFramework
+    val showRecommended = query.isBlank() && activeFramework == ModelPredicates.ActiveFramework.ALL
 
-    // Live search query — case-insensitive substring match against
-    // name, family, origin, language, and runtime. Empty == show all.
-    var query by remember { mutableStateOf("") }
-    val filteredAlt = remember(query) {
-        if (query.isBlank()) ModelCatalog.all
-        else ModelCatalog.all.filter { entry -> entry.matchesQuery(query) }
+    val filteredModels = remember(state.models, query, activeFramework) {
+        state.models
+            .filter { it.matchesQuery(query) }
+            .filter { it.matchesFramework(activeFramework) }
     }
-    val filteredRun = remember(query) {
-        if (query.isBlank()) RunAnywhereCatalog.all
-        else RunAnywhereCatalog.all.filter { entry -> entry.matchesQuery(query) }
+    val recommendedIds = remember(state.models) {
+        // Top pick = smallest entry that fits 33% of free RAM. Today
+        // we approximate free RAM as 0 so every entry is eligible —
+        // the picker still surfaces one recommendation even on
+        // untested hardware.
+        recommendTopPick(state.models, freeRamMb = 0L)?.let { setOf(it) } ?: emptySet()
+    }
+    val recommended = filteredModels.filter { it.id in recommendedIds }
+    val alternatives = filteredModels.filter {
+        it.source == ModelSelectionEntry.ModelSource.ALTERNATIVE_IMPORT && it.id !in recommendedIds
+    }
+    val runAnywhere = filteredModels.filter {
+        it.source == ModelSelectionEntry.ModelSource.RUNANYWHERE_CATALOG && it.id !in recommendedIds
     }
 
     Scaffold(
@@ -102,34 +136,48 @@ fun ModelsScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item {
+            // ── Bundled model card (hidden during search/filter) ──
+            if (showRecommended) {
+                item(key = "bundled-card") {
+                    Spacer(Modifier.height(4.dp))
+                    BundledModelCard(
+                        app = app,
+                        status = installStatus,
+                        onReextract = { msg -> installStatus = msg },
+                    )
+                }
+            }
+
+            // ── Filter row + search ───────────────────────────────
+            item(key = "filter-row") {
                 Spacer(Modifier.height(4.dp))
-                BundledModelCard(
-                    app = app,
-                    status = installStatus,
-                    onReextract = { msg -> installStatus = msg },
+                ModelFilterRow(
+                    active = activeFramework,
+                    onSelect = vm::setActiveFramework,
                 )
             }
-            // Live search filter — affects both catalog cards below.
-            item {
+            item(key = "search-field") {
                 OutlinedTextField(
                     value = query,
-                    onValueChange = { query = it },
+                    onValueChange = vm::setSearchQuery,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    label = { Text("Filter models") },
-                    placeholder = { Text("name, family, origin, language, runtime") },
+                    label = { Text(stringResource(R.string.ra_search_filter)) },
+                    placeholder = {
+                        Text(stringResource(R.string.ra_search_filter_placeholder))
+                    },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Filled.Search,
                             contentDescription = null,
+                            tint = RaOrange,
                         )
                     },
                     trailingIcon = {
                         if (query.isNotEmpty()) {
-                            IconButton(onClick = { query = "" }) {
+                            IconButton(onClick = { vm.setSearchQuery("") }) {
                                 Icon(
                                     imageVector = Icons.Filled.Clear,
                                     contentDescription = "Clear",
@@ -137,128 +185,188 @@ fun ModelsScreen(onBack: () -> Unit) {
                             }
                         }
                     },
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = RaSurface,
+                        unfocusedContainerColor = RaSurface,
+                        focusedBorderColor = RaOrange,
+                        unfocusedBorderColor = androidx.compose.material3.MaterialTheme.colorScheme.outline,
+                    ),
                 )
             }
-            item { ModelsSectionHeader("Alternative models") }
-            item {
-                AlternativeModelsCard(
-                    installedIds = altInstalled,
-                    rowStatus = altStatus,
-                    visibleEntries = filteredAlt,
-                    rateTracker = altRateTracker,
-                    onPick = { entry ->
-                        // Mark running at 0% so the bar doesn't fake
-                        // 50% out of nowhere and the user sees real
-                        // progress climb from the network.
-                        altStatus[entry.id] = DownloadStatus.Running(0)
-                        val tracker = ByteRateTracker()
-                        altRateTracker[entry.id] = tracker
-                        val job = scope.launch {
-                            val outcome = ModelCatalog.download(
-                                context = context,
-                                entry = entry,
-                                onProgress = { percent, bytesDownloaded, _totalBytes ->
-                                    tracker.update(bytesDownloaded)
-                                    altStatus[entry.id] = DownloadStatus.Running(percent.toInt().coerceIn(0, 100))
-                                },
-                            )
-                            when {
-                                outcome.file != null -> {
-                                    altInstalled[entry.id] = true
-                                    altStatus[entry.id] = DownloadStatus.Done(outcome.file.absolutePath)
-                                }
-                                else -> {
-                                    altStatus[entry.id] = DownloadStatus.Failed(
-                                        outcome.errorMessage ?: "Download failed",
-                                    )
-                                }
-                            }
-                            altJobs.remove(entry.id)
-                            altRateTracker.remove(entry.id)
-                        }
-                        altJobs[entry.id] = job
-                    },
-                    onCancel = { entry ->
-                        altJobs.remove(entry.id)?.cancel()
-                        altRateTracker.remove(entry.id)
-                        altStatus[entry.id] = DownloadStatus.Idle
-                    },
-                    onDelete = { entry ->
-                        // Drop the on-disk file too — Delete isn't
-                        // just a state reset, it actually frees the
-                        // ~1 GB the model occupied.
-                        runCatching {
-                            val file = java.io.File(
-                                java.io.File(context.filesDir, "imported-models"),
-                                "${entry.id}.gguf",
-                            )
-                            if (file.exists()) file.delete()
-                        }
-                        altInstalled[entry.id] = false
-                        altStatus[entry.id] = DownloadStatus.Idle
-                    },
-                )
-            }
-            item { ModelsSectionHeader("RunAnywhere catalog") }
-            item {
-                RunAnywhereCatalogCard(
-                    loadedIds = runLoaded,
-                    rowStatus = runStatus,
-                    visibleEntries = filteredRun,
-                    rateTracker = runRateTracker,
-                    onGet = { entry ->
-                        runStatus[entry.id] = DownloadStatus.Running(0)
-                        val tracker = ByteRateTracker()
-                        runRateTracker[entry.id] = tracker
-                        val job = scope.launch {
-                            runCatching {
-                                val llm = app.inferenceCoordinator.runAnywhereEngine()
-                                // Push the catalog URL into the
-                                // engine so the SDK's registerModel
-                                // call has a URL to plan against.
-                                // Without this the SDK's planner
-                                // rejects the download with
-                                // "Unable to create a download plan".
-                                if (entry.url.isNotBlank()) {
-                                    llm.setCatalogDownloadUrl(entry.id, entry.url)
-                                }
-                                llm.downloadModelById(
-                                    modelId = entry.id,
-                                    url = entry.url,
-                                    displayName = entry.displayName,
-                                    memoryRequirementBytes = entry.approxSizeMb * 1024L * 1024L,
-                                ).collect { progress ->
-                                    val pct = (progress.progress * 100f).toInt().coerceIn(0, 100)
-                                    tracker.update(progress.bytesDownloaded)
-                                    runStatus[entry.id] = DownloadStatus.Running(pct)
-                                }
-                                runLoaded[entry.id] = true
-                                runStatus[entry.id] = DownloadStatus.Done("runanywhere:${entry.id}")
-                            }.onFailure { t ->
-                                runStatus[entry.id] = DownloadStatus.Failed(
-                                    t.message ?: t.javaClass.simpleName,
+
+            // ── Recommended (Top pick) section ────────────────────
+            if (showRecommended && recommended.isNotEmpty()) {
+                item(key = "header-recommended") {
+                    ModelsSectionHeader(stringResource(R.string.ra_section_recommended))
+                }
+                items(recommended, key = { "rec-${it.id}" }) { entry ->
+                    ModelRowCard(
+                        entry = entry,
+                        state = state,
+                        onSelect = { vm.select(entry) },
+                        onDownload = { vm.download(entry) },
+                        onCancel = { vm.cancelDownload(entry.id) },
+                        onSetToken = { /* HF-token sheet — out of scope here */ },
+                        onDelete = { pendingDelete = entry },
+                        onPickAlt = { /* alternative-import download path handled inline below */ },
+                        altStatus = altStatus[entry.id] ?: DownloadStatus.Idle,
+                        altInstalled = altInstalled[entry.id] == true,
+                        altRateTracker = altRateTracker[entry.id],
+                        onAltDownload = {
+                            altStatus[entry.id] = DownloadStatus.Running(0)
+                            val tracker = ByteRateTracker()
+                            altRateTracker[entry.id] = tracker
+                            val job = scope.launch {
+                                val outcome = ModelCatalog.download(
+                                    context = context,
+                                    entry = run {
+                                        // Map VM entry → ModelCatalog.Entry
+                                        // for the file download. The VM
+                                        // entry carries every field we
+                                        // need to look up the catalog.
+                                        ModelCatalog.all.firstOrNull {
+                                            it.id == entry.id
+                                        } ?: return@launch
+                                    },
+                                    onProgress = { percent, bytesDownloaded, _totalBytes ->
+                                        tracker.update(bytesDownloaded)
+                                        altStatus[entry.id] = DownloadStatus.Running(
+                                            percent.toInt().coerceIn(0, 100),
+                                        )
+                                    },
                                 )
+                                when {
+                                    outcome.file != null -> {
+                                        altInstalled[entry.id] = true
+                                        altStatus[entry.id] = DownloadStatus.Done(
+                                            outcome.file.absolutePath,
+                                        )
+                                    }
+                                    else -> {
+                                        altStatus[entry.id] = DownloadStatus.Failed(
+                                            outcome.errorMessage ?: "Download failed",
+                                        )
+                                    }
+                                }
+                                altJobs.remove(entry.id)
+                                altRateTracker.remove(entry.id)
                             }
-                            runJobs.remove(entry.id)
-                            runRateTracker.remove(entry.id)
-                        }
-                        runJobs[entry.id] = job
-                    },
-                    onCancel = { entry ->
-                        runJobs.remove(entry.id)?.cancel()
-                        runRateTracker.remove(entry.id)
-                        runStatus[entry.id] = DownloadStatus.Idle
-                    },
-                )
+                            altJobs[entry.id] = job
+                        },
+                        onAltCancel = {
+                            altJobs.remove(entry.id)?.cancel()
+                            altRateTracker.remove(entry.id)
+                            altStatus[entry.id] = DownloadStatus.Idle
+                        },
+                        onAltDelete = { pendingDelete = entry },
+                    )
+                }
             }
-            item {
+
+            // ── Alternative models section ───────────────────────
+            if (alternatives.isNotEmpty()) {
+                item(key = "header-alt") {
+                    Spacer(Modifier.height(8.dp))
+                    ModelsSectionHeader("Alternative models")
+                }
+                items(alternatives, key = { "alt-${it.id}" }) { entry ->
+                    ModelRowCard(
+                        entry = entry,
+                        state = state,
+                        onSelect = { vm.select(entry) },
+                        onDownload = { vm.download(entry) },
+                        onCancel = { vm.cancelDownload(entry.id) },
+                        onSetToken = { },
+                        onDelete = { pendingDelete = entry },
+                        onPickAlt = { /* unused in this branch */ },
+                        altStatus = altStatus[entry.id] ?: DownloadStatus.Idle,
+                        altInstalled = altInstalled[entry.id] == true,
+                        altRateTracker = altRateTracker[entry.id],
+                        onAltDownload = {
+                            altStatus[entry.id] = DownloadStatus.Running(0)
+                            val tracker = ByteRateTracker()
+                            altRateTracker[entry.id] = tracker
+                            val job = scope.launch {
+                                val altEntry = ModelCatalog.all.firstOrNull {
+                                    it.id == entry.id
+                                } ?: return@launch
+                                val outcome = ModelCatalog.download(
+                                    context = context,
+                                    entry = altEntry,
+                                    onProgress = { percent, bytesDownloaded, _ ->
+                                        tracker.update(bytesDownloaded)
+                                        altStatus[entry.id] = DownloadStatus.Running(
+                                            percent.toInt().coerceIn(0, 100),
+                                        )
+                                    },
+                                )
+                                when {
+                                    outcome.file != null -> {
+                                        altInstalled[entry.id] = true
+                                        altStatus[entry.id] = DownloadStatus.Done(
+                                            outcome.file.absolutePath,
+                                        )
+                                    }
+                                    else -> {
+                                        altStatus[entry.id] = DownloadStatus.Failed(
+                                            outcome.errorMessage ?: "Download failed",
+                                        )
+                                    }
+                                }
+                                altJobs.remove(entry.id)
+                                altRateTracker.remove(entry.id)
+                            }
+                            altJobs[entry.id] = job
+                        },
+                        onAltCancel = {
+                            altJobs.remove(entry.id)?.cancel()
+                            altRateTracker.remove(entry.id)
+                            altStatus[entry.id] = DownloadStatus.Idle
+                        },
+                        onAltDelete = { pendingDelete = entry },
+                    )
+                }
+            }
+
+            // ── RunAnywhere catalog section ──────────────────────
+            if (runAnywhere.isNotEmpty()) {
+                item(key = "header-run") {
+                    Spacer(Modifier.height(8.dp))
+                    ModelsSectionHeader("RunAnywhere catalog")
+                }
+                items(runAnywhere, key = { "run-${it.id}" }) { entry ->
+                    ModelRowCard(
+                        entry = entry,
+                        state = state,
+                        onSelect = { vm.select(entry) },
+                        onDownload = { vm.download(entry) },
+                        onCancel = { vm.cancelDownload(entry.id) },
+                        onSetToken = { },
+                        onDelete = { pendingDelete = entry },
+                        onPickAlt = { },
+                        altStatus = DownloadStatus.Idle,
+                        altInstalled = false,
+                        altRateTracker = null,
+                        onAltDownload = { },
+                        onAltCancel = { },
+                        onAltDelete = { },
+                    )
+                }
+            }
+
+            // ── Supported formats + runtimes ─────────────────────
+            item(key = "supported-formats") {
+                Spacer(Modifier.height(8.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     ),
                 ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         Text(
                             "Supported formats",
                             style = MaterialTheme.typography.titleSmall,
@@ -272,7 +380,7 @@ fun ModelsScreen(onBack: () -> Unit) {
             }
             items(
                 items = RuntimeRegistry.all,
-                key = { it.runtimeId },
+                key = { "rt-${it.runtimeId}" },
             ) { engine ->
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -281,41 +389,177 @@ fun ModelsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-            item {
+            item(key = "capability") {
                 CapabilityBadge(app = app)
                 Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    // ── Dialogs (error + delete) ────────────────────────────────
+    state.error?.let { err ->
+        ErrorDialog(error = err, onDismiss = vm::clearError)
+    }
+    pendingDelete?.let { entry ->
+        ConfirmDeleteDialog(
+            displayName = entry.displayName,
+            approxSizeMb = entry.approxSizeMb,
+            onConfirm = {
+                when (entry.source) {
+                    ModelSelectionEntry.ModelSource.RUNANYWHERE_CATALOG ->
+                        vm.delete(entry)
+                    ModelSelectionEntry.ModelSource.ALTERNATIVE_IMPORT -> {
+                        runCatching {
+                            ModelPredicates.importedModelFile(context, entry.id)
+                                .takeIf { it.exists() }
+                                ?.delete()
+                        }
+                        altInstalled[entry.id] = false
+                        altStatus[entry.id] = DownloadStatus.Idle
+                    }
+                }
+                pendingDelete = null
+            },
+            onDismiss = { pendingDelete = null },
+        )
+    }
+
+    // Kick a refresh when the screen first opens so the VM loads
+    // its model list from the catalogs.
+    LaunchedEffect(Unit) { vm.refresh() }
+}
+
+/**
+ * Single row card. Pure presentation: pulls state from the VM for
+ * `RUNANYWHERE_CATALOG` source, falls back to the screen-side maps
+ * for `ALTERNATIVE_IMPORT`. The two paths differ only in where
+ * `isBusy` / `isReady` come from.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ModelRowCard(
+    entry: ModelSelectionEntry,
+    state: ModelSelectionState,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onSetToken: () -> Unit,
+    onDelete: () -> Unit,
+    onPickAlt: () -> Unit,
+    altStatus: DownloadStatus,
+    altInstalled: Boolean,
+    altRateTracker: ByteRateTracker?,
+    onAltDownload: () -> Unit,
+    onAltCancel: () -> Unit,
+    onAltDelete: () -> Unit,
+) {
+    val isCurrent = state.currentModelId == entry.id
+    val vmBusy = state.busyModelId == entry.id
+    val vmProgress = if (vmBusy) state.progressPercent else 0
+    val altBusy = altStatus is DownloadStatus.Running
+    val altProgress = (altStatus as? DownloadStatus.Running)?.progress ?: 0
+
+    val isReady: Boolean = when (entry.source) {
+        ModelSelectionEntry.ModelSource.RUNANYWHERE_CATALOG ->
+            state.models.firstOrNull { it.id == entry.id }?.isDownloaded == true
+        ModelSelectionEntry.ModelSource.ALTERNATIVE_IMPORT -> altInstalled
+    }
+    val isBusy: Boolean = when (entry.source) {
+        ModelSelectionEntry.ModelSource.RUNANYWHERE_CATALOG -> vmBusy
+        ModelSelectionEntry.ModelSource.ALTERNATIVE_IMPORT -> altBusy
+    }
+    val progress: Int = if (vmBusy) vmProgress else altProgress
+
+    // Top pick highlight only for the recommended section; once the
+    // user filters or searches the highlight collapses so the user
+    // isn't misled by an out-of-context badge.
+    val highlightLabel = if (entry.requiresHfAuth) {
+        stringResource(R.string.ra_set_token)
+    } else {
+        null
+    }
+
+    val (onDownloadEffective, onCancelEffective, onSelectEffective, onDeleteEffective) =
+        when (entry.source) {
+            ModelSelectionEntry.ModelSource.RUNANYWHERE_CATALOG ->
+                arrayOf(onDownload, onCancel, onSelect, onDelete)
+            ModelSelectionEntry.ModelSource.ALTERNATIVE_IMPORT ->
+                arrayOf(onAltDownload, onAltCancel, onPickAlt, onAltDelete)
+        }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        RaListCard(
+            leadingIcon = familyIcon(entry),
+            title = entry.displayName,
+            subtitle = "${entry.license} · ~${entry.approxSizeMb} MB · ${entry.language}",
+            highlightLabel = highlightLabel,
+            chips = {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    androidx.compose.material3.AssistChip(
+                        onClick = {},
+                        enabled = false,
+                        label = { Text(entry.family) },
+                    )
+                    entry.tags.take(2).forEach { tag ->
+                        androidx.compose.material3.AssistChip(
+                            onClick = {},
+                            enabled = false,
+                            label = { Text(tag) },
+                        )
+                    }
+                }
+            },
+            trailing = {
+                ModelTrailingAction(
+                    isCurrent = isCurrent,
+                    isReady = isReady,
+                    isBusy = isBusy,
+                    progressPercent = progress,
+                    requiresHfAuth = entry.requiresHfAuth,
+                    onCancel = onCancelEffective,
+                    onDownload = onDownloadEffective,
+                    onSelect = onSelectEffective,
+                    onSetToken = onSetToken,
+                )
+            },
+            onClick = if (isReady) onSelectEffective else null,
+        )
+        // Inline progress panel for non-VM downloads (alternative
+        // imports). The VM-driven row's progress shows through
+        // `ModelTrailingAction`'s spinner — the panel is redundant
+        // for those.
+        if (entry.source == ModelSelectionEntry.ModelSource.ALTERNATIVE_IMPORT &&
+            altStatus !is DownloadStatus.Idle
+        ) {
+            DownloadStatusPanel(
+                status = altStatus,
+                displayName = entry.displayName,
+                bytesPerSecond = altRateTracker?.bytesPerSecond() ?: 0.0,
+            )
+        }
+        // Delete affordance for ready rows — the upstream
+        // `ModelRow` exposes a small trash glyph at the row's
+        // bottom-right; we surface it as a compact text button so
+        // the row's trailing slot stays focused on the state
+        // machine.
+        if (isReady && !isCurrent) {
+            androidx.compose.material3.TextButton(onClick = onDeleteEffective) {
+                Text(stringResource(R.string.ra_delete))
             }
         }
     }
 }
 
 /**
- * Case-insensitive substring match against every searchable field of
- * a ModelCatalog entry. Empty query matches everything.
+ * Family → leading icon mapping. Pure function — keeps the
+ * visual contract consistent across both catalogs.
  */
-private fun ModelCatalog.Entry.matchesQuery(query: String): Boolean {
-    val needle = query.trim().lowercase()
-    if (needle.isEmpty()) return true
-    return displayName.lowercase().contains(needle) ||
-        family.lowercase().contains(needle) ||
-        origin.lowercase().contains(needle) ||
-        language.lowercase().contains(needle) ||
-        runtimeDisplayName.lowercase().contains(needle) ||
-        license.lowercase().contains(needle)
-}
-
-/**
- * Case-insensitive substring match against every searchable field of
- * a RunAnywhereCatalog entry.
- */
-private fun RunAnywhereCatalog.Entry.matchesQuery(query: String): Boolean {
-    val needle = query.trim().lowercase()
-    if (needle.isEmpty()) return true
-    return displayName.lowercase().contains(needle) ||
-        family.lowercase().contains(needle) ||
-        origin.lowercase().contains(needle) ||
-        language.lowercase().contains(needle) ||
-        "runanywhere".contains(needle) ||
-        id.lowercase().contains(needle) ||
-        license.lowercase().contains(needle)
-}
+private fun familyIcon(entry: ModelSelectionEntry): androidx.compose.ui.graphics.vector.ImageVector =
+    when {
+        entry.family.contains("Qwen", ignoreCase = true) -> Icons.Filled.Storage
+        entry.family.contains("SmolLM", ignoreCase = true) -> Icons.Filled.Memory
+        entry.family.contains("Llama", ignoreCase = true) -> Icons.Filled.Memory
+        else -> Icons.Filled.Storage
+    }
