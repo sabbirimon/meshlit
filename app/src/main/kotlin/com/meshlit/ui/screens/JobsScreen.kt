@@ -109,6 +109,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun JobsScreen(
     onOpenDrawer: () -> Unit = {},
+    onOpenModels: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as com.meshlit.MeshlitApplication }
@@ -290,6 +291,7 @@ fun JobsScreen(
                 onStop = {
                     InferenceForegroundService.stop(context)
                 },
+                onOpenModels = onOpenModels,
             )
 
             // Status card
@@ -816,6 +818,7 @@ private fun ControlsRow(
     onDownloadStarterModel: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onOpenModels: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     // Tracks install attempts: Idle, Running, Done, Failed. We rebuild
@@ -954,6 +957,24 @@ private fun ControlsRow(
                         onDownloadStarterModel()
                     },
                 )
+                // Jump-to-full-Models-picker. Mirrors the upstream
+                // RunAnywhere Jobs surface — the dropdown lists
+                // already-loaded models, but the user frequently
+                // wants to pick from the full catalog (Top pick /
+                // downloads / delete / filter chips). Routing them
+                // out of the dropdown into the Models screen keeps
+                // the picker honest regardless of whether the loaded
+                // model is local or cluster-shared.
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = {
+                        Text(stringResource(R.string.ra_open_models_picker))
+                    },
+                    onClick = {
+                        menuOpen = false
+                        onOpenModels()
+                    },
+                )
             }
         }
         // Animated label flip between "Start service" and "Stop service".
@@ -969,16 +990,14 @@ private fun ControlsRow(
             },
             label = "jobs-service-toggle",
         ) { which ->
-            val accent = MaterialTheme.colorScheme.primary
-            val surface = MaterialTheme.colorScheme.surface
-            val onSurface = MaterialTheme.colorScheme.onSurface
+            val accent = com.meshlit.ui.theme.MeshlitAmber
+            val surface = com.meshlit.ui.theme.RaSurface
+            val onSurface = com.meshlit.ui.theme.RaTextPrimary
             val glyph = if (which == "stop") "■  " else "▶  "
             // The branded strings embed the glyph (e.g. "■  Stop service").
             // Strip them so the rendered Text doesn't show two glyphs.
-            val stopLabel = stringResource(R.string.jobs_service_stop_brand)
-                .replace("■  ", "").replace("■ ", "").trim()
-            val startLabel = stringResource(R.string.jobs_service_start_brand)
-                .replace("▶  ", "").replace("▶ ", "").trim()
+            val stopLabel = stringResource(R.string.ra_jobs_stop)
+            val startLabel = stringResource(R.string.ra_jobs_start)
             val labelText = if (which == "stop") stopLabel else startLabel
             val enabled = if (which == "stop") {
                 state is com.meshlit.core.inference.CoordinatorState.Ready ||

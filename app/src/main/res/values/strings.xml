@@ -624,4 +624,48 @@
     <string name="models_first_run_banner_cta">Extract bundled model</string>
     <string name="models_first_run_banner_extracting">Extracting bundled model…</string>
     <string name="models_first_run_banner_dismiss">Dismiss</string>
+
+    <!-- RunAnywhere visual style tokens — see plan §9. The Ra*
+         composables (RaPillChip, RaHeroIcon, RaGetButton, RaListCard)
+         read these via the res system. Keep in sync with
+         Color.kt's `Ra*` token aliases. -->
+    <string name="ra_top_pick">Top pick</string>
+    <string name="ra_active">ACTIVE</string>
+    <string name="ra_installed">INSTALLED</string>
+    <string name="ra_bundled">BUNDLED</string>
+    <string name="ra_npu">NPU</string>
+    <string name="ra_loaded">Loaded</string>
+    <string name="ra_use">Use</string>
+    <string name="ra_get">Get</string>
+    <string name="ra_set_token">Set token</string>
+    <string name="ra_re_extract">Re-extract</string>
+    <string name="ra_delete_bundled">Delete bundled</string>
+    <string name="ra_delete">Delete</string>
+    <string name="ra_cancel">Cancel</string>
+    <string name="ra_model_chip">Model: %1$s</string>
+    <string name="ra_model_chip_none">No model — open Models</string>
+    <string name="ra_working_late">Working late?</string>
+    <string name="ra_working_late_subtitle">Ask anything — AI runs locally on your device by default.</string>
+    <string name="ra_plan_day">Plan my day</string>
+    <string name="ra_rewrite">Rewrite clearly</string>
+    <string name="ra_compare">Compare options</string>
+    <string name="ra_base_palette_runanywhere">RunAnywhere (dark + orange)</string>
+    <string name="ra_backend_filter_all">All</string>
+    <string name="ra_backend_filter_llamacpp">Llama.cpp</string>
+    <string name="ra_backend_filter_npu">NPU</string>
+    <string name="ra_section_recommended">Recommended for your device</string>
+    <string name="ra_dialog_delete_title">Delete model?</string>
+    <string name="ra_dialog_delete_body">%1$s and its %2$d MB will be removed from this device. You can re-download it later.</string>
+    <string name="ra_dialog_delete_confirm">Delete</string>
+    <string name="ra_dialog_delete_cancel">Cancel</string>
+    <string name="ra_dialog_error_title">Something went wrong</string>
+    <string name="ra_dialog_error_ok">OK</string>
+    <string name="ra_inference_service">Inference service</string>
+    <string name="ra_no_engine_picker">No model loaded — pick one from Models</string>
+    <string name="ra_jobs_start">Start</string>
+    <string name="ra_jobs_stop">Stop</string>
+    <string name="ra_search_filter">Filter models</string>
+    <string name="ra_search_filter_placeholder">name, family, origin, language, runtime</string>
+    <string name="ra_post_notifications_rationale">Allow notifications to see download progress.</string>
+    <string name="ra_open_models_picker">Open Models picker…</string>
 </resources>

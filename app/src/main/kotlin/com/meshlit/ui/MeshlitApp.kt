@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +23,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.meshlit.MeshlitApplication
 import com.meshlit.agent.AgentScreen
+import com.meshlit.feature.advanced.AdvancedScreen
+import com.meshlit.feature.advanced.GhostyHost
+import com.meshlit.feature.advanced.LocalGhostyHost
+import com.meshlit.feature.ghosty.GhostyOverlayService
+import com.meshlit.mcp.AppMcpHost
 import com.meshlit.ui.components.MeshlitBottomBar
 import com.meshlit.ui.components.MeshlitDrawerContent
 import com.meshlit.ui.components.QuickAction
@@ -29,6 +35,7 @@ import com.meshlit.ui.components.tierAccentColor
 import com.meshlit.ui.nav.TopLevelDestination
 import com.meshlit.ui.screens.CatalogScreen
 import com.meshlit.ui.screens.DevicesScreen
+import com.meshlit.ui.screens.FilesScreen
 import com.meshlit.ui.screens.JobsScreen
 import com.meshlit.ui.screens.LogScreen
 import com.meshlit.ui.screens.MetricsScreen
@@ -70,6 +77,19 @@ fun MeshlitApp() {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val capabilityTier = (context.applicationContext as MeshlitApplication).capabilityTier
+    val app: MeshlitApplication = context.applicationContext as MeshlitApplication
+    val mcpHost = remember { AppMcpHost(app) }
+    val ghostyHost = remember {
+        object : GhostyHost {
+            override fun setEnabled(enabled: Boolean) {
+                if (enabled) {
+                    GhostyOverlayService.start(context)
+                } else {
+                    GhostyOverlayService.stop(context)
+                }
+            }
+        }
+    }
 
     val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
     val closeDrawer: () -> Unit = { scope.launch { drawerState.close() } }
@@ -114,7 +134,7 @@ fun MeshlitApp() {
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 MeshlitBottomBar(
-                    destinations = TopLevelDestination.all,
+                    destinations = TopLevelDestination.barItems,
                     currentRoute = currentRoute,
                     accentColor = tierAccentColor(capabilityTier),
                     onSelect = { dest ->
@@ -144,10 +164,32 @@ fun MeshlitApp() {
                                 },
                             )
                             TopLevelDestination.Devices -> DevicesScreen(onOpenDrawer = openDrawer)
-                            TopLevelDestination.Jobs -> JobsScreen(onOpenDrawer = openDrawer)
-                            TopLevelDestination.Agent -> AgentScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Jobs -> JobsScreen(
+                                onOpenDrawer = openDrawer,
+                                onOpenModels = {
+                                    navController.navigate(TopLevelDestination.Models.route) {
+                                        launchSingleTop = true
+                                    }
+                                },
+                            )
+                            TopLevelDestination.Agent -> AgentScreen(
+                                onOpenDrawer = openDrawer,
+                                onOpenModels = {
+                                    navController.navigate(TopLevelDestination.Models.route) {
+                                        launchSingleTop = true
+                                    }
+                                },
+                            )
                             TopLevelDestination.Models -> ModelsScreen(onBack = openDrawer)
+                            TopLevelDestination.Advanced -> AdvancedScreen(
+                                accent = tierAccentColor(capabilityTier),
+                                accentDim = tierAccentColor(capabilityTier),
+                                onNavigate = { dest ->
+                                    navController.navigate(dest.route)
+                                },
+                            )
                             TopLevelDestination.Sessions -> TerminalScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Files -> FilesScreen(onOpenDrawer = openDrawer)
                             TopLevelDestination.Cluster -> MetricsScreen(
                                 onOpenDrawer = openDrawer,
                                 onBack = { navController.popBackStack() },

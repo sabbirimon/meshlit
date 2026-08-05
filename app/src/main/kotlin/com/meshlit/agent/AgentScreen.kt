@@ -131,6 +131,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AgentScreen(
     onOpenDrawer: () -> Unit = {},
+    onOpenModels: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as MeshlitApplication }
@@ -296,6 +297,15 @@ fun AgentScreen(
                 }
             }
 
+            // Tappable "Model: <name>" pill — routes the user into the
+            // Models picker regardless of whether the loaded model is
+            // local (bundled / downloaded) or cluster-shared. Mirrors
+            // upstream's "Model: …" chip on the chat surface so the
+            // user has a single jump-to-picker affordance.
+            ActiveModelPill(
+                displayName = activeModelName,
+                onClick = onOpenModels,
+            )
             InputBar(
                 input = input,
                 isRunning = isRunning,
@@ -556,31 +566,74 @@ private fun EmptyAgent() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                modifier = Modifier.size(96.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.AutoAwesome,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp),
-                    )
-                }
-            }
-            Text(
-                text = stringResource(R.string.agent_empty_title),
-                style = MaterialTheme.typography.headlineSmall,
+            com.meshlit.ui.components.RaHeroIcon(
+                icon = Icons.Filled.Bolt,
+                contentDescription = null,
             )
             Text(
-                text = stringResource(R.string.agent_empty_body),
+                text = stringResource(R.string.ra_working_late),
+                style = MaterialTheme.typography.headlineLarge,
+            )
+            Text(
+                text = stringResource(R.string.ra_working_late_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = com.meshlit.ui.theme.RaTextSecondary,
                 modifier = Modifier.padding(horizontal = 32.dp),
             )
+            // Three suggestion chips below the hero — fill the slot
+            // the upstream "Plan my day / Rewrite clearly / Compare
+            // options" chip row occupies in the screenshot.
+            SuggestionChipsRow()
         }
+    }
+}
+
+@Composable
+private fun SuggestionChipsRow() {
+    androidx.compose.foundation.layout.Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        androidx.compose.material3.FilledTonalButton(onClick = { }) {
+            Text(stringResource(R.string.ra_plan_day))
+        }
+        androidx.compose.material3.FilledTonalButton(onClick = { }) {
+            Text(stringResource(R.string.ra_rewrite))
+        }
+        androidx.compose.material3.FilledTonalButton(onClick = { }) {
+            Text(stringResource(R.string.ra_compare))
+        }
+    }
+}
+
+/**
+ * Tappable surface that surfaces the currently-loaded model —
+ * local (bundled / downloaded GGUF) OR cluster-shared (a remote
+ * peer's runtime reporting back through `CoordinatorState.Ready`).
+ *
+ * Tapping the pill opens the Models picker so the user can swap,
+ * re-extract, or inspect the source regardless of provenance.
+ * Matches the upstream "Model: <name>" chip on the chat input bar.
+ */
+@Composable
+private fun ActiveModelPill(
+    displayName: String,
+    onClick: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        com.meshlit.ui.components.RaPillChip(
+            text = stringResource(R.string.ra_model_chip, displayName),
+            tone = com.meshlit.ui.components.RaPillTone.NEUTRAL,
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(horizontal = 4.dp),
+        )
     }
 }
 
