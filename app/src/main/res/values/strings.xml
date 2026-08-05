@@ -711,4 +711,38 @@
     <string name="cloud_rag_ask">Ask</string>
     <string name="cloud_nararouter_model">NaraRouter model</string>
     <string name="cloud_settings_section">Cloud &amp; agent</string>
+
+    <!-- Phase Cloud 2 — Search / Web / Tools / Browser / Android automation. -->
+    <string name="cloud_tools_row_title">Tools</string>
+    <string name="cloud_tools_web_search">Web search</string>
+    <string name="cloud_tools_http_tool">HTTP tool</string>
+    <string name="cloud_tools_browser">Browser automation</string>
+    <string name="cloud_tools_android">Android automation</string>
+    <string name="cloud_add_search">Add web search</string>
+    <string name="cloud_add_http_tool">Add HTTP tool</string>
+    <string name="cloud_add_browser">Add browser automation</string>
+    <string name="cloud_add_android">Add Android automation</string>
+    <string name="cloud_llm_endpoint">LLM endpoint</string>
+    <string name="cloud_llm_api_key">LLM API key</string>
+    <string name="cloud_llm_model">Model</string>
+    <string name="cloud_llm_test_connection">Test connection</string>
+    <string name="cloud_browser_allowlist">Browser allowlist</string>
+    <string name="cloud_browser_action_confirm">Allow this browser action?</string>
+    <string name="cloud_browser_form_submit_confirm">This will submit a form. Continue?</string>
+    <string name="cloud_android_settings">Android automation</string>
+    <string name="cloud_android_master_toggle">Enable Android automation</string>
+    <string name="cloud_android_service_status">Accessibility service: %1$s</string>
+    <string name="cloud_android_service_description">Allows Meshlit to read your screen and drive installed apps at your request. Enable in Settings → Accessibility to use the Android automation tools.</string>
+    <string name="cloud_android_service_enabled">enabled</string>
+    <string name="cloud_android_service_disabled">disabled</string>
+    <string name="cloud_android_service_missing">binary missing</string>
+    <string name="cloud_android_open_settings">Open Android settings</string>
+    <string name="cloud_android_allowlist">App allowlist</string>
+    <string name="cloud_android_high_risk">High-risk apps</string>
+    <string name="cloud_android_test_action">Test action</string>
+    <string name="cloud_android_action_confirm">Allow this Android action?</string>
+    <string name="cloud_android_sensitive_target">This is a sensitive target. Proceed?</string>
+    <string name="cloud_android_allow_once">Allow once</string>
+    <string name="cloud_android_allow_for_app">Allow for this app</string>
+    <string name="cloud_android_deny">Deny</string>
 </resources>

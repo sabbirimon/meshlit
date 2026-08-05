@@ -110,6 +110,27 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- AccessibilityService for the Android in-app automation
+             tools (app_list / app_open / app_click / app_type / etc.).
+             The user opts in via Settings → Cloud → Android automation,
+             which routes to Settings.ACTION_ACCESSIBILITY_SETTINGS.
+             Behind feature.cloud.android_automation — when the flag is
+             off, the agent loop never exposes the app_* tools and the
+             service is a no-op. The service uses Google's official
+             Android UI Automator library for cross-app node traversal
+             (same library the Espresso / Compose-test framework uses). -->
+        <service
+            android:name="com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
         <!-- Phase M.4 — share exported log files via FileProvider so the
              receiver app can read them. Authority must match the one used
              by `LogScreen.exportLogs`. -->

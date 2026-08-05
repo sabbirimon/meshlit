@@ -40,6 +40,16 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
 
+    // UI Automator — Google's official Android UI Automator
+    // library. Pulled into the production classpath because
+    // MeshlitAccessibilityService binds against UiDevice / By /
+    // UiObject2 at runtime (see AndroidUiAutomatorBridge.kt), not
+    // just during tests. The library is API 21+ and Play-
+    // distributed, so the production inclusion is on the same
+    // policy footing as Espresso / Compose UI Automator.
+    implementation(libs.androidx.uiautomator)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

@@ -174,6 +174,10 @@ private fun ProviderCard(
         ProviderKind.GoogleCloud -> "GCP"
         ProviderKind.Custom -> "?"
         ProviderKind.Llm -> "LLM"
+        ProviderKind.WebSearch -> "Srch"
+        ProviderKind.HttpTool -> "HTTP"
+        ProviderKind.Browser -> "Br"
+        ProviderKind.AndroidAutomation -> "droid"
     }
     androidx.compose.material3.Card(
         modifier = Modifier

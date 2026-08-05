@@ -48,6 +48,7 @@ import com.meshlit.setup.FirstRunSetupRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -453,8 +454,12 @@ class MeshlitApplication : Application() {
         )
     }
 
-    /** NaraRouter LLM client. Lazy because the API key is loaded
-        *  from the credential store on first use. */
+    /** User-configurable LLM client. Reads the user's chosen
+     *  endpoint + model + API-key-provider from
+     *  [SettingsRepository] on each [runAgentPrompt] call so
+     *  swapping backends doesn't require an app restart.
+     *  Falls back to the legacy NaraRouter client for callers
+     *  that haven't opted into the user-supplied endpoint yet. */
     val naraRouterClient: com.meshlit.core.cloudmcp.llm.NaraRouterClient by lazy {
         com.meshlit.core.cloudmcp.llm.NaraRouterClient(
             httpClient = cloudHttpClient,
@@ -488,19 +493,25 @@ class MeshlitApplication : Application() {
     }
 
     /**
-     * Run a single agent prompt against NaraRouter using the
-     * merged tool registry. Emits events into the
-     * [com.meshlit.core.cloudmcp.CloudMcpCoordinator.events] flow
-     * the Agent Terminal UI consumes.
+     * Run a single agent prompt against the user's chosen LLM
+     * endpoint using the merged tool registry. Emits events into
+     * the [com.meshlit.core.cloudmcp.CloudMcpCoordinator.events]
+     * flow the Agent Terminal UI consumes.
      *
      * Provider-scoped prompts route tool calls to that provider's
      * session; a null `providerId` runs a global prompt.
+     *
+     * The LLM endpoint is resolved on every call from
+     * [SettingsRepository] (baseUrl, model, credentialProviderId)
+     * so the user can swap the backend without restarting the
+     * app. The API key is pulled from
+     * [cloudCredentialStore] under the resolved
+     * `credentialProviderId`.
      */
     fun runAgentPrompt(
         providerId: String?,
         prompt: String,
     ) {
-        val model = com.meshlit.core.cloudmcp.llm.NaraRouterModel.Default
         val messages = listOf(
             com.meshlit.core.cloudmcp.llm.OpenAIMessage(
                 role = "user",
@@ -509,9 +520,10 @@ class MeshlitApplication : Application() {
         )
         val tools = cloudCoordinator.toolRegistry.ordered()
         appScope.launch {
-            naraRouterClient.chatCompletions(
-                providerId = providerId ?: "nara",
-                model = model,
+            val endpoint = resolveLlmEndpoint()
+            val client = endpoint.buildClient(httpClient = cloudHttpClient)
+            client.chatCompletions(
+                providerId = providerId ?: "user-llm",
                 messages = messages,
                 tools = tools,
             ).collect { chunk ->
@@ -546,6 +558,25 @@ class MeshlitApplication : Application() {
                 }
             }
         }
+    }
+
+    /**
+     * Resolve the user's active LLM endpoint from
+     * [SettingsRepository]. Reads three flows synchronously
+     * (baseUrl, model, credentialProviderId) and pulls the
+     * matching API key from [cloudCredentialStore].
+     */
+    private suspend fun resolveLlmEndpoint(): com.meshlit.core.cloudmcp.llm.LlmEndpointConfig {
+        val baseUrl = settingsRepository.llmEndpointFlow.first()
+        val model = settingsRepository.llmModelFlow.first()
+        val credentialProviderId = settingsRepository.llmApiKeyProviderIdFlow.first()
+        val apiKey = cloudCredentialStore.get(credentialProviderId, "token") ?: ""
+        return com.meshlit.core.cloudmcp.llm.LlmEndpointConfig(
+            baseUrl = baseUrl,
+            apiKey = apiKey,
+            model = model,
+            credentialProviderId = credentialProviderId,
+        )
     }
 
     override fun onCreate() {

@@ -48,6 +48,30 @@ enum class ProviderKind {
      *  tools/call events are routed through a separate
      *  [CloudMcpSession] keyed by provider.kind. */
     Llm,
+    /** Web search provider (Bing / Brave / Serper / Tavily /
+     *  Google CSE). The agent loop injects a `web_search` tool
+     *  automatically and stores credentials in
+     *  `CloudCredentialStore` under `providerId
+     *  web-search-<name>`. The vendor-specific event shape is
+     *  normalised by `WebSearchDispatcher`. */
+    WebSearch,
+    /** Generic HTTP tool provider. The Custom OpenAPI parser is
+     *  reused; the agent loop treats `paths.<x>.<verb>` entries
+     *  as opaque tools. Use this when the user knows the OpenAPI
+     *  spec URL but the surface isn't a "cloud" (e.g. a SaaS
+     *  dashboard). */
+    HttpTool,
+    /** Browser automation provider. The Cloud Hub renders a
+     *  "Live browser view" pane and the agent loop exposes a
+     *  fixed tool set: browser_navigate, browser_click,
+     *  browser_type, browser_screenshot. Behind
+     *  `feature.cloud.browser`. */
+    Browser,
+    /** Android in-app automation. Routed through
+     *  `MeshlitAccessibilityService` over a `LocalBinder`
+     *  (no remote MCP server). Behind
+     *  `feature.cloud.android_automation`. */
+    AndroidAutomation,
 }
 
 @Serializable

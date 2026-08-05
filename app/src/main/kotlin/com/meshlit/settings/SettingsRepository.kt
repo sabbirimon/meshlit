@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
 /**
@@ -120,6 +121,142 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLoopMode(mode: com.meshlit.ui.screens.cloud.AgentLoopMode) {
         store.edit { it[Keys.loopMode] = mode.name }
+    }
+
+    // --- Web search ----------------------------------------------------
+    //
+    // The active web-search vendor (Bing / Brave / Serper / Tavily /
+    // Google CSE) + the Google CSE `cx` token. The API key itself
+    // lives in `CloudCredentialStore` under `web-search-<vendor>/token`.
+
+    /**
+     * Active web-search vendor, or `null` if the user hasn't
+     * configured one. The Cloud Hub Tools row uses this to decide
+     * whether to render the `web_search` tool to the LLM.
+     */
+    val webSearchVendorFlow: Flow<com.meshlit.core.cloudmcp.web.WebSearchVendor?> =
+        store.data.map { prefs ->
+            val raw = prefs[Keys.webSearchVendor] ?: return@map null
+            com.meshlit.core.cloudmcp.web.WebSearchVendor.entries
+                .firstOrNull { it.name == raw }
+        }
+
+    suspend fun setWebSearchVendor(
+        vendor: com.meshlit.core.cloudmcp.web.WebSearchVendor?,
+    ) {
+        store.edit { prefs ->
+            if (vendor == null) prefs.remove(Keys.webSearchVendor)
+            else prefs[Keys.webSearchVendor] = vendor.name
+        }
+    }
+
+    /** Google CSE `cx` (Programmable Search Engine ID). */
+    val webSearchCxFlow: Flow<String?> =
+        store.data.map { it[Keys.webSearchCx] }
+
+    suspend fun setWebSearchCx(cx: String?) {
+        store.edit { prefs ->
+            if (cx.isNullOrBlank()) prefs.remove(Keys.webSearchCx)
+            else prefs[Keys.webSearchCx] = cx.trim()
+        }
+    }
+
+    // --- User-supplied LLM endpoint -------------------------------------
+    //
+    // The agent loop reads these flows on every prompt so the user
+    // can swap the LLM backend (OpenRouter / Together / Groq /
+    // Ollama / LM Studio / vLLM / NaraRouter default) without
+    // rebuilding. The API key itself lives in
+    // `CloudCredentialStore` under `Keys.llmApiKeyProviderId` +
+    // `/token` (default providerId = "user-llm").
+
+    /**
+     * Base URL of the OpenAI-compatible /v1/chat/completions
+     * endpoint. Default is NaraRouter so existing installs
+     * keep working.
+     */
+    val llmEndpointFlow: Flow<String> = store.data.map {
+        it[Keys.llmEndpoint] ?: "https://router.bynara.id"
+    }
+
+    suspend fun setLlmEndpoint(url: String) {
+        store.edit { it[Keys.llmEndpoint] = url.trim().ifBlank { "https://router.bynara.id" } }
+    }
+
+    /** Model slug the agent loop sends on every request. */
+    val llmModelFlow: Flow<String> = store.data.map {
+        it[Keys.llmModel] ?: "nara/deepseek-v4-flash"
+    }
+
+    suspend fun setLlmModel(slug: String) {
+        store.edit { it[Keys.llmModel] = slug.trim().ifBlank { "nara/deepseek-v4-flash" } }
+    }
+
+    /**
+     * ProviderId used to resolve the LLM API key in
+     * `CloudCredentialStore`. Default = "user-llm" so a fresh
+     * install reads/writes `cloud-mcp/user-llm/token`.
+     */
+    val llmApiKeyProviderIdFlow: Flow<String> = store.data.map {
+        it[Keys.llmApiKeyProviderId] ?: "user-llm"
+    }
+
+    suspend fun setLlmApiKeyProviderId(id: String) {
+        store.edit { it[Keys.llmApiKeyProviderId] = id.trim().ifBlank { "user-llm" } }
+    }
+
+    // --- Feature flags --------------------------------------------------
+    //
+    // Two independent flags, both default to `false`. The Cloud Hub
+    // reads `cloudBrowserEnabledFlow` to decide whether to render
+    // the Browser row; the Agent Terminal reads
+    // `androidAutomationEnabledFlow` to decide whether to expose
+    // the AccessibilityService-backed tools.
+
+    /** When `true`, the Cloud Hub shows the Browser row and the
+     *  Agent Terminal exposes `browser_*` tools. Default = false. */
+    val cloudBrowserEnabledFlow: Flow<Boolean> = store.data.map {
+        it[Keys.cloudBrowserEnabled] ?: false
+    }
+
+    suspend fun setCloudBrowserEnabled(enabled: Boolean) {
+        store.edit { it[Keys.cloudBrowserEnabled] = enabled }
+    }
+
+    /** When `true`, the Cloud Hub shows the Android automation row
+     *  and the AccessibilityService tools are exposed. Default =
+     *  false. */
+    val androidAutomationEnabledFlow: Flow<Boolean> = store.data.map {
+        it[Keys.androidAutomationEnabled] ?: false
+    }
+
+    suspend fun setAndroidAutomationEnabled(enabled: Boolean) {
+        store.edit { it[Keys.androidAutomationEnabled] = enabled }
+    }
+
+    // --- Android automation allowlist + high-risk packages -------------
+    //
+    // Persisted as a JSON list of packageName strings. The
+    // `AndroidAutomationPermission` policy reads these on every
+    // action to decide Allow / Ask / Deny.
+
+    val androidAutomationAllowlistFlow: Flow<Set<String>> = store.data.map {
+        decodeStringSet(it[Keys.androidAutomationAllowlist])
+    }
+
+    suspend fun setAndroidAutomationAllowlist(packages: Set<String>) {
+        store.edit { it[Keys.androidAutomationAllowlist] = encodeStringSet(packages) }
+    }
+
+    val androidAutomationHighRiskPackagesFlow: Flow<Set<String>> = store.data.map {
+        // Default: system settings + gms. The user can extend it
+        // from Settings → Cloud → Android automation.
+        decodeStringSet(it[Keys.androidAutomationHighRiskPackages])
+            .ifEmpty { defaultHighRiskPackages }
+    }
+
+    suspend fun setAndroidAutomationHighRiskPackages(packages: Set<String>) {
+        store.edit { it[Keys.androidAutomationHighRiskPackages] = encodeStringSet(packages) }
     }
 
     // --- Network-scope feature ------------------------------------------
@@ -270,6 +407,18 @@ class SettingsRepository(private val context: Context) {
     private fun encodeEndpoints(endpoints: List<RemoteEndpoint>): String =
         json.encodeToString(ListSerializer(RemoteEndpoint.serializer()), endpoints)
 
+    private val stringListSerializer = ListSerializer(String.serializer())
+
+    private fun decodeStringSet(raw: String?): Set<String> {
+        if (raw.isNullOrBlank()) return emptySet()
+        return runCatching {
+            json.decodeFromString(stringListSerializer, raw).toSet()
+        }.getOrDefault(emptySet())
+    }
+
+    private fun encodeStringSet(values: Set<String>): String =
+        json.encodeToString(stringListSerializer, values.toList())
+
     private object Keys {
         val accentHue = stringPreferencesKey("theme.accent_hue")
         val basePalette = stringPreferencesKey("theme.base_palette")
@@ -285,9 +434,30 @@ class SettingsRepository(private val context: Context) {
         val runtimeRegistryVersion = intPreferencesKey("runtime.registry_version")
         val ragMode = stringPreferencesKey("cloud.rag_mode")
         val loopMode = stringPreferencesKey("cloud.loop_mode")
+        val webSearchVendor = stringPreferencesKey("cloud.web_search_vendor")
+        val webSearchCx = stringPreferencesKey("cloud.web_search_cx")
+        val llmEndpoint = stringPreferencesKey("cloud.llm_endpoint")
+        val llmModel = stringPreferencesKey("cloud.llm_model")
+        val llmApiKeyProviderId = stringPreferencesKey("cloud.llm_api_key_provider_id")
+        val cloudBrowserEnabled = booleanPreferencesKey("feature.cloud.browser")
+        val androidAutomationEnabled = booleanPreferencesKey("feature.cloud.android_automation")
+        val androidAutomationAllowlist = stringPreferencesKey("android_automation.allowlist")
+        val androidAutomationHighRiskPackages = stringPreferencesKey("android_automation.high_risk_packages")
     }
 
     companion object {
+        /**
+         * Packages whose tools always require an explicit
+         * per-action confirmation, regardless of the user's
+         * allowlist. Used by the Android automation permission
+         * policy in `AndroidAutomationPermission`.
+         */
+        val defaultHighRiskPackages: Set<String> = setOf(
+            "com.android.settings",
+            "com.google.android.gms",
+            "com.android.systemui",
+        )
+
         private val json = Json {
             ignoreUnknownKeys = true
             encodeDefaults = true
