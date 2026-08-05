@@ -306,6 +306,17 @@ fun AgentScreen(
                 displayName = activeModelName,
                 onClick = onOpenModels,
             )
+
+            // "Web & tools unavailable" banner — surfaces when no
+            // chat model is loaded. Mirrors the upstream banner
+            // pattern from the screenshot. Tap → open Models.
+            if (coordinatorState !is CoordinatorState.Ready && models.isEmpty()) {
+                com.meshlit.ui.components.ErrorBanner(
+                    title = stringResource(R.string.ra_tools_unavailable_title),
+                    subtitle = stringResource(R.string.ra_tools_unavailable_subtitle),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             InputBar(
                 input = input,
                 isRunning = isRunning,
@@ -589,21 +600,29 @@ private fun EmptyAgent() {
 }
 
 @Composable
-private fun SuggestionChipsRow() {
+private fun SuggestionChipsRow(
+    onPick: (String) -> Unit = {},
+) {
+    val plan = stringResource(R.string.ra_plan_day)
+    val rewrite = stringResource(R.string.ra_rewrite)
+    val compare = stringResource(R.string.ra_compare)
     androidx.compose.foundation.layout.Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        androidx.compose.material3.FilledTonalButton(onClick = { }) {
-            Text(stringResource(R.string.ra_plan_day))
-        }
-        androidx.compose.material3.FilledTonalButton(onClick = { }) {
-            Text(stringResource(R.string.ra_rewrite))
-        }
-        androidx.compose.material3.FilledTonalButton(onClick = { }) {
-            Text(stringResource(R.string.ra_compare))
-        }
+        com.meshlit.ui.components.SuggestionChipPill(
+            label = plan,
+            onClick = { onPick(plan) },
+        )
+        com.meshlit.ui.components.SuggestionChipPill(
+            label = rewrite,
+            onClick = { onPick(rewrite) },
+        )
+        com.meshlit.ui.components.SuggestionChipPill(
+            label = compare,
+            onClick = { onPick(compare) },
+        )
     }
 }
 

@@ -649,6 +649,8 @@
     <string name="ra_plan_day">Plan my day</string>
     <string name="ra_rewrite">Rewrite clearly</string>
     <string name="ra_compare">Compare options</string>
+    <string name="ra_tools_unavailable_title">Web &amp; tools unavailable</string>
+    <string name="ra_tools_unavailable_subtitle">Choose a chat model before enabling Web &amp; tools.</string>
     <string name="ra_base_palette_runanywhere">RunAnywhere (dark + orange)</string>
     <string name="ra_backend_filter_all">All</string>
     <string name="ra_backend_filter_llamacpp">Llama.cpp</string>
