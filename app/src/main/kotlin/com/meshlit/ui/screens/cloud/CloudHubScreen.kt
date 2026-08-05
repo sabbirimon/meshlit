@@ -30,6 +30,7 @@ import com.meshlit.core.cloudmcp.rag.RagDecision
 import com.meshlit.core.cloudmcp.rag.RagMode
 import com.meshlit.ui.components.MeshlitHeader
 import com.meshlit.ui.components.RaListCard
+import com.meshlit.ui.theme.RaBrandStrip
 
 /**
  * Top-level Cloud Hub. Shows a horizontally-scrollable row of
@@ -73,6 +74,11 @@ fun CloudHubScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // RunAnywhere brand gradient — orange → gold. Pinned
+            // right under the header so every entry into the hub
+            // carries the visual signature.
+            RaBrandStrip(height = 6.dp, horizontal = true)
+
             // RAG indicator — always visible so the user sees
             // which backend is active.
             RagIndicatorChip(mode = ragMode, state = ragDecision)
