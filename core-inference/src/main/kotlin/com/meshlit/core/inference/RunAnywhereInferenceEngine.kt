@@ -34,8 +34,8 @@ import java.io.File
  * app already speaks. The Jobs / Agent / Terminal screens talk to
  * [InferenceCoordinator] exactly as they always have; this engine is
  * swapped into the coordinator's runtime registry so the user gets
- * real on-device LLM generation rather than the placeholder
- * JvmStubInferenceEngine reply.
+ * real on-device LLM generation rather than the typed
+ * no_engine_for_format failure returned by [NoOpInferenceEngine].
  *
  * Why a new engine and not extending the existing ones:
  *
@@ -44,8 +44,9 @@ import java.io.File
  *    that .so for the RunAnywhere-shipped `libllama.so` would
  *    require maintaining our own JNI surface — a long-term cost for
  *    no user-visible gain.
- *  - `JvmStubInferenceEngine` is the placeholder engine we want to
- *    move away from on real devices.
+ *  - `NoOpInferenceEngine` is the last-resort fallback used when no
+ *    shipped runtime came up native-ready; it surfaces typed
+ *    `no_engine_for_format` failures instead of synthetic replies.
  *  - `OnnxOrtInferenceEngine` is the second shipped runtime; it
  *    handles `.onnx` only. The RunAnywhere integration handles
  *    `.gguf` via llama.cpp — different format, different runtime,
@@ -145,7 +146,7 @@ class RunAnywhereInferenceEngine(
                 // Don't claim initialisation succeeded if either
                 // call threw — leave `initialized` at false so the
                 // coordinator's `engineFor(.gguf)` falls through to
-                // the next available engine (likely the stub).
+                // the next available engine (likely NoOp).
                 log.warn(
                     "runanywhere.init_failed",
                     "RunAnywhere init failed",
@@ -157,6 +158,17 @@ class RunAnywhereInferenceEngine(
 
     /** Whether the SDK is registered and ready to accept `loadModel`. */
     override fun isReady(): Boolean = initialized && loadedModelId != null
+
+    /**
+     * Whether [initialize] has been called successfully. This is
+     * distinct from [isReady] (which additionally requires a model
+     * to be loaded). The coordinator's dispatch uses this so a fresh
+     * `loadModel(...)` call can route to the SDK even when no model
+     * has been loaded yet — using [isReady] here was the root cause
+     * of the stub-reply bug (the very first load skipped the real
+     * engine and landed on the placeholder stub).
+     */
+    fun isInitialized(): Boolean = initialized
 
     /** Currently loaded model, or null when nothing is loaded. */
     override fun loadedModel(): ModelInfo? = modelInfo
@@ -307,8 +319,8 @@ class RunAnywhereInferenceEngine(
                 // terminal event whose `is_final == true`. We map
                 // each non-terminal event into a single-token chunk
                 // for the existing `onToken` callback contract used
-                // by `JvmStubInferenceEngine` and
-                // `OnnxOrtInferenceEngine`.
+                // by `NoOpInferenceEngine`'s fallback path and
+                // `OnnxOrtInferenceEngine`'s downstream consumers.
                 val events: Flow<LLMStreamEvent> = RunAnywhere.generateStream(
                     prompt = request.prompt,
                     options = null,

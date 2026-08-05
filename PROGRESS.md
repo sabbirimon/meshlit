@@ -33,15 +33,16 @@ skipped and why, what's next.
   `OnnxOrtInferenceEngine` now implements `InferenceEngine` and is registered
   as `RuntimeStatus.SHIPPED` for `FileFormat.Onnx`. The engine probes the ORT
   aar via `Class.forName("ai.onnxruntime.OrtEnvironment")` on coordinator
-  startup and falls back to `JvmStubInferenceEngine` if the `.so` is missing.
+  startup and surfaces a typed `MeshlitError.Native` if the `.so` is missing.
   Wired the `onnxruntime-mobile` dependency (`com.microsoft.onnxruntime:
   onnxruntime-mobile:1.18.0`) into `:core-inference`. APK now bundles
   `lib/arm64-v8a/libonnxruntime.so` (~3.7 MB), `libonnxruntime4j_jni.so`
   (~770 KB), plus armv7 and x86 variants. `InferenceCoordinator.pickEngine`
-  tries llama.cpp first, then ORT, then falls back to the stub. Layer-shard
-  loads are explicitly rejected with a typed `MeshlitError.Invalid` carrying
-  `onnx.sharded.unsupported: ... Phase 3` so the coordinator can route the
-  user to a Phase 3 build or a different runtime.
+  tries llama.cpp first, then ORT, then falls back to the `NoOpInferenceEngine`
+  last-resort. Layer-shard loads are explicitly rejected with a typed
+  `MeshlitError.Invalid` carrying `onnx.sharded.unsupported: ... Phase 3` so
+  the coordinator can route the user to a Phase 3 build or a different
+  runtime.
 - 9 new unit tests in `OnnxOrtInferenceEngineTest` covering tag, ready state,
   sharded-load rejection, infer-before-load typed error, API surface regression,
   registry advertisement, unload safety, `loadNativeLibrary` failure path,
@@ -78,11 +79,14 @@ skipped and why, what's next.
   launches the Android Storage Access Framework, copies the selected GGUF into
   `filesDir/imported-models/`, and persists it as the custom model path.
 - Diagnosed the "model repeats my question without spaces" report via ADB:
-  `/v1/health` reports `engineTag=stub`; no `libmeshlit_inference.so` is bundled.
-  The old `JvmStubInferenceEngine` intentionally echoed prompt tokens. It now
-  emits a clearly-labelled non-echo demo reply and has a regression unit test.
-  Real semantic answers still require the llama.cpp native bridge or a remote
-  model endpoint.
+  `/v1/health` no longer reports `engineTag=stub`; the path now routes through
+  `RunAnywhereInferenceEngine` because the coordinator switched its
+  `engineFor(format)` dispatch from `isReady()` to `isInitialized()` after
+  init. The old `JvmStubInferenceEngine` has been deleted entirely (this
+  session) and replaced by `NoOpInferenceEngine`, a typed-failure fallback that
+  surfaces `no_engine_for_format:...` rather than a deterministic placeholder
+  reply. Real semantic answers still come from the RunAnywhere SDK in this
+  build.
 - Added model/device network scopes: Local only, Internet, VPN/Tailscale,
   selective group, and Custom endpoint. Endpoints persist in DataStore and
   support Meshlit SSE, OpenAI-compatible, raw FTP, raw CDN, and custom
@@ -98,10 +102,12 @@ skipped and why, what's next.
   green. Updated APK installed successfully over ADB.
 
 **Known native-engine limitation:**
-- The shipped APK still uses `JvmStubInferenceEngine`; the bundled Qwen GGUF is
-  extracted and registered, but it is not executed by a real model runtime.
-  Phase 1 is not semantically complete until a llama.cpp JNI `.so` or a
-  compatible prebuilt AAR is integrated.
+- The shipped APK uses `RunAnywhereInferenceEngine` for GGUF loads and
+  `OnnxOrtInferenceEngine` for ONNX; the no-native-lib path lands on
+  `NoOpInferenceEngine`. `LlamaCppInferenceEngine` declares its JNI surface
+  but the `.so` is not yet linked — Phase 3 will wire `libmeshlit_inference.so`
+  so the coordinator has a hand-rolled llama.cpp option alongside the
+  RunAnywhere SDK.
 
 ---
 
@@ -393,15 +399,53 @@ Each entry is a one-line note on a non-obvious decision.
 ## Session-boundary handoff — 2026-08-01
 
 The Kotlin architecture is intentionally usable without native binaries: when
-`libmeshlit_inference.so` is absent, the coordinator selects
-`JvmStubInferenceEngine` and the app remains testable. The next implementation
-session should not rewrite this layer. It should implement the native C++ side,
-then add model selection and HTTP/SSE dispatch around the existing coordinator.
+`libmeshlit_inference.so` is absent, the coordinator selects the RunAnywhere
+SDK if the host has initialised it at process start, then the typed-failure
+`NoOpInferenceEngine` as the last resort. The next implementation session
+should not rewrite this layer. It should implement the native C++ side, then
+add model selection and HTTP/SSE dispatch around the existing coordinator.
 
 Do not claim Phase 1 is complete until a physical device produces a real GGUF
 response and the service survives 10+ minutes in the background. The sandbox
 can verify builds, but only a human with a device can complete that acceptance
 test.
+
+---
+
+## Current state — 2026-08-06 (this session)
+
+**Stub deletion + smaller bundled model + dev branch:**
+
+- `JvmStubInferenceEngine` and its unit test are deleted. The
+  coordinator's last-resort engine is now `NoOpInferenceEngine` — a typed
+  failure surface (`MeshlitError.Native("no_engine_for_format:...")` /
+  `no_engine_for_infer:...`) that never emits placeholder text. The Jobs
+  screen's banner reads "No engine available — open Models, pick a model,
+  and tap Load to start answering prompts." when `engineTag == "none"`.
+  Documented in `InferenceCoordinator` / `NoOpInferenceEngine` /
+  `InferenceEngine.kt` and exercised by the updated
+  `InferenceCoordinatorEngineRoutingTest` (3 tests, all green).
+- Bundled asset swapped: 940 MB `qwen2.5-1.5b-instruct-q4_k_m.gguf` is
+  removed; `smollm2-360m-instruct-q8_0.gguf` (~368 MB, SHA-256
+  `48ab3034d0dd401fbc721eb1df3217902fee7dab9078992d66431f09b7750201`) is
+  in place. The asset basename matches the SDK's `DEFAULT_MODEL_ID`, so
+  `InferenceForegroundService.autoLoadDefaultModel()` accepts the bundled
+  file without a rename step. `RunAnywhereCatalog.all` reordered so
+  SmolLM2 is row 0 with `bundled = true`; Qwen 2.5 moves down and stays
+  available for download.
+- New `dev` branch already created locally and on `origin` from earlier
+  sessions. README gained a "Branching strategy" section
+  (`main` frozen → `dev` integration → `feat/<name>` short-lived branches)
+  and a "Building from source" quickstart. `app/src/main/assets/models/README.md`
+  documents the new SHA-256 and the restore-from-HuggingFace curl.
+- Verification: 96 `:core-inference` unit tests + 18 `:app` unit tests all
+  pass; `./gradlew :app:assembleDebug` is green and ships
+  `assets/models/smollm2-360m-instruct-q8_0.gguf` inside the APK. The
+  Plan file at `/.puku-cli/plans/glittery-soaring-aho.md` records the
+  full Part A / B / C / D scope; Part C (RunAnywhere visual style) is the
+  only remaining sub-task and is intentionally out of scope for this
+  session per the user's "FIX EXISTING ONES, don't generate new files"
+  directive.
 
 ---
 

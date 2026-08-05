@@ -236,13 +236,13 @@ fun JobsScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // Stub banner — only visible when the engine is the demo
-            // stub. Tells the user up front that replies are
-            // placeholders, so the streaming bubble below doesn't
+            // No-engine banner — only visible when no real runtime
+            // is loaded. Tells the user up front that prompts
+            // can't be answered, so the input field below doesn't
             // look like a broken model.
-            val isStub = remember { app.inferenceCoordinator.engineTag == "stub" }
+            val isNoEngine = remember { app.inferenceCoordinator.engineTag == "none" }
             AnimatedVisibility(
-                visible = isStub,
+                visible = isNoEngine,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
             ) {
@@ -254,7 +254,7 @@ fun JobsScreen(
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.jobs_stub_banner),
+                        text = stringResource(R.string.jobs_no_engine_banner),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                         modifier = Modifier.padding(12.dp),

@@ -50,6 +50,8 @@ Apache 2.0 — see [LICENSE](LICENSE).
 - [Architecture](#architecture)
 - [Project layout](#project-layout)
 - [Build](#build)
+- [Branching strategy](#branching-strategy)
+- [Building from source](#building-from-source)
 - [Running](#running)
 - [The four SDK-backed screens](#the-four-sdk-backed-screens)
 - [Cluster model](#cluster-model)
@@ -250,8 +252,14 @@ The most recent additions live in `OnnxOrtInferenceEngineTest`
 
 First launch:
 
-1. The app extracts the bundled Qwen2.5-1.5B GGUF into
-   `filesDir/bundled-models/` (~940 MB; runs in the background).
+1. The app extracts the bundled `smollm2-360m-instruct-q8_0.gguf`
+   from `assets/models/` into `filesDir/bundled-models/`
+   (~368 MB; runs in the background on `appScope`). The asset
+   basename matches the SDK's `DEFAULT_MODEL_ID` so the FGS
+   auto-loads it without a rename step. To swap in a larger
+   model, use **Models → Catalog** or the Models screen's import
+   flow. See `app/src/main/assets/models/README.md` for the
+   restore-from-HuggingFace instructions.
 2. You land on **Devices** — the screen lists this phone's
    pairing QR + address and any peers advertising on the LAN.
 3. The bottom nav has 14 destinations. New in Phase 2.x:
@@ -293,8 +301,9 @@ Reads `RunAnywhere.listModels(...)` against the SDK's CDN
 registry and renders rows in the shape
 `id / displayName / origin / license / family / approxSizeMb /
 language / strengths`. Falls back to the curated
-`RunAnywhereCatalog.all` (SmolLM2-360M, Qwen2.5-1.5B, Llama-3.2-1B,
-Phi-3-mini) when offline.
+`RunAnywhereCatalog.all` (SmolLM2-360M — bundled — plus
+Qwen2.5-1.5B, Llama-3.2-1B, Phi-3-mini and the MoE rows
+Qwen3-30B-A3B, Granite-4.0-Tiny-MoE, Mixtral-8x7B) when offline.
 
 - Search box filters by name or family.
 - Refresh button re-runs `refreshModelRegistry(forceRefresh=true)`.
@@ -384,6 +393,67 @@ capability. See `core-trust/` for the attestation helpers and
   records (role taxonomy, trust tiers, transport choices).
 - **[docs/journal/](docs/journal/)** — phase-by-phase narrative
   log.
+
+---
+
+## Branching strategy
+
+`main` is frozen until the next tagged release. Day-to-day
+integration happens on **`dev`**, and every non-trivial change
+lands on a short-lived feature branch off `dev`. The repo today
+looks like:
+
+```
+main              ← frozen (next: 1.0 release)
+└─ dev            ← integration branch — push here
+   ├─ feat/<name> ← one feature / fix per branch
+   ├─ fix/<name>
+   └─ chore/<name>
+```
+
+Workflow:
+
+```bash
+git checkout dev
+git pull --rebase origin dev
+git checkout -b feat/<short-name>   # or fix/, chore/
+# … work, conventional-commit messages …
+git push -u origin feat/<short-name>
+# open a PR into dev — squash-merge once CI is green
+```
+
+For one-off hotfixes, branch straight from `main`, but don't
+merge back until `dev` is ready — `main` is intentionally a
+release tag, not a moving target.
+
+## Building from source
+
+The full per-phase walkthrough lives in
+[app/BUILD_GUIDE.md](app/BUILD_GUIDE.md). The 30-second version:
+
+```bash
+git clone https://github.com/sabbirimon/meshlit
+cd meshlit
+./gradlew :app:assembleDebug                      # build the APK
+./gradlew :app:installDebug                       # install on a connected device
+./gradlew :app:testDebugUnitTest                  # run app-side unit tests
+./gradlew :core-inference:testDebugUnitTest       # run inference engine tests
+```
+
+Requirements:
+
+- Android Studio Ladybug (AGP 9.2.1)
+- JDK 21
+- Android SDK 36, build-tools 36
+- A device or emulator on **API 24+** (Android 7.0+)
+
+The first launch extracts `smollm2-360m-instruct-q8_0.gguf`
+(~368 MB) from `app/src/main/assets/models/` into
+`filesDir/bundled-models/`. To rebuild the asset after a fresh
+clone, follow
+[app/src/main/assets/models/README.md](app/src/main/assets/models/README.md)
+— it documents the Hugging Face URL and the SHA-256 sentinel
+the installer verifies against.
 
 ---
 

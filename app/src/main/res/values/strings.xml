@@ -18,6 +18,7 @@
     <string name="screen_structured">JSON</string>
     <string name="screen_catalog">Catalog</string>
     <string name="screen_vision">Vision</string>
+    <string name="screen_advanced">Advanced</string>
 
     <!-- Voice screen -->
     <string name="voice_title">Voice (STT + TTS + VAD)</string>
@@ -173,7 +174,7 @@
     <string name="jobs_remote_ip_placeholder">192.168.1.42</string>
     <string name="jobs_remote_dispatch_failed">Peer unreachable: %1$s</string>
     <string name="jobs_remote_no_ip">Enter a peer IP for Remote dispatch.</string>
-    <string name="jobs_stub_banner">Demo engine active — replies are placeholders. Load a model from the Models tab.</string>
+    <string name="jobs_no_engine_banner">No engine available — open Models, pick a model, and tap Load to start answering prompts.</string>
     <string name="jobs_model_picker_label">Model</string>
     <string name="jobs_service_start">Start</string>
     <string name="jobs_service_stop">Stop</string>
@@ -210,6 +211,9 @@
     <!-- Files screen -->
     <string name="files_empty_title">Your cluster workspace is empty</string>
     <string name="files_empty_body">Browse files on this device, copy them across cluster nodes, or fetch a model from another node.</string>
+    <string name="files_empty">This directory is empty.</string>
+    <string name="files_up">Up one level</string>
+    <string name="files_refresh">Refresh</string>
 
     <!-- Sessions (SSH) -->
     <string name="sessions_empty_title">No active sessions</string>
@@ -361,6 +365,37 @@
     <string name="models_override_path_hint">/sdcard/Models/qwen2.5-3b-instruct-q4.gguf</string>
     <string name="models_override_save">Save</string>
     <string name="models_override_clear">Clear override</string>
+
+    <!-- Multi-source model import -->
+    <string name="models_import_section">Import a model from anywhere</string>
+    <string name="models_import_section_subtitle">Paste a URL, resolve a GitHub link, pick a file from device storage, or browse what\'s already imported.</string>
+    <string name="models_import_url_title">From a URL</string>
+    <string name="models_import_url_placeholder">https://huggingface.co/…/model.gguf</string>
+    <string name="models_import_url_button">Download</string>
+    <string name="models_import_git_title">From Git / GitHub</string>
+    <string name="models_import_git_placeholder">https://github.com/owner/repo/blob/main/file.gguf</string>
+    <string name="models_import_git_button">Resolve &amp; download</string>
+    <string name="models_import_storage_title">From device storage</string>
+    <string name="models_import_external_button">External storage (SAF)</string>
+    <string name="models_import_internal_button">Browse internal</string>
+    <string name="models_import_internal_none">No models imported yet. Use the buttons above to add one.</string>
+    <string name="models_import_cluster_title">From cluster (peer shards)</string>
+    <string name="models_import_cluster_placeholder">Model ID (e.g. qwen2.5-1.5b-instruct-q4_k_m)</string>
+    <string name="models_import_cluster_button">Acquire via cluster</string>
+    <string name="models_import_cluster_disabled">No peers reachable — cluster acquisition unavailable</string>
+    <string name="models_import_internal_delete">Delete</string>
+    <string name="models_import_internal_open">Activate</string>
+    <string name="models_import_resolve_fail">Could not resolve that URL. Paste a direct file link to a .gguf, .onnx, or .safetensors file.</string>
+    <string name="models_import_resolved">Resolved %1$s → downloading</string>
+    <string name="models_import_progress">Importing %1$s… %2$d%%</string>
+
+    <!-- HuggingFace repo + file picker (Wave 3C.2 importer UI) -->
+    <string name="models_import_hf_title">From a HuggingFace repo</string>
+    <string name="models_import_hf_repo_placeholder">owner/repo (e.g. TheBloke/Llama-2-7B-Chat-GGUF)</string>
+    <string name="models_import_hf_file_placeholder">file.gguf (e.g. llama-2-7b-chat.Q4_K_M.gguf)</string>
+    <string name="models_import_hf_button">Resolve &amp; download</string>
+    <string name="models_import_hf_invalid">Enter both a repo (owner/name) and a file in that repo.</string>
+    <string name="models_import_hf_resolved">HF: %1$s → downloading %2$s</string>
 
     <!-- Cluster capacity (Phase 2 foundation) -->
     <string name="cluster_capacity_section">Cluster capacity</string>
