@@ -10,13 +10,25 @@ import com.meshlit.capability.currentCapabilityTier
 import com.meshlit.core.common.HostOS
 import com.meshlit.core.common.HostOSDetection
 import com.meshlit.core.common.logger
+import com.meshlit.core.mcp.McpClientPool
+import com.meshlit.core.mcp.McpToolRegistry
+import com.meshlit.core.mcp.MeshlitServerController
+import com.meshlit.core.mcp.MeshlitServerState
+import com.meshlit.core.mcp.UserMcpServerStore
+import com.meshlit.mcp.DataStoreUserMcpServerPersistence
 import com.meshlit.core.inference.BundledModelInstaller
+import com.meshlit.core.inference.cluster.PeerCapabilities
 import com.meshlit.core.inference.ContextProvider
 import com.meshlit.core.inference.InferenceCoordinator
 import com.meshlit.core.inference.RunAnywhereCatalogEngine
 import com.meshlit.core.inference.RunAnywhereStructuredEngine
 import com.meshlit.core.inference.RunAnywhereVisionEngine
 import com.meshlit.core.inference.RunAnywhereVoiceEngine
+import com.meshlit.core.trust.DeviceTrustPolicy
+import com.meshlit.core.trust.FileBackedTrustStore
+import com.meshlit.core.trust.LocalTrustPolicy
+import com.meshlit.core.trust.TrustStore
+import com.meshlit.core.trust.TrustTier
 import com.meshlit.diagnostics.AndroidEGpuProbe
 import com.meshlit.diagnostics.AndroidHostOSProbe
 import com.meshlit.diagnostics.AndroidOemDetector
@@ -215,6 +227,55 @@ class MeshlitApplication : Application() {
 
     fun activePeerHealthCache(): com.meshlit.inference.PeerHealthCache? = activePeerHealthCacheRef
 
+    /**
+     * Snapshot the *self* peer's cluster-relevant state — what's free on
+     * disk, what's free in RAM, and which shards we already host.
+     * Called by both `ClusterStorageInstaller` (for the planner's self
+     * assignment) and `InferenceForegroundService` (so the embedded
+     * `ShardServer` can answer `/v1/capabilities` correctly).
+     *
+     * Cheap: reads from `filesDir.usableSpace` and the runtime's
+     * memory counters; iterates a single directory for hosted shards.
+     * Called once per `/v1/capabilities` request and once per planner
+     * pass (≤ 1/s under normal conditions).
+     */
+    fun selfCapabilities(): PeerCapabilities {
+        val freeDiskMb = filesDir.usableSpace / (1024L * 1024L)
+        val rt = Runtime.getRuntime()
+        val freeRamMb = (rt.maxMemory() - rt.totalMemory() + rt.freeMemory()) / (1024L * 1024L)
+        val hosted = mutableSetOf<String>()
+        val root = java.io.File(filesDir, "shards")
+        if (root.isDirectory) {
+            root.listFiles()?.forEach { modelDir ->
+                if (!modelDir.isDirectory) return@forEach
+                val modelId = modelDir.name
+                modelDir.listFiles { f -> f.isFile && f.extension == "shard" }?.forEach { shard ->
+                    hosted += "$modelId/${shard.nameWithoutExtension}"
+                }
+            }
+        }
+        return PeerCapabilities(
+            peerId = "self",
+            capabilityTier = capabilityTier,
+            freeRamMb = freeRamMb,
+            freeDiskMb = freeDiskMb,
+            hostedShardIds = hosted,
+            lastSeenMs = Long.MAX_VALUE,
+            // Phase 3 — surface the local node's trust tier so peers
+            // see the same value in `/v1/capabilities` that
+            // `LocalTrustPolicy` consults. Default to LOCAL_TRUSTED
+            // when the FGS hasn't populated the stable id yet
+            // (first launch before any peer has paired).
+            tier = LocalTrustPolicy.currentTierOr(LocalTrustTierFallback),
+        )
+    }
+
+    /** When the stable node id hasn't been assigned yet, the local
+     *  trust policy is null. Until pairing completes we report
+     *  `LOCAL_TRUSTED` for backward compatibility — the firewall
+     *  still consults the IP allowlist first. */
+    private val LocalTrustTierFallback: TrustTier = TrustTier.LOCAL_TRUSTED
+
     val systemProbe: AndroidSystemProbe by lazy { AndroidSystemProbe(this) }
 
     val peripheralProbe: AndroidPeripheralProbe by lazy { AndroidPeripheralProbe(this) }
@@ -261,7 +322,29 @@ class MeshlitApplication : Application() {
 
     fun setStableNodeId(id: String) {
         stableNodeId = id
+        // Phase 3 — keep LocalTrustPolicy in lock-step with the
+        // stable node id. We treat the local node as LOCAL_TRUSTED
+        // at start (it owns its own device); subsequent handshake
+        // responses from peers will adjust via the global TrustStore.
+        LocalTrustPolicy.set(
+            DeviceTrustPolicy(
+                nodeId = id,
+                trustTier = TrustTier.LOCAL_TRUSTED,
+                allowedRoles = setOf("brain", "tool", "monitor"),
+                tokenExpiryMs = null,
+                publicKeyFingerprint = null,
+            )
+        )
     }
+
+    /**
+     * App-wide [TrustStore]. Backed by a JSON file under
+     * `filesDir/trust/trust_store.json` so the table survives
+     * process death and FGS restarts without pulling in
+     * androidx.datastore. Lazy because the file backend only exists
+     * once `filesDir` is safe to access.
+     */
+    val trustStore: TrustStore by lazy { FileBackedTrustStore(java.io.File(filesDir, "trust")) }
 
     private fun resolveLocalIpv4(): String {
         return runCatching {
@@ -290,6 +373,44 @@ class MeshlitApplication : Application() {
 
     /** Detected OEM (Samsung / Xiaomi / Pixel / HarmonyOS NEXT / ...). */
     val oemDetection by lazy { AndroidOemDetector(this).detect() }
+
+    // -------------------------------------------------------------------
+    // MCP server bootstrap (Phase Advanced).
+    //
+    // The server-side MCP path used to be dead code: `MeshlitServerAdapter`
+    // existed but no application code path instantiated it. Settings → MCP
+    // now owns a toggle backed by [MeshlitServerController]; the
+    // [UserMcpServerStore] persists user-added MCP server entries into
+    // a JSON blob under the standard DataStore preferences namespace and
+    // the [mcpClientPool] rehydrates them on first launch.
+    //
+    // Both controllers bind to 127.0.0.1 by default so the embedded HTTP
+    // server is reachable only on-device; the Settings → MCP screen can
+    // opt into `0.0.0.0` after a confirmation dialog.
+    // -------------------------------------------------------------------
+
+    /** Process-wide MCP tool registry. Lazy because tests inject a
+     *  different registry. */
+    val mcpToolRegistry: McpToolRegistry by lazy { McpToolRegistry() }
+
+    /** Process-wide pool of external MCP servers (user-added). Rehydrates
+     *  from [userMcpServerStore] on construction. */
+    val mcpClientPool: McpClientPool by lazy {
+        McpClientPool(registry = mcpToolRegistry, store = userMcpServerStore)
+    }
+
+    /** DataStore-backed CRUD for user-added MCP server entries. */
+    val userMcpServerStore: UserMcpServerStore by lazy {
+        UserMcpServerStore(persistence = DataStoreUserMcpServerPersistence(this))
+    }
+
+    /** Embedded MCP HTTP server controller. Toggleable from Settings → MCP. */
+    val meshlitServerController: MeshlitServerController by lazy {
+        MeshlitServerController(
+            registryProvider = { mcpToolRegistry },
+            poolProvider = { mcpClientPool },
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -321,6 +442,20 @@ class MeshlitApplication : Application() {
         // the SDK's static state and does not yet touch the network.
         inferenceCoordinator.runAnywhereEngine().initialize(this)
 
+        // Register every catalog entry with the SDK so
+        // `RunAnywhere.downloadModel(model)` can plan against a
+        // known URL. This mirrors the upstream SDK's documented
+        // pattern (see vendored/upstream/sdk/runanywhere-kotlin/docs/
+        // Documentation.md §"Model Registration"). The register call
+        // is idempotent — a re-register of the same id just
+        // refreshes the metadata.
+        val runAnywhereEngine = inferenceCoordinator.runAnywhereEngine()
+        com.meshlit.inference.RunAnywhereCatalog.all.forEach { entry ->
+            if (entry.url.isNotBlank()) {
+                runAnywhereEngine.setCatalogDownloadUrl(entry.id, entry.url)
+            }
+        }
+
         // Phase 2.x — install the four wrapper engines on the
         // application context. Each `install()` is a one-shot CAS so
         // repeated calls (e.g. on a configuration change) are no-ops.
@@ -330,6 +465,12 @@ class MeshlitApplication : Application() {
         RunAnywhereVoiceEngine.install()
         RunAnywhereStructuredEngine.install()
         RunAnywhereVisionEngine.install()
+        // Cluster-shard model storage incubator. Resolves model-id →
+        // URL via `ModelCatalog`, distributes shards across peers, and
+        // falls back to whole-model download when the cluster can't
+        // host the model. Idempotent — safe to call here even if a
+        // previous onCreate already installed it.
+        com.meshlit.inference.ClusterStorageInstaller.install(this)
         RunAnywhereCatalogEngine.install(offlineFallback = {
             com.meshlit.inference.RunAnywhereCatalog.all.map { entry ->
                 RunAnywhereCatalogEngine.Entry(
@@ -341,6 +482,10 @@ class MeshlitApplication : Application() {
                     approxSizeMb = entry.approxSizeMb,
                     language = entry.language,
                     strengths = entry.strengths,
+                    architecture = entry.architecture,
+                    quant = entry.quant,
+                    sizeClass = entry.sizeClass,
+                    bundled = entry.bundled,
                 )
             }
         })
@@ -355,6 +500,41 @@ class MeshlitApplication : Application() {
         }
         appScope.launch {
             extractBundledModel()
+        }
+
+        // MCP bootstrap — rehydrate persisted user-added MCP server
+        // entries, push them into the pool, then start the embedded
+        // MCP HTTP server. The server defaults to 127.0.0.1 so it
+        // does not silently expose on the LAN.
+        appScope.launch {
+            bootMcp()
+        }
+    }
+
+    /**
+     * Rehydrate the [userMcpServerStore], apply it to [mcpClientPool],
+     * then start [meshlitServerController]. Idempotent: safe to call
+     * multiple times (e.g. on configuration change). Logs failures
+     * without crashing — the rest of the app does not need MCP to
+     * function.
+     */
+    private suspend fun bootMcp() {
+        try {
+            userMcpServerStore.rehydrate()
+            userMcpServerStore.applyTo(mcpClientPool)
+            val res = meshlitServerController.start()
+            val finalState = meshlitServerController.state.value
+            log.info(
+                "app.mcp.boot",
+                "MCP subsystem ready",
+                mapOf(
+                    "serverState" to finalState::class.java.simpleName,
+                    "userServers" to userMcpServerStore.all.size,
+                    "startOk" to (res is com.meshlit.core.common.MeshlitResult.Success),
+                ),
+            )
+        } catch (t: Throwable) {
+            log.error("app.mcp.boot.fail", "MCP bootstrap failed", t)
         }
     }
 

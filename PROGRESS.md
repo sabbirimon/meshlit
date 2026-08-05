@@ -447,6 +447,47 @@ test.
   session per the user's "FIX EXISTING ONES, don't generate new files"
   directive.
 
+**RunAnywhere SDK-compatible catalog URLs (this session, follow-up):**
+
+- Root cause of "Downloads failing on Models screen" (#124): the SDK's
+  `RunAnywhere.downloadModelStream(RAModelInfo(id = …))` requires the
+  URL to already be registered via `RunAnywhere.registerModel(id, name,
+  url, framework, modality, memoryRequirement)`. Without registration
+  the planner aborts with `ERROR_CODE_DOWNLOAD_FAILED / "Unable to
+  create a download plan"`.
+- `RunAnywhereCatalog.Entry` now carries a `url` field (canonical HF
+  `https://huggingface.co/<org>/<repo>/resolve/main/<filename>` for
+  HuggingFace-hosted GGUFs, matching the SDK's own sample code). Every
+  curated row is populated: SmolLM2-360M Q8_0, Qwen2.5-1.5B Q4_K_M
+  (Qwen's official repo), Llama-3.2-1B Q4_K_M and Phi-3-mini Q4_K_M
+  (bartowski re-quants), Qwen3-30B-A3B Q4_K_M and Granite-4.0-Tiny-MoE
+  Q4_K_M (unsloth re-quants), Mixtral-8x7B Q4_K_M (Mistral's official).
+- `RunAnywhereInferenceEngine.downloadModelById(...)` now (a) registers
+  the model via `RunAnywhere.registerModel(...)` with the URL pulled
+  from a new `catalogUrlById` cache, then (b) streams the download.
+  `MeshlitApplication.onCreate` pre-seeds the cache from
+  `RunAnywhereCatalog.all` so every entry is registered once at process
+  start. `RunAnywhereCatalogEngine.BUNDLED_IDS` updated to
+  `smollm2-360m-instruct-q8_0` (matches the swapped bundled asset).
+- Models screen's `onGet` callback now invokes
+  `llm.setCatalogDownloadUrl(entry.id, entry.url)` before
+  `llm.downloadModelById(...)` so the SDK has a fresh URL even when the
+  on-startup registration hasn't run yet.
+- `CatalogBadgeInferenceTest` updated to assert the new bundled starter
+  (SmolLM2-360M Q8_0 instead of Qwen 2.5 1.5B Q4_K_M).
+- Verification: 96 `:core-inference` + 18 `:app` unit tests pass;
+  `./gradlew :app:assembleDebug` is green.
+
+**Visual reference noted for the next session:**
+
+- `Screenshots/UI suggestion/` holds 5 reference screens from the
+  RunAnywhere Android sample (Choose Chat Model with org list,
+  Recommended-for-your-device with "Top pick" highlight, the
+  orange-tinted Agent "Working late?" empty state, etc.). They mirror
+  what the plan's Part C (visual style) covers but the actual
+  re-skin is still parked behind the "FIX EXISTING ONES, don't
+  generate new files" directive.
+
 ---
 
 *This file is the journal; `app/BUILD_GUIDE.md` is the spec; `app/CLAUDE.md`

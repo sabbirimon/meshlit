@@ -8,6 +8,7 @@ import com.runanywhere.sdk.public.RunAnywhere
 import com.runanywhere.sdk.public.extensions.downloadModelStream
 import com.runanywhere.sdk.public.extensions.generateStream
 import com.runanywhere.sdk.public.extensions.loadModel
+import com.runanywhere.sdk.public.extensions.registerModel
 import com.runanywhere.sdk.public.types.RAModelInfo
 import com.runanywhere.sdk.public.types.RAModelLoadRequest
 import ai.runanywhere.proto.v1.DownloadProgress
@@ -395,14 +396,81 @@ class RunAnywhereInferenceEngine(
 
     /**
      * Public hook for the Models screen: download a model by id and
-     * stream progress. Returns a `Flow<DownloadProgress>` so the
+     * stream progress. Returns a `Flow<DownloadProgressView>` so the
      * UI can render a progress bar without coupling to the SDK's
      * concrete type.
      *
+     * Two things have to happen before the SDK can plan a download:
+     *
+     *  1. The model id has to be **registered** with a URL, framework,
+     *     and memory hint via `RunAnywhere.registerModel(...)`. The
+     *     SDK's `resolveModelForDownload(...)` walks the registry
+     *     looking for `download_url`; without that field populated
+     *     the planner aborts with "Unable to create a download plan".
+     *  2. The SDK's `downloadModelStream(...)` is then called with a
+     *     `RAModelInfo(id = modelId)` — the id is the only required
+     *     field because step 1 already attached the URL.
+     *
      * The flow is collected on [dispatcher] because the SDK does
      * network IO on the producer side.
+     *
+     * @param url direct HTTPS URL the SDK should fetch from. Defaults
+     *   to the entry's catalog URL via [setCatalogDownloadUrl] when
+     *   the host calls [downloadModelById] with an entry that already
+     *   carries a URL.
+     * @param displayName human-readable name shown in the SDK's
+     *   `Registered models` list. Defaults to `modelId` when the
+     *   caller doesn't supply one.
+     * @param memoryRequirementBytes upper-bound memory hint that the
+     *   SDK uses for compatibility preflight. Defaults to 0 so the
+     *   preflight doesn't gate the download when the caller doesn't
+     *   know the size up front.
      */
-    fun downloadModelById(modelId: String): Flow<DownloadProgressView> = flow {
+    fun downloadModelById(
+        modelId: String,
+        url: String = currentCatalogUrl(modelId),
+        displayName: String = modelId,
+        memoryRequirementBytes: Long = 0L,
+    ): Flow<DownloadProgressView> = flow {
+        // 1) Register (or re-register) the model so the SDK's
+        //    planner has a URL to plan against. Re-register is
+        //    idempotent: a model with the same id just has its
+        //    metadata refreshed. The `LLAMA_CPP` framework matches
+        //    every entry in the curated catalog — STT / TTS / VLM
+        //    use `ONNX` and aren't routed through this engine.
+        if (url.isNotBlank()) {
+            runCatching {
+                RunAnywhere.registerModel(
+                    id = modelId,
+                    name = displayName,
+                    url = url,
+                    framework = InferenceFramework.INFERENCE_FRAMEWORK_LLAMA_CPP,
+                    modality = ModelCategory.MODEL_CATEGORY_LANGUAGE,
+                    memoryRequirement = memoryRequirementBytes.takeIf { it > 0 },
+                )
+                log.info(
+                    "runanywhere.register",
+                    "model registered for download",
+                    mapOf("id" to modelId, "url" to url),
+                )
+            }.onFailure { t ->
+                log.warn(
+                    "runanywhere.register.fail",
+                    "${t.message}",
+                    mapOf("id" to modelId, "url" to url),
+                )
+                throw t
+            }
+        } else {
+            log.warn(
+                "runanywhere.register.skip",
+                "no URL for model; SDK planner will likely reject the download",
+                mapOf("id" to modelId),
+            )
+        }
+        // 2) Drive the SDK's download flow. The id is the only
+        //    required field on `RAModelInfo` because step 1 already
+        //    registered the URL with the registry.
         val sdkFlow: Flow<DownloadProgress> = RunAnywhere.downloadModelStream(
             model = RAModelInfo(id = modelId),
         )
@@ -410,6 +478,28 @@ class RunAnywhereInferenceEngine(
             emit(adaptDownloadProgress(progress))
         }
     }.flowOn(dispatcher)
+
+    /**
+     * Catalog-side URL cache, populated by [setCatalogDownloadUrl].
+     * The Models screen pushes the canonical URL into this map before
+     * launching [downloadModelById] so the SDK registration step has
+     * a URL even when the caller doesn't pass one explicitly.
+     */
+    private val catalogUrlById: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
+
+    /**
+     * Record the canonical URL for a given catalog id. Called by
+     * the Models screen once it has resolved an entry from
+     * [com.meshlit.inference.RunAnywhereCatalog]. The URL survives
+     * across coroutines so a re-download (e.g. after delete) hits
+     * the same artifact.
+     */
+    fun setCatalogDownloadUrl(modelId: String, url: String) {
+        if (url.isNotBlank()) catalogUrlById[modelId] = url
+    }
+
+    private fun currentCatalogUrl(modelId: String): String =
+        catalogUrlById[modelId].orEmpty()
 
     /**
      * Best-effort extraction of token text from the SDK's stream
