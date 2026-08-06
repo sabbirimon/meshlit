@@ -21,9 +21,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -53,29 +56,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.core.observability.LogSource
 import com.meshlit.observability.LogBuffer
+import com.meshlit.observability.LogExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
- * Phase M.4 — In-app log viewer.
+ * Phase M.4 — In-app log viewer (Task #203 follow-up).
  *
  * Layout:
- *  - Filter row at the top: a free-text query box plus filter chips
- *    for `Level` (DEBUG/INFO/WARN/ERROR) and a tag-substring match.
+ *  - Filter row at the top: a free-text query box, level chips,
+ *    a tag-substring match row, and a source dropdown that filters
+ *    `LogBuffer.Entry.source` (App / Network / Inference / Agent /
+ *    System).
  *  - Body: a sticky list of [LogBuffer.Entry] entries with severity
  *    coloring. Newest first. When the user is already at the top
  *    (i.e. they're watching live logs), new entries push the list
  *    without ripping the scroll position; otherwise we leave them
  *    alone so they can read.
- *  - Top-bar actions: clear (wipes the buffer) and export (writes
- *    the filtered view to `cacheDir/logs/meshlit-{timestamp}.txt`
- *    and fires a share intent).
+ *  - Top-bar actions: clear (wipes the buffer) and an export
+ *    dropdown that fires either an "Export as TXT" or
+ *    "Export as JSONL" intent, both routed through the shared
+ *    [LogExporter].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,9 +96,11 @@ fun LogScreen(
     var query by remember { mutableStateOf("") }
     var minLevel by remember { mutableStateOf(LogBuffer.Level.INFO) }
     var tagFilter by remember { mutableStateOf<String?>(null) }
+    // null = "All sources". Otherwise the [LogSource] enum value.
+    var sourceFilter by remember { mutableStateOf<LogSource?>(null) }
 
-    val filtered = remember(entries, query, minLevel, tagFilter) {
-        filterEntries(entries, query, minLevel, tagFilter)
+    val filtered = remember(entries, query, minLevel, tagFilter, sourceFilter) {
+        filterEntries(entries, query, minLevel, tagFilter, sourceFilter)
     }
 
     val listState = rememberLazyListState()
@@ -118,11 +125,14 @@ fun LogScreen(
                     IconButton(onClick = { buffer.clear() }) {
                         Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.logs_clear))
                     }
-                    IconButton(onClick = {
-                        scope.launch { exportLogs(context, filtered) }
-                    }) {
-                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.logs_export))
-                    }
+                    ExportMenu(
+                        onExportTxt = {
+                            scope.launch { exportLogs(context, filtered, LogExporter.Format.TXT) }
+                        },
+                        onExportJsonl = {
+                            scope.launch { exportLogs(context, filtered, LogExporter.Format.JSONL) }
+                        },
+                    )
                 },
             )
         },
@@ -139,6 +149,8 @@ fun LogScreen(
                 onLevel = { minLevel = it },
                 tagFilter = tagFilter,
                 onTag = { tagFilter = it },
+                sourceFilter = sourceFilter,
+                onSource = { sourceFilter = it },
             )
             Box(modifier = Modifier.fillMaxSize()) {
                 if (filtered.isEmpty()) {
@@ -159,6 +171,112 @@ fun LogScreen(
     }
 }
 
+/**
+ * Top-bar overflow menu exposing the two supported export formats.
+ * Lives next to the existing Clear / Share icons so the visual
+ * rhythm of the action row is preserved.
+ */
+@Composable
+private fun ExportMenu(
+    onExportTxt: () -> Unit,
+    onExportJsonl: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.logs_export))
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.logs_export_txt)) },
+                onClick = {
+                    expanded = false
+                    onExportTxt()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.logs_export_jsonl)) },
+                onClick = {
+                    expanded = false
+                    onExportJsonl()
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Source-filter dropdown. Renders as a clickable pill showing the
+ * current selection ("All" / "App" / "Network" / …) and pops a
+ * [DropdownMenu] with the [LogSource] enum values when tapped.
+ *
+ * Filter logic lives in [filterEntries]; this composable only owns
+ * presentation and the lifted `sourceFilter` state.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SourceDropdown(
+    selected: LogSource?,
+    onSelect: (LogSource?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val label = selected?.let { LogSource.label(it) } ?: LogSource.ALL_FILTER
+
+    Box {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = if (selected == null) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+            },
+            modifier = Modifier
+                .padding(vertical = 2.dp),
+            onClick = { expanded = true },
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.logs_filter_source_prefix) + ": " + label,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(LogSource.ALL_FILTER) },
+                onClick = {
+                    expanded = false
+                    onSelect(null)
+                },
+            )
+            LogSource.entries.forEach { src ->
+                DropdownMenuItem(
+                    text = { Text(LogSource.label(src)) },
+                    onClick = {
+                        expanded = false
+                        onSelect(src)
+                    },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun FilterBar(
     query: String,
@@ -167,6 +285,8 @@ private fun FilterBar(
     onLevel: (LogBuffer.Level) -> Unit,
     tagFilter: String?,
     onTag: (String?) -> Unit,
+    sourceFilter: LogSource?,
+    onSource: (LogSource?) -> Unit,
 ) {
     Column(
         Modifier
@@ -186,6 +306,7 @@ private fun FilterBar(
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             LogBuffer.Level.entries.forEach { lvl ->
                 FilterChip(
@@ -197,6 +318,9 @@ private fun FilterBar(
                     ),
                 )
             }
+            // Source dropdown sits at the end of the level row so
+            // it's reachable with the same horizontal scroll.
+            SourceDropdown(selected = sourceFilter, onSelect = onSource)
         }
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -262,7 +386,7 @@ private fun LogRow(entry: LogBuffer.Entry) {
             )
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "${entry.level.name} · ${entry.tag}",
+                    text = "${entry.level.name} · ${entry.source.name} · ${entry.tag}",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = accent,
                     fontFamily = FontFamily.Monospace,
@@ -291,6 +415,7 @@ private fun filterEntries(
     query: String,
     minLevel: LogBuffer.Level,
     tagFilter: String?,
+    sourceFilter: LogSource?,
 ): List<LogBuffer.Entry> {
     val q = query.trim().lowercase()
     val levelRank = { it: LogBuffer.Level ->
@@ -305,6 +430,7 @@ private fun filterEntries(
     return entries.filter { e ->
         if (levelRank(e.level) < minRank) return@filter false
         if (tagFilter != null && e.tag != tagFilter) return@filter false
+        if (sourceFilter != null && e.source != sourceFilter) return@filter false
         if (q.isNotEmpty() &&
             !e.message.lowercase().contains(q) &&
             !e.tag.lowercase().contains(q)
@@ -318,25 +444,25 @@ private fun filterEntries(
 private suspend fun exportLogs(
     context: android.content.Context,
     entries: List<LogBuffer.Entry>,
+    format: LogExporter.Format,
 ) {
     val app = context.applicationContext as MeshlitApplication
-    val fileName = "meshlit-${SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())}.txt"
     val outFile = withContext(Dispatchers.IO) {
-        val dir = File(app.cacheDir, "logs").apply { mkdirs() }
-        val f = File(dir, fileName)
-        f.bufferedWriter().use { w ->
-            entries.forEach { e -> w.write(e.format()); w.newLine() }
-        }
-        f
+        val dir = File(app.cacheDir, "logs")
+        LogExporter.export(
+            entries = entries,
+            outFile = LogExporter.newOutputFile(dir, format),
+            format = format,
+        )
     }
     val share = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
+        type = format.mimeType
         putExtra(Intent.EXTRA_STREAM, androidx.core.content.FileProvider.getUriForFile(
             app,
             "${app.packageName}.fileprovider",
             outFile,
         ))
-        putExtra(Intent.EXTRA_SUBJECT, fileName)
+        putExtra(Intent.EXTRA_SUBJECT, outFile.name)
     }
     val chooser = Intent.createChooser(share, "Meshlit log export")
     chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

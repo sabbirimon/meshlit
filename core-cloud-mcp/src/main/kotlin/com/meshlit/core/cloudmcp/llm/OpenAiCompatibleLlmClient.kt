@@ -18,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 /**
  * Streaming client for any **OpenAI-compatible**
@@ -208,5 +209,74 @@ class OpenAiCompatibleLlmClient(
         var name: String = "",
         var type: String = "function",
         val argsBuffer: StringBuilder = StringBuilder(),
+    )
+
+    /**
+     * One-shot non-streaming ping of the configured endpoint. Used
+     * by the "Test Connection" button on the Custom LLM form. We
+     * send a cheap prompt (`"Reply with the single word 'ok'."`)
+     * and wait for the full body. The call has a 10-second timeout
+     * so the UI doesn't hang on a misconfigured endpoint.
+     *
+     * Returns [TestResult] with a human-readable status. The wire
+     * details are deliberately collapsed into "ok" / "401" / "404"
+     * / "timeout" / "exception" so the user gets actionable
+     * feedback without exposing internals.
+     */
+    suspend fun testConnection(): TestResult {
+        val url = baseUrl.trimEnd('/') + "/v1/chat/completions"
+        val body = OpenAIChatRequest(
+            model = model,
+            messages = listOf(
+                OpenAIMessage("user", "Reply with the single word 'ok'."),
+            ),
+            tools = emptyList(),
+            stream = false,
+        )
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $apiKey")
+            .header("Content-Type", "application/json")
+            .post(
+                json.encodeToString(OpenAIChatRequest.serializer(), body)
+                    .toRequestBody("application/json".toMediaType()),
+            )
+            .build()
+        val probe = httpClient.newBuilder()
+            .callTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build()
+        return try {
+            probe.newCall(request).execute().use { response ->
+                when {
+                    response.isSuccessful -> TestResult(
+                        ok = true,
+                        message = "Connected (HTTP ${response.code})",
+                    )
+                    response.code == 401 || response.code == 403 -> TestResult(
+                        ok = false,
+                        message = "Auth failed (HTTP ${response.code}) — check the API key",
+                    )
+                    response.code == 404 -> TestResult(
+                        ok = false,
+                        message = "Endpoint not found (HTTP 404) — check the URL",
+                    )
+                    else -> TestResult(
+                        ok = false,
+                        message = "HTTP ${response.code}: ${response.message}",
+                    )
+                }
+            }
+        } catch (e: java.net.SocketTimeoutException) {
+            TestResult(ok = false, message = "Timeout after 10s — endpoint unreachable?")
+        } catch (e: IOException) {
+            TestResult(ok = false, message = "Network error: ${e.message ?: "unknown"}")
+        }
+    }
+
+    /** Result of a [testConnection] call. */
+    data class TestResult(
+        val ok: Boolean,
+        val message: String,
     )
 }

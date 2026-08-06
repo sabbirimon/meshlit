@@ -39,8 +39,18 @@ Apache 2.0 — see [LICENSE](LICENSE).
 - **Trust tiers.** LAN / temporary-local / WAN each carry a
   different auth burden. The Devices screen lets the user lock
   scopes precisely.
-- **No telemetry.** Every byte leaving the device is the user's
-  explicit, visible choice.
+- **Self-describing runtime.** Opt-in OpenTelemetry tracing
+  (Off / Local / Otel), in-app user manual with intent / use
+  case / configuration / troubleshooting per feature, UI tour
+  overlay fired on first visit, and GitHub-Issues-backed feedback
+  that auto-attaches the last 200 log lines. Network monitor
+  surfaces Meshlit's own HTTP calls plus an opt-in
+  `VpnService`-backed packet capture that writes libpcap-format
+  files for inspection in Wireshark / `tshark` / Termux /
+  PCAPdroid.
+- **No telemetry by default.** Every byte leaving the device —
+  including OpenTelemetry exports — is the user's explicit,
+  visible choice. The Tracing toggle in Settings defaults to Off.
 
 ---
 
@@ -165,7 +175,11 @@ meshlit/
 │     ├─ devices/          # Peer / endpoint management
 │     ├─ inference/        # FGS + RemoteInferenceClient + DownloadStatus
 │     ├─ models/           # GGUF import + on-device catalog
-│     ├─ observability/    # LogBuffer + AppLoggerFactory
+│     ├─ observability/    # LogBuffer + LogExporter + TracingController wiring
+│     ├─ network/          # TermuxBridge + PcapdroidBridge
+│     ├─ quickactions/     # SyncViewModel + BoostViewModel
+│     ├─ ui/screens/help/  # HelpHubScreen + UserManualScreen +
+│     │                    #   UiTourScreen + FeedbackScreen
 │     ├─ permissions/      # PermissionHelper
 │     ├─ power/            # BatteryOptimizationHelper
 │     ├─ scripts/          # ScriptLibrary snapshot storage
@@ -199,6 +213,11 @@ meshlit/
 ├─ core-tunnel/            # Tailscale / WireGuard plumbing
 ├─ core-users/             # Identity + keychain
 ├─ core-orchestration/     # Job queue, retries, timeouts
+├─ core-observability/     # TracingController + OtelBootstrap + SinkSpanProcessor
+│                          #   + TracerHolder + LogSource
+├─ core-net/               # NetworkObserver (OkHttp EventListener) +
+│                          #   MeshlitCaptureVpnService + PcapWriter +
+│                          #   PcapParser + PacketParser + PacketCaptureRegistry
 │
 ├─ build-logic/            # Gradle convention plugins
 ├─ dist/                   # Built APK outputs
@@ -486,6 +505,7 @@ Pull requests welcome. A few rules of thumb:
 | 1       | DONE     | InferenceEngine abstraction, FGS, Jobs UI, embedded HTTP/SSE. |
 | 2       | DONE     | Multi-runtime engine abstraction, RuntimeRegistry, FileFormat union. |
 | 2.x     | DONE     | Full RunAnywhere SDK surface: Voice / JSON / Catalog / Vision screens. |
+| Obs-1   | DONE     | Observability 1 — tracing (Off/Local/Otel) + log export + manual + tour + feedback + network monitor + VpnService capture. |
 | 3       | Planned  | Cluster-shard federation, frontier-model MoE routing. |
 | 4       | Planned  | Cooperative training loops (LoRA on `:core-training`). |
 | 5       | Planned  | Adaptive thermal/power tuning from real-usage telemetry. |

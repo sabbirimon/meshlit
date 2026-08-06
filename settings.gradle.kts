@@ -48,6 +48,8 @@ include(
     ":core-orchestration",
     ":core-advanced-engines",
     ":core-gpu",
+    ":core-net",
+    ":core-observability",
     ":feature-advanced",
     ":feature-ghosty",
     ":app"

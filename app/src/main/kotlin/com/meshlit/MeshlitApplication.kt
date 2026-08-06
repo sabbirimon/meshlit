@@ -10,6 +10,9 @@ import com.meshlit.capability.currentCapabilityTier
 import com.meshlit.core.common.HostOS
 import com.meshlit.core.common.HostOSDetection
 import com.meshlit.core.common.logger
+import com.meshlit.core.observability.TracerHolder
+import com.meshlit.core.observability.TracingController
+import com.meshlit.core.observability.TracingMode
 import com.meshlit.core.mcp.McpClientPool
 import com.meshlit.core.mcp.McpToolRegistry
 import com.meshlit.core.mcp.MeshlitServerController
@@ -38,6 +41,7 @@ import com.meshlit.observability.AppLoggerFactory
 import com.meshlit.observability.LogBuffer
 import com.meshlit.diagnostics.AndroidPeripheralProbe
 import com.meshlit.diagnostics.AndroidSystemProbe
+import com.meshlit.inference.ClusterDispatch
 import com.meshlit.inference.PeerRegistry
 import com.meshlit.notifications.NotificationCenter
 import com.meshlit.notifications.NotificationPreferences
@@ -123,6 +127,73 @@ class MeshlitApplication : Application() {
     val peerRegistry: PeerRegistry by lazy { PeerRegistry(peerDataStore) }
 
     /**
+     * Cluster dispatch helper. Resolves the first reachable
+     * trusted peer from [peerRegistry] so the Jobs screen's
+     * "Cluster" mode can route a prompt without the user typing
+     * an IP. The wire is the same `RemoteInferenceClient` SSE
+     * pipe used by Remote mode.
+     */
+    val clusterDispatch: ClusterDispatch by lazy { ClusterDispatch(peerRegistry) }
+
+    /**
+     * Discovery coordinator. Singleton fan-in over the available
+     * [com.meshlit.core.discovery.DiscoveryTransport]s — currently
+     * only the mDNS / DNS-SD transport. The Devices screen
+     * subscribes to its [com.meshlit.core.discovery.DiscoveryCoordinator.peers]
+     * flow and surfaces each peer as an "Add" affordance. Discovery
+     * starts lazily the first time the user opens the Devices
+     * screen — we don't burn battery on a service that runs even
+     * when nobody's looking at the UI.
+     */
+    val discoveryCoordinator: com.meshlit.core.discovery.DiscoveryCoordinator by lazy {
+        com.meshlit.core.discovery.DiscoveryCoordinator(
+            transports = listOf(
+                com.meshlit.core.discovery.NsdDiscoveryTransport(this),
+            ),
+        )
+    }
+
+    /**
+     * Active firewall. The phase-3 layer is the CIDR / node /
+     * tier policy shipped in `core-firewall`; the port-layer is
+     * sourced from [com.meshlit.settings.SettingsRepository].
+     * The instance is rebuilt whenever the user edits a rule so
+     * the FGS picks up changes on the next request without a
+     * service restart.
+     */
+    val meshlitFirewall: com.meshlit.core.firewall.MeshlitFirewall by lazy {
+        com.meshlit.core.firewall.MeshlitFirewall.Starter
+    }
+
+    /**
+     * On-device agent capability registry. Holds the live state
+     * (master toggle + runtime permission + allowlist) for every
+     * [com.meshlit.core.cloudmcp.agent.AgentCapability]. The agent
+     * loop consults this when deciding which `agent_*` tools to
+     * advertise; per-action permission flows push state back via
+     * `refreshPermission()`.
+     */
+    val agentCapabilities: com.meshlit.agent.AgentCapabilityRegistryHolder by lazy {
+        com.meshlit.agent.AgentCapabilityRegistryHolder(
+            appContext = this,
+            settings = settingsRepository,
+        )
+    }
+
+    /**
+     * Per-tool runtime dispatchers (camera, mic, location, SMS,
+     * storage, data_state, call_dial). Each one consults
+     * [agentCapabilities] before doing anything destructive.
+     */
+    val agentDispatchers: com.meshlit.agent.AgentCapabilityDispatchers by lazy {
+        com.meshlit.agent.AgentCapabilityDispatchers(
+            appContext = this,
+            registry = agentCapabilities.registry,
+            settings = settingsRepository,
+        )
+    }
+
+    /**
      * Singleton inference coordinator. The foreground service picks
      * this up via the binder; the Jobs screen reads its state via the
      * service binder. We expose it here so future deep-linking flows
@@ -181,6 +252,40 @@ class MeshlitApplication : Application() {
     val logBuffer: com.meshlit.observability.LogBuffer by lazy {
         com.meshlit.observability.AppLoggerFactory.install()
         com.meshlit.observability.AppLoggerFactory.buffer
+    }
+
+    /**
+     * Process-wide tracing controller. The single source of truth
+     * for the active [TracingMode] + the OpenTelemetry SDK behind
+     * it. Callers get a `Tracer` via [TracerHolder] — they do not
+     * touch this class directly.
+     *
+     * Boot order:
+     *   1. [MeshlitApplication.onCreate] binds the singleton and
+     *      pushes the initial mode + endpoint from
+     *      [SettingsRepository].
+     *   2. Any subsequent flow emission from Settings →
+     *      `tracingModeFlow` / `tracingOtelEndpointFlow` /
+     *      `tracingOtelHeadersFlow` re-configures the SDK in-place.
+     */
+    val tracingController: TracingController by lazy {
+        TracingController(
+            sink = object : com.meshlit.core.observability.TraceSink {
+                override fun onSpan(name: String, attributes: Map<String, String>) {
+                    // Forward each finished span into the LogBuffer
+                    // under the App source so the user sees it on
+                    // the Log screen.
+                    logBuffer.info(
+                        com.meshlit.core.observability.LogSource.SYSTEM,
+                        "trace",
+                        "span=$name",
+                        attributes,
+                    )
+                }
+            },
+        ).also { controller ->
+            TracerHolder.bind(controller)
+        }
     }
 
     /**
@@ -414,6 +519,20 @@ class MeshlitApplication : Application() {
         )
     }
 
+    /**
+     * Sync the agent capability registry into the cloud-MCP
+     * tool registry. When the user flips a master toggle, the
+     * corresponding `agent_*` tools are added or removed so the
+     * LLM sees them automatically.
+     */
+    val agentCapabilitiesRegistrar: com.meshlit.agent.AgentCapabilityRegistrar by lazy {
+        com.meshlit.agent.AgentCapabilityRegistrar(
+            appScope = appScope,
+            toolRegistry = cloudCoordinator.toolRegistry,
+            holder = agentCapabilities,
+        )
+    }
+
     // -------------------------------------------------------------------
     // Cloud MCP (Phase Cloud).
     //
@@ -609,6 +728,11 @@ class MeshlitApplication : Application() {
         // the SDK's static state and does not yet touch the network.
         inferenceCoordinator.runAnywhereEngine().initialize(this)
 
+        // Phase Cloud 2 — start the agent capability registrar so the
+        // `agent_*` tools flow into `cloudCoordinator.toolRegistry`
+        // whenever the user toggles a capability on. Idempotent.
+        agentCapabilitiesRegistrar.start()
+
         // Register every catalog entry with the SDK so
         // `RunAnywhere.downloadModel(model)` can plan against a
         // known URL. This mirrors the upstream SDK's documented
@@ -676,6 +800,50 @@ class MeshlitApplication : Application() {
         appScope.launch {
             bootMcp()
         }
+
+        // Phase Observability 1 — apply the persisted tracing mode +
+        // OTLP endpoint, then keep the controller in sync with the
+        // settings flows. The lambda-based readers ensure a user
+        // change in Settings → Tracing takes effect on the next
+        // emission without restarting the process.
+        tracingController.reconfigure(
+            mode = settingsRepository.tracingModeNow().toCoreTracingMode(),
+            otlpEndpoint = settingsRepository.tracingOtelEndpointNow(),
+            otlpHeaders = settingsRepository.tracingOtelHeadersNow(),
+        )
+        appScope.launch {
+            settingsRepository.tracingModeFlow.collect { mode ->
+                tracingController.reconfigure(
+                    mode = mode.toCoreTracingMode(),
+                    otlpEndpoint = settingsRepository.tracingOtelEndpointNow(),
+                    otlpHeaders = settingsRepository.tracingOtelHeadersNow(),
+                )
+            }
+        }
+        appScope.launch {
+            settingsRepository.tracingOtelEndpointFlow.collect { endpoint ->
+                tracingController.reconfigure(
+                    mode = settingsRepository.tracingModeNow().toCoreTracingMode(),
+                    otlpEndpoint = endpoint,
+                    otlpHeaders = settingsRepository.tracingOtelHeadersNow(),
+                )
+            }
+        }
+        appScope.launch {
+            settingsRepository.tracingOtelHeadersFlow.collect { headers ->
+                tracingController.reconfigure(
+                    mode = settingsRepository.tracingModeNow().toCoreTracingMode(),
+                    otlpEndpoint = settingsRepository.tracingOtelEndpointNow(),
+                    otlpHeaders = com.meshlit.settings.parseOtelHeaders(headers),
+                )
+            }
+        }
+    }
+
+    private fun com.meshlit.settings.TracingMode.toCoreTracingMode(): TracingMode = when (this) {
+        com.meshlit.settings.TracingMode.Off -> TracingMode.Off
+        com.meshlit.settings.TracingMode.Local -> TracingMode.Local
+        com.meshlit.settings.TracingMode.Otel -> TracingMode.Otel
     }
 
     /**

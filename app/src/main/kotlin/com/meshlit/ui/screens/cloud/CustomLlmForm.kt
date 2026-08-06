@@ -31,11 +31,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.core.cloudmcp.llm.OpenAiCompatibleLlmClient
 import com.meshlit.core.cloudmcp.llm.OpenAiCompatibleModel
 import com.meshlit.settings.SettingsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 
 /**
  * Form for configuring the user-supplied LLM endpoint. Persists
@@ -58,6 +61,10 @@ fun CustomLlmForm(
     settingsRepository: SettingsRepository,
     onBack: () -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val app = remember(context) {
+        context.applicationContext as MeshlitApplication
+    }
     val scope = rememberCoroutineScope()
     val endpoint by settingsRepository.llmEndpointFlow
         .collectAsState(initial = OpenAiCompatibleModel.DEFAULT_BASE_URL)
@@ -74,6 +81,7 @@ fun CustomLlmForm(
     var apiKeyInput by remember { mutableStateOf("") }
     var statusLine by remember { mutableStateOf<String?>(null) }
     var statusIsError by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) }
     var modelDropdownOpen by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -171,17 +179,43 @@ fun CustomLlmForm(
             ) {
                 OutlinedButton(
                     onClick = {
-                        // TODO: wire test connection — POST a
-                        // one-shot /v1/chat/completions with
-                        // stream=false against the configured
-                        // endpoint. Defer to v0.2.1 alongside the
-                        // agent loop integration test.
-                        statusLine = "Test connection not yet wired — endpoint entered: $endpointInput"
-                        statusIsError = endpointInput.isBlank()
+                        if (endpointInput.isBlank()) {
+                            statusLine = "Enter an endpoint URL first"
+                            statusIsError = true
+                            return@OutlinedButton
+                        }
+                        testing = true
+                        statusLine = "Testing…"
+                        statusIsError = false
+                        scope.launch {
+                            // The form may hold a fresh key in
+                            // `apiKeyInput` (not yet persisted). Use
+                            // that when set; otherwise fall back to
+                            // the encrypted-store key so users can
+                            // re-test an existing endpoint.
+                            val effectiveKey = apiKeyInput.ifBlank {
+                                app.cloudCredentialStore.get(providerIdInput, "token")
+                                    ?: ""
+                            }
+                            val client = OpenAiCompatibleLlmClient(
+                                httpClient = OkHttpClient(),
+                                baseUrl = endpointInput,
+                                apiKey = effectiveKey,
+                                model = modelInput,
+                            )
+                            val result = client.testConnection()
+                            statusLine = result.message
+                            statusIsError = !result.ok
+                            testing = false
+                        }
                     },
+                    enabled = !testing,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(stringResource(R.string.cloud_llm_test_connection))
+                    Text(
+                        if (testing) "Testing…"
+                        else stringResource(R.string.cloud_llm_test_connection)
+                    )
                 }
                 Button(
                     onClick = {

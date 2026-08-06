@@ -1250,6 +1250,8 @@ user sees the result of their change **immediately** — there's no
 | File transfer | Resumable chunked HTTP over the cluster transport | — |
 | Guardrails | On-device regex + token-cap + PII regex; no external calls | — |
 | Auth (users) | BiometricPrompt → in-app keystore | no cloud account |
+| Tracing / telemetry | OpenTelemetry SDK 1.43.0 + OTLP/gRPC exporter | optional, off by default; see §7.11 |
+| Local packet capture | Android `VpnService` + hand-rolled PCAP writer | opt-in, file under `filesDir/exports/captures/` |
 
 ---
 
@@ -1263,12 +1265,20 @@ core-trust/             - trust tiers, token issuance/validation, publickey pair
 core-users/             - local profiles, biometric unlock, per-user quotas
 core-inference/         - llama.cpp JNI bindings, model manager, benchmark-on-join
 core-mcp/               - MCP server implementations, tool handlers
+core-cloud-mcp/         - Cloud-side MCP, agent capabilities, agent tool dispatch
 core-training/          - LoRA fine-tune runner, dataset loaders, export pipeline
 core-files/             - file browser, cluster transfer, model-cache sync
 core-ssh/               - SSHD embedded in FGS, publickey auth, PTY over Ktor
 core-firewall/          - per-port accept-list, rate-limit, default-deny
 core-guardrails/        - prompt injection / jailbreak / PII filters, output caps
 core-tunnel/            - Tailscale/WireGuard integration, tunnel lifecycle
+core-terminal/          - VT parser + session host
+core-advanced-engines/  - alternate engines (ONNX/ORT, llama.cpp backend)
+core-gpu/               - GPU/NPU detection + priority helpers
+core-net/               - OkHttp EventListener + MeshlitCaptureVpnService + PCAP reader/writer
+core-observability/     - TracingController + OtelBootstrap + LogSource + tracing decorators
+feature-advanced/       - advanced screens (Jobs, Devices, Cluster, …)
+feature-ghosty/         - Ghostty-style terminal screen
 core-common/            - shared models, capability probe, logging, sealed result types
 ```
 
@@ -1471,6 +1481,224 @@ must respect principles in §0 before being marked done.
   network, the previously-enabled transports come up automatically but
   the *capability scope* still requires the user to re-confirm on first
   re-join — defense against silent privilege changes.
+
+### 7.11 Observability: tracing, log export, manual, tour, feedback
+
+The "Phase Observability 1" bundle turns Meshlit from a black-box
+runtime into a self-describing one. Every endpoint, model, agent tool,
+and HTTP call emits a span; the user can flip tracing between Off /
+Local / Otel and the same spans land either in `LogBuffer` (Local)
+or stream OTLP/gRPC to Grafana / Tempo / any OTLP endpoint (Otel).
+A new in-app Help root ships a User Manual, UI Tour (first-visit
+overlay + screen), and Feedback that opens pre-filled GitHub
+Issues. The Network Monitor becomes a four-tab surface
+(Meshlit HTTP / Device packets / External capture / Tools).
+
+**Modules**
+
+| Module                  | Purpose                                                                 |
+|-------------------------|-------------------------------------------------------------------------|
+| `:core-observability`   | TracingController, OtelBootstrap, SinkSpanProcessor, TracerHolder, LogSource (the source taxonomy used by LogScreen + tracing observers) |
+| `:core-net`             | NetworkObserver (OkHttp EventListener), `capture/` package (MeshlitCaptureVpnService, PcapWriter, PcapParser, PacketParser, PacketCaptureRegistry) |
+
+`app/observability/LogBuffer.kt` owns the in-process ring buffer
+(`MAX_ENTRIES = 2_000`, FIFO eviction). Every `Entry` now carries a
+`LogSource` so the LogScreen can filter by source without
+re-running classification per recomposition.
+
+`app/observability/LogExporter.kt` writes both `txt` (existing
+`Entry.format()` line format) and `jsonl` (new `Entry.toJsonLine()`
+single-object-per-line format, hand-rolled escaping for `\`, `"`,
+control chars). URI helper reuses the existing FileProvider
+(`${packageName}.fileprovider`).
+
+**Tracing mode**
+
+Three-state toggle in `SettingsRepository`:
+
+- `Off`  → `OpenTelemetry.noop()` — every `tracer.spanBuilder(...)`
+  returns a no-op span; CPU + memory cost is one volatile read.
+- `Local` → in-process sink + `LoggingSpanExporter`. Spans land
+  in `LogBuffer` under the `SYSTEM / trace` tag, which the LogScreen
+  dropdown can filter on. `SinkSpanProcessor` ends-spans callback
+  flattens attributes into the buffer entry.
+- `Otel` → `BatchSpanProcessor` → `OtlpGrpcSpanExporter`. Endpoint
+  URL + headers parsed from settings (one header per line,
+  `key=value`, first `=` is the separator so base64 `Authorization`
+  values survive).
+
+Per-source toggles let the user silence noisy spans:
+
+- `tracing.include_network`
+- `tracing.include_inference`
+- `tracing.include_agent`
+
+`MeshlitApplication.onCreate()` installs the initial config from
+the persisted flows and observes changes, so flipping a switch
+re-runs `OtelBootstrap.otlp(...)` or `OtelBootstrap.local(...)` (or
+`OpenTelemetry.noop()`) on the same singleton — no app restart
+required.
+
+**Tracing observers** (each is a thin decorator on an existing
+type):
+
+- `core-observability/.../TracingLogger` — wraps `MeshlitLogger`
+  so every `info/warn/error` tee into a span.
+- `core-inference/.../InferenceTracingObserver` — wraps
+  `InferenceEngine` to emit `inference.model.load`,
+  `inference.model.unload`, `inference.run` spans with model name,
+  engine tag, duration, and tokens.
+- `core-cloud-mcp/.../AgentTracingObserver` — wraps the agent
+  loop and emits `agent.invoke`, `agent.tool` spans per capability
+  invocation.
+- `core-net/.../NetworkObserver` — OkHttp `EventListener` that emits
+  `http.client` per call plus phase spans `http.dns`,
+  `http.connect`, `http.tls`, `http.response-headers`, `http.response`
+  via parent-context linkage (`Span.current()` walked against the
+  stored call→span map).
+
+**Help root**
+
+`TopLevelDestination.Help` is a *drawer-only* destination; the
+bottom bar stays at its current item count. The drawer tile opens
+`HelpHubScreen`, which renders three `RaNavRow`s:
+
+- **User Manual** → `UserManualScreen` (LazyColumn over
+  `ManualSection` sealed class — one entry per feature with
+  `title / intent / useCase / configSteps() / troubleshooting()`.
+  Steps are typed `ConfigStep(title, body, onClick?)` so "How to
+  configure → Open Models" actually navigates into `ModelsScreen`).
+- **UI Tour** → `UiTourScreen` + `TourOverlay`. The overlay fires
+  the first time the user visits each top-level destination;
+  `FirstRunSetupRepository.tourSeenFlow(route)` persists the
+  seen-state. A Settings row "Reset tour" clears all keys.
+- **Send Feedback** → `FeedbackScreen`. Type radio (Bug / Feature
+  Request), title field, multi-line body, "Attach last N log
+  lines" toggle (default on, N = 200, reads from `LogBuffer`),
+  Submit button that fires `Intent.ACTION_VIEW` with a GitHub
+  Issues URL. The repo slug is a settings flow
+  (`feedback.repo`) defaulting to `meshlit/meshlit-android`.
+
+The drawer **About** quick action now routes through the same
+`help/manual` route the tile opens, so "About" and "Help" land on
+the same manual (rather than the v1 Settings → About).
+
+**Sync / Boost quick actions**
+
+`QuickAction.SYNC` no longer navigates — it calls
+`SyncViewModel.sync()`, which kicks
+`app.catalogEngine.refresh(...)` on `appScope`, then polls any
+in-flight downloads via `modelDownloadCoordinator.poll()`. A
+`Toast` surfaces "Resynced N models" or the error.
+
+`QuickAction.BOOST` toggles
+`SettingsRepository.inferenceBoostEnabledFlow`. When on, the
+inference thread pool bumps `Process.setThreadPriority(...)` to
+`-8`. A Toast confirms the state.
+
+**Log viewer** (`LogScreen.kt`)
+
+- Source dropdown on the filter row — `All / App / Network /
+  Inference / Agent / System`. Source comes from the new
+  `LogSource.fromTag(tag)` classifier that runs once at append
+  time, not per recomposition.
+- Export dropdown with `Export as TXT` and `Export as JSONL`.
+  Both go through `LogExporter.export(...)` which writes to
+  `cacheDir/exports/meshlit-<ts>.{txt,jsonl}` and returns a
+  `FileProvider` `Uri` for the system share sheet.
+- "Copy" button copies the filtered view to clipboard (existing
+  pattern from `LlmOutputActions.kt`).
+
+**Network monitor** (`NetworkMonitorScreen.kt`)
+
+Four `SecondaryTabRow` tabs:
+
+1. **Meshlit HTTP** — table view of `NetworkObserver.entries`
+   (timestamp, method, URL, status, duration, bytes). Tap row →
+   detail bottom-sheet with headers + redacted body preview.
+2. **Device packets** — only populated while the opt-in
+   `MeshlitCaptureVpnService` is running. Per-packet metadata
+   (IPv4/IPv6, TCP/UDP, src/dst, payload preview) via
+   `PacketCaptureRegistry` (ring buffer, 2 000 entries).
+3. **External capture** — read `.pcap` files (libpcap file header
+   + per-record headers) via `PcapParser`. The classic PCAP
+   magic `0xa1b2c3d4` is supported; link types
+   `LINKTYPE_RAW (101)` and `LINKTYPE_LINUX_SLL (113)` are
+   recognised. File picker via `rememberLauncherForActivityResult`
+   + `ActivityResultContracts.OpenDocument`.
+4. **Tools** — deep-link launchers for **PCAPdroid** (Play Store
+   + start-capture intent `com.emanuelef.remote_capture.action.START_CAPTURE`)
+   and **Termux** (`termux://` deep link to a `tcpdump -i any -w
+   /sdcard/Download/meshlit-<ts>.pcap` command).
+
+The Capture toggle uses `VpnService.prepare(context)` for the
+consent dialog and writes `.pcap` files to
+`filesDir/exports/captures/`. The 96-byte payload preview avoids
+saving huge payloads to the ring buffer.
+
+**New permissions**
+
+- `android.permission.BIND_VPN_SERVICE` — already in manifest; only
+  the system binds the VpnService.
+- `android.permission.FOREGROUND_SERVICE_SPECIAL_USE` — required
+  from API 34 for the VpnService foreground service; declared on
+  the `<service>` element with a
+  `<property android:name="…specialUseSubtype"
+  android:value="vpn_capture"/>` entry.
+
+**Settings flows added** (all in `SettingsRepository`):
+
+- `tracing.mode` (Off/Local/Otel)
+- `tracing.sample_rate` (1-in-N, default 1)
+- `tracing.include_network`
+- `tracing.include_inference`
+- `tracing.include_agent`
+- `tracing.otel_endpoint`
+- `tracing.otel_headers`
+- `feedback.repo` (default `meshlit/meshlit-android`)
+- `inference.boost_enabled`
+
+Plus the existing `firewall` and trust-tier settings already in
+the repository.
+
+**Routes added**
+
+- `help` → `HelpHubScreen`
+- `help/manual` → `UserManualScreen`
+- `help/tour` → `UiTourScreen`
+- `help/feedback` → `FeedbackScreen`
+- `network` → `NetworkMonitorScreen`
+
+**Tech additions** (`gradle/libs.versions.toml`)
+
+```toml
+opentelemetry = "1.43.0"
+
+opentelemetry-api          = { group = "io.opentelemetry", name = "opentelemetry-api", version.ref = "opentelemetry" }
+opentelemetry-sdk          = { group = "io.opentelemetry", name = "opentelemetry-sdk", version.ref = "opentelemetry" }
+opentelemetry-exporter-otlp = { group = "io.opentelemetry", name = "opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
+opentelemetry-exporter-logging = { group = "io.opentelemetry", name = "opentelemetry-exporter-logging", version.ref = "opentelemetry" }
+```
+
+`:core-observability` and `:core-net` add the OTel deps as needed.
+`:core-inference` and `:core-cloud-mcp` depend on
+`:core-observability` for the tracing decorators.
+
+**Known limits of this phase**
+
+- TLS body capture requires installing a user-trusted MITM CA and
+  patching `OkHttp` to trust it. Play-Store / privacy risk; not
+  shipped. The Meshlit-HTTP tab shows redacted previews only.
+- Wireshark desktop sync isn't possible (no Android Wireshark). Use
+  Termux + `tshark` if users want real Wireshark; the `.pcap`
+  files written by Meshlit already open in desktop Wireshark via
+  the standard file format.
+- Per-app network attribution (Android `NetworkStatsManager`)
+  needs an extra permission; deferred.
+- `MeshlitCaptureVpnService` parses IPv4/IPv6 + TCP/UDP headers
+  but does not reassemble streams. Long-running flows look like
+  many separate packets, which is fine for inspection but not
+  for "follow the conversation" use cases.
 
 ---
 

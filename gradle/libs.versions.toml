@@ -70,6 +70,39 @@ robolectric = "4.13"
 # project's minSdk floor.
 uiAutomator = "2.3.0"
 
+# Google Play Services — Code Scanner. The dedicated,
+# Google-blessed barcode / QR scanner API. Unlike
+# `com.google.mlkit:barcode-scanning`, it does NOT bundle the
+# model into the APK — Play Services downloads the scanner
+# module on first launch and serves a self-contained camera UI.
+# No CAMERA permission required in our manifest, no CameraX dep,
+# no Camera2 plumbing — just `startScan()` → rawValue string.
+# 16.1.0 is the latest stable (Aug 2023).
+playServicesCodeScanner = "16.1.0"
+
+# CameraX — used by the `agent_camera_capture` tool. The
+# agent_loop asks CameraX for a single `ImageCapture`; we don't
+# render a preview, just resolve the deferred and read the
+# captured JPEG bytes. 1.4.x is the current stable line.
+camerax = "1.4.1"
+
+# Fused location provider — last-known fix for the
+# `agent_location_get` tool. Pulls from GPS / Wi-Fi / cell
+# triangulation. 21.3.0 is the latest stable.
+playServicesLocation = "21.3.0"
+
+# kotlinx-coroutines-play-services — the `.await()` extension
+# on Play Services Tasks. Without it, the Task<Location> from
+# FusedLocationProviderClient has no coroutine bridge.
+kotlinxCoroutinesPlayServices = "1.10.0"
+
+# OpenTelemetry — runtime tracing SDK + OTLP/gRPC exporter. Used
+# by :core-observability to forward spans to Grafana Cloud /
+# Tempo / any OTLP-compatible backend. The user pastes the OTLP
+# endpoint URL + optional headers in Settings → Tracing.
+# 1.43.0 is the latest stable on the AGP 8.x / Kotlin 2.4.x line.
+opentelemetry = "1.43.0"
+
 # Vendored RunAnywhere SDK — Square Wire runtime (protobuf codec
 # used by the SDK's generated proto classes). 5.5.1 matches the
 # upstream SDK's wire-compiler output version.
@@ -172,6 +205,37 @@ robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "
 # nodes across apps. Same library the Espresso / Compose-test
 # UI Automator framework uses.
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiAutomator" }
+
+# Google Play Services — Code Scanner. QR pairing on the Devices
+# screen. GmsBarcodeScanning.getClient(context).startScan() returns
+# a Task<String> with the decoded raw value (no camera permission
+# required, scanner UI bundled with Play Services).
+play-services-code-scanner = { group = "com.google.android.gms", name = "play-services-code-scanner", version.ref = "playServicesCodeScanner" }
+
+# CameraX — agent_camera_capture tool. Pulls in the
+# lifecycle-aware camera surface we resolve for a single shot.
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+
+# Fused location provider — agent_location_get tool. Pulls the
+# last-known fix without spinning up GPS.
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# kotlinx-coroutines-play-services — `Task<T>.await()` extension
+# used to bridge FusedLocationProviderClient's Tasks into suspend
+# functions.
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+
+# OpenTelemetry — runtime SDK + OTLP exporter. The four artifacts
+# below are the production minimum: API (interfaces the app codes
+# against), SDK (TracerProvider + SpanProcessor implementations),
+# OTLP exporter (gRPC push to Grafana / Tempo), and the logging
+# exporter (used in Local mode for in-process span dumps).
+opentelemetry-api = { group = "io.opentelemetry", name = "opentelemetry-api", version.ref = "opentelemetry" }
+opentelemetry-sdk = { group = "io.opentelemetry", name = "opentelemetry-sdk", version.ref = "opentelemetry" }
+opentelemetry-exporter-otlp = { group = "io.opentelemetry", name = "opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
+opentelemetry-exporter-logging = { group = "io.opentelemetry", name = "opentelemetry-exporter-logging", version.ref = "opentelemetry" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

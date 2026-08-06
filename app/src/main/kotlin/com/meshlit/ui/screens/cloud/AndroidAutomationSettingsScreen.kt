@@ -23,17 +23,23 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.meshlit.R
 import com.meshlit.core.cloudmcp.android.AccessibilityServiceStatus
+import com.meshlit.core.cloudmcp.android.AutomationRequest
 import com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService
 import com.meshlit.settings.SettingsRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Settings → Cloud → Android automation. Master toggle +
@@ -61,6 +67,8 @@ fun AndroidAutomationSettingsScreen(
     val highRiskPackages by settingsRepository.androidAutomationHighRiskPackagesFlow
         .collectAsState(initial = SettingsRepository.defaultHighRiskPackages)
     val status = MeshlitAccessibilityService.currentStatus(context)
+    var testStatusLine by remember { mutableStateOf<String?>(null) }
+    var testStatusIsError by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -189,16 +197,47 @@ fun AndroidAutomationSettingsScreen(
                 }
                 Button(
                     onClick = {
-                        // TODO: dispatch an app_snapshot call to
-                        // verify the service is bound and the
-                        // bridge is alive. Defer to v0.2.1 once
-                        // the agent loop registers the
-                        // accessibility tools.
+                        scope.launch {
+                            // Dispatch an `app_snapshot` request
+                            // via the bound service instance. The
+                            // dispatch is synchronous on the
+                            // service thread — wrap it in `withContext(Dispatchers.Default)`
+                            // so the click handler doesn't block.
+                            val service = MeshlitAccessibilityService.instance
+                            if (service == null) {
+                                testStatusLine = "Service not bound — enable it in Accessibility Settings first"
+                                testStatusIsError = true
+                                return@launch
+                            }
+                            testStatusLine = "Testing…"
+                            testStatusIsError = false
+                            val response = withContext(Dispatchers.Default) {
+                                service.dispatch(
+                                    AutomationRequest.Snapshot(targetPackage = ""),
+                                )
+                            }
+                            testStatusLine = when {
+                                response.ok -> "Snapshot captured — accessibility tools wired correctly"
+                                response.error == "no active window" ->
+                                    "Bridge is alive but no app is in the foreground — open an app first"
+                                else -> "Failed: ${response.error ?: "unknown"}"
+                            }
+                            testStatusIsError = !response.ok
+                        }
                     },
+                    enabled = status is AccessibilityServiceStatus.Enabled,
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(stringResource(R.string.cloud_android_test_action))
                 }
+            }
+            testStatusLine?.let { msg ->
+                Text(
+                    text = msg,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (testStatusIsError) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
