@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Mic
@@ -52,7 +53,8 @@ enum class TopLevelDestination(
     Structured("structured", R.string.screen_structured, Icons.Outlined.Code),
     Catalog("catalog", R.string.screen_catalog, Icons.Outlined.CloudDownload),
     Vision("vision", R.string.screen_vision, Icons.Outlined.Image),
-    Cloud("cloud", R.string.screen_cloud, Icons.Outlined.Cloud);
+    Cloud("cloud", R.string.screen_cloud, Icons.Outlined.Cloud),
+    Help("help", R.string.screen_help, Icons.Outlined.HelpOutline);
 
     companion object {
         /**
@@ -60,16 +62,16 @@ enum class TopLevelDestination(
          * horizontally scrollable so all 9 fit even on narrow
          * phones. Voice / Structured / Vision / Catalog get their own
          * tabs so model categories stay separated like the legacy
-         * build. Cloud lives in the drawer — 10 items in a bottom
-         * bar is unusable; users reach it via swipe + tap, which
-         * keeps all model categories visible without scroll.
+         * build. Cloud + Help live in the drawer — 10 items in a
+         * bottom bar is unusable; users reach them via swipe + tap,
+         * which keeps all model categories visible without scroll.
          */
         val barItems: List<TopLevelDestination> = listOf(
             Devices, Jobs, Voice, Agent, Models, Structured, Vision, Catalog, Advanced,
         )
         /** Drawer-only destinations. */
         val drawerOnly: List<TopLevelDestination> = listOf(
-            Files, Sessions, Cluster, Network, Users, Settings, Cloud,
+            Files, Sessions, Cluster, Network, Users, Settings, Cloud, Help,
         )
         /** Every destination — kept for callers that want the
          *  complete graph. */

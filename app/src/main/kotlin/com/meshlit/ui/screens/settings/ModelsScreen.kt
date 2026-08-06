@@ -84,6 +84,11 @@ fun ModelsScreen(onBack: () -> Unit) {
     val altInstalled = remember { mutableStateMapOf<String, Boolean>() }
     val altJobs = remember { mutableStateMapOf<String, kotlinx.coroutines.Job>() }
     val altRateTracker = remember { mutableStateMapOf<String, ByteRateTracker>() }
+    // Per-entry download bytes — surfaced into the row's
+    // DownloadStatusPanel so the user sees "1.4 MB / 368 MB"
+    // alongside the percent + ETA + MB/s columns.
+    val altBytesDownloaded = remember { mutableStateMapOf<String, Long>() }
+    val altTotalBytes = remember { mutableStateMapOf<String, Long>() }
 
     // Bundled-model re-extract status — separate from the VM because
     // it's a one-shot APK→files-dir copy, not an SDK download.
@@ -212,6 +217,8 @@ fun ModelsScreen(onBack: () -> Unit) {
                         altStatus = altStatus[entry.id] ?: DownloadStatus.Idle,
                         altInstalled = altInstalled[entry.id] == true,
                         altRateTracker = altRateTracker[entry.id],
+                        altBytesDownloaded = altBytesDownloaded[entry.id] ?: 0L,
+                        altTotalBytes = altTotalBytes[entry.id] ?: 0L,
                         onAltDownload = {
                             altStatus[entry.id] = DownloadStatus.Running(0)
                             val tracker = ByteRateTracker()
@@ -228,8 +235,10 @@ fun ModelsScreen(onBack: () -> Unit) {
                                             it.id == entry.id
                                         } ?: return@launch
                                     },
-                                    onProgress = { percent, bytesDownloaded, _totalBytes ->
+                                    onProgress = { percent, bytesDownloaded, totalBytes ->
                                         tracker.update(bytesDownloaded)
+                                        altBytesDownloaded[entry.id] = bytesDownloaded
+                                        altTotalBytes[entry.id] = totalBytes
                                         altStatus[entry.id] = DownloadStatus.Running(
                                             percent.toInt().coerceIn(0, 100),
                                         )
@@ -282,6 +291,8 @@ fun ModelsScreen(onBack: () -> Unit) {
                         altStatus = altStatus[entry.id] ?: DownloadStatus.Idle,
                         altInstalled = altInstalled[entry.id] == true,
                         altRateTracker = altRateTracker[entry.id],
+                        altBytesDownloaded = altBytesDownloaded[entry.id] ?: 0L,
+                        altTotalBytes = altTotalBytes[entry.id] ?: 0L,
                         onAltDownload = {
                             altStatus[entry.id] = DownloadStatus.Running(0)
                             val tracker = ByteRateTracker()
@@ -293,8 +304,10 @@ fun ModelsScreen(onBack: () -> Unit) {
                                 val outcome = ModelCatalog.download(
                                     context = context,
                                     entry = altEntry,
-                                    onProgress = { percent, bytesDownloaded, _ ->
+                                    onProgress = { percent, bytesDownloaded, totalBytes ->
                                         tracker.update(bytesDownloaded)
+                                        altBytesDownloaded[entry.id] = bytesDownloaded
+                                        altTotalBytes[entry.id] = totalBytes
                                         altStatus[entry.id] = DownloadStatus.Running(
                                             percent.toInt().coerceIn(0, 100),
                                         )
@@ -449,6 +462,8 @@ private fun ModelRowCard(
     altStatus: DownloadStatus,
     altInstalled: Boolean,
     altRateTracker: ByteRateTracker?,
+    altBytesDownloaded: Long = 0L,
+    altTotalBytes: Long = 0L,
     onAltDownload: () -> Unit,
     onAltCancel: () -> Unit,
     onAltDelete: () -> Unit,
@@ -487,6 +502,21 @@ private fun ModelRowCard(
                 arrayOf(onAltDownload, onAltCancel, onPickAlt, onAltDelete)
         }
 
+    // Speed class chip — derived from the entry's approxSizeMb so
+    // the user can pick a model that matches their patience
+    // without reading the spec sheet.
+    //   ≤ 500 MB   → Easy    (downloads in <1 min on Wi-Fi)
+    //   ≤ 1.5 GB   → Fast    (downloads in ~5 min on Wi-Fi)
+    //   ≤ 4 GB     → Balanced
+    //   anything larger → Heavy
+    val speedClassLabelId = when {
+        entry.approxSizeMb <= 500L -> R.string.models_chip_easy
+        entry.approxSizeMb <= 1500L -> R.string.models_chip_fast
+        entry.approxSizeMb <= 4000L -> R.string.models_chip_balanced
+        else -> R.string.models_chip_heavy
+    }
+    val speedClassLabel = stringResource(speedClassLabelId)
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         RaListCard(
             leadingIcon = familyIcon(entry),
@@ -501,6 +531,21 @@ private fun ModelRowCard(
                         onClick = {},
                         enabled = false,
                         label = { Text(entry.family) },
+                    )
+                    // Runtime / quant / architecture / NPU /
+                    // speed-class chips. Order matters — the most
+                    // decision-relevant tag (speed class) lands
+                    // first so it's the first thing the user
+                    // processes when scanning.
+                    androidx.compose.material3.AssistChip(
+                        onClick = {},
+                        enabled = false,
+                        label = { Text(speedClassLabel) },
+                    )
+                    androidx.compose.material3.AssistChip(
+                        onClick = {},
+                        enabled = false,
+                        label = { Text(stringResource(R.string.models_chip_llamacpp)) },
                     )
                     entry.tags.take(2).forEach { tag ->
                         androidx.compose.material3.AssistChip(
@@ -537,6 +582,9 @@ private fun ModelRowCard(
                 status = altStatus,
                 displayName = entry.displayName,
                 bytesPerSecond = altRateTracker?.bytesPerSecond() ?: 0.0,
+                bytesDownloaded = altBytesDownloaded,
+                totalBytes = altTotalBytes,
+                approxSizeMb = entry.approxSizeMb,
             )
         }
         // Delete affordance for ready rows — the upstream

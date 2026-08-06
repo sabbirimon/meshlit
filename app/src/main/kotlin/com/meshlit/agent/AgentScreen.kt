@@ -96,6 +96,7 @@ import com.meshlit.R
 import com.meshlit.core.common.CapabilityTier
 import com.meshlit.core.inference.CoordinatorState
 import com.meshlit.ui.components.MeshlitHeader
+import com.meshlit.ui.components.LlmOutputActions
 import kotlinx.coroutines.launch
 
 /**
@@ -145,6 +146,16 @@ fun AgentScreen(
     val coordinatorState by app.inferenceCoordinator.state.collectAsState()
     val customPath by app.settingsRepository.customModelPathFlow.collectAsState(initial = "")
     val tier = app.capabilityTier
+
+    // Identity snapshot — recomputes whenever the coordinator's
+    // state flips (model loaded / unloaded / engine swap) so the
+    // badge stays in sync with whatever is actually answering.
+    val agentIdentity = remember(coordinatorState) {
+        com.meshlit.ui.components.IdentityResolver(app).resolve(
+            dispatchMode = com.meshlit.inference.InferenceDispatchMode.LOCAL,
+            peerLabel = "",
+        )
+    }
 
     // Discover all locally-available model files. Bundled +
     // imported-models directory + the active custom-path override.
@@ -215,6 +226,23 @@ fun AgentScreen(
                 tier = tier,
                 active = isRunning,
                 onOpenDrawer = onOpenDrawer,
+                trailing = {
+                    // Identity badge — Meshlit · model · origin.
+                    // The agent session is always LOCAL, so we
+                    // hard-code the dispatch mode + leave the
+                    // peer label empty. Re-evaluates whenever
+                    // activeModelName flips (load / unload).
+                    val identity = remember(activeModelName) {
+                        com.meshlit.ui.components.IdentityResolver(app).resolve(
+                            dispatchMode = com.meshlit.inference.InferenceDispatchMode.LOCAL,
+                            peerLabel = "",
+                        )
+                    }
+                    com.meshlit.ui.components.IdentityBadge(
+                        identity = identity,
+                        variant = com.meshlit.ui.components.IdentityBadgeVariant.Toolbar,
+                    )
+                },
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -289,7 +317,7 @@ fun AgentScreen(
                         items(messages) { msg ->
                             when (msg) {
                                 is ChatMessage.UserMessage -> UserBubble(msg.text)
-                                is ChatMessage.AgentMessage -> AgentBubble(msg)
+                                is ChatMessage.AgentMessage -> AgentBubble(msg, agentIdentity)
                                 is ChatMessage.SystemMessage -> SystemBubble(msg)
                             }
                         }
@@ -692,7 +720,7 @@ private fun UserBubble(text: String) {
 }
 
 @Composable
-private fun AgentBubble(msg: AgentMessageImpl) {
+private fun AgentBubble(msg: AgentMessageImpl, identity: com.meshlit.ui.components.Identity) {
     val display = if (msg.finalText.isNotEmpty()) msg.finalText else msg.streamingText
     val isStreaming = msg.finalText.isEmpty() && msg.streamingText.isNotEmpty()
     Row(modifier = Modifier.fillMaxWidth()) {
@@ -708,6 +736,15 @@ private fun AgentBubble(msg: AgentMessageImpl) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    // Identity tag — same Meshlit · model · origin
+                    // strip the toolbar shows. Pinned to the bubble
+                    // header so the user can confirm which model
+                    // answered each turn.
+                    com.meshlit.ui.components.IdentityBadge(
+                        identity = identity,
+                        variant = com.meshlit.ui.components.IdentityBadgeVariant.Bubble,
                     )
                     Spacer(Modifier.weight(1f))
                     if (msg.tokenCount > 0) {
@@ -757,6 +794,13 @@ private fun AgentBubble(msg: AgentMessageImpl) {
                         CodeBlockView(block)
                         Spacer(Modifier.height(8.dp))
                     }
+                }
+                // Copy / Save / Share / Export toolbar. Hidden while
+                // the message is still streaming so the toolbar
+                // doesn't flash a "Copy" button on every token.
+                if (!isStreaming && display.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    LlmOutputActions(text = display)
                 }
             }
         }

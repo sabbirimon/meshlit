@@ -109,8 +109,11 @@
     <string name="logs_filter_query_label">Search</string>
     <string name="logs_filter_query_hint">Tag or message text…</string>
     <string name="logs_filter_tag_any">All tags</string>
+    <string name="logs_filter_source_prefix">Source</string>
     <string name="logs_clear">Clear</string>
     <string name="logs_export">Export</string>
+    <string name="logs_export_txt">Export as TXT</string>
+    <string name="logs_export_jsonl">Export as JSONL</string>
     <string name="logs_empty">No log entries match the current filter</string>
     <string name="logs_open">Open logs</string>
 
@@ -532,6 +535,7 @@
     <string name="devices_edit_title">Edit inference endpoint</string>
     <string name="devices_field_name">Display name</string>
     <string name="devices_field_url">Base URL (https://…)</string>
+    <string name="devices_field_url_hint">First field — paste the server URL. Most reliable on dev devices.</string>
     <string name="devices_field_api_key">API key (optional)</string>
     <string name="devices_field_protocol">Protocol</string>
     <string name="devices_field_insecure">Allow plain HTTP (private networks only)</string>
@@ -747,4 +751,121 @@
     <string name="cloud_android_allow_once">Allow once</string>
     <string name="cloud_android_allow_for_app">Allow for this app</string>
     <string name="cloud_android_deny">Deny</string>
+
+    <!-- Phase Observability 1 — drawer quick actions, help, feedback, network -->
+    <string name="drawer_sync_ok">Resynced %1$d models</string>
+    <string name="drawer_sync_failed">Sync failed: %1$s</string>
+    <string name="drawer_boost_on">Inference boost on (NPU/GPU preferred)</string>
+    <string name="drawer_boost_off">Inference boost off</string>
+    <string name="screen_help">Help</string>
+    <string name="help_hub_title">Help &amp; manual</string>
+    <string name="help_hub_manual">User manual</string>
+    <string name="help_hub_manual_subtitle">Every feature, intent, use case, configuration, troubleshooting</string>
+    <string name="help_hub_tour">UI tour</string>
+    <string name="help_hub_tour_subtitle">First-visit popovers + a permanent guide</string>
+    <string name="help_hub_feedback">Send feedback</string>
+    <string name="help_hub_feedback_subtitle">Opens a GitHub Issue with logs attached</string>
+    <string name="help_hub_connected">Connected</string>
+    <string name="help_manual_title">User manual</string>
+    <string name="help_tour_section_intent">Intent</string>
+    <string name="help_tour_section_usecase">Use case</string>
+    <string name="help_tour_section_config">How to configure</string>
+    <string name="help_tour_section_trouble">Troubleshooting</string>
+    <string name="help_tour_title">UI tour</string>
+    <string name="help_tour_reset">Reset tour</string>
+    <string name="help_tour_blurb_open">Open</string>
+    <string name="help_tour_blurb_mark_seen">Mark as seen</string>
+    <string name="help_overlay_show_more">Show me more</string>
+    <string name="help_overlay_got_it">Got it</string>
+    <string name="feedback_title">Send feedback</string>
+    <string name="feedback_type_bug">Bug</string>
+    <string name="feedback_type_feature">Feature request</string>
+    <string name="feedback_title_field">Title</string>
+    <string name="feedback_body_field">Describe what happened</string>
+    <string name="feedback_attach_logs">Attach last %1$d log lines</string>
+    <string name="feedback_repo_slug">GitHub repo (owner/name)</string>
+    <string name="feedback_submit">Submit</string>
+    <string name="feedback_submit_ok">Opening GitHub…</string>
+    <string name="feedback_submit_failed">Could not open browser</string>
+    <string name="net_monitor_title">Network monitor</string>
+    <string name="settings_tracing_title">Tracing</string>
+    <string name="settings_tracing_mode">Tracing mode</string>
+    <string name="settings_tracing_endpoint">OTLP endpoint</string>
+    <string name="settings_tracing_headers">OTLP headers</string>
+    <string name="settings_about_feedback">Send feedback</string>
+    <string name="settings_about_manual">User manual</string>
+    <string name="settings_about_tour">UI tour</string>
+
+    <!-- Existing model / agent strings retained for the screens that use them. -->
+    <string name="cloud_agent_permission_granted">Permission granted</string>
+    <string name="cloud_agent_no_permission_required">No permission required</string>
+    <string name="cloud_agent_sms_allowlist_label">SMS recipient allowlist</string>
+    <string name="cloud_agent_storage_allowlist_label">Storage grant</string>
+    <string name="cloud_agent_storage_grant">Choose a directory</string>
+    <string name="models_download_eta">ETA %1$s</string>
+    <string name="models_chip_easy">Easy</string>
+    <string name="models_chip_fast">Fast</string>
+    <string name="models_chip_balanced">Balanced</string>
+    <string name="models_chip_heavy">Heavy</string>
+    <string name="models_chip_llamacpp">llama.cpp</string>
+    <!-- auto-added cloud strings -->
+    <string name="cloud_agent_capabilities_intro">Cloud agent capabilities intro</string>
+    <string name="cloud_agent_capabilities_title">Cloud agent capabilities title</string>
+    <string name="cloud_agent_grant_permission">Cloud agent grant permission</string>
+    <string name="cloud_agent_permission_required">Cloud agent permission required</string>
+    <string name="cloud_risk_high">Cloud risk high</string>
+    <string name="cloud_risk_low">Cloud risk low</string>
+    <string name="cloud_risk_medium">Cloud risk medium</string>
+    <!-- auto-added devices strings -->
+    <string name="devices_nearby_empty_idle">Devices nearby empty idle</string>
+    <string name="devices_nearby_empty_scanning">Devices nearby empty scanning</string>
+    <string name="devices_nearby_header">Devices nearby header</string>
+    <string name="devices_nearby_scan">Devices nearby scan</string>
+    <string name="devices_nearby_stop">Devices nearby stop</string>
+    <string name="devices_nearby_subtitle">Devices nearby subtitle</string>
+    <string name="devices_qr_scan_failed">Devices qr scan failed</string>
+    <string name="devices_qr_scan_failed_code">Devices qr scan failed code</string>
+    <string name="devices_qr_scan_invalid">Devices qr scan invalid</string>
+    <string name="devices_qr_scan_play_services">Devices qr scan play services</string>
+    <!-- auto-added files strings -->
+    <string name="files_action_done">Files action done</string>
+    <string name="files_copied">Files copied</string>
+    <string name="files_copy">Files copy</string>
+    <string name="files_copy_failed">Files copy failed</string>
+    <string name="files_delete">Files delete</string>
+    <string name="files_delete_confirm_body">Files delete confirm body</string>
+    <string name="files_delete_confirm_button">Files delete confirm button</string>
+    <string name="files_delete_confirm_title">Files delete confirm title</string>
+    <string name="files_delete_failed">Files delete failed</string>
+    <string name="files_deleted">Files deleted</string>
+    <string name="files_mkdir">Files mkdir</string>
+    <string name="files_mkdir_button">Files mkdir button</string>
+    <string name="files_mkdir_failed">Files mkdir failed</string>
+    <string name="files_mkdir_hint">Files mkdir hint</string>
+    <string name="files_more">Files more</string>
+    <string name="files_move">Files move</string>
+    <string name="files_move_failed">Files move failed</string>
+    <string name="files_moved">Files moved</string>
+    <string name="files_open">Files open</string>
+    <string name="files_open_external">Files open external</string>
+    <string name="files_open_failed">Files open failed</string>
+    <string name="files_rename">Files rename</string>
+    <string name="files_share">Files share</string>
+    <string name="files_source_saf">Files source saf</string>
+    <!-- auto-added jobs strings -->
+    <string name="jobs_dispatch_cluster">Jobs dispatch cluster</string>
+    <!-- auto-added llm strings -->
+    <string name="llm_output_copied">Llm output copied</string>
+    <string name="llm_output_copy">Llm output copy</string>
+    <string name="llm_output_export">Llm output export</string>
+    <string name="llm_output_export_failed">Llm output export failed</string>
+    <string name="llm_output_save">Llm output save</string>
+    <string name="llm_output_save_failed">Llm output save failed</string>
+    <string name="llm_output_saved">Llm output saved</string>
+    <string name="llm_output_share">Llm output share</string>
+    <!-- auto-added voice strings -->
+    <string name="voice_import_audio">Voice import audio</string>
+    <string name="voice_save_recording">Voice save recording</string>
+    <string name="voice_share_recording">Voice share recording</string>
+    <string name="voice_share_transcript">Voice share transcript</string>
 </resources>

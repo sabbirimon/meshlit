@@ -121,6 +121,7 @@ private fun titleResFor(d: TopLevelDestination): Int = when (d) {
     TopLevelDestination.Vision -> com.meshlit.R.string.vision_title
     TopLevelDestination.Advanced -> com.meshlit.R.string.settings_about
     TopLevelDestination.Cloud -> com.meshlit.R.string.screen_cloud
+    TopLevelDestination.Help -> com.meshlit.R.string.help_hub_title
 }
 
 private fun bodyResFor(d: TopLevelDestination): Int = when (d) {
@@ -140,4 +141,5 @@ private fun bodyResFor(d: TopLevelDestination): Int = when (d) {
     TopLevelDestination.Vision -> com.meshlit.R.string.vision_subtitle
     TopLevelDestination.Advanced -> com.meshlit.R.string.app_tagline
     TopLevelDestination.Cloud -> com.meshlit.R.string.cloud_hub_connected
+    TopLevelDestination.Help -> com.meshlit.R.string.help_hub_tour_subtitle
 }

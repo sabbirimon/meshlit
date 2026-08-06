@@ -17,15 +17,20 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -92,6 +97,9 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
     var downloads by remember { mutableStateOf<Map<String, DownloadStatus>>(emptyMap()) }
     var refreshInFlight by remember { mutableStateOf(false) }
     var refreshError by remember { mutableStateOf<String?>(null) }
+    var detailsEntry by remember {
+        mutableStateOf<RunAnywhereCatalogEngine.Entry?>(null)
+    }
 
     // Initial fetch — fire once when the screen mounts. If the
     // user pulled-to-refresh we re-fire from the button.
@@ -238,12 +246,52 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
                                         }
                                     }
                                 },
+                                onShowInfo = { detailsEntry = entry },
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    detailsEntry?.let { entry ->
+        val status = downloads[entry.id] ?: DownloadStatus.Idle
+        CatalogDetailsSheet(
+            entry = entry,
+            status = status,
+            onDismiss = { detailsEntry = null },
+            onRetry = {
+                detailsEntry = null
+                // Re-fire the same download path used by the row.
+                downloads = downloads + (entry.id to DownloadStatus.Running(0))
+                scope.launch {
+                    val llm = app.inferenceCoordinator.runAnywhereEngine()
+                    runCatching {
+                        llm.downloadModelById(entry.id).collect { progress ->
+                            val pct = (progress.progress * 100f).toInt().coerceIn(0, 100)
+                            downloads = downloads + (entry.id to DownloadStatus.Running(pct))
+                            if (progress.error != null) {
+                                throw IllegalStateException(progress.error)
+                            }
+                        }
+                    }.onSuccess {
+                        downloads = downloads + (entry.id to DownloadStatus.Loaded)
+                        val intent = buildLoadModelIntent(
+                            context,
+                            "runanywhere:${entry.id}",
+                        )
+                        runCatching { context.startService(intent) }
+                    }.onFailure { t ->
+                        downloads = downloads + (
+                            entry.id to DownloadStatus.Failed(
+                                t.message ?: t.javaClass.simpleName,
+                            )
+                            )
+                    }
+                }
+            },
+        )
     }
 }
 
@@ -252,6 +300,7 @@ private fun CatalogRow(
     entry: RunAnywhereCatalogEngine.Entry,
     status: DownloadStatus,
     onGet: () -> Unit,
+    onShowInfo: () -> Unit,
 ) {
     val subtitle = "${formatSizeMb(entry.approxSizeMb)} · ${entry.family}"
     val isTopPick = entry.bundled || entry.sizeClass == RunAnywhereCatalogEngine.SizeClass.SMALL
@@ -291,8 +340,113 @@ private fun CatalogRow(
                 is DownloadStatus.Failed -> RaGetButton(onClick = onGet, label = "Retry")
             }
         },
-        onClick = if (status is DownloadStatus.Idle || status is DownloadStatus.Failed) onGet else null,
+        // Already-downloaded rows open the details sheet on tap;
+        // idle/failed rows fall through to the existing Get action.
+        onClick = when (status) {
+            is DownloadStatus.Loaded, is DownloadStatus.Running -> onShowInfo
+            else -> onGet
+        },
     )
+}
+
+/**
+ * Per-row details sheet. Shows the entry's metadata (id, family,
+ * license, origin, language, architecture, quant, size, strengths)
+ * plus the current download status. From here the user can retry a
+ * failed download or dismiss. The row's Get/Retry button is the
+ * canonical action; this sheet exists for inspection and to make
+ * catalog rows feel "manageable" rather than one-shot.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CatalogDetailsSheet(
+    entry: RunAnywhereCatalogEngine.Entry,
+    status: DownloadStatus,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val statusLabel = when (status) {
+        is DownloadStatus.Idle -> "Not downloaded"
+        is DownloadStatus.Running -> "Downloading · ${status.percent}%"
+        is DownloadStatus.Loaded -> "Downloaded"
+        is DownloadStatus.Failed -> "Failed: ${status.message}"
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = entry.displayName,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = "ID: ${entry.id}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            HorizontalDivider()
+            DetailRow(label = "Status", value = statusLabel)
+            DetailRow(label = "Family", value = entry.family)
+            DetailRow(label = "Architecture", value = entry.architecture.name)
+            if (entry.quant != RunAnywhereCatalogEngine.Quant.UNKNOWN) {
+                DetailRow(label = "Quantization", value = entry.quant.name)
+            }
+            DetailRow(label = "Size class", value = entry.sizeClass.name)
+            DetailRow(label = "Approx size", value = formatSizeMb(entry.approxSizeMb))
+            DetailRow(label = "License", value = entry.license)
+            DetailRow(label = "Origin", value = entry.origin)
+            DetailRow(label = "Language", value = entry.language)
+            if (entry.strengths.isNotEmpty()) {
+                DetailRow(
+                    label = "Strengths",
+                    value = entry.strengths.joinToString(", "),
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+            ) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Close") }
+                if (status is DownloadStatus.Failed) {
+                    Button(
+                        onClick = onRetry,
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Retry") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(start = 16.dp),
+        )
+    }
 }
 
 /** Map the engine's tone enum onto the brand pill enum. */

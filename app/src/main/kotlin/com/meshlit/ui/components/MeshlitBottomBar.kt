@@ -209,4 +209,5 @@ val TopLevelDestination.shortLabel: String
         TopLevelDestination.Catalog -> "Catalog"
         TopLevelDestination.Vision -> "Vision"
         TopLevelDestination.Cloud -> "Cloud"
+        TopLevelDestination.Help -> "Help"
     }

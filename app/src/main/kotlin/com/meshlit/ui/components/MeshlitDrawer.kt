@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,11 +50,14 @@ import com.meshlit.ui.nav.TopLevelDestination
  *  - the hamburger icon in [MeshlitHeader],
  *  - programmatic open via `drawerState.open()`.
  *
- * Layout:
- *  - Hero strip at the top: gradient banner + app name + version.
- *  - Three quick actions (Sync / Browse / About).
- *  - The full top-level destination list with a selected indicator
- *    that morphs between rows via animated background width.
+ * Layout (v2 — tile grid, matches the user-provided screenshot):
+ *  - Hero strip at the top: gradient banner + app name + tagline.
+ *  - Quick actions row — three compact tiles (Sync / Boost / About).
+ *  - **Tiles** grid for every destination: 3 columns × N rows.
+ *    Each tile is icon-on-top + label-below, with the selected
+ *    tile highlighted via primaryContainer. Replaces the v1 list-
+ *    of-rows layout (which didn't scale past 5 items and didn't
+ *    match the RunAnywhere-style aesthetic).
  *  - Footer with capability-tier summary.
  */
 @Composable
@@ -69,8 +76,6 @@ fun MeshlitDrawerContent(
     ) {
         Spacer(Modifier.height(24.dp))
 
-        // Hero gradient strip — slow color cycle, gives the drawer a
-        // distinct identity vs. the white surface behind it.
         HeroBanner(tier = tier)
 
         Spacer(Modifier.height(20.dp))
@@ -93,18 +98,28 @@ fun MeshlitDrawerContent(
 
         SectionHeader(text = "Screens")
 
-        // Destinations. Using LazyColumn here would clip the footer;
-        // 9 items + footer fits comfortably in a static Column so we
-        // skip the lazy layer.
-        TopLevelDestination.all.forEach { dest ->
-            DrawerDestinationRow(
-                destination = dest,
-                selected = dest.route == currentRoute,
-                onClick = { onSelectDestination(dest) },
-            )
+        // 3-column tile grid. LazyVerticalGrid is required here
+        // because 15 destinations overflow the static Column budget
+        // on short screens — the footer would be pushed off-screen.
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentPadding = PaddingValues(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(TopLevelDestination.all, key = { it.route }) { dest ->
+                DrawerDestinationTile(
+                    destination = dest,
+                    selected = dest.route == currentRoute,
+                    onClick = { onSelectDestination(dest) },
+                )
+            }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(Modifier.height(12.dp))
 
@@ -192,45 +207,58 @@ private fun SectionHeader(text: String) {
     )
 }
 
+/**
+ * One destination tile — square aspect ratio, icon centered above
+ * the label, primaryContainer background when selected. Aspect
+ * ratio keeps the grid square on phones of any width while
+ * letting the label breathe underneath the icon.
+ */
 @Composable
-private fun DrawerDestinationRow(
+private fun DrawerDestinationTile(
     destination: TopLevelDestination,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    // Animated background width gives the row a "morph into selected"
-    // feel without a long transition. Width = full when selected,
-    // 0 when not, tweened over 250ms.
     val bgAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
-        animationSpec = tween(durationMillis = 250),
-        label = "drawer-row-bg",
+        animationSpec = tween(durationMillis = 200),
+        label = "drawer-tile-bg",
     )
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = bgAlpha * 0.7f))
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (selected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(
+                        alpha = 0.5f + 0.5f * (1f - bgAlpha),
+                    )
+                },
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(vertical = 12.dp, horizontal = 6.dp),
     ) {
         Icon(
             imageVector = destination.icon,
             contentDescription = null,
             tint = if (selected) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(24.dp),
         )
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = androidx.compose.ui.res.stringResource(destination.labelRes),
-            style = MaterialTheme.typography.bodyMedium.copy(
+            style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             ),
             color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
             else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
         )
     }
 }

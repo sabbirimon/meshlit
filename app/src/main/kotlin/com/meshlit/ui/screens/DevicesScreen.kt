@@ -1,7 +1,6 @@
 package com.meshlit.ui.screens
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.net.Uri
@@ -97,6 +96,7 @@ import com.meshlit.core.common.NetworkScope
 import com.meshlit.core.common.RemoteEndpoint
 import com.meshlit.devices.QrCodec
 import com.meshlit.devices.PairingPayload
+import com.meshlit.devices.QrScanner
 import com.meshlit.ui.components.MeshlitHeader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -194,6 +194,19 @@ fun DevicesScreen(
                 current = scopeValue,
                 onChange = { newScope ->
                     scope.launch { settings.setNetworkScope(newScope) }
+                },
+            )
+            // Auto-discovery panel — scans the LAN for Meshlit
+            // peers via mDNS / DNS-SD. Each discovered peer can
+            // be added as a fully-trusted RemoteEndpoint with
+            // one tap (no IP typing, no QR scanning).
+            NearbyDiscoveryPanel(
+                app = app,
+                onAddPeer = { endpoint ->
+                    scope.launch {
+                        settings.upsertEndpoint(endpoint)
+                        if (activeId.isBlank()) settings.setActiveEndpoint(endpoint.id)
+                    }
                 },
             )
             EndpointList(
@@ -656,13 +669,10 @@ private fun AddEndpointSheet(
                 ),
                 style = MaterialTheme.typography.titleMedium,
             )
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.devices_field_name)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // URL is the primary identifier — promote it to the top
+            // of the sheet so the user lands on the field that
+            // actually matters. The hint copy nudges manual entry
+            // as the most reliable path on dev devices.
             OutlinedTextField(
                 value = url,
                 onValueChange = { url = it },
@@ -671,6 +681,19 @@ private fun AddEndpointSheet(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                supportingText = {
+                    Text(
+                        text = stringResource(R.string.devices_field_url_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                },
+            )
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.devices_field_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = apiKey,
@@ -769,9 +792,49 @@ private fun QrPairingSheet(
     val payloadJson = remember { ownPayload.encode() }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var pasteField by remember { mutableStateOf("") }
+    var scanError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(payloadJson) {
         bitmap = runCatching { QrCodec.encode(payloadJson, size = 512) }.getOrNull()
+    }
+
+    /**
+     * Launch Google ML Kit Code Scanner via the GMS Play-Services UI.
+     * The scanner downloads its own module on first launch and renders
+     * the camera surface for us — no `CAMERA` permission, no
+     * `CameraX`, no PreviewView. When it returns a value we feed it
+     * through the same `PairingPayload.decode` path as a manual paste.
+     */
+    val launchScanner = {
+        scope.launch {
+            when (val r = QrScanner.scan(context)) {
+                is QrScanner.ScanResult.Success -> {
+                    val parsed = runCatching { PairingPayload.decode(r.rawValue) }.getOrNull()
+                    if (parsed != null) {
+                        onAddFromString(parsed)
+                    } else {
+                        scanError = context.getString(R.string.devices_qr_scan_invalid)
+                    }
+                }
+                is QrScanner.ScanResult.Cancelled -> {
+                    // user backed out — silent
+                }
+                is QrScanner.ScanResult.PlayServicesMissing -> {
+                    scanError = context.getString(R.string.devices_qr_scan_play_services)
+                }
+                is QrScanner.ScanResult.MissingActivity -> {
+                    scanError = context.getString(R.string.devices_qr_scan_failed)
+                }
+                is QrScanner.ScanResult.Failed -> {
+                    scanError = context.getString(
+                        R.string.devices_qr_scan_failed_code,
+                        r.code,
+                    )
+                }
+            }
+        }
+        Unit
     }
 
     ModalBottomSheet(
@@ -847,12 +910,7 @@ private fun QrPairingSheet(
                     Text(stringResource(R.string.devices_qr_add_pasted))
                 }
                 Button(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("meshlit://scan")
-                        }
-                        runCatching { context.startActivity(intent) }
-                    },
+                    onClick = { launchScanner() },
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(
@@ -863,6 +921,15 @@ private fun QrPairingSheet(
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.devices_qr_scan))
                 }
+            }
+            scanError?.let { msg ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = msg,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             Spacer(Modifier.height(8.dp))
         }

@@ -7,6 +7,9 @@ import com.meshlit.core.common.logger
 import com.meshlit.core.inference.CoordinatorState
 import com.meshlit.core.inference.InferenceRequest
 import com.meshlit.core.inference.ModelInfo
+import com.meshlit.inference.InferenceDispatchMode
+import com.meshlit.ui.components.IdentityResolver
+import com.meshlit.ui.components.identitySystemPrompt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -151,13 +154,23 @@ class AgentSession(
         val mode = _mode.value
         val autopilot = _autopilot.value
         val systemPrompt = systemPromptFor(mode)
-
-        // Build the prompt from the rolling message history. We
-        // collapse messages into a single string because the engine
-        // only takes a single `prompt` parameter; role-prefixing
-        // gives the model the conversation structure.
+        // Identity prefix — wraps the system prompt with the
+        // host-app / model / origin / version tags so the model
+        // can identify itself correctly when asked. We always
+        // emit the prefix in front of the conversation's
+        // system prompt; the model sees both as one system
+        // instruction block.
+        val identityPrefix = run {
+            val resolver = IdentityResolver(app)
+            val identity = resolver.resolve(
+                dispatchMode = InferenceDispatchMode.LOCAL,
+                peerLabel = "",
+            )
+            identitySystemPrompt(identity)
+        }
         val conv = _messages.value
         val promptBuilder = StringBuilder()
+        promptBuilder.append(identityPrefix).append("\n\n")
         promptBuilder.append(systemPrompt).append("\n\n")
         conv.forEach { msg ->
             when (msg) {
