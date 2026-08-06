@@ -3,8 +3,11 @@ package com.meshlit.core.inference
 import android.content.Context
 import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.logger
+import com.runanywhere.sdk.foundation.bridge.extensions.CppBridgeModelPaths
+import com.runanywhere.sdk.foundation.bridge.extensions.CppBridgeModelRegistry
 import com.runanywhere.sdk.llm.llamacpp.LlamaCPP
 import com.runanywhere.sdk.public.RunAnywhere
+import com.runanywhere.sdk.public.extensions.deleteModel
 import com.runanywhere.sdk.public.extensions.downloadModelStream
 import com.runanywhere.sdk.public.extensions.generateStream
 import com.runanywhere.sdk.public.extensions.loadModel
@@ -215,11 +218,94 @@ class RunAnywhereInferenceEngine(
                 // the SDK's canonical id (`smollm2-360m-instruct-q8_0`,
                 // etc.) directly, so the two code paths land on the same
                 // catalog row.
-                Triple(
-                    file.nameWithoutExtension.ifBlank { defaultModelId },
-                    file.name,
-                    file.length(),
+                val resolvedId = file.nameWithoutExtension.ifBlank { defaultModelId }
+
+                // **The actual root cause for "model not loading".** The
+                // RunAnywhere SDK's `loadModel(model_id=...)` call resolves
+                // the on-disk path via
+                // `rac_model_paths_get_model_file_path(...)`, which
+                // computes `{filesDir}/RunAnywhere/Models/LlamaCpp/{modelId}/{modelId}.gguf`
+                // and hands that to the llama.cpp backend. If the file
+                // isn't at that canonical path (e.g. we extracted the
+                // bundled GGUF to `filesDir/bundled-models/`, or the user
+                // imported it via SAF into `Downloads/...`), the SDK's
+                // resolver returns a directory path, then `load_model`
+                // scans that directory for a `.gguf`, finds none, and
+                // logs `No .gguf file found in directory: ...`. The user
+                // sees the Jobs status flip to `Error` and the Send
+                // button does nothing.
+                //
+                // Fix: when the input file isn't already under the SDK's
+                // canonical models dir, copy it into
+                // `{filesDir}/RunAnywhere/Models/LlamaCpp/{modelId}/{modelId}.gguf`
+                // before calling `RunAnywhere.loadModel`. Copy (not
+                // hard-link) so the user's source file is left alone —
+                // important for SAF imports which may be on read-only
+                // storage anyway. The copy is idempotent: if the
+                // destination already exists with the same size we skip
+                // the write entirely. Subsequent loads hit the cache.
+                val canonicalDir = File(
+                    CppBridgeModelPaths.getFrameworkDirectory(
+                        CppBridgeModelRegistry.Framework.LLAMACPP,
+                    ),
+                    resolvedId,
                 )
+                val canonicalPath = File(canonicalDir, "$resolvedId.gguf").absolutePath
+                if (canonicalPath != file.absolutePath &&
+                    !file.absolutePath.startsWith(canonicalDir.absolutePath)
+                ) {
+                    val needsCopy = run {
+                        val dst = File(canonicalPath)
+                        !dst.exists() || dst.length() != file.length()
+                    }
+                    if (needsCopy) {
+                        try {
+                            canonicalDir.mkdirs()
+                            // Use a `.tmp` rename pattern so a partial
+                            // copy never leaves the canonical dir with a
+                            // half-written GGUF (which would fail
+                            // llama.cpp's mmap check and look like the
+                            // original bug all over again).
+                            val tmp = File(canonicalDir, "$resolvedId.gguf.tmp")
+                            runCatching { tmp.delete() }
+                            file.inputStream().use { input ->
+                                tmp.outputStream().use { output ->
+                                    input.copyTo(output, bufferSize = 1 shl 20)
+                                }
+                            }
+                            if (!tmp.renameTo(File(canonicalPath))) {
+                                tmp.copyTo(File(canonicalPath), overwrite = true)
+                                tmp.delete()
+                            }
+                            log.info(
+                                "runanywhere.model_mirrored",
+                                "mirrored GGUF to canonical SDK location",
+                                mapOf(
+                                    "id" to resolvedId,
+                                    "src" to file.absolutePath,
+                                    "dst" to canonicalPath,
+                                    "bytes" to file.length(),
+                                ),
+                            )
+                        } catch (t: Throwable) {
+                            log.warn(
+                                "runanywhere.model_mirror_failed",
+                                "could not mirror GGUF into SDK dir; SDK load will fail",
+                                mapOf(
+                                    "id" to resolvedId,
+                                    "src" to file.absolutePath,
+                                    "dst" to canonicalPath,
+                                    "error" to (t.message ?: t.javaClass.simpleName),
+                                ),
+                            )
+                            // Fall through — the SDK load will fail
+                            // loudly with its own diagnostic so the user
+                            // sees a real error rather than silent
+                            // fallback.
+                        }
+                    }
+                }
+                Triple(resolvedId, file.name, file.length())
             }
 
             return@withContext try {
@@ -496,6 +582,47 @@ class RunAnywhereInferenceEngine(
      */
     fun setCatalogDownloadUrl(modelId: String, url: String) {
         if (url.isNotBlank()) catalogUrlById[modelId] = url
+    }
+
+    /**
+     * Drop the on-disk copy of a model previously downloaded via
+     * the SDK. Mirrors the upstream `RunAnywhere.deleteModel(id)`
+     * contract used by `ModelSelectionViewModel.delete(...)` —
+     * paired with the bundled-model interlock so the user can
+     * safely swap a model mid-session.
+     *
+     * Returns `MeshlitResult.Success(Unit)` when the SDK reports
+     * the deletion succeeded, or a typed `MeshlitError.Native` if
+     * the SDK is uninitialized / throws. The Files API clears the
+     * disk and the in-memory registry entry but does not touch the
+     * currently-loaded session — callers must call
+     * [com.meshlit.core.inference.InferenceCoordinator.unloadModel]
+     * themselves first.
+     */
+    suspend fun deleteDownloadedModel(modelId: String): MeshlitResult<Unit> {
+        if (!isInitialized()) {
+            return MeshlitResult.Failure(
+                com.meshlit.core.common.MeshlitError.Native(
+                    "runanywhere.delete.not_initialized",
+                ),
+            )
+        }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                RunAnywhere.deleteModel(modelId)
+                Unit
+            }.fold(
+                onSuccess = { MeshlitResult.Success(Unit) },
+                onFailure = { t ->
+                    MeshlitResult.Failure(
+                        com.meshlit.core.common.MeshlitError.Native(
+                            "runanywhere.delete.failed:${t.message ?: t.javaClass.simpleName}",
+                            t,
+                        ),
+                    )
+                },
+            )
+        }
     }
 
     private fun currentCatalogUrl(modelId: String): String =

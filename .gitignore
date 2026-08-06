@@ -61,3 +61,11 @@ __pycache__/
 # artefact — see app/src/main/assets/models/README.md for the
 # SHA-256-pinned download command.
 app/src/main/assets/models/*.gguf
+
+# Local capture / screenshot artifacts (regenerated from the device)
+Screenshots/
+
+# Vendored third-party trees — kept locally for development but
+# not shipped. See vendored/README.md for the populate commands.
+vendored/upstream/
+vendored/runanywhere-kotlin/

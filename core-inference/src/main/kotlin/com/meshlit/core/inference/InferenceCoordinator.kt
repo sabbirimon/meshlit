@@ -385,6 +385,14 @@ class InferenceCoordinator(
         }
         _state.value = CoordinatorState.Loading(modelPath, lastRuntime, lastFormat)
         _events.tryEmit(InferenceEvent.LoadStarted(modelPath))
+        // Wait for any in-flight chat generation to drain before
+        // delegating to the engine. Without this barrier the native
+        // runner races the new load and crashes mid-stream when the
+        // user swaps models from the picker. The barrier is
+        // installed by the chat activity on resume and cleared on
+        // pause — see `LlmModelChangeInterlock`. If no barrier is
+        // installed (e.g. CLI / test paths) this is a no-op.
+        LlmModelChangeInterlock.awaitReadyForModelChange()
         val request = ModelLoadRequest(
             modelPath = modelPath,
             contextSize = contextSize,

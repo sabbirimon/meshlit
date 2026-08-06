@@ -49,7 +49,14 @@ import com.meshlit.ui.screens.cloud.AgentTerminalScreen
 import com.meshlit.ui.screens.cloud.AddCustomCloudResult
 import com.meshlit.ui.screens.cloud.AddCustomCloudScreen
 import com.meshlit.ui.screens.cloud.CloudHubScreen
+import com.meshlit.ui.quickactions.BoostViewModel
+import com.meshlit.ui.quickactions.SyncViewModel
 import com.meshlit.ui.screens.settings.CategoryScreen
+import com.meshlit.ui.screens.help.FeedbackScreen
+import com.meshlit.ui.screens.help.HelpHubScreen
+import com.meshlit.ui.screens.help.UiTourScreen
+import com.meshlit.ui.screens.help.UserManualScreen
+import com.meshlit.ui.screens.network.NetworkMonitorScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
 import com.meshlit.ui.screens.settings.RagSettingsScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
@@ -100,6 +107,11 @@ fun MeshlitApp() {
     val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
     val closeDrawer: () -> Unit = { scope.launch { drawerState.close() } }
 
+    // Quick-action view models. Created lazily so the drawer can
+    // call into them without rebuilding the whole nav tree.
+    val syncVm = remember { SyncViewModel(app) }
+    val boostVm = remember { BoostViewModel(app) }
+
     val navigateTo: (TopLevelDestination) -> Unit = { dest ->
         navController.navigate(dest.route) {
             popUpTo(navController.graph.findStartDestination().id) {
@@ -111,12 +123,16 @@ fun MeshlitApp() {
         closeDrawer()
     }
 
+    // Phase Observability 1 — drawer quick actions. Sync resyncs
+    // the model catalog, Boost toggles inference-boost (thread
+    // priority + NPU/GPU engine preference), About opens the
+    // new Help root which hosts the manual + tour + feedback.
     val onQuickAction: (QuickAction) -> Unit = { action ->
         closeDrawer()
         when (action) {
-            QuickAction.SYNC -> navController.navigate(TopLevelDestination.Cluster.route)
-            QuickAction.BOOST -> navController.navigate(TopLevelDestination.Jobs.route)
-            QuickAction.ABOUT -> navController.navigate(TopLevelDestination.Settings.route)
+            QuickAction.SYNC -> syncVm.sync(context)
+            QuickAction.BOOST -> boostVm.boost(context)
+            QuickAction.ABOUT -> navController.navigate(TopLevelDestination.Help.route)
         }
     }
 
@@ -212,6 +228,16 @@ fun MeshlitApp() {
                                     val arg = providerId ?: ""
                                     navController.navigate("cloud/terminal?providerId=$arg")
                                 },
+                            )
+                            TopLevelDestination.Network -> NetworkMonitorScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenDrawer = openDrawer,
+                            )
+                            TopLevelDestination.Help -> HelpHubScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenManual = { navController.navigate("help/manual") },
+                                onOpenTour = { navController.navigate("help/tour") },
+                                onOpenFeedback = { navController.navigate("help/feedback") },
                             )
                             else -> ScreenStub(
                                 destination = dest,
@@ -340,6 +366,36 @@ fun MeshlitApp() {
                                 app.settingsRepository.setLoopMode(mode)
                             }
                         },
+                    )
+                }
+
+                // Phase Observability 1 — Help sub-routes. The Help
+                // tile and the About quick action land on the
+                // HelpHubScreen which dispatches here.
+                composable("help/manual") {
+                    UserManualScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable("help/tour") {
+                    val app = context.applicationContext as MeshlitApplication
+                    UiTourScreen(
+                        firstRun = app.firstRunSetupRepository,
+                        onBack = { navController.popBackStack() },
+                        onOpenDestination = { dest ->
+                            navController.navigate(dest.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+
+                composable("help/feedback") {
+                    val app = context.applicationContext as MeshlitApplication
+                    FeedbackScreen(
+                        settings = app.settingsRepository,
+                        onBack = { navController.popBackStack() },
                     )
                 }
             }

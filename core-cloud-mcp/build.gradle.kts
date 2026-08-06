@@ -12,6 +12,7 @@ android {
 dependencies {
     implementation(project(":core-common"))
     implementation(project(":core-trust"))
+    implementation(project(":core-observability"))
 
     // OkHttp is the project's HTTP convention — see
     // RemoteInferenceClient.kt:20-24 for rationale. The cloud-MCP
