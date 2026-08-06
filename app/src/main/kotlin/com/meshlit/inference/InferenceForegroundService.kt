@@ -23,6 +23,7 @@ import com.meshlit.core.inference.InferenceEvent
 import com.meshlit.core.inference.InferenceRequest
 import com.meshlit.core.inference.InferenceResult
 import com.meshlit.core.inference.ModelInfo
+import com.meshlit.core.inference.cluster.ShardServer
 import com.meshlit.core.inference.net.InferenceHttpServer
 import com.meshlit.core.inference.net.RawTcpActivationServer
 import com.meshlit.notifications.NotificationCategory
@@ -91,6 +92,7 @@ class InferenceForegroundService : Service() {
     private var httpServer: InferenceHttpServer? = null
     private var metricsRegistry: MetricsRegistry? = null
     private var activationServer: RawTcpActivationServer? = null
+    private var shardServer: ShardServer? = null
 
     private val binder = LocalBinder()
 
@@ -129,6 +131,15 @@ class InferenceForegroundService : Service() {
                 loadedShardsProvider = { coordinator.loadedShards.value },
             )
             val jobLifecycle = AppJobLifecycle(app.metricsRegistry)
+            // Wire the cluster-shard surface on the same port. ShardServer
+            // answers /v1/capabilities, /v1/shards/{modelId}/{shardId},
+            // /v1/manifest/{modelId}; peer's InferenceHttpServer.serve()
+            // dispatches shard traffic first so it never blocks on the
+            // coordinator mutex.
+            val shard = ShardServer(
+                filesDir = filesDir,
+                selfCapabilities = { app.selfCapabilities() },
+            )
             val server = InferenceHttpServer(
                 coordinator = coordinator,
                 router = router,
@@ -136,6 +147,13 @@ class InferenceForegroundService : Service() {
                 enricher = enricher,
                 lifecycle = jobLifecycle,
                 port = InferenceHttpServer.DEFAULT_PORT,
+                shardServer = shard,
+                // Port-layer firewall: evaluated before the phase-3
+                // CIDR / node / tier gate so an unauthorized peer
+                // can't even probe `/v1/capabilities` until the
+                // user has explicitly opened the port they're
+                // trying to hit.
+                meshFirewall = app.meshlitFirewall,
             )
             peerRegistry = reg
             clientFactory = factory
@@ -144,6 +162,7 @@ class InferenceForegroundService : Service() {
             miniRouter = router
             forwardingProxy = proxy
             metricsRegistry = app.metricsRegistry
+            shardServer = shard
             httpServer = server
             // Raw-TCP activation transport server. Inbound channels
             // are wired into a list — Phase 2.3 will hand each one
@@ -197,10 +216,21 @@ class InferenceForegroundService : Service() {
             }
             ACTION_INFER -> {
                 val prompt = intent.getStringExtra(EXTRA_PROMPT) ?: return START_NOT_STICKY
+                // Build the identity-tagged prompt. We seed the
+                // model with the host application name + loaded
+                // model + origin + version so when the user asks
+                // "what's your name / identify yourself" the
+                // model answers with the right tags.
+                val fgsApp = applicationContext as MeshlitApplication
+                val seededPrompt = buildIdentitySeededPrompt(
+                    app = fgsApp,
+                    coordinator = coordinator,
+                    userPrompt = prompt,
+                )
                 scope.launch {
                     val result = coordinator.infer(
                         InferenceRequest(
-                            prompt = prompt,
+                            prompt = seededPrompt,
                             maxTokens = intent.getIntExtra(EXTRA_MAX_TOKENS, 256),
                             temperature = intent.getFloatExtra(EXTRA_TEMPERATURE, 0.7f),
                             onToken = { _ -> /* events surface via coordinator.events */ },
@@ -220,6 +250,25 @@ class InferenceForegroundService : Service() {
                 }
             }
             ACTION_CANCEL -> coordinator.cancel()
+            ACTION_ACQUIRE_SHARDED -> {
+                val modelId = intent.getStringExtra(EXTRA_MODEL_ID) ?: return START_NOT_STICKY
+                val contextSize = intent.getIntExtra(EXTRA_CONTEXT_SIZE, 4096)
+                val gpuLayers = intent.getIntExtra(EXTRA_GPU_LAYERS, 0)
+                scope.launch {
+                    val result = coordinator.loadShardedModel(
+                        modelId = modelId,
+                        contextSize = contextSize,
+                        gpuLayers = gpuLayers,
+                    )
+                    if (result is MeshlitResult.Failure) {
+                        log.warn(
+                            "fgs.acquire_sharded.fail",
+                            "sharded acquisition failed: ${result.error.tag}",
+                            mapOf("modelId" to modelId),
+                        )
+                    }
+                }
+            }
         }
         return START_STICKY
     }
@@ -378,6 +427,11 @@ class InferenceForegroundService : Service() {
         const val ACTION_LOAD_MODEL = "com.meshlit.inference.LOAD_MODEL"
         const val ACTION_INFER = "com.meshlit.inference.INFER"
         const val ACTION_CANCEL = "com.meshlit.inference.CANCEL"
+        /** Acquire a model via the cluster-shard path: the planner picks
+         *  peers, the transport pulls shards, and the coordinator loads
+         *  the reassembled GGUF. Surfaces failures through [coordinator]
+         *  state. */
+        const val ACTION_ACQUIRE_SHARDED = "com.meshlit.inference.ACQUIRE_SHARDED"
 
         const val EXTRA_MODEL_PATH = "model_path"
         const val EXTRA_CONTEXT_SIZE = "context_size"
@@ -387,6 +441,23 @@ class InferenceForegroundService : Service() {
         const val EXTRA_PROMPT = "prompt"
         const val EXTRA_MAX_TOKENS = "max_tokens"
         const val EXTRA_TEMPERATURE = "temperature"
+        const val EXTRA_MODEL_ID = "model_id"
+
+        /** Build an intent that triggers a cluster-shard acquisition.
+         *  Use this from the UI (ModelsScreen "Acquire via cluster"
+         *  button) so the service handles the long-running work off
+         *  the main thread. */
+        fun buildAcquireShardedIntent(
+            context: Context,
+            modelId: String,
+            contextSize: Int = 4096,
+            gpuLayers: Int = 0,
+        ): Intent = Intent(context, InferenceForegroundService::class.java).apply {
+            action = ACTION_ACQUIRE_SHARDED
+            putExtra(EXTRA_MODEL_ID, modelId)
+            putExtra(EXTRA_CONTEXT_SIZE, contextSize)
+            putExtra(EXTRA_GPU_LAYERS, gpuLayers)
+        }
 
         /** Convenience helper to start the service from a caller. */
         fun startForInference(context: Context) {
@@ -439,3 +510,42 @@ fun buildCancelIntent(context: Context): Intent =
     Intent(context, InferenceForegroundService::class.java).apply {
         action = InferenceForegroundService.ACTION_CANCEL
     }
+
+/**
+ * Wrap [userPrompt] with the identity prefix so the model can
+ * identify itself with the right tags when the user asks "what's
+ * your name / identify yourself".
+ *
+ * Layout:
+ *
+ *     <identity-prefix>
+ *
+ *     <user-prompt>
+ *
+ * Where `<identity-prefix>` is the seed string from
+ * [com.meshlit.ui.components.identitySystemPrompt]. We resolve
+ * the identity on the FGS side because the FGS owns the
+ * coordinator and the engine tag — keeping the call site here
+ * means every consumer of [buildInferIntent] (Jobs screen, Voice
+ * intent path, agent) gets the same identity behaviour for free.
+ *
+ * If anything goes wrong while resolving the identity we fall
+ * back to the raw user prompt — never block inference on a
+ * presentation-layer detail.
+ */
+fun buildIdentitySeededPrompt(
+    app: com.meshlit.MeshlitApplication,
+    coordinator: com.meshlit.core.inference.InferenceCoordinator,
+    userPrompt: String,
+): String {
+    return runCatching {
+        val resolver = com.meshlit.ui.components.IdentityResolver(app)
+        val identity = resolver.resolve(
+            dispatchMode = com.meshlit.inference.InferenceDispatchMode.LOCAL,
+            peerLabel = "",
+            state = coordinator,
+        )
+        val prefix = com.meshlit.ui.components.identitySystemPrompt(identity)
+        "$prefix\n\n$userPrompt"
+    }.getOrDefault(userPrompt)
+}

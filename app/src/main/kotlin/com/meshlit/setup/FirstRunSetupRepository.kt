@@ -59,12 +59,39 @@ class FirstRunSetupRepository(private val context: Context) {
         store.edit { prefs ->
             prefs.remove(Keys.completedSteps)
             prefs[Keys.firstRunDone] = false
+            prefs.remove(Keys.tourSeen)
+        }
+    }
+
+    // --- Phase Observability 1 — UI tour seen-set ---------------------
+    //
+    // The Tour screen + the first-visit overlay share this flow.
+    // When a destination's route is in [tourSeenFlow], the overlay
+    // is suppressed; otherwise it pops once on entry.
+
+    /** Routes the user has acknowledged. */
+    val tourSeenFlow: Flow<Set<String>> = store.data.map { prefs ->
+        prefs[Keys.tourSeen].orEmpty()
+    }
+
+    suspend fun markTourSeen(route: String) {
+        store.edit { prefs ->
+            val current = prefs[Keys.tourSeen]?.toMutableSet() ?: mutableSetOf()
+            current += route
+            prefs[Keys.tourSeen] = current
+        }
+    }
+
+    suspend fun resetTour() {
+        store.edit { prefs ->
+            prefs.remove(Keys.tourSeen)
         }
     }
 
     private object Keys {
         val completedSteps = stringSetPreferencesKey("first_run.completed_steps")
         val firstRunDone = booleanPreferencesKey("first_run.done")
+        val tourSeen = stringSetPreferencesKey("first_run.tour_seen")
     }
 }
 

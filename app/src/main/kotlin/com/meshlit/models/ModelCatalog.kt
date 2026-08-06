@@ -169,22 +169,79 @@ object ModelCatalog {
         context: Context,
         entry: Entry,
         onProgress: (Long) -> Unit = {},
+    ): DownloadOutcome = downloadFromUrl(
+        context = context,
+        id = entry.id,
+        url = entry.url,
+        approxSizeMb = entry.approxSizeMb,
+        onProgress = onProgress,
+    )
+
+    /**
+     * Same as [download] but the progress callback receives a richer
+     * payload so the UI can render a percent bar AND a bytes-per-second
+     * rate from the same stream. `bytesDownloaded` is the cumulative
+     * bytes read so far; `totalBytes` may be zero when the server
+     * didn't supply `Content-Length`.
+     */
+    suspend fun download(
+        context: Context,
+        entry: Entry,
+        onProgress: (percent: Long, bytesDownloaded: Long, totalBytes: Long) -> Unit,
+    ): DownloadOutcome = downloadFromUrl(
+        context = context,
+        id = entry.id,
+        url = entry.url,
+        approxSizeMb = entry.approxSizeMb,
+        onProgressWithBytes = onProgress,
+    )
+
+    /**
+     * Generic URL download used by the **Paste a URL** and **Import
+     * from Git** entry points on the Models screen.
+     *
+     * The `id` is derived from the URL — sha1 of `url + filename` —
+     * so re-importing the same URL overwrites the previous file.
+     * Filenames are sanitized; `.gguf` / `.onnx` / `.safetensors`
+     * extensions are detected and routed via the file-format hint.
+     *
+     * The `approxSizeMb` argument is a soft hint used only as a
+     * fallback when the server omits `Content-Length`. It does
+     * NOT gate the download — unknown sizes still proceed and
+     * the caller surfaces a progress bar with indeterminate
+     * percentage.
+     */
+    suspend fun downloadFromUrl(
+        context: Context,
+        url: String,
+        id: String = idFromUrl(url),
+        approxSizeMb: Long = 0L,
+        onProgress: (Long) -> Unit = {},
+        onProgressWithBytes: ((percent: Long, bytesDownloaded: Long, totalBytes: Long) -> Unit)? = null,
     ): DownloadOutcome = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "imported-models").apply { mkdirs() }
-        val dest = File(dir, "${entry.id}.gguf")
-        val tmp = File(dir, "${entry.id}.part")
+        val ext = when {
+            url.contains(".gguf", ignoreCase = true) -> ".gguf"
+            url.contains(".onnx", ignoreCase = true) -> ".onnx"
+            url.contains(".safetensors", ignoreCase = true) -> ".safetensors"
+            else -> ".gguf"
+        }
+        val dest = File(dir, "${id}$ext")
+        val tmp = File(dir, "${id}$ext.part")
         val client = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.MINUTES)
+            .followRedirects(true)
+            .followSslRedirects(true)
             .build()
-        log.info("model.download.start", entry.id, mapOf("url" to entry.url))
+        log.info("model.download.url.start", id, mapOf("url" to url))
         try {
-            val request = Request.Builder().url(entry.url).build()
+            val request = Request.Builder().url(url).build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 val tag = "http_${response.code}"
                 val msg = "HTTP ${response.code} from server"
-                log.warn("model.download.fail", msg, mapOf("id" to entry.id))
+                log.warn("model.download.url.fail", msg, mapOf("id" to id))
                 return@withContext DownloadOutcome(null, tag, msg)
             }
             val body = response.body ?: return@withContext DownloadOutcome(
@@ -192,7 +249,7 @@ object ModelCatalog {
                 "empty_body",
                 "Server returned no body",
             )
-            val total = body.contentLength().takeIf { it > 0 } ?: entry.approxSizeMb * 1024L * 1024L
+            val total = body.contentLength().takeIf { it > 0 } ?: approxSizeMb * 1024L * 1024L
             body.byteStream().use { input ->
                 tmp.outputStream().use { output ->
                     val buf = ByteArray(64 * 1024)
@@ -202,14 +259,20 @@ object ModelCatalog {
                         ensureActive()
                         output.write(buf, 0, read)
                         copied += read
-                        if (copied % (256 * 1024) == 0L) {
-                            onProgress(copied * 100 / total)
+                        if (total > 0L && copied % (256 * 1024) == 0L) {
+                            val pct = copied * 100 / total
+                            onProgress(pct)
+                            onProgressWithBytes?.invoke(pct, copied, total)
                         }
                     }
                 }
             }
+            // 1 MiB sanity check — anything smaller is almost
+            // certainly an HTML error page that masqueraded as a
+            // GGUF. The curated catalog used 1 MiB; we keep that
+            // threshold for free-form URLs.
             if (tmp.length() < 1024L * 1024L) {
-                log.warn("model.download.too_small", "wrote ${tmp.length()} bytes", mapOf("id" to entry.id))
+                log.warn("model.download.url.too_small", "wrote ${tmp.length()} bytes", mapOf("id" to id))
                 tmp.delete()
                 return@withContext DownloadOutcome(
                     null,
@@ -219,28 +282,46 @@ object ModelCatalog {
             }
             if (dest.exists()) dest.delete()
             if (!tmp.renameTo(dest)) {
-                log.warn("model.download.rename_failed", "could not rename", mapOf("id" to entry.id))
+                log.warn("model.download.url.rename_failed", "could not rename", mapOf("id" to id))
                 tmp.delete()
                 return@withContext DownloadOutcome(null, "rename_failed", "Could not finalize download")
             }
             onProgress(100L)
-            log.info("model.download.done", entry.id, mapOf("bytes" to dest.length()))
+            onProgressWithBytes?.invoke(100L, dest.length(), total)
+            log.info("model.download.url.done", id, mapOf("bytes" to dest.length()))
             DownloadOutcome(dest, null, null)
         } catch (t: Throwable) {
             runCatching { tmp.delete() }
             val (tag, msg) = when (t) {
                 is UnknownHostException -> "no_network" to "No internet — check Wi-Fi and retry"
                 is SocketTimeoutException -> "timeout" to "Server timed out — retry"
-                is SSLException -> "ssl" to "Hugging Face certificate rejected"
+                is SSLException -> "ssl" to "Server certificate rejected"
                 is IOException -> "io_${t.javaClass.simpleName}" to "Network error: ${t.message ?: t.javaClass.simpleName}"
                 else -> {
-                    log.warn("model.download.error", "${t.message}", mapOf("id" to entry.id))
+                    log.warn("model.download.url.error", "${t.message}", mapOf("id" to id))
                     "unknown" to "${t.javaClass.simpleName}: ${t.message ?: "unknown error"}"
                 }
             }
-            log.warn("model.download.error", msg, mapOf("id" to entry.id, "tag" to tag))
+            log.warn("model.download.url.error", msg, mapOf("id" to id, "tag" to tag))
             DownloadOutcome(null, tag, msg)
         }
+    }
+
+    /**
+     * Stable id derivation for an arbitrary URL. We hash the URL so
+     * re-importing the same link overwrites the previous file instead
+     * of creating duplicates. The hash is the first 16 hex chars of
+     * the SHA-1 of the URL — collision probability is negligible for
+     * a phone-bound local cache.
+     */
+    fun idFromUrl(url: String): String {
+        val md = java.security.MessageDigest.getInstance("SHA-1")
+        val bytes = md.digest(url.toByteArray(Charsets.UTF_8))
+        val hex = StringBuilder(16)
+        for (i in 0 until 8) {
+            hex.append(String.format("%02x", bytes[i].toInt() and 0xFF))
+        }
+        return "url-$hex"
     }
 
     /**
@@ -275,7 +356,10 @@ object ModelCatalog {
     /** Imported model files in the import directory. */
     fun importedFiles(context: Context): List<File> {
         val dir = File(context.filesDir, "imported-models")
-        return dir.listFiles { f -> f.isFile && f.name.endsWith(".gguf", true) }?.toList().orEmpty()
+        val supported = setOf("gguf", "onnx", "safetensors")
+        return dir.listFiles { f ->
+            f.isFile && f.extension.lowercase() in supported
+        }?.sortedBy { it.name.lowercase() }.orEmpty()
     }
 
     private suspend fun ensureActive() {

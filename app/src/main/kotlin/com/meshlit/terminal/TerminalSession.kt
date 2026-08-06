@@ -5,6 +5,7 @@ import com.meshlit.MeshlitApplication
 import com.meshlit.core.common.logger
 import com.meshlit.core.inference.CoordinatorState
 import com.meshlit.observability.LogBuffer
+import com.meshlit.terminal.vt.Screen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -82,6 +83,11 @@ class TerminalSession(
 
     private val log = logger("TerminalSession")
 
+    /** Underlying VT emulator. [execute] pipes every appended line
+     *  through this so the [TerminalView] sees identical output with
+     *  proper SGR colors. */
+    val screen: Screen = Screen(cols = 80, rows = 24, maxScrollback = 5000)
+
     private val _groups = MutableStateFlow<List<TerminalGroup>>(emptyList())
     val groups: StateFlow<List<TerminalGroup>> = _groups.asStateFlow()
 
@@ -110,6 +116,7 @@ class TerminalSession(
         startGroup("welcome")
         appendLineInternal(TerminalLine(text = WELCOME, kind = TerminalLine.Kind.INFO))
         finishGroup()
+        screen.process("\u001b[2m${WELCOME}\u001b[0m\r\n")
     }
 
     private fun startGroup(command: String) {
@@ -155,6 +162,24 @@ class TerminalSession(
         } else {
             _groups.value = current + partial
         }
+        // Mirror to the VT emulator with SGR colours derived from the
+        // line's Kind. Strip CR/LF; the screen feeds `\r\n` itself.
+        screen.process(sgrFor(line.kind) + sanitize(line.text) + "\u001b[0m\r\n")
+    }
+
+    private fun sanitize(text: String): String =
+        text.replace("\r", "").replace("\n", "")
+
+    /** Map a [TerminalLine.Kind] to an SGR-prefixed escape sequence. */
+    private fun sgrFor(kind: TerminalLine.Kind): String = when (kind) {
+        TerminalLine.Kind.INPUT -> "\u001b[1;36m"
+        TerminalLine.Kind.STDOUT -> "\u001b[0m"
+        TerminalLine.Kind.INFO -> "\u001b[2;37m"
+        TerminalLine.Kind.ERROR -> "\u001b[1;31m"
+        TerminalLine.Kind.STREAM -> "\u001b[36m"
+        TerminalLine.Kind.HEADER -> "\u001b[1;35m"
+        TerminalLine.Kind.KEY -> "\u001b[33m"
+        TerminalLine.Kind.SUCCESS -> "\u001b[1;32m"
     }
 
     /** Append multiple lines in one shot (e.g. help table rows). */
@@ -164,6 +189,7 @@ class TerminalSession(
 
     fun clear() {
         _groups.value = emptyList()
+        screen.reset()
         startGroup("welcome")
         appendLineInternal(TerminalLine(text = WELCOME, kind = TerminalLine.Kind.INFO))
         finishGroup()
@@ -477,6 +503,8 @@ class TerminalSession(
                         }
                         _groups.value = current.dropLast(1) + last.copy(lines = newLines)
                     }
+                    // Pipe token to VT emulator too.
+                    screen.process(sgrFor(TerminalLine.Kind.STREAM) + sanitize(token))
                 },
                 onComplete = { _ ->
                     val elapsed = System.currentTimeMillis() - started
