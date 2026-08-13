@@ -1,61 +1,80 @@
-# Meshlit
+<!-- SEO: meta description for GitHub social previews and crawlers -->
+<!-- keywords: on-device AI, federated inference, Android LLM, llama.cpp, ONNX, MCP, RunAnywhere, MoE, Mixture of Experts, edge AI, private AI, no telemetry, local LLM, speech-to-text, TTS, vision language model, federated learning -->
 
-> **Many phones. One mind.**
-> On-device AI runtime that turns a fleet of Android phones into a
-> private, federated inference cluster — no cloud, no telemetry.
+# Meshlit — Many phones. One mind.
 
-Meshlit is an Android app that orchestrates local LLMs, speech,
-vision, structured output, and tool-calling across nearby devices.
-It runs entirely on-device by default; network transports (LAN,
-Wi-Fi Direct, Tailscale, VPN, relay) are opt-in for cluster
-federation. Built on the [RunAnywhere](https://github.com/RunanywhereAI/runanywhere-sdks)
-SDK 0.20.12.
+> ## 🚧 **THIS IS THE `dev` BRANCH — ACTIVE DEVELOPMENT IN PROGRESS**
+>
+> **You are reading the latest integration branch.** Things here change daily, may break, and may not be tied to a release yet. The interface, screens, and SDK wiring are evolving as Phase 2.x → Phase 3 work lands. For the frozen snapshot, see the [`main`](https://github.com/sabbirimon/meshlit/tree/main) branch instead.
+>
+> **Status:** 🟡 **Active development** · Phase 2.x shipped · Phase 3 (cluster-shard federation, MoE routing) in progress · latest tag: none yet.
+>
+> Quick links: [📦 main (frozen)](https://github.com/sabbirimon/meshlit/tree/main) · [🌿 dev (this branch)](https://github.com/sabbirimon/meshlit/tree/dev) · [📓 PROGRESS.md](PROGRESS.md) · [🛠 TODO.md](TODO.md) · [📋 Issues](https://github.com/sabbirimon/meshlit/issues) · [💬 Discussions](https://github.com/sabbirimon/meshlit/discussions)
 
-Apache 2.0 — see [LICENSE](LICENSE).
+> **On-device AI runtime + federated inference cluster for Android.**
+> Turn a fleet of Android phones into a private LLM cluster — no cloud,
+> no telemetry, full SDK-backed voice / vision / structured / catalog surfaces.
+
+<p align="left">
+  <a href="https://github.com/sabbirimon/meshlit/blob/dev/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge&logo=apache" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/sabbirimon/meshlit/stargazers"><img src="https://img.shields.io/github/stars/sabbirimon/meshlit?style=for-the-badge&logo=github" alt="GitHub stars"></a>
+  <a href="https://github.com/sabbirimon/meshlit/network/members"><img src="https://img.shields.io/github/forks/sabbirimon/meshlit?style=for-the-badge&logo=github" alt="GitHub forks"></a>
+  <a href="https://github.com/sabbirimon/meshlit/issues"><img src="https://img.shields.io/github/issues/sabbirimon/meshlit?style=for-the-badge&logo=github" alt="Open issues"></a>
+  <a href="https://github.com/sabbirimon/meshlit/commits/dev"><img src="https://img.shields.io/github/last-commit/sabbirimon/meshlit/dev?style=for-the-badge&logo=github" alt="Last commit"></a>
+  <a href="https://github.com/sabbirimon/meshlit"><img src="https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+"></a>
+  <a href="https://github.com/sabbirimon/meshlit"><img src="https://img.shields.io/badge/Kotlin-2.1-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin 2.1"></a>
+  <a href="https://github.com/sabbirimon/meshlit"><img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose"></a>
+  <a href="https://github.com/sabbirimon/meshlit/tree/dev"><img src="https://img.shields.io/badge/branch-dev-orange?style=for-the-badge&logo=git" alt="Branch: dev"></a>
+</p>
+
+**Meshlit** is an open-source **Android app** that orchestrates **local LLMs, speech-to-text, text-to-speech, vision (VLM), structured output, and tool-calling** across a private fleet of phones using **federated inference**. It runs entirely **on-device by default** — no cloud, no telemetry — with optional LAN, Wi-Fi Direct, Tailscale, VPN, and relay transports for cluster federation. Built on the [RunAnywhere SDK](https://github.com/RunanywhereAI/runanywhere-sdks) 0.20.12 (llama.cpp + sherpa-onnx + ONNX Runtime Mobile).
+
+> 🔎 **Looking for keywords?** On-device AI · Federated inference · Android LLM · llama.cpp · GGUF · ONNX Runtime Mobile · sherpa-onnx · Mixture-of-Experts (MoE) sharding · MCP tool server · Private AI · No telemetry · Local LLM · Speech-to-text · TTS · Vision Language Model · Edge AI · Apache 2.0 · Jetpack Compose · Material 3 · VpnService packet capture · RunAnywhere SDK
+
+## Why Meshlit?
+
+| Problem                                                                 | Meshlit's answer                                                                                       |
+|-------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| Cloud LLM APIs leak prompts and harvest telemetry.                      | **No telemetry by default.** Every byte off the device is an explicit, visible user choice.            |
+| A single phone can't run frontier models.                               | **Federated inference cluster** — data-parallel jobs across phones, MoE sharding for frontier models.   |
+| On-device tool-calling SDKs lock you into one runtime.                  | **Multi-runtime abstraction** — llama.cpp · ONNX Runtime Mobile · any OpenAI-compatible remote endpoint.|
+| Hard to inspect what your AI app is actually doing on the network.      | **Built-in network monitor + opt-in `VpnService` PCAP capture** — Wireshark-ready libpcap output.       |
+| Voice / vision / structured output needs three different apps.          | **Four Compose screens, one app** — Voice (STT+TTS+VAD), JSON (structured+tools), Catalog, Vision (VLM).|
 
 ---
 
-## Highlights
+## ✨ Highlights
 
-- **Multi-runtime inference.** Pick from GGUF (llama.cpp), ONNX
-  (Microsoft ORT Mobile), or any remote OpenAI-compatible endpoint.
-  Models ship either bundled in the APK, downloaded on demand from
-  the RunAnywhere CDN, or imported from local storage via SAF.
-- **Full SDK surface.** Four extra screens at full depth —
-  voice (STT + TTS + VAD), structured output + tool calling, dynamic
-  model catalog, and vision (image + VLM).
-- **Federation.** Data-parallel jobs (no tensor-parallel) across a
-  cluster of phones. Optional Mixture-of-Experts shard federation for
-  frontier models — each node holds a subset of experts, the router
-  dispatches tokens.
-- **Embedded HTTP/SSE server.** Capability-aware mini-router,
-  `X-Meshlit-Hints` header, SSE streaming, 30 s peer-health cache,
-  forward-and-stream proxy.
-- **Foreground service for inference.** Android `dataSync` FGS with
-  persistent notification, LocalBinder IPC, Android 15+
-  `onTimeout()` handling.
-- **MCP tool server.** Tools registered with the LLM drive Meshlit
-  itself: file ops, device control, peer queries.
-- **Trust tiers.** LAN / temporary-local / WAN each carry a
-  different auth burden. The Devices screen lets the user lock
-  scopes precisely.
-- **Self-describing runtime.** Opt-in OpenTelemetry tracing
-  (Off / Local / Otel), in-app user manual with intent / use
-  case / configuration / troubleshooting per feature, UI tour
-  overlay fired on first visit, and GitHub-Issues-backed feedback
-  that auto-attaches the last 200 log lines. Network monitor
-  surfaces Meshlit's own HTTP calls plus an opt-in
-  `VpnService`-backed packet capture that writes libpcap-format
-  files for inspection in Wireshark / `tshark` / Termux /
-  PCAPdroid.
-- **No telemetry by default.** Every byte leaving the device —
-  including OpenTelemetry exports — is the user's explicit,
-  visible choice. The Tracing toggle in Settings defaults to Off.
+- 🚀 **Multi-runtime inference.** GGUF (llama.cpp), ONNX (Microsoft ORT Mobile), or any OpenAI-compatible remote endpoint. Models bundled, downloaded on demand, or SAF-imported.
+- 🎙️ **Full SDK surface.** Voice (STT + TTS + VAD), structured output + tool calling, dynamic model catalog, vision (VLM + image picker) — all on-device.
+- 🔗 **Federation.** Data-parallel jobs across phones. Optional **Mixture-of-Experts shard federation** — each node holds a subset of experts, the router dispatches tokens.
+- 🌐 **Embedded HTTP/SSE server.** Capability-aware mini-router, `X-Meshlit-Hints` header, SSE streaming, 30 s peer-health cache, forward-and-stream proxy on `:8080`.
+- ⚙️ **Foreground service for inference.** Android `dataSync` FGS with persistent notification, LocalBinder IPC, Android 15+ `onTimeout()` handling.
+- 🧰 **MCP tool server.** Tools registered with the LLM drive Meshlit itself: file ops, device control, peer queries.
+- 🛡️ **Trust tiers.** LAN / temporary-local / WAN each carry a different auth burden. The Devices screen lets the user lock scopes precisely.
+- 📜 **Self-describing runtime.** Opt-in OpenTelemetry tracing (Off / Local / Otel), in-app user manual with intent / use case / configuration / troubleshooting per feature, UI tour overlay fired on first visit, and GitHub-Issues-backed feedback that auto-attaches the last 200 log lines. Network monitor surfaces Meshlit's own HTTP calls plus an opt-in `VpnService`-backed packet capture that writes libpcap-format files for inspection in Wireshark / `tshark` / Termux / PCAPdroid.
+- 🔕 **No telemetry by default.** Every byte leaving the device — including OpenTelemetry exports — is the user's explicit, visible choice. The Tracing toggle in Settings defaults to Off.
+
+---
+
+## ✨ Highlights
+
+- 🚀 **Multi-runtime inference.** GGUF (llama.cpp), ONNX (Microsoft ORT Mobile), or any OpenAI-compatible remote endpoint. Models bundled, downloaded on demand, or SAF-imported.
+- 🎙️ **Full SDK surface.** Voice (STT + TTS + VAD), structured output + tool calling, dynamic model catalog, vision (VLM + image picker) — all on-device.
+- 🔗 **Federation.** Data-parallel jobs across phones. Optional **Mixture-of-Experts shard federation** — each node holds a subset of experts, the router dispatches tokens.
+- 🌐 **Embedded HTTP/SSE server.** Capability-aware mini-router, `X-Meshlit-Hints` header, SSE streaming, 30 s peer-health cache, forward-and-stream proxy on `:8080`.
+- ⚙️ **Foreground service for inference.** Android `dataSync` FGS with persistent notification, LocalBinder IPC, Android 15+ `onTimeout()` handling.
+- 🧰 **MCP tool server.** Tools registered with the LLM drive Meshlit itself: file ops, device control, peer queries.
+- 🛡️ **Trust tiers.** LAN / temporary-local / WAN each carry a different auth burden. The Devices screen lets the user lock scopes precisely.
+- 📜 **Self-describing runtime.** Opt-in OpenTelemetry tracing (Off / Local / Otel), in-app user manual with intent / use case / configuration / troubleshooting per feature, UI tour overlay fired on first visit, and GitHub-Issues-backed feedback that auto-attaches the last 200 log lines. Network monitor surfaces Meshlit's own HTTP calls plus an opt-in `VpnService`-backed packet capture that writes libpcap-format files for inspection in Wireshark / `tshark` / Termux / PCAPdroid.
+- 🔕 **No telemetry by default.** Every byte leaving the device — including OpenTelemetry exports — is the user's explicit, visible choice. The Tracing toggle in Settings defaults to Off.
 
 ---
 
 ## Table of contents
 
+- [Why Meshlit?](#why-meshlit)
+- [Highlights](#-highlights)
 - [Status](#status)
 - [Architecture](#architecture)
 - [Project layout](#project-layout)
@@ -66,9 +85,12 @@ Apache 2.0 — see [LICENSE](LICENSE).
 - [The four SDK-backed screens](#the-four-sdk-backed-screens)
 - [Cluster model](#cluster-model)
 - [Security model](#security-model)
+- [FAQ — Frequently asked questions](#faq--frequently-asked-questions)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
+- [Phase ledger](#phase-ledger)
 - [License](#license)
+- [Acknowledgments](#acknowledgments)
 
 ---
 
@@ -399,6 +421,53 @@ capability. See `core-trust/` for the attestation helpers and
 
 ---
 
+## FAQ — Frequently asked questions
+
+### What is Meshlit?
+
+Meshlit is an **open-source Android app** that turns a fleet of phones into a **federated inference cluster** for **large language models (LLMs)**, speech, and vision. Every model runs **on-device** — there is no cloud round-trip by default.
+
+### How is Meshlit different from llama.cpp, Ollama, or LM Studio?
+
+Those projects run on a desktop/server. Meshlit is the **phone-native** counterpart: it ships an `InferenceForegroundService`, an embedded NanoHTTPD inference server, a **RunAnywhere SDK** wrapper for voice/vision/catalog, and a **federation protocol** that turns multiple phones into one cluster.
+
+### Does Meshlit send my data anywhere?
+
+**No, by default.** All inference is local. Network transports (LAN / Wi-Fi Direct / Tailscale / WireGuard / relay) are **opt-in**, and every flow that uses mobile data surfaces a user prompt. OpenTelemetry exports are also off by default.
+
+### Which Android versions are supported?
+
+API 24+ (Android 7.0 Nougat and up). The RunAnywhere SDK 0.20.12 requires `libllama.so` symbols from API 24.
+
+### Which models can I run?
+
+- **Bundled**: `smollm2-360m-instruct-q8_0.gguf` (~368 MB).
+- **Catalog**: Qwen2.5-1.5B, Llama-3.2-1B, Phi-3-mini, Qwen3-30B-A3B (MoE), Granite-4.0-Tiny-MoE, Mixtral-8x7B.
+- **Import**: any GGUF via SAF, plus any OpenAI-compatible remote endpoint (Ktor 3).
+
+### What is federated inference?
+
+You run one job across **multiple phones**. Each phone holds a complete model slice (data-parallel, no tensor-parallel). For Mixture-of-Experts models, each node holds a **subset of experts** and the router dispatches tokens by `expert_id`. See [Cluster model](#cluster-model).
+
+### Is there a web UI?
+
+Each node exposes a tiny HTTP/SSE surface on `:8080` for peers:
+- `GET  /v1/health`
+- `GET  /v1/runtimes`
+- `GET  /v1/model`
+- `POST /v1/infer` (SSE)
+
+### What's the difference between `main` and `dev`?
+
+- **`main`** is frozen until the next tagged release (1.0). It's the safe surface.
+- **`dev`** is the integration branch. It receives `feat/*`, `fix/*`, and `chore/*` PRs and may break between merges. See [Branching strategy](#branching-strategy).
+
+### How do I report a bug or request a feature?
+
+Use [GitHub Issues](https://github.com/sabbirimon/meshlit/issues). The in-app **Feedback** screen (Settings → Feedback) auto-attaches the last 200 log lines.
+
+---
+
 ## Documentation
 
 - **[PROGRESS.md](PROGRESS.md)** — running journal of decisions,
@@ -516,11 +585,13 @@ Pull requests welcome. A few rules of thumb:
 
 Apache 2.0 — see [LICENSE](LICENSE).
 
-RunAnywhere SDK: Apache 2.0,
-<https://github.com/RunanywhereAI/runanywhere-sdks>.
-sherpa-onnx: Apache 2.0,
-<https://github.com/k2-fsa/sherpa-onnx>.
-ONNX Runtime Mobile: MIT,
-<https://github.com/microsoft/onnxruntime>.
-llama.cpp: MIT,
-<https://github.com/ggerganov/llama.cpp>.
+## Acknowledgments
+
+Built on the shoulders of:
+
+- [RunAnywhere SDK](https://github.com/RunanywhereAI/runanywhere-sdks) — Apache 2.0
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) — Apache 2.0
+- [ONNX Runtime Mobile](https://github.com/microsoft/onnxruntime) — MIT
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) — MIT
+- [Hugging Face](https://huggingface.co) — model hosting
+- [Jetpack Compose](https://developer.android.com/jetpack/compose) + [Material 3](https://m3.material.io)
