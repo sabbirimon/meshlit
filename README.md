@@ -57,20 +57,6 @@
 
 ---
 
-## ✨ Highlights
-
-- 🚀 **Multi-runtime inference.** GGUF (llama.cpp), ONNX (Microsoft ORT Mobile), or any OpenAI-compatible remote endpoint. Models bundled, downloaded on demand, or SAF-imported.
-- 🎙️ **Full SDK surface.** Voice (STT + TTS + VAD), structured output + tool calling, dynamic model catalog, vision (VLM + image picker) — all on-device.
-- 🔗 **Federation.** Data-parallel jobs across phones. Optional **Mixture-of-Experts shard federation** — each node holds a subset of experts, the router dispatches tokens.
-- 🌐 **Embedded HTTP/SSE server.** Capability-aware mini-router, `X-Meshlit-Hints` header, SSE streaming, 30 s peer-health cache, forward-and-stream proxy on `:8080`.
-- ⚙️ **Foreground service for inference.** Android `dataSync` FGS with persistent notification, LocalBinder IPC, Android 15+ `onTimeout()` handling.
-- 🧰 **MCP tool server.** Tools registered with the LLM drive Meshlit itself: file ops, device control, peer queries.
-- 🛡️ **Trust tiers.** LAN / temporary-local / WAN each carry a different auth burden. The Devices screen lets the user lock scopes precisely.
-- 📜 **Self-describing runtime.** Opt-in OpenTelemetry tracing (Off / Local / Otel), in-app user manual with intent / use case / configuration / troubleshooting per feature, UI tour overlay fired on first visit, and GitHub-Issues-backed feedback that auto-attaches the last 200 log lines. Network monitor surfaces Meshlit's own HTTP calls plus an opt-in `VpnService`-backed packet capture that writes libpcap-format files for inspection in Wireshark / `tshark` / Termux / PCAPdroid.
-- 🔕 **No telemetry by default.** Every byte leaving the device — including OpenTelemetry exports — is the user's explicit, visible choice. The Tracing toggle in Settings defaults to Off.
-
----
-
 ## Table of contents
 
 - [Why Meshlit?](#why-meshlit)
