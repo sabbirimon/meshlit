@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="Meshlit — Many phones. One mind. (light mode)">
+  <title>Meshlit — Many phones. One mind. (light)</title>
+  <desc>Day-mode hero banner modelled on the meshlit_card_library mockup: pastel lavender → pink → cyan mesh gradient, white wordmark on glass card, four pastel phone nodes.</desc>
+
+  <defs>
+    <!-- Mesh gradient pastel base (card-library palette) -->
+    <linearGradient id="bgLight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#E6E0FF"/>
+      <stop offset="50%"  stop-color="#FFE0EC"/>
+      <stop offset="100%" stop-color="#D7ECFF"/>
+    </linearGradient>
+
+    <!-- Soft mesh blob colors -->
+    <radialGradient id="blobA" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#E6E0FF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#E6E0FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blobB" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#FFE0EC" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#FFE0EC" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blobC" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#D7ECFF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#D7ECFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blobD" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#EEE3FF" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#EEE3FF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Iridescent gradient on the wordmark -->
+    <linearGradient id="mesh" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#7C3AED">
+        <animate attributeName="offset" values="-1;1" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" stop-color="#06B6D4">
+        <animate attributeName="offset" values="-0.5;1.5" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#F472B6">
+        <animate attributeName="offset" values="0;2" dur="6s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+
+    <!-- Phone-node pastel accents -->
+    <linearGradient id="nodeLavender" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#C4B5FD"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="nodeCyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#67E8F9"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="nodePink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FBCFE8"/>
+      <stop offset="100%" stop-color="#F472B6"/>
+    </linearGradient>
+    <linearGradient id="nodePeach" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FED7AA"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+
+    <!-- Soft drop shadow for cards -->
+    <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+      <feOffset dx="0" dy="4" result="off"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.15"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Base canvas: pastel mesh gradient -->
+  <rect width="1280" height="320" fill="url(#bgLight)"/>
+
+  <!-- Animated drifting mesh blobs (Lissajous) -->
+  <g>
+    <circle cx="200" cy="80" r="220" fill="url(#blobA)">
+      <animateTransform attributeName="transform" type="translate"
+        values="0,0; 40,30; 0,0; -30,20; 0,0" dur="14s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1080" cy="60" r="240" fill="url(#blobB)">
+      <animateTransform attributeName="transform" type="translate"
+        values="0,0; -40,30; 0,0; 30,-20; 0,0" dur="16s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="120" cy="260" r="220" fill="url(#blobC)">
+      <animateTransform attributeName="transform" type="translate"
+        values="0,0; 30,-30; 0,0; -20,30; 0,0" dur="18s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1140" cy="260" r="240" fill="url(#blobD)">
+      <animateTransform attributeName="transform" type="translate"
+        values="0,0; -30,-30; 0,0; 20,20; 0,0" dur="20s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Wordmark: MESHLIT with iridescent gradient + letter-spacing breath -->
+  <text x="640" y="120" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
+        font-size="64" font-weight="800" letter-spacing="3"
+        fill="url(#mesh)">MESHLIT
+    <animate attributeName="letter-spacing" values="3;5;3" dur="4s" repeatCount="indefinite"/>
+  </text>
+
+  <!-- Tagline -->
+  <text x="640" y="160" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
+        font-size="20" font-weight="500"
+        fill="#5C5C72">Many phones. <tspan fill="#A78BFA">·</tspan> One mind.
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="3.4s" repeatCount="indefinite"/>
+  </text>
+
+  <!-- Floating glass card backdrop behind nodes -->
+  <rect x="370" y="180" width="540" height="120" rx="22" ry="22"
+        fill="#FFFFFF" fill-opacity="0.65"
+        stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="1"
+        filter="url(#softShadow)"/>
+
+  <!-- Animated dashed data-flow lines from a central core -->
+  <g stroke="#A78BFA" stroke-opacity="0.55" stroke-width="1.6" fill="none">
+    <path d="M640,235 L500,205" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.6s" repeatCount="indefinite"/>
+    </path>
+    <path d="M640,235 L780,205" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M640,235 L460,270" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M640,235 L820,270" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="2s"   repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- Central core (federated inference glow) -->
+  <g filter="url(#softShadow)">
+    <circle cx="640" cy="235" r="22" fill="#7C3AED" opacity="0.9">
+      <animate attributeName="r" values="22;28;22" dur="3.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <circle cx="640" cy="235" r="11" fill="#FFFFFF"/>
+
+  <!-- Four pastel phone nodes (the cluster) -->
+  <g>
+    <g>
+      <circle cx="500" cy="205" r="22" fill="url(#nodeLavender)">
+        <animate attributeName="r" values="22;28;22" dur="2.4s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="500" cy="205" r="9" fill="#FFFFFF" opacity="0.85"/>
+    </g>
+    <g>
+      <circle cx="780" cy="205" r="22" fill="url(#nodeCyan)">
+        <animate attributeName="r" values="22;28;22" dur="2.8s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="780" cy="205" r="9" fill="#FFFFFF" opacity="0.85"/>
+    </g>
+    <g>
+      <circle cx="460" cy="270" r="22" fill="url(#nodePink)">
+        <animate attributeName="r" values="22;28;22" dur="3.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="460" cy="270" r="9" fill="#FFFFFF" opacity="0.85"/>
+    </g>
+    <g>
+      <circle cx="820" cy="270" r="22" fill="url(#nodePeach)">
+        <animate attributeName="r" values="22;28;22" dur="2.6s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="820" cy="270" r="9" fill="#FFFFFF" opacity="0.85"/>
+    </g>
+  </g>
+
+  <!-- Subtle sparkle highlights -->
+  <g fill="#FFFFFF" opacity="0.85">
+    <circle cx="160" cy="60" r="2.2">
+      <animate attributeName="opacity" values="0.2;1;0.2" dur="3.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1140" cy="80" r="1.8">
+      <animate attributeName="opacity" values="1;0.2;1" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="120" cy="270" r="2.4">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1170" cy="260" r="2">
+      <animate attributeName="opacity" values="1;0.2;1" dur="3.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Animated corner ribbon -->
+  <text x="640" y="50" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="600" fill="#8A8AA0" letter-spacing="3">
+    ON-DEVICE AI · FEDERATED INFERENCE · NO TELEMETRY
+  </text>
+</svg>

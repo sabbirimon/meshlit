@@ -2,18 +2,20 @@
 <!-- keywords: on-device AI, federated inference, Android LLM, llama.cpp, ONNX, MCP, RunAnywhere, MoE, Mixture of Experts, edge AI, private AI, no telemetry, local LLM, speech-to-text, TTS, vision language model, federated learning -->
 
 <!-- ANIMATED HERO BANNER -->
+<!-- Two SVG variants so the hero correctly switches with the user's
+     color scheme. The <picture> tag's <source> for dark mode points
+     to the dark hero; the <source> for light mode points to the
+     light hero (pastel card-library aesthetic). The fallback <img>
+     uses the dark hero so visitors on systems without
+     prefers-color-scheme still see Meshlit's brand. All three URLs
+     are absolute so GitHub's image proxy resolves them on first
+     render. -->
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/meshlit-hero.svg">
-    <img alt="Meshlit — Many phones. One mind." src="docs/assets/meshlit-hero.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-hero.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-hero-light.svg">
+    <img alt="Meshlit — Many phones. One mind." src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-hero.svg" width="100%" style="max-width:860px;">
   </picture>
-</p>
-
-<!-- HERO SOURCE (kept as inline fallback so even first-time visitors before the file is committed see the art) -->
-<p align="center">
-  <a href="sabbirimon/meshlit">
-    <img alt="Meshlit — animated federated inference hero banner (light + dark)" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201280%20320%22%20role%3D%22img%22%20aria-label%3D%22Meshlit%20%E2%80%94%20Many%20phones.%20One%20mind.%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230b1020%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%231a1140%22%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22mesh%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%220%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%237c3aed%22%3E%0A%20%20%20%20%20%20%3Canimate%20attributeName%3D%22offset%22%20values%3D%22-1%3B1%22%20dur%3D%226s%22%20repeatCount%3D%22indefinite%22%2F%3E%0A%20%20%20%20%20%20%3C%2Fstop%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%2306b6d4%22%3E%0A%20%20%20%20%20%20%3Canimate%20attributeName%3D%22offset%22%20values%3D%22-0.5%3B1.5%22%20dur%3D%226s%22%20repeatCount%3D%22indefinite%22%2F%3E%0A%20%20%20%20%20%20%3C%2Fstop%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23f472b6%22%3E%0A%20%20%20%20%20%20%3Canimate%20attributeName%3D%22offset%22%20values%3D%220%3B2%22%20dur%3D%226s%22%20repeatCount%3D%22indefinite%22%2F%3E%0A%20%20%20%20%20%20%3C%2Fstop%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3CradialGradient%20id%3D%22core%22%20cx%3D%2250%25%22%20cy%3D%2250%25%22%20r%3D%2250%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23ffffff%22%20stop-opacity%3D%221%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2240%25%22%20stop-color%3D%22%23a78bfa%22%20stop-opacity%3D%220.9%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%237c3aed%22%20stop-opacity%3D%220%22%2F%3E%0A%20%20%20%20%3C%2FradialGradient%3E%0A%20%20%20%20%3Cfilter%20id%3D%22glow%22%20x%3D%22-50%25%22%20y%3D%22-50%25%22%20width%3D%22200%25%22%20height%3D%22200%25%22%3E%0A%20%20%20%20%20%20%3CfeGaussianBlur%20stdDeviation%3D%226%22%20result%3D%22b%22%2F%3E%0A%20%20%20%20%20%20%3CfeMerge%3E%3CfeMergeNode%20in%3D%22b%22%2F%3E%3CfeMergeNode%20in%3D%22SourceGraphic%22%2F%3E%3C%2FfeMerge%3E%0A%20%20%20%20%3C%2Ffilter%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Crect%20width%3D%221280%22%20height%3D%22320%22%20fill%3D%22url(%23bg)%22%2F%3E%0A%20%20%3Cg%20stroke%3D%22%23a78bfa%22%20stroke-opacity%3D%220.35%22%20stroke-width%3D%221.4%22%20fill%3D%22none%22%3E%0A%20%20%20%20%3Cpath%20d%3D%22M640%2C170%20L420%2C90%22%20stroke-dasharray%3D%226%208%22%3E%3Canimate%20attributeName%3D%22stroke-dashoffset%22%20from%3D%220%22%20to%3D%22-28%22%20dur%3D%221.6s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fpath%3E%0A%20%20%20%20%3Cpath%20d%3D%22M640%2C170%20L860%2C90%22%20stroke-dasharray%3D%226%208%22%3E%3Canimate%20attributeName%3D%22stroke-dashoffset%22%20from%3D%220%22%20to%3D%22-28%22%20dur%3D%221.8s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fpath%3E%0A%20%20%20%20%3Cpath%20d%3D%22M640%2C170%20L380%2C210%22%20stroke-dasharray%3D%226%208%22%3E%3Canimate%20attributeName%3D%22stroke-dashoffset%22%20from%3D%220%22%20to%3D%22-28%22%20dur%3D%221.5s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fpath%3E%0A%20%20%20%20%3Cpath%20d%3D%22M640%2C170%20L900%2C210%22%20stroke-dasharray%3D%226%208%22%3E%3Canimate%20attributeName%3D%22stroke-dashoffset%22%20from%3D%220%22%20to%3D%22-28%22%20dur%3D%222s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fpath%3E%0A%20%20%20%20%3Cpath%20d%3D%22M640%2C170%20L640%2C280%22%20stroke-dasharray%3D%226%208%22%3E%3Canimate%20attributeName%3D%22stroke-dashoffset%22%20from%3D%220%22%20to%3D%22-28%22%20dur%3D%221.4s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fpath%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Cg%20filter%3D%22url(%23glow)%22%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22640%22%20cy%3D%22170%22%20r%3D%2270%22%20fill%3D%22url(%23core)%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Cg%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22420%22%20cy%3D%2290%22%20r%3D%2218%22%20fill%3D%22%237c3aed%22%3E%3Canimate%20attributeName%3D%22r%22%20values%3D%2218%3B26%3B18%22%20dur%3D%222.4s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fcircle%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22860%22%20cy%3D%2290%22%20r%3D%2218%22%20fill%3D%22%2306b6d4%22%3E%3Canimate%20attributeName%3D%22r%22%20values%3D%2218%3B26%3B18%22%20dur%3D%222.8s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fcircle%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22380%22%20cy%3D%22210%22%20r%3D%2218%22%20fill%3D%22%2322d3ee%22%3E%3Canimate%20attributeName%3D%22r%22%20values%3D%2218%3B26%3B18%22%20dur%3D%223.2s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fcircle%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22900%22%20cy%3D%22210%22%20r%3D%2218%22%20fill%3D%22%23f472b6%22%3E%3Canimate%20attributeName%3D%22r%22%20values%3D%2218%3B26%3B18%22%20dur%3D%222.6s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fcircle%3E%0A%20%20%20%20%3Ccircle%20cx%3D%22640%22%20cy%3D%22280%22%20r%3D%2218%22%20fill%3D%22%23facc15%22%3E%3Canimate%20attributeName%3D%22r%22%20values%3D%2218%3B26%3B18%22%20dur%3D%223s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Fcircle%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Ctext%20x%3D%22640%22%20y%3D%22182%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Segoe%20UI'%2CInter%2Csans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22700%22%20fill%3D%22%23ffffff%22%3EMeshlit%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22640%22%20y%3D%2256%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Segoe%20UI'%2CInter%2Csans-serif%22%20font-size%3D%2244%22%20font-weight%3D%22800%22%20letter-spacing%3D%222%22%20fill%3D%22url(%23mesh)%22%3EMESHLIT%3Canimate%20attributeName%3D%22letter-spacing%22%20values%3D%222%3B4%3B2%22%20dur%3D%224s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22640%22%20y%3D%22300%22%20text-anchor%3D%22middle%22%20font-family%3D%22'Segoe%20UI'%2CInter%2Csans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22500%22%20fill%3D%22%23e5e7eb%22%3EMany%20phones.%20%C2%B7%20One%20mind.%3C%2Ftext%3E%0A%3C%2Fsvg%3E" width="100%" style="max-width:860px;">
-  </a>
 </p>
 
 # Meshlit — Many phones. One mind.
@@ -120,6 +122,12 @@ Build guide: [app/BUILD_GUIDE.md](app/BUILD_GUIDE.md).
 ---
 
 ## Architecture
+
+<p align="center">
+  <img alt="Meshlit inference architecture — Compose UI → InferenceCoordinator → engine pool → InferenceForegroundService → NanoHTTPD server, with cluster peers on the side."
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-architecture.svg"
+       width="100%" style="max-width:1100px;">
+</p>
 
 ### One-liner
 
@@ -372,6 +380,12 @@ itself needs no changes.
 
 ## Cluster model
 
+<p align="center">
+  <img alt="Federated cluster — 4 phones on the same LAN, each holding a different model slice (A/B/C/D), with token packets flowing along the mesh."
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-cluster.svg"
+       width="100%" style="max-width:1100px;">
+</p>
+
 ### Trust tiers
 
 Every peer has a tier:
@@ -386,6 +400,12 @@ Trust tier drives the firewall: a `LAN` peer can ask for
 `meshlit.peers.health`; a `WAN` peer must hold a Tailscale-bound
 capability. See `core-trust/` for the attestation helpers and
 `core-firewall/` for the rule surface.
+
+<p align="center">
+  <img alt="Trust tiers — concentric LAN (innermost, green), temporary-local (middle, cyan), WAN (outermost, pink) rings around a central Meshlit node, with a per-tier capability legend."
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-trust-tiers.svg"
+       width="100%" style="max-width:1100px;">
+</p>
 
 ### Federation policy
 
@@ -402,6 +422,12 @@ capability. See `core-trust/` for the attestation helpers and
 4. **The network is unreliable.** Phones sleep, lose Wi-Fi, get
    backgrounded, or die. Every job has a timeout, retry, and
    dead-node eviction path.
+
+<p align="center">
+  <img alt="MoE shard federation — the router dispatches tokens to expert shards on different phones. Pixel 7 holds experts 1, 2; iPhone 14 Pro holds experts 3, 4, 5; Galaxy S23 holds experts 6, 7, 8. The route is by expert_id, not tensor-parallel."
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-moe.svg"
+       width="100%" style="max-width:1100px;">
+</p>
 
 ---
 
