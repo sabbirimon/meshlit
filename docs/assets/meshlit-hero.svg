@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="Meshlit — Many phones. One mind.">
+  <title>Meshlit — Many phones. One mind.</title>
+  <desc>Animated federated-inference hero banner: five pulsing phone nodes orbit a glowing core; the MESHLIT wordmark is filled with a flowing rainbow gradient.</desc>
+
+  <defs>
+    <!-- Background gradient (dark, deep space feel) -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="55%" stop-color="#1a1140"/>
+      <stop offset="100%" stop-color="#0b1020"/>
+    </linearGradient>
+
+    <!-- Wordmark rainbow gradient with three animated stop offsets -->
+    <linearGradient id="mesh" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed">
+        <animate attributeName="offset" values="-1;1" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" stop-color="#06b6d4">
+        <animate attributeName="offset" values="-0.5;1.5" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#f472b6">
+        <animate attributeName="offset" values="0;2" dur="6s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+
+    <!-- Central core (federated inference glow) -->
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="40%" stop-color="#a78bfa" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Orbit ring gradient -->
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.7"/>
+      <stop offset="50%" stop-color="#a78bfa" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#f472b6" stop-opacity="0.7"/>
+    </linearGradient>
+
+    <!-- Soft glow filter for the core and wordmark -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Sparkle gradient (small star highlights) -->
+    <radialGradient id="spark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="320" fill="url(#bg)"/>
+
+  <!-- Animated background sparkles -->
+  <g>
+    <circle cx="160" cy="60"  r="2.2" fill="url(#spark)">
+      <animate attributeName="opacity" values="0.2;1;0.2" dur="3.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1140" cy="80" r="1.8" fill="url(#spark)">
+      <animate attributeName="opacity" values="1;0.2;1" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="120" cy="270" r="2.4" fill="url(#spark)">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1170" cy="260" r="2" fill="url(#spark)">
+      <animate attributeName="opacity" values="1;0.2;1" dur="3.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="240" cy="160" r="1.6" fill="url(#spark)">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1040" cy="170" r="1.6" fill="url(#spark)">
+      <animate attributeName="opacity" values="1;0.4;1" dur="2.9s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Rotating orbit ring (slow, anti-clockwise) -->
+  <g transform="translate(640 170)">
+    <ellipse cx="0" cy="0" rx="260" ry="90" fill="none" stroke="url(#ring)" stroke-width="1.2" stroke-dasharray="2 6" opacity="0.6">
+      <animateTransform attributeName="transform" type="rotate" from="0" to="-360" dur="24s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="0" cy="0" rx="220" ry="76" fill="none" stroke="url(#ring)" stroke-width="1" stroke-dasharray="1 8" opacity="0.4">
+      <animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="30s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- Animated dashed data-flow lines from core to each phone node -->
+  <g stroke="#a78bfa" stroke-opacity="0.45" stroke-width="1.4" fill="none">
+    <path d="M640,170 L420,90"  stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.6s" repeatCount="indefinite"/>
+    </path>
+    <path d="M640,170 L860,90"  stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M640,170 L380,210" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M640,170 L900,210" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="2s"   repeatCount="indefinite"/>
+    </path>
+    <path d="M640,170 L640,280" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.4s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- Central glowing core -->
+  <g filter="url(#glow)">
+    <circle cx="640" cy="170" r="62" fill="url(#core)">
+      <animate attributeName="r" values="58;66;58" dur="3.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <circle cx="640" cy="170" r="36" fill="#ffffff" opacity="0.85"/>
+  <circle cx="640" cy="170" r="14" fill="#7c3aed"/>
+
+  <!-- Five pulsing phone nodes (the cluster) -->
+  <g>
+    <g>
+      <circle cx="420" cy="90" r="18" fill="#7c3aed">
+        <animate attributeName="r" values="18;26;18" dur="2.4s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="420" cy="90" r="9" fill="#c4b5fd"/>
+    </g>
+    <g>
+      <circle cx="860" cy="90" r="18" fill="#06b6d4">
+        <animate attributeName="r" values="18;26;18" dur="2.8s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="860" cy="90" r="9" fill="#67e8f9"/>
+    </g>
+    <g>
+      <circle cx="380" cy="210" r="18" fill="#22d3ee">
+        <animate attributeName="r" values="18;26;18" dur="3.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="380" cy="210" r="9" fill="#a5f3fc"/>
+    </g>
+    <g>
+      <circle cx="900" cy="210" r="18" fill="#f472b6">
+        <animate attributeName="r" values="18;26;18" dur="2.6s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="900" cy="210" r="9" fill="#fbcfe8"/>
+    </g>
+    <g>
+      <circle cx="640" cy="280" r="18" fill="#facc15">
+        <animate attributeName="r" values="18;26;18" dur="3s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="640" cy="280" r="9" fill="#fef08a"/>
+    </g>
+  </g>
+
+  <!-- Wordmark + tagline -->
+  <text x="640" y="56" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
+        font-size="44" font-weight="800" letter-spacing="2"
+        fill="url(#mesh)">MESHLIT<animate attributeName="letter-spacing" values="2;4;2" dur="4s" repeatCount="indefinite"/></text>
+
+  <text x="640" y="178" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
+        font-size="14" font-weight="700" fill="#0b1020" opacity="0.9">🧠</text>
+
+  <text x="640" y="300" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
+        font-size="20" font-weight="500" fill="#e5e7eb">
+    Many phones. <tspan fill="#a78bfa">·</tspan> One mind.
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="3.4s" repeatCount="indefinite"/>
+  </text>
+
+  <!-- Animated corner ribbon: 'On-device AI · Federated inference · No telemetry' -->
+  <text x="640" y="84" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="600" fill="#94a3b8" letter-spacing="3">
+    ON-DEVICE AI · FEDERATED INFERENCE · NO TELEMETRY
+  </text>
+</svg>
