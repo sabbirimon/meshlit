@@ -299,6 +299,7 @@ class TerminalSession(
         val stateStr = when (coordState) {
             is CoordinatorState.Idle -> "idle"
             is CoordinatorState.Loading -> "loading ${coordState.modelPath.substringAfterLast('/')}"
+            is CoordinatorState.Starting -> "starting"
             is CoordinatorState.Ready -> "ready (${coordState.model.modelName})"
             is CoordinatorState.Generating -> "generating"
             is CoordinatorState.Error -> "error: ${coordState.message}"

@@ -753,6 +753,7 @@ private fun StatusPill(state: com.meshlit.core.inference.CoordinatorState?) {
     val (label, color) = when (state) {
         is com.meshlit.core.inference.CoordinatorState.Ready -> "Ready" to MaterialTheme.colorScheme.primary
         is com.meshlit.core.inference.CoordinatorState.Loading -> "Loading" to MaterialTheme.colorScheme.tertiary
+        is com.meshlit.core.inference.CoordinatorState.Starting -> "Starting…" to MaterialTheme.colorScheme.tertiary
         is com.meshlit.core.inference.CoordinatorState.Generating -> "Generating" to MaterialTheme.colorScheme.tertiary
         is com.meshlit.core.inference.CoordinatorState.Error -> "Error" to MaterialTheme.colorScheme.error
         else -> "Idle" to MaterialTheme.colorScheme.outline

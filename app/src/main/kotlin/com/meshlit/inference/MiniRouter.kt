@@ -105,6 +105,7 @@ class MiniRouter(
             // gpuLayers count.
             if (hints?.needsGpu == true) false else true
         }
+        is CoordinatorState.Starting -> false
         is CoordinatorState.Generating -> false
         is CoordinatorState.Error -> false
     }
@@ -115,6 +116,7 @@ class MiniRouter(
     ): String = when (state) {
         is CoordinatorState.Idle -> "no-model-loaded"
         is CoordinatorState.Loading -> "loading-model"
+        is CoordinatorState.Starting -> "engine-starting"
         is CoordinatorState.Ready -> if (hints?.needsGpu == true) "needs-gpu-not-local" else "should-not-happen"
         is CoordinatorState.Generating -> "busy"
         is CoordinatorState.Error -> "error:${state.message}"

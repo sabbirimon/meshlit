@@ -161,6 +161,7 @@
     <string name="jobs_status_idle">No model loaded</string>
     <string name="jobs_status_loading">Loading model</string>
     <string name="jobs_status_ready">Ready</string>
+    <string name="jobs_status_starting">Starting engine…</string>
     <string name="jobs_status_generating">Generating</string>
     <string name="jobs_status_error">Inference error</string>
     <string name="jobs_role_you">You</string>

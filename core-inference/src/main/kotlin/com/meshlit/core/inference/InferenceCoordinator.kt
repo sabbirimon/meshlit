@@ -102,6 +102,35 @@ class InferenceCoordinator(
 
     private val inferMutex = Mutex()
 
+    /**
+     * Phase 0.2 — surface "engine is warming up" to the UI before
+     * the suspending `RunAnywhereInferenceEngine.initialize()` call
+     * completes. MeshlitApplication.onCreate calls this right
+     * after kicking off the init on its `appScope`; the UI then
+     * flips from `Idle` to `Starting` so the user sees a spinner
+     * placeholder instead of "no engine" banner.
+     */
+    fun markStarting() {
+        if (_state.value is CoordinatorState.Idle) {
+            _state.value = CoordinatorState.Starting
+        }
+    }
+
+    /**
+     * Phase 0.2 — settle the state to `Idle` after init finishes
+     * (whether it succeeded or failed). When init succeeded the
+     * `engineTag` getter already returns the live runtime tag, and
+     * the next user action will move the state forward via
+     * `loadModel`/`infer`. When init failed we want the UI to
+     * show "Idle" so the no-engine banner reappears (since
+     * `engineTag` is "none").
+     */
+    fun markInitialized() {
+        if (_state.value is CoordinatorState.Starting) {
+            _state.value = CoordinatorState.Idle
+        }
+    }
+
     @Volatile private var currentJob: Job? = null
 
     val engineTag: String get() = when {
@@ -573,6 +602,15 @@ sealed interface CoordinatorState {
      * not have resolved a runtime yet (e.g. before any load).
      */
     data class Loading(val modelPath: String, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState
+    /**
+     * Phase 0.2 — surfaced while the SDK is still being
+     * initialised. `initialize()` is now a suspending call that
+     * runs on the application scope; until it completes the UI
+     * shows a "Starting engine…" placeholder instead of either
+     * "No engine" or "Idle", which previously suggested the app
+     * was broken when it was actually just warming up.
+     */
+    data object Starting : CoordinatorState
     data class Ready(val model: ModelInfo, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState
     data class Generating(val startedAtMs: Long, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState
     data class Error(val message: String, val runtime: RuntimeEngine? = null, val format: FileFormat? = null) : CoordinatorState

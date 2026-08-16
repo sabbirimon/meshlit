@@ -52,6 +52,7 @@ import com.meshlit.setup.FirstRunSetupRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -722,11 +723,24 @@ class MeshlitApplication : Application() {
 
         // Phase 2.x — Register the RunAnywhere SDK at process start
         // so the Jobs screen can route GGUF loads to a real on-device
-        // LLM runtime rather than the placeholder stub. The init call
-        // is idempotent and synchronous; safe to run inline in onCreate
-        // because it just plugs a handful of jars + native libs into
-        // the SDK's static state and does not yet touch the network.
-        inferenceCoordinator.runAnywhereEngine().initialize(this)
+        // LLM runtime rather than the placeholder stub. The init is
+        // now a suspending call (it grabs a Mutex internally and
+        // loads JNI bindings); dispatch it on the app scope so
+        // `onCreate` returns to the looper without blocking. The
+        // init is idempotent so a duplicate launch (e.g. after a
+        // config change) is a no-op.
+        inferenceCoordinator.markStarting()
+        appScope.launch {
+            try {
+                inferenceCoordinator.runAnywhereEngine().initialize(this@MeshlitApplication)
+            } finally {
+                // Settle back to `Idle` regardless of success; the
+                // `engineTag` getter already reports the live runtime
+                // when init succeeded, and the no-engine banner
+                // reappears when it failed.
+                inferenceCoordinator.markInitialized()
+            }
+        }
 
         // Phase Cloud 2 — start the agent capability registrar so the
         // `agent_*` tools flow into `cloudCoordinator.toolRegistry`
@@ -803,37 +817,29 @@ class MeshlitApplication : Application() {
 
         // Phase Observability 1 — apply the persisted tracing mode +
         // OTLP endpoint, then keep the controller in sync with the
-        // settings flows. The lambda-based readers ensure a user
-        // change in Settings → Tracing takes effect on the next
-        // emission without restarting the process.
+        // settings flows. The combine(...) emits a fresh tuple every time
+        // ANY of the three flows (mode / endpoint / headers) changes,
+        // so a single reconfigure is invoked per logical settings
+        // update — not three. The previous design had three
+        // independent collectors racing each other and could emit
+        // partial-state reconfigures when the user changed several
+        // settings in quick succession.
         tracingController.reconfigure(
             mode = settingsRepository.tracingModeNow().toCoreTracingMode(),
             otlpEndpoint = settingsRepository.tracingOtelEndpointNow(),
             otlpHeaders = settingsRepository.tracingOtelHeadersNow(),
         )
         appScope.launch {
-            settingsRepository.tracingModeFlow.collect { mode ->
+            kotlinx.coroutines.flow.combine(
+                settingsRepository.tracingModeFlow,
+                settingsRepository.tracingOtelEndpointFlow,
+                settingsRepository.tracingOtelHeadersFlow,
+            ) { mode, endpoint, headers ->
+                Triple(mode, endpoint, headers)
+            }.collect { (mode, endpoint, headers) ->
                 tracingController.reconfigure(
                     mode = mode.toCoreTracingMode(),
-                    otlpEndpoint = settingsRepository.tracingOtelEndpointNow(),
-                    otlpHeaders = settingsRepository.tracingOtelHeadersNow(),
-                )
-            }
-        }
-        appScope.launch {
-            settingsRepository.tracingOtelEndpointFlow.collect { endpoint ->
-                tracingController.reconfigure(
-                    mode = settingsRepository.tracingModeNow().toCoreTracingMode(),
                     otlpEndpoint = endpoint,
-                    otlpHeaders = settingsRepository.tracingOtelHeadersNow(),
-                )
-            }
-        }
-        appScope.launch {
-            settingsRepository.tracingOtelHeadersFlow.collect { headers ->
-                tracingController.reconfigure(
-                    mode = settingsRepository.tracingModeNow().toCoreTracingMode(),
-                    otlpEndpoint = settingsRepository.tracingOtelEndpointNow(),
                     otlpHeaders = com.meshlit.settings.parseOtelHeaders(headers),
                 )
             }

@@ -26,7 +26,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -116,6 +117,11 @@ class RunAnywhereInferenceEngine(
     @Volatile private var initialized: Boolean = false
     @Volatile private var modelInfo: ModelInfo? = null
     @Volatile private var loadedModelId: String? = null
+    // Single-flight init lock. The SDK's own `LlamaCPP.register()` is
+    // idempotent but acquiring its internal mutex twice in parallel is
+    // wasteful; this serialises the whole init sequence on a single
+    // coroutine mutex so callers can launch from any context.
+    private val initMutex = Mutex()
 
     /**
      * Hook called once at app start, before the first
@@ -123,22 +129,22 @@ class RunAnywhereInferenceEngine(
      * SDK an `Application` context so it can read storage /
      * permissions / ABI.
      *
-     * Safe to call multiple times — the SDK's idempotent guard on
-     * `LlamaCPP.register()` means the second call is a no-op.
+     * Suspend: the SDK's `LlamaCPP.register()` is itself a
+     * suspending call. Callers must launch this on a coroutine
+     * scope (e.g. the application-scoped `CoroutineScope`). Safe
+     * to call multiple times — the [initMutex] serialises and the
+     * early `initialized` check makes subsequent calls a no-op.
      */
-    fun initialize(context: Context) {
+    suspend fun initialize(context: Context) {
         if (initialized) return
-        synchronized(this) {
+        initMutex.withLock {
             if (initialized) return
             try {
                 // `LlamaCPP.register()` is a suspend call in the
                 // 0.20.x line (it grabs a Mutex and waits for the
-                // JNI bindings to load). Block briefly here — the
-                // host calls `initialize` from the Application's
-                // `onCreate`, where we have no surrounding coroutine
-                // and want the SDK ready before the first activity
-                // asks for it.
-                runBlocking { LlamaCPP.register() }
+                // JNI bindings to load). Caller is expected to
+                // dispatch on IO if the JNI load is heavy.
+                LlamaCPP.register()
                 RunAnywhere.initialize(context = context.applicationContext, environment = environment)
                 initialized = true
                 log.info(
