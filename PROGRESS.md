@@ -583,5 +583,82 @@ agent-loop display mode (Live / Step). Persisted in
 
 ---
 
+## Current state — 2026-08-16 (Phase 0.0 — build hygiene)
+
+**This session:**
+
+- **Dirty-tree reconciliation.** 55 stale file deletions + 3
+  in-progress edits cleaned up. The deletions were a half-finished
+  Phase 12.x design-system rollback that the IDE had been
+  progressively applying; 3 unrelated compile errors in `MeshlitApp.kt`
+  and `ModelsScreen.kt` (referencing two of the deleted files) were
+  the only thing keeping `:app:assembleDebug` red. Both repaired at
+  the call-site — no design-system code re-introduced.
+
+- **`io.github.sanchitmonga22:runanywhere-sdk:0.20.12` IS real.**
+  The earlier "fabricated coordinate" warning in the plan-from-0 is
+  incorrect. The artifact is published by RunAnywhere AI
+  (`founders@runanywhere.ai`) and points to
+  `github.com/RunanywhereAI/runanywhere-sdks`. It just doesn't show
+  up in `search.maven.org`'s public index — but it IS on Maven
+  Central proper, and the Gradle cache
+  (`~/.gradle/caches/modules-2/files-2.1/io.github.sanchitmonga22/
+  runanywhere-sdk/0.20.12/`) holds the resolved AARs from
+  Aug 5 2026 onward. The SwapMove commit `5153692` (drop
+  `includeBuild("vendored/runanywhere-kotlin")`, depend on
+  `libs.runanywhere.sdk` from Maven) is **correct and load-bearing**.
+  `0b30726` (the "fix compile errors" follow-up) reconstructs the
+  missing `DownloadProgress`, `HttpStreamDownloader`, `RingTypes`,
+  `LocalLoraTrainer`, and `SettingRows` so the deleted-but-still-
+  referenced pieces stop breaking the build.
+
+- **`ModelsScreen.kt:161` bridge.** The Material 3 fallback
+  `ModelFilterRow(active: String, onSelect: (String) -> Unit, ...)`
+  was added in the dirty tree, but `ModelsScreen` was still passing
+  `ModelPredicates.ActiveFramework` (the enum) and
+  `vm::setActiveFramework`. Bridge added at the call-site:
+  `active = activeFramework.name`,
+  `onSelect = { label -> runCatching {
+  ModelPredicates.ActiveFramework.valueOf(label) }.getOrNull()
+  ?.let(vm::setActiveFramework) }`.
+
+- **`MeshlitApp.kt` dead route removal.** The `composable
+  ("settings/custom-theme") { CustomThemeScreen(...) }` block and
+  its import were left over from the rolled-back Phase 12.2 custom
+  palette editor. Removed both — the design system itself was
+  rolled back, so the route was never reachable from the runtime
+  nav graph.
+
+- **`Theme.kt` microfix.** `remember(effectiveConfig) { ... }`
+  was wrapping a call to the `@Composable fun AnimatedGradient.
+  phaseFor(...)`. Since `phaseFor` is itself `@Composable`,
+  wrapping it in `remember { ... }` (a lambda, not a @Composable)
+  was wrong — replaced with `run { ... }` so the @Composable call
+  works inline. This fix lives in the dirty tree as an unstaged
+  edit and is kept.
+
+**Verification:**
+
+- `./gradlew :app:assembleDebug` → **green** (builds APK).
+- `:core-inference:assembleDebug` → **green** (Maven path resolves
+  `io.github.sanchitmonga22:runanywhere-sdk:0.20.12` cleanly).
+- 58 dirty entries remain in the working tree (55 deletions + 3
+  in-progress edits). The next phase (Phase 0.1, version
+  reconciliation) starts from here.
+
+**Out of scope:**
+
+- Removing the IDE's `fsnotifier` re-application behavior — we
+  work in a `git worktree` to dodge it. Worktree at
+  `.puku-cli/worktrees/phase-0.0` was created from
+  `5153692` and used as the staging area; main checkout
+  received only the two minimal fixes.
+- The 5 untracked work-in-progress Kotlin files
+  (`SettingRows.kt`, `DownloadProgress.kt`,
+  `HttpStreamDownloader.kt`, `LocalLoraTrainer.kt`,
+  `ring/RingTypes.kt`) — kept on disk, not part of this phase.
+
+---
+
 *This file is the journal; `app/BUILD_GUIDE.md` is the spec; `app/CLAUDE.md`
 is the operating manual for the next agent.*
