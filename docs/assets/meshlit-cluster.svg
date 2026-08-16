@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Meshlit cluster topology">
+  <title>Meshlit — Federated cluster topology</title>
+  <desc>Animated diagram: 4 phones in a mesh, each holding a different model slice, with an animated data-token stream flowing between them.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#1a1140"/>
+    </linearGradient>
+
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#7C5CFF" stop-opacity="0.9"/>
+      <stop offset="80%" stop-color="#7C5CFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="iridescent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#22D3EE"/>
+      <stop offset="50%" stop-color="#7C5CFF"/>
+      <stop offset="100%" stop-color="#F472B6"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <style>
+      .label {
+        font-family: 'Segoe UI', Inter, sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+        fill: #E6E9F2;
+      }
+      .sub {
+        font-family: 'Segoe UI', Inter, sans-serif;
+        font-size: 12px;
+        fill: #A3AAC2;
+      }
+      .mono {
+        font-family: 'Menlo', 'Consolas', monospace;
+        font-size: 11px;
+        fill: #A78BFA;
+      }
+      .card {
+        fill: #121829;
+        stroke: rgba(124,92,255,0.35);
+        stroke-width: 1.2;
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="720" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text class="label" x="640" y="40" text-anchor="middle">Meshlit — Federated cluster</text>
+  <text class="sub" x="640" y="62" text-anchor="middle">Data-parallel jobs · MoE expert routing · 4 phones on the same LAN</text>
+
+  <!-- Central purple halo -->
+  <circle cx="640" cy="380" r="240" fill="url(#coreGlow)">
+    <animate attributeName="r" values="220;260;220" dur="4s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Mesh connections (animated dashed lines) -->
+  <g stroke="#A78BFA" stroke-opacity="0.55" stroke-width="2" fill="none">
+    <!-- Full mesh of 4 nodes: 6 edges -->
+    <line x1="220" y1="200" x2="640" y2="380" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.6s" repeatCount="indefinite"/>
+    </line>
+    <line x1="1060" y1="200" x2="640" y2="380" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.8s" repeatCount="indefinite"/>
+    </line>
+    <line x1="220" y1="560" x2="640" y2="380" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="1.5s" repeatCount="indefinite"/>
+    </line>
+    <line x1="1060" y1="560" x2="640" y2="380" stroke-dasharray="6 8">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="2s" repeatCount="indefinite"/>
+    </line>
+    <!-- Side-to-side mesh -->
+    <line x1="220" y1="200" x2="1060" y2="200" stroke-dasharray="6 8" stroke-opacity="0.30">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="2.2s" repeatCount="indefinite"/>
+    </line>
+    <line x1="220" y1="560" x2="1060" y2="560" stroke-dasharray="6 8" stroke-opacity="0.30">
+      <animate attributeName="stroke-dashoffset" from="0"  to="-28" dur="2.4s" repeatCount="indefinite"/>
+    </line>
+  </g>
+
+  <!-- Animated token packets (small bright dots that travel along edges) -->
+  <g>
+    <circle r="4" fill="#22D3EE">
+      <animate attributeName="cx" values="220;640" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="200;380" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="4" fill="#F472B6">
+      <animate attributeName="cx" values="640;1060" dur="2.3s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="380;200" dur="2.3s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="4" fill="#FACC15">
+      <animate attributeName="cx" values="220;640" dur="2.6s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="560;380" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="4" fill="#34D399">
+      <animate attributeName="cx" values="640;1060" dur="2.1s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="380;560" dur="2.1s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Central node: Meshlit cluster core -->
+  <g filter="url(#softGlow)">
+    <circle cx="640" cy="380" r="50" fill="#7C5CFF">
+      <animate attributeName="r" values="48;56;48" dur="3s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <circle cx="640" cy="380" r="28" fill="#FFFFFF"/>
+  <text class="label" x="640" y="386" text-anchor="middle" fill="#0b1020">M</text>
+
+  <!-- Four phones around the cluster -->
+  <g>
+    <!-- Pixel 7 (top-left) -->
+    <rect class="card" x="100" y="120" width="240" height="160" rx="18"/>
+    <circle cx="160" cy="160" r="22" fill="#7C5CFF">
+      <animate attributeName="r" values="20;26;20" dur="2.4s" repeatCount="indefinite"/>
+    </circle>
+    <text class="label" x="194" y="160">Pixel 7</text>
+    <text class="sub"   x="194" y="178">SM-G998U · Tensor G2 · 8GB</text>
+    <text class="mono"  x="120" y="208">Model slice: A</text>
+    <text class="mono"  x="120" y="226">Compute: 0.85 TFLOPS</text>
+    <text class="mono"  x="120" y="244">Battery: 82%  Latency: 12ms</text>
+    <text class="mono"  x="120" y="262">Role: Brain</text>
+  </g>
+
+  <g>
+    <!-- iPhone 14 Pro (top-right) -->
+    <rect class="card" x="940" y="120" width="240" height="160" rx="18"/>
+    <circle cx="1000" cy="160" r="22" fill="#22D3EE">
+      <animate attributeName="r" values="20;26;20" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+    <text class="label" x="1034" y="160">iPhone 14 Pro</text>
+    <text class="sub"   x="1034" y="178">A16 Bionic · 6GB</text>
+    <text class="mono"  x="960" y="208">Model slice: B</text>
+    <text class="mono"  x="960" y="226">Compute: 0.95 TFLOPS</text>
+    <text class="mono"  x="960" y="244">Battery: 75%  Latency: 18ms</text>
+    <text class="mono"  x="960" y="262">Role: Tool</text>
+  </g>
+
+  <g>
+    <!-- Galaxy S23 (bottom-left) -->
+    <rect class="card" x="100" y="480" width="240" height="160" rx="18"/>
+    <circle cx="160" cy="520" r="22" fill="#F472B6">
+      <animate attributeName="r" values="20;26;20" dur="3.2s" repeatCount="indefinite"/>
+    </circle>
+    <text class="label" x="194" y="520">Galaxy S23</text>
+    <text class="sub"   x="194" y="538">Snapdragon 8 Gen 2 · 8GB</text>
+    <text class="mono"  x="120" y="568">Model slice: C</text>
+    <text class="mono"  x="120" y="586">Compute: 0.78 TFLOPS</text>
+    <text class="mono"  x="120" y="604">Battery: 90%  Latency: 10ms</text>
+    <text class="mono"  x="120" y="622">Role: Monitor</text>
+  </g>
+
+  <g>
+    <!-- OnePlus 11 (bottom-right) -->
+    <rect class="card" x="940" y="480" width="240" height="160" rx="18"/>
+    <circle cx="1000" cy="520" r="22" fill="#FACC15">
+      <animate attributeName="r" values="20;26;20" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <text class="label" x="1034" y="520">OnePlus 11</text>
+    <text class="sub"   x="1034" y="538">Snapdragon 8 Gen 2 · 12GB</text>
+    <text class="mono"  x="960" y="568">Model slice: D</text>
+    <text class="mono"  x="960" y="586">Compute: 0.62 TFLOPS</text>
+    <text class="mono"  x="960" y="604">Battery: 78%  Latency: 14ms</text>
+    <text class="mono"  x="960" y="622">Role: Brain (overflow)</text>
+  </g>
+
+  <!-- Footer legend -->
+  <g font-family="'Segoe UI',Inter,Helvetica,sans-serif" font-size="11" fill="#A3AAC2">
+    <text x="640" y="680" text-anchor="middle">Total compute: 3.2 TFLOPS · data-parallel · MoE shard routing enabled · 30s peer-health cache</text>
+  </g>
+</svg>

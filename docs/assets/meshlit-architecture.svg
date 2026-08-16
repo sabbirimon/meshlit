@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Meshlit architecture diagram">
+  <title>Meshlit — Inference architecture</title>
+  <desc>Animated diagram: prompt → Coordinator → engine pool → foreground service → NanoHTTPD server, with cluster peers on the side.</desc>
+
+  <defs>
+    <!-- Background -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#1a1140"/>
+    </linearGradient>
+
+    <!-- Card gradient (glass) -->
+    <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1B2238"/>
+      <stop offset="100%" stop-color="#121829"/>
+    </linearGradient>
+
+    <!-- Iridescent accent -->
+    <linearGradient id="iridescent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#22D3EE">
+        <animate attributeName="offset" values="-1;1" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" stop-color="#7C5CFF">
+        <animate attributeName="offset" values="-0.5;1.5" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#F472B6">
+        <animate attributeName="offset" values="0;2" dur="6s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+
+    <!-- Soft glow filter -->
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Arrow marker -->
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3"
+            orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#A78BFA"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="720" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text x="640" y="40" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,sans-serif"
+        font-size="24" font-weight="700" fill="#E6E9F2">
+    Meshlit — Inference architecture
+  </text>
+  <text x="640" y="62" text-anchor="middle"
+        font-family="'Segoe UI',Inter,Helvetica,sans-serif"
+        font-size="13" font-weight="500" fill="#A3AAC2">
+    Compose UI → InferenceCoordinator → engine pool → foreground service → NanoHTTPD
+  </text>
+
+  <!-- Reusable card-drawing: a styled rounded rect with iridescent border -->
+  <style>
+    .card {
+      fill: url(#cardGrad);
+      stroke: rgba(124, 92, 255, 0.35);
+      stroke-width: 1.2;
+    }
+    .card-active { stroke: #22D3EE; stroke-width: 1.6; }
+    .label {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      fill: #E6E9F2;
+    }
+    .sub {
+      font-family: 'Segoe UI', Inter, sans-serif;
+      font-size: 11px;
+      fill: #A3AAC2;
+    }
+    .mono {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 10px;
+      fill: #A78BFA;
+    }
+  </style>
+
+  <!-- Layer 1: Compose UI (top) -->
+  <rect class="card" x="80" y="100" width="1120" height="80" rx="14"/>
+  <text class="label" x="100" y="130">Compose UI</text>
+  <text class="sub" x="100" y="148">Prompt + collectAsState → token-by-token render</text>
+  <text class="mono" x="100" y="168">JobsScreen · AgentScreen · VoiceScreen · VisionScreen</text>
+
+  <!-- Animated flow arrow -->
+  <line x1="640" y1="180" x2="640" y2="200" stroke="#A78BFA" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="640" cy="190" r="3" fill="#22D3EE">
+    <animate attributeName="cy" values="180;200;180" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Layer 2: InferenceCoordinator (central hub) -->
+  <rect class="card card-active" x="380" y="200" width="520" height="100" rx="14"/>
+  <text class="label" x="400" y="232">InferenceCoordinator (typed state)</text>
+  <text class="sub" x="400" y="252">StateFlow&lt;CoordinatorState&gt; · cancellation · serialization</text>
+  <text class="mono" x="400" y="272">loadModel(file) → generate(prompt) → tokens</text>
+
+  <!-- Side buses -->
+  <line x1="180" y1="250" x2="380" y2="250" stroke="#A78BFA" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
+  <line x1="900" y1="250" x2="1100" y2="250" stroke="#A78BFA" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.5"/>
+
+  <!-- Animated downward arrow -->
+  <line x1="640" y1="300" x2="640" y2="330" stroke="#A78BFA" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="640" cy="315" r="3" fill="#F472B6">
+    <animate attributeName="cy" values="300;330;300" dur="1.6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;1;0.4" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Layer 3: Engine pool (5 engines) -->
+  <text class="label" x="100" y="350">Engine pool — RuntimeEngine</text>
+  <g>
+    <rect class="card" x="80"  y="370" width="200" height="70" rx="12"/>
+    <text class="label" x="92" y="395">LlamaCpp</text>
+    <text class="mono" x="92" y="413">libllama.so · GGUF</text>
+    <circle cx="260" cy="395" r="4" fill="#34D399">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <g>
+    <rect class="card" x="310" y="370" width="200" height="70" rx="12"/>
+    <text class="label" x="322" y="395">ONNX Runtime</text>
+    <text class="mono" x="322" y="413">libonnxruntime.so · ONNX</text>
+    <circle cx="490" cy="395" r="4" fill="#34D399">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <g>
+    <rect class="card" x="540" y="370" width="200" height="70" rx="12"/>
+    <text class="label" x="552" y="395">Voice (sherpa-onnx)</text>
+    <text class="mono" x="552" y="413">STT + TTS + VAD</text>
+    <circle cx="720" cy="395" r="4" fill="#34D399">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <g>
+    <rect class="card" x="770" y="370" width="200" height="70" rx="12"/>
+    <text class="label" x="782" y="395">Vision (VLM)</text>
+    <text class="mono" x="782" y="413">processImageStream</text>
+    <circle cx="950" cy="395" r="4" fill="#FACC15">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  <g>
+    <rect class="card" x="1000" y="370" width="200" height="70" rx="12"/>
+    <text class="label" x="1012" y="395">Remote (Ktor 3)</text>
+    <text class="mono" x="1012" y="413">OpenAI-compatible</text>
+    <circle cx="1180" cy="395" r="4" fill="#22D3EE">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="1.7s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Arrow to foreground service -->
+  <line x1="640" y1="440" x2="640" y2="470" stroke="#A78BFA" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Layer 4: InferenceForegroundService -->
+  <rect class="card" x="380" y="470" width="520" height="80" rx="14"/>
+  <text class="label" x="400" y="500">InferenceForegroundService</text>
+  <text class="sub" x="400" y="520">Android dataSync FGS · LocalBinder IPC · Android 15+ onTimeout()</text>
+  <text class="mono" x="400" y="540">persistent notification · bound by Jobs/Agent</text>
+
+  <!-- Side: Cluster peers -->
+  <rect class="card" x="940" y="470" width="260" height="80" rx="14"/>
+  <text class="label" x="952" y="500">Cluster peers</text>
+  <text class="sub" x="952" y="520">NSD · Wi-Fi Direct · Tailscale · mDNS</text>
+  <text class="mono" x="952" y="540">forwarding-peer registry (DataStore)</text>
+
+  <!-- Animated arrow to NanoHTTPD -->
+  <line x1="640" y1="550" x2="640" y2="580" stroke="#A78BFA" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="640" cy="565" r="3" fill="#7C5CFF">
+    <animate attributeName="cy" values="550;580;550" dur="1.8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;1;0.4" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Layer 5: NanoHTTPD server -->
+  <rect class="card card-active" x="80" y="580" width="1120" height="100" rx="14"/>
+  <text class="label" x="100" y="612">NanoHTTPD inference server  :8080</text>
+  <text class="sub" x="100" y="632">Capability-aware mini-router · SSE streaming · X-Meshlit-Hints · 30s peer-health cache</text>
+
+  <g font-family="'Menlo','Consolas',monospace" font-size="12">
+    <text fill="#22D3EE" x="100"  y="660">GET  /v1/health</text>
+    <text fill="#22D3EE" x="280"  y="660">GET  /v1/runtimes</text>
+    <text fill="#22D3EE" x="470"  y="660">GET  /v1/model</text>
+    <text fill="#F472B6" x="650"  y="660">POST /v1/infer   (SSE)</text>
+    <text fill="#A78BFA" x="900"  y="660">→ forward-and-stream proxy</text>
+  </g>
+</svg>

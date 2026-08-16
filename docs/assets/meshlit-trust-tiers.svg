@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Meshlit trust tiers diagram">
+  <title>Meshlit — Trust tiers (LAN / temporary-local / WAN)</title>
+  <desc>Animated diagram: three concentric trust rings around a central Meshlit node. Each ring has a different auth burden and allowed transports.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#1a1140"/>
+    </linearGradient>
+
+    <radialGradient id="ringInner" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#34D399" stop-opacity="0.10"/>
+      <stop offset="85%" stop-color="#34D399" stop-opacity="0.00"/>
+    </radialGradient>
+    <radialGradient id="ringMid" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#22D3EE" stop-opacity="0.10"/>
+      <stop offset="85%" stop-color="#22D3EE" stop-opacity="0.00"/>
+    </radialGradient>
+    <radialGradient id="ringOuter" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#F472B6" stop-opacity="0.10"/>
+      <stop offset="85%" stop-color="#F472B6" stop-opacity="0.00"/>
+    </radialGradient>
+
+    <linearGradient id="iridescent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"  stop-color="#22D3EE"/>
+      <stop offset="50%" stop-color="#7C5CFF"/>
+      <stop offset="100%" stop-color="#F472B6"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <style>
+      .label {
+        font-family: 'Segoe UI', Inter, sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        fill: #E6E9F2;
+      }
+      .big {
+        font-family: 'Segoe UI', Inter, sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        fill: #E6E9F2;
+      }
+      .sub {
+        font-family: 'Segoe UI', Inter, sans-serif;
+        font-size: 12px;
+        fill: #A3AAC2;
+      }
+      .mono {
+        font-family: 'Menlo','Consolas',monospace;
+        font-size: 11px;
+        fill: #A78BFA;
+      }
+      .badge {
+        fill: #121829;
+        stroke-width: 1.5;
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="720" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text class="big"  x="640" y="48" text-anchor="middle">Trust tiers</text>
+  <text class="sub"  x="640" y="72" text-anchor="middle">Each peer has a tier that gates which MCP tools and transports they can request.</text>
+
+  <!-- Concentric trust rings (animated) -->
+  <g transform="translate(640 410)">
+    <!-- WAN (outermost, pink, slowest) -->
+    <circle r="290" fill="url(#ringOuter)" stroke="#F472B6" stroke-opacity="0.55" stroke-width="1.5" stroke-dasharray="4 6">
+      <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="40s" repeatCount="indefinite"/>
+    </circle>
+    <text class="label" x="0" y="-260" text-anchor="middle">WAN</text>
+    <text class="mono"  x="0" y="-244" text-anchor="middle">Tailscale · WireGuard · relay</text>
+    <text class="sub"   x="0" y="-228" text-anchor="middle">highest auth burden</text>
+
+    <!-- Temporary-local (middle, cyan, medium) -->
+    <circle r="200" fill="url(#ringMid)" stroke="#22D3EE" stroke-opacity="0.55" stroke-width="1.5" stroke-dasharray="3 5">
+      <animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="28s" repeatCount="indefinite"/>
+    </circle>
+    <text class="label" x="0" y="-170" text-anchor="middle">Temporary-local</text>
+    <text class="mono"  x="0" y="-154" text-anchor="middle">QR-paired · 24h expiry · LAN only</text>
+
+    <!-- LAN (innermost, green, fastest) -->
+    <circle r="110" fill="url(#ringInner)" stroke="#34D399" stroke-opacity="0.7" stroke-width="1.8">
+      <animate attributeName="r" values="108;114;108" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <text class="label" x="0" y="-78" text-anchor="middle">LAN</text>
+    <text class="mono"  x="0" y="-62" text-anchor="middle">meshlit:// cert</text>
+
+    <!-- Central Meshlit node -->
+    <circle r="44" fill="#7C5CFF" filter="url(#softGlow)">
+      <animate attributeName="r" values="42;48;42" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle r="22" fill="#FFFFFF"/>
+    <text class="label" x="0" y="6" text-anchor="middle" fill="#0b1020">M</text>
+  </g>
+
+  <!-- Right-side capability legend -->
+  <g transform="translate(960 200)">
+    <rect class="badge" x="0" y="0" width="280" height="380" rx="18" stroke="rgba(124,92,255,0.35)"/>
+    <text class="label" x="20" y="34">Capability → tier gate</text>
+    <text class="sub"  x="20" y="56">The firewall drops a request if the tier doesn't carry the capability token.</text>
+
+    <!-- LAN entry -->
+    <circle cx="32" cy="100" r="8" fill="#34D399"/>
+    <text class="label" x="56" y="106" font-size="13">LAN peers</text>
+    <text class="mono" x="20" y="130">peers.health · files.list</text>
+    <text class="mono" x="20" y="148">shell.run · devices.info</text>
+
+    <!-- Temporary-local entry -->
+    <circle cx="32" cy="190" r="8" fill="#22D3EE"/>
+    <text class="label" x="56" y="196" font-size="13">Temporary-local peers</text>
+    <text class="mono" x="20" y="220">peers.health · files.read</text>
+    <text class="mono" x="20" y="238">mesh.tokens · no shell.run</text>
+
+    <!-- WAN entry -->
+    <circle cx="32" cy="280" r="8" fill="#F472B6"/>
+    <text class="label" x="56" y="286" font-size="13">WAN peers</text>
+    <text class="mono" x="20" y="310">mesh.tokens only</text>
+    <text class="mono" x="20" y="328">requires Tailscape cert</text>
+    <text class="mono" x="20" y="346">no file access by default</text>
+  </g>
+
+  <!-- Left-side peer examples -->
+  <g transform="translate(40 200)">
+    <rect class="badge" x="0" y="0" width="280" height="380" rx="18" stroke="rgba(124,92,255,0.35)"/>
+    <text class="label" x="20" y="34">Connected peers</text>
+
+    <g>
+      <circle cx="40" cy="84" r="14" fill="#7C5CFF"/>
+      <text class="label" x="68" y="80" font-size="13">Pixel 7</text>
+      <text class="mono"  x="68" y="96">192.168.1.42 · LAN</text>
+    </g>
+    <g>
+      <circle cx="40" cy="144" r="14" fill="#22D3EE"/>
+      <text class="label" x="68" y="140" font-size="13">iPhone 14 Pro</text>
+      <text class="mono"  x="68" y="156">QR-paired · 22h left</text>
+    </g>
+    <g>
+      <circle cx="40" cy="204" r="14" fill="#F472B6"/>
+      <text class="label" x="68" y="200" font-size="13">Off-site laptop</text>
+      <text class="mono"  x="68" y="216">100.x.x.x · Tailscale</text>
+    </g>
+    <g>
+      <circle cx="40" cy="264" r="14" fill="#34D399"/>
+      <text class="label" x="68" y="260" font-size="13">Galaxy S23</text>
+      <text class="mono"  x="68" y="276">192.168.1.51 · LAN</text>
+    </g>
+
+    <text class="sub" x="20" y="320">Each peer authenticates with a</text>
+    <text class="sub" x="20" y="338">tier-scoped capability token.</text>
+    <text class="sub" x="20" y="356">Mismatches → 403 with reason.</text>
+  </g>
+
+  <!-- Footer -->
+  <text class="sub" x="640" y="690" text-anchor="middle">See core-trust/ and core-firewall/ for the attestation helpers and rule surface.</text>
+</svg>
