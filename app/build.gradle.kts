@@ -28,6 +28,18 @@ android {
         versionName = "0.2.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Phase 1.0 — NDK ABI filter. The RunAnywhere SDK 0.20.12
+        // ships `libllama.so`, `librunanywhere_jni.so`, and
+        // `libonnxruntime.so` for all four ABIs (arm64-v8a,
+        // armeabi-v7a, x86, x86_64). The Debug APK splits limit
+        // ABI selection further (see `splits { ... }` below);
+        // this `abiFilters` line is the *default* set the AAR
+        // packaging pulls from — it ensures the universal release
+        // APK still has all four ABIs available.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        }
     }
 
     buildTypes {
@@ -40,6 +52,27 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+        }
+    }
+
+    // Phase 1.0 — Lean APK (debug only). The Debug variant ships
+    // per-ABI APKs (arm64-v8a + x86_64) plus a universal variant
+    // for the rare emulator that needs x86. The arm64-v8a-only
+    // build comes in around 50 % of the universal size because
+    // the RunAnywhere SDK bundles four ABI variants of
+    // `libllama.so` (~34 MB × 4 = ~136 MB just for the LLM
+    // runtime). Universal APK stays as a fallback for x86
+    // emulator installs.
+    //
+    // The `release` build is NOT split — it ships all four ABIs
+    // in a single distribution APK so the Play Store can hand the
+    // right one to each device.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = true
         }
     }
 
