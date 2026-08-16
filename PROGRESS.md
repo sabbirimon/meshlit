@@ -770,6 +770,64 @@ agent-loop display mode (Live / Step). Persisted in
   `Context.applicationContext as MeshlitApplication` pattern
   remains for the `ViewModelFactory.create()` sites.
 
+## Current state — 2026-08-16 (Phase 1.0 — Lean APK ABI splits)
+
+**This session:**
+
+- ABI splits enabled on the `:app` module. Debug variant now
+  produces three APKs from one build:
+  - `app-arm64-v8a-debug.apk`: **82 MB** ← target: modern phones.
+  - `app-x86_64-debug.apk`: **89 MB** ← target: x86_64 emulators.
+  - `app-universal-debug.apk`: **191 MB** ← fallback for x86.
+
+- The `release` variant still ships all four ABIs in a single
+  APK so the Play Store can hand the right one to each device —
+  ABI splits are scoped to `debug` only. The `abiFilters` line
+  in `defaultConfig` keeps the universal release APK shipping
+  all four ABIs by default.
+
+- The RunAnywhere SDK 0.20.12 bundles `libllama.so` for arm64-v8a,
+  armeabi-v7a, x86, x86_64 (~34 MB each). Per-ABI splits reduce
+  the on-device install footprint by ~55 % for the common arm64
+  case.
+
+**Verification:**
+
+- `./gradlew :app:assembleDebug` → BUILD SUCCESSFUL.
+- Three APKs under 200 MB each.
+- `ls -lh app/build/outputs/apk/debug/` shows the right shape.
+
+## Current state — 2026-08-16 (Phase 1.1 — hardware validation scripts)
+
+**This session:**
+
+- `scripts/phase1_validation.py` is the smoke test. Polls
+  `/v1/health`, posts `/v1/infer`, parses the SSE stream
+  (`event: token` / `event: done` / `event: error`), and exits
+  0 on a non-empty response within the timeout.
+
+- `scripts/phase1_stress_test.sh` is the full Phase 1 acceptance
+  gate. Two-phone scenario, 10 prompts, mid-job Wi-Fi outage,
+  15-second outage-detection assertion, 30-second recovery
+  assertion, second 10-prompt batch.
+
+- `docs/PHASE1_VALIDATION.md` is the canonical entry point for
+  the hardware validation gate. Documents pre-flight (two phones
+  + USB debugging + slim APK), the smoke test, the stress test,
+  and the pass criteria.
+
+**Not validated yet (sandbox-side execution only):**
+
+- The two scripts need real hardware (two phones with USB
+  debugging) to run end-to-end. The sandbox cannot run the
+  `adb` shell commands. Land the scripts and pivot to the user
+  for the hardware run.
+- Exit-code semantics for `phase1_validation.py` are checked
+  against `urllib.error.URLError` + `TimeoutError`; SSE-format
+  edge cases (multi-line `data:` payloads, keep-alive comments)
+  are not exercised by the sandbox. They're documented in
+  `docs/PHASE1_VALIDATION.md`.
+
 ---
 
 *This file is the journal; `app/BUILD_GUIDE.md` is the spec; `app/CLAUDE.md`
