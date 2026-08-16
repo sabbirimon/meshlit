@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.core.inference.RunAnywhereStructuredEngine
 import com.meshlit.ui.components.MeshlitHeader
 import kotlinx.coroutines.Job
@@ -65,7 +66,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun StructuredScreen(onOpenDrawer: () -> Unit) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
+    val app = koinInject<MeshlitApplication>()
     val engine = app.structuredEngine
     val scope = rememberCoroutineScope()
 

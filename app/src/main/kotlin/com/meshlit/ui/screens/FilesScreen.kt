@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.core.files.FileBrowserController
 import com.meshlit.core.files.FileBrowserEntry
 import com.meshlit.core.files.FileBrowserState
@@ -101,7 +102,7 @@ fun FilesScreen(
     onOpenDrawer: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val app = remember(context) { context.applicationContext as MeshlitApplication }
+    val app = remember { koinInject<MeshlitApplication>() }
 
     // Single controller instance per Composable lifetime. The
     // controller is cheap (just a `MutableStateFlow`) so constructing

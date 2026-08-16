@@ -38,8 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.inference.PeerRegistry
 import kotlinx.coroutines.launch
 
@@ -65,8 +65,7 @@ fun ForwardingPeersScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
-    val registry = app.peerRegistry
+    val registry: com.meshlit.inference.PeerRegistry = koinInject()
     val scope = rememberCoroutineScope()
 
     val peers by registry.peers.collectAsState(initial = emptyList())

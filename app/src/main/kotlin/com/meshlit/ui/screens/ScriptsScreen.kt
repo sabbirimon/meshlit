@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.core.common.ConfigScript
 import com.meshlit.core.common.ScriptEvent
 import com.meshlit.scripts.ConfigScriptRunner
@@ -79,7 +80,7 @@ fun ScriptsScreen(
     onOpenDrawer: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
+    val app = koinInject<MeshlitApplication>()
     val scope = rememberCoroutineScope()
 
     val library = remember { app.scriptLibrary }

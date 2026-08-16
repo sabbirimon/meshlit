@@ -23,6 +23,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.meshlit.MeshlitApplication
 import com.meshlit.agent.AgentScreen
+import com.meshlit.capability.CapabilityTier
+import com.meshlit.di.koinInject
 import com.meshlit.feature.advanced.AdvancedScreen
 import com.meshlit.feature.advanced.GhostyHost
 import com.meshlit.feature.advanced.LocalGhostyHost
@@ -89,8 +91,8 @@ fun MeshlitApp() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val capabilityTier = (context.applicationContext as MeshlitApplication).capabilityTier
-    val app: MeshlitApplication = context.applicationContext as MeshlitApplication
+    val app = koinInject<MeshlitApplication>()
+    val capabilityTier: CapabilityTier = koinInject()
     val mcpHost = remember { AppMcpHost(app) }
     val ghostyHost = remember {
         object : GhostyHost {
@@ -294,12 +296,13 @@ fun MeshlitApp() {
                     AddCustomCloudScreen(
                         onBack = { navController.popBackStack() },
                         onSave = { result: AddCustomCloudResult ->
-                            // Wire to coordinator. For now we just pop
-                            // back; the coordinator will be installed in
-                            // MeshlitApplication and picked up via the
-                            // ViewModel layer in the follow-up phase.
-                            val app = context.applicationContext as MeshlitApplication
-                            app.cloudCoordinator.connect(
+                            // Wire to coordinator. The coordinator is
+                            // resolved through Koin (no application
+                            // cast needed at this site).
+                            val app = koinInject<MeshlitApplication>()
+                            val cloudCoordinator: com.meshlit.core.cloudmcp.CloudMcpCoordinator = koinInject()
+                            val cloudCredentialStore: com.meshlit.core.trust.CloudCredentialStore = koinInject()
+                            cloudCoordinator.connect(
                                 com.meshlit.core.cloudmcp.ProviderConfig(
                                     id = result.name.lowercase().replace(" ", "-"),
                                     name = result.name,
@@ -316,7 +319,7 @@ fun MeshlitApp() {
                                 ),
                             )
                             if (result.token.isNotBlank()) {
-                                app.cloudCredentialStore.put(
+                                cloudCredentialStore.put(
                                     result.name.lowercase(),
                                     "token",
                                     result.token,
@@ -339,16 +342,17 @@ fun MeshlitApp() {
                     ),
                 ) { backStack ->
                     val providerId = backStack.arguments?.getString("providerId")
-                    val app = context.applicationContext as MeshlitApplication
+                    val app = koinInject<MeshlitApplication>()
+                    val settingsRepository: com.meshlit.settings.SettingsRepository = koinInject()
                     AgentTerminalScreen(
                         providerId = providerId,
-                        loopMode = app.settingsRepository.loopModeFlowNow(),
-                        ragMode = app.settingsRepository.ragModeFlowNow(),
+                        loopMode = settingsRepository.loopModeFlowNow(),
+                        ragMode = settingsRepository.ragModeFlowNow(),
                         ragDecision = null,
                         onBack = { navController.popBackStack() },
                         onLoopModeChange = { mode ->
                             app.appScope.launch {
-                                app.settingsRepository.setLoopMode(mode)
+                                settingsRepository.setLoopMode(mode)
                             }
                         },
                         onSend = { prompt ->
@@ -362,18 +366,19 @@ fun MeshlitApp() {
 
                 // Cloud MCP — Settings → RAG / Loop mode.
                 composable("settings/rag") {
-                    val app = context.applicationContext as MeshlitApplication
+                    val app = koinInject<MeshlitApplication>()
+                    val settingsRepository: com.meshlit.settings.SettingsRepository = koinInject()
                     RagSettingsScreen(
-                        initialRagMode = app.settingsRepository.ragModeFlowNow(),
-                        initialLoopMode = app.settingsRepository.loopModeFlowNow(),
+                        initialRagMode = settingsRepository.ragModeFlowNow(),
+                        initialLoopMode = settingsRepository.loopModeFlowNow(),
                         onRagModeChange = { mode ->
                             app.appScope.launch {
-                                app.settingsRepository.setRagMode(mode)
+                                settingsRepository.setRagMode(mode)
                             }
                         },
                         onLoopModeChange = { mode ->
                             app.appScope.launch {
-                                app.settingsRepository.setLoopMode(mode)
+                                settingsRepository.setLoopMode(mode)
                             }
                         },
                     )
@@ -389,9 +394,9 @@ fun MeshlitApp() {
                 }
 
                 composable("help/tour") {
-                    val app = context.applicationContext as MeshlitApplication
+                    val firstRunSetupRepository: com.meshlit.setup.FirstRunSetupRepository = koinInject()
                     UiTourScreen(
-                        firstRun = app.firstRunSetupRepository,
+                        firstRun = firstRunSetupRepository,
                         onBack = { navController.popBackStack() },
                         onOpenDestination = { dest ->
                             navController.navigate(dest.route) {
@@ -402,9 +407,9 @@ fun MeshlitApp() {
                 }
 
                 composable("help/feedback") {
-                    val app = context.applicationContext as MeshlitApplication
+                    val settingsRepository: com.meshlit.settings.SettingsRepository = koinInject()
                     FeedbackScreen(
-                        settings = app.settingsRepository,
+                        settings = settingsRepository,
                         onBack = { navController.popBackStack() },
                     )
                 }

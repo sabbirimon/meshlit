@@ -58,6 +58,7 @@ import androidx.core.content.FileProvider
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
 import com.meshlit.core.inference.RunAnywhereVoiceEngine
+import com.meshlit.di.koinInject
 import com.meshlit.permissions.PermissionHelper
 import com.meshlit.ui.components.MeshlitHeader
 import kotlinx.coroutines.Job
@@ -96,7 +97,7 @@ import java.util.Locale
 @Composable
 fun VoiceScreen(onOpenDrawer: () -> Unit) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
+    val app = koinInject<MeshlitApplication>()
     val engine = app.voiceEngine
     val scope = rememberCoroutineScope()
 

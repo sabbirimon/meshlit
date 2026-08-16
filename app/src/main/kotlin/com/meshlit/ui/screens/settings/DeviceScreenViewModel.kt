@@ -1,6 +1,5 @@
 package com.meshlit.ui.screens.settings
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -10,6 +9,7 @@ import com.meshlit.MeshlitApplication
 import com.meshlit.core.common.DeviceProfile
 import com.meshlit.core.common.GpuFamily
 import com.meshlit.core.common.SocFamily
+import com.meshlit.di.koinInject
 import com.meshlit.settings.DeviceProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -109,16 +109,16 @@ class DeviceScreenViewModel(
     }
 
     companion object {
-        fun factory(app: MeshlitApplication): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 DeviceScreenViewModel(
-                    deviceProfileRepository = app.deviceProfileRepository,
-                    application = app,
+                    deviceProfileRepository = koinInject<DeviceProfileRepository>(),
+                    application = koinInject<MeshlitApplication>(),
                 )
             }
         }
     }
 }
 
-fun deviceScreenViewModelFactory(context: Context): ViewModelProvider.Factory =
-    DeviceScreenViewModel.factory(context.applicationContext as MeshlitApplication)
+fun deviceScreenViewModelFactory(): ViewModelProvider.Factory =
+    DeviceScreenViewModel.factory()

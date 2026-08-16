@@ -36,11 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 
 /**
  * Top-level Settings hub. Shows a search bar at the top and a list
@@ -61,8 +60,7 @@ fun SettingsScreen(
     onOpenDrawer: () -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
-    val context = LocalContext.current
-    val tier = (context.applicationContext as MeshlitApplication).capabilityTier
+    val tier: com.meshlit.capability.CapabilityTier = koinInject()
 
     Scaffold(
         topBar = {

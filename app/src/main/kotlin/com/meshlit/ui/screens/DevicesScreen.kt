@@ -90,8 +90,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
-import com.meshlit.core.common.CapabilityTier
 import com.meshlit.core.common.EndpointProtocol
+import com.meshlit.di.koinInject
 import com.meshlit.core.common.NetworkScope
 import com.meshlit.core.common.RemoteEndpoint
 import com.meshlit.devices.QrCodec
@@ -140,8 +140,8 @@ fun DevicesScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val app = remember(context) { context.applicationContext as MeshlitApplication }
-    val settings = remember { app.settingsRepository }
+    val app = remember { koinInject<MeshlitApplication>() }
+    val settings = remember { koinInject<com.meshlit.settings.SettingsRepository>() }
     val scope = rememberCoroutineScope()
 
     val scopeValue by settings.networkScopeFlow.collectAsState(initial = NetworkScope.Default)

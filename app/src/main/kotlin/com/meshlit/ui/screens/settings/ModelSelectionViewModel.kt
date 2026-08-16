@@ -13,8 +13,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.meshlit.MeshlitApplication
 import com.meshlit.core.common.MeshlitError
+import com.meshlit.di.koinInject
 import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.inference.InferenceCoordinator
 import com.meshlit.core.inference.LlmModelChangeInterlock
@@ -376,11 +376,12 @@ private const val RUNANYWHERE_SCHEME = "runanywhere:"
 @Composable
 fun rememberModelSelectionState(): Pair<ModelSelectionViewModel, ModelSelectionState> {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
+    val inferenceCoordinator: com.meshlit.core.inference.InferenceCoordinator = koinInject()
+    val appScope: kotlinx.coroutines.CoroutineScope = koinInject()
     val viewModel: ModelSelectionViewModel = viewModel(
         factory = ModelSelectionViewModel.Factory(
-            coordinator = app.inferenceCoordinator,
-            appScope = app.appScope,
+            coordinator = inferenceCoordinator,
+            appScope = appScope,
         ),
     )
     LaunchedEffect(Unit) { viewModel.attachContext(context) }

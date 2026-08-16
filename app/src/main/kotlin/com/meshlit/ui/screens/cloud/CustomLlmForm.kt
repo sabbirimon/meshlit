@@ -31,8 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.core.cloudmcp.llm.OpenAiCompatibleLlmClient
 import com.meshlit.core.cloudmcp.llm.OpenAiCompatibleModel
 import com.meshlit.settings.SettingsRepository
@@ -62,9 +62,7 @@ fun CustomLlmForm(
     onBack: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val app = remember(context) {
-        context.applicationContext as MeshlitApplication
-    }
+    val cloudCredentialStore: com.meshlit.core.trust.CloudCredentialStore = koinInject()
     val scope = rememberCoroutineScope()
     val endpoint by settingsRepository.llmEndpointFlow
         .collectAsState(initial = OpenAiCompatibleModel.DEFAULT_BASE_URL)
@@ -194,7 +192,7 @@ fun CustomLlmForm(
                             // the encrypted-store key so users can
                             // re-test an existing endpoint.
                             val effectiveKey = apiKeyInput.ifBlank {
-                                app.cloudCredentialStore.get(providerIdInput, "token")
+                                cloudCredentialStore.get(providerIdInput, "token")
                                     ?: ""
                             }
                             val client = OpenAiCompatibleLlmClient(

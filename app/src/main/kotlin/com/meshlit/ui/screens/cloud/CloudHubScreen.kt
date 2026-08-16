@@ -22,12 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.meshlit.MeshlitApplication
 import com.meshlit.R
 import com.meshlit.core.cloudmcp.ProviderConfig
 import com.meshlit.core.cloudmcp.ProviderKind
 import com.meshlit.core.cloudmcp.rag.RagDecision
 import com.meshlit.core.cloudmcp.rag.RagMode
+import com.meshlit.di.koinInject
 import com.meshlit.ui.components.MeshlitHeader
 import com.meshlit.ui.components.RaListCard
 import com.meshlit.ui.theme.RaBrandStrip
@@ -53,8 +53,7 @@ fun CloudHubScreen(
     ragDecision: RagDecision? = null,
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
-    val tier = app.capabilityTier
+    val tier: com.meshlit.capability.CapabilityTier = koinInject()
 
     Scaffold(
         topBar = {

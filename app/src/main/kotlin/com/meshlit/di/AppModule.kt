@@ -1,9 +1,10 @@
 package com.meshlit.di
 
-import com.meshlit.agent.AgentCapabilityRegistrar
+import com.meshlit.MeshlitApplication
 import com.meshlit.core.trust.DeviceTrustPolicy
 import com.meshlit.core.trust.TrustTier
 import com.meshlit.inference.PeerHealthCache
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -14,27 +15,30 @@ import org.koin.dsl.module
  * `PeerHealthCache` setter, the FGS-shared mutable refs).
  *
  * Most `:core-*` singletons live in `coreModule`. This module
- * contains the cross-package bindings and the `KoinComponent`
- * mixin that the existing UI / FGS callsites hang off of.
+ * contains the cross-package bindings and the application-singleton
+ * reference.
  *
- * The conventional access pattern from consumers (e.g.
- * `MainActivity`, `InferenceForegroundService`) is:
+ * Phase 0.3 — consumers resolve the application instance through
+ * Koin instead of casting `applicationContext as MeshlitApplication`:
  *
  * ```
- * private val app: MeshlitApplication = applicationContext as MeshlitApplication
- * val coordinator = app.inferenceCoordinator
+ * val app: MeshlitApplication = koinInject()
+ * val coordinator = koinInject<InferenceCoordinator>()
  * ```
  *
- * To preserve the existing call signature without forcing every
- * consumer onto `getKoin().get()`, `MeshlitApplication` is now a
- * `KoinComponent`: every `by lazy { ... }` field was replaced
- * with a `getKoin().get<...>()`-backed property. The compiled
- * attribute names (`inferenceCoordinator`, `peerRegistry`,
- * `cloudCoordinator`, etc.) are unchanged, so the call sites
- * do not need to move.
+ * The single cast that remains lives here in the DI definition site.
  */
 
 val appModule = module {
+
+    // -----------------------------------------------------------------
+    // The Application instance itself — bound so call sites can
+    // resolve `MeshlitApplication` via `koinInject<MeshlitApplication>()`
+    // without the `applicationContext as MeshlitApplication` cast.
+    // The cast lives here (the DI definition site) rather than at
+    // every consumer.
+    // -----------------------------------------------------------------
+    single { androidContext() as MeshlitApplication }
 
     // -----------------------------------------------------------------
     // FGS-bound volatile singletons — initially null, populated by

@@ -15,6 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.capability.CapabilityTier
+import com.meshlit.di.koinInject
 import kotlinx.coroutines.launch
 
 /**
@@ -33,7 +35,8 @@ fun TerminalScreen(
     onOpenDrawer: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val app = remember(context) { context.applicationContext as MeshlitApplication }
+    val app = remember { koinInject<MeshlitApplication>() }
+    val capabilityTier: CapabilityTier = koinInject()
     val session = remember { TerminalSession(context, app) }
     val scope = rememberCoroutineScope()
 
@@ -45,7 +48,7 @@ fun TerminalScreen(
             com.meshlit.ui.components.MeshlitHeader(
                 title = stringResource(R.string.terminal_title),
                 subtitle = stringResource(R.string.terminal_subtitle),
-                tier = app.capabilityTier,
+                tier = capabilityTier,
                 active = active,
                 onOpenDrawer = onOpenDrawer,
             )

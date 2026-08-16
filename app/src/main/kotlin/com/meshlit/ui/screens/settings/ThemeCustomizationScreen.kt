@@ -86,7 +86,7 @@ fun ThemeCustomizationScreen(
 ) {
     val context = LocalContext.current
     val viewModel: ThemeSettingsViewModel = viewModel(
-        factory = themeSettingsViewModelFactory(context),
+        factory = themeSettingsViewModelFactory(),
     )
     val config by viewModel.config.collectAsState()
     var showResetDialog by remember { mutableStateOf(false) }

@@ -1,13 +1,12 @@
 package com.meshlit.ui.screens.settings
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.meshlit.MeshlitApplication
+import com.meshlit.di.koinInject
 import com.meshlit.settings.SettingsRepository
 import com.meshlit.ui.theme.AccentHue
 import com.meshlit.ui.theme.BasePalette
@@ -76,13 +75,13 @@ class ThemeSettingsViewModel(
     }
 
     companion object {
-        fun factory(app: MeshlitApplication): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                ThemeSettingsViewModel(repository = app.settingsRepository)
+                ThemeSettingsViewModel(repository = koinInject<SettingsRepository>())
             }
         }
     }
 }
 
-fun themeSettingsViewModelFactory(context: Context): ViewModelProvider.Factory =
-    ThemeSettingsViewModel.factory(context.applicationContext as MeshlitApplication)
+fun themeSettingsViewModelFactory(): ViewModelProvider.Factory =
+    ThemeSettingsViewModel.factory()

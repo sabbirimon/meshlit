@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
 import com.meshlit.core.inference.net.MetricsSnapshot
+import com.meshlit.di.koinInject
 import com.meshlit.inference.PeerHealthCache
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -77,7 +78,7 @@ fun MetricsScreen(
     onOpenDrawer: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
+    val app = koinInject<MeshlitApplication>()
     val scope = rememberCoroutineScope()
 
     val registry = remember { app.metricsRegistry }

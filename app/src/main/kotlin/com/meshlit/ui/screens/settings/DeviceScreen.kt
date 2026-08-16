@@ -39,8 +39,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.core.common.DesktopBackend
 import com.meshlit.core.common.DeviceProfile
 import com.meshlit.core.common.EffectiveDeviceInfo
@@ -72,12 +72,11 @@ fun DeviceScreen(
     @Suppress("UNUSED_PARAMETER") onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
     val viewModel: DeviceScreenViewModel = viewModel(
-        factory = deviceScreenViewModelFactory(context),
+        factory = deviceScreenViewModelFactory(),
     )
     val state by viewModel.state.collectAsState()
-    val host = app.hostOSDetection
+    val host = koinInject<com.meshlit.core.common.HostOSDetection>()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

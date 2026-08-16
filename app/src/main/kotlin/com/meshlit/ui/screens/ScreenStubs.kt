@@ -24,6 +24,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
+import com.meshlit.capability.CapabilityTier
+import com.meshlit.di.koinInject
 import com.meshlit.ui.nav.TopLevelDestination
 
 /**
@@ -39,6 +41,7 @@ fun ScreenStub(
     onOpenDrawer: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val tier: CapabilityTier = koinInject()
     val title = titleOverride ?: stringResource(id = titleResFor(destination))
     val body = bodyOverride ?: stringResource(id = bodyResFor(destination))
     Scaffold(
@@ -46,7 +49,7 @@ fun ScreenStub(
             com.meshlit.ui.components.MeshlitHeader(
                 title = title,
                 subtitle = null,
-                tier = (context.applicationContext as MeshlitApplication).capabilityTier,
+                tier = tier,
                 active = false,
                 onOpenDrawer = onOpenDrawer,
             )

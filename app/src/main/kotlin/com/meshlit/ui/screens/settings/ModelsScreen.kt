@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.capability.CapabilityBadge
 import com.meshlit.core.inference.ModelPredicates
 import com.meshlit.core.inference.RuntimeRegistry
@@ -71,7 +72,7 @@ import androidx.compose.material.icons.filled.Storage
 @Composable
 fun ModelsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val app = remember(context) { context.applicationContext as MeshlitApplication }
+    val app = koinInject<MeshlitApplication>()
     val scope = rememberCoroutineScope()
 
     val (vm, state) = rememberModelSelectionState()

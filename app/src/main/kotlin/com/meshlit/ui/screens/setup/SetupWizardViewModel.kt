@@ -12,6 +12,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.meshlit.MeshlitApplication
 import com.meshlit.core.common.OemProfile
 import com.meshlit.core.common.OemSetupStep
+import com.meshlit.di.koinInject
 import com.meshlit.setup.FirstRunSetupRepository
 import com.meshlit.setup.SetupCoordinator
 import kotlinx.coroutines.flow.SharingStarted
@@ -103,15 +104,16 @@ class SetupWizardViewModel(
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     companion object {
-        fun factory(app: MeshlitApplication): ViewModelProvider.Factory = viewModelFactory {
+        fun factory(): ViewModelProvider.Factory = viewModelFactory {
             initializer {
+                val app = koinInject<MeshlitApplication>()
                 SetupWizardViewModel(
                     applicationContext = app.applicationContext,
-                    repository = app.firstRunSetupRepository,
+                    repository = koinInject<FirstRunSetupRepository>(),
                     coordinator = SetupCoordinator(
                         context = app.applicationContext,
-                        repository = app.firstRunSetupRepository,
-                        notificationCenter = app.notificationCenter,
+                        repository = koinInject(),
+                        notificationCenter = koinInject(),
                     ),
                     profile = app.oemDetection.profile,
                 )
@@ -121,4 +123,4 @@ class SetupWizardViewModel(
 }
 
 fun setupWizardViewModelFactory(context: Context): ViewModelProvider.Factory =
-    SetupWizardViewModel.factory(context.applicationContext as MeshlitApplication)
+    SetupWizardViewModel.factory()

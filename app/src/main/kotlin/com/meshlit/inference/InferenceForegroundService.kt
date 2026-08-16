@@ -10,11 +10,14 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.meshlit.LocalPeerCapabilitiesResolver
 import com.meshlit.MainActivity
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.capability.CapabilityTier
 import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.logger
+import com.meshlit.core.firewall.MeshlitFirewall
 import com.meshlit.core.inference.BackendHints
 import com.meshlit.core.inference.FinishReason
 import com.meshlit.core.inference.GpuBackend
@@ -28,7 +31,9 @@ import com.meshlit.core.inference.net.InferenceHttpServer
 import com.meshlit.core.inference.net.RawTcpActivationServer
 import com.meshlit.notifications.NotificationCategory
 import com.meshlit.notifications.NotificationCenter
+import com.meshlit.di.koinInject
 import com.meshlit.inference.ForwardingProxy
+import com.meshlit.inference.MetricsRegistry
 import com.meshlit.inference.MiniRouter
 import com.meshlit.inference.PeerHealthCache
 import com.meshlit.inference.PeerRegistry
@@ -43,6 +48,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.koin.core.context.GlobalContext
 
 /**
  * Foreground service that hosts the [InferenceCoordinator]. The
@@ -66,7 +72,7 @@ import kotlinx.coroutines.runBlocking
  *  - coordinator.infer(...) from a caller → state → Generating → Ready
  *  - stopService(...) → onDestroy → coordinator.unloadModel, scope cancel
  */
-class InferenceForegroundService : Service() {
+class InferenceForegroundService : Service(), org.koin.core.component.KoinComponent {
 
     private val log = logger("InferenceForegroundService")
 
@@ -98,14 +104,14 @@ class InferenceForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        val app = applicationContext as MeshlitApplication
+        val koin = getKoin()
         // Use the app-scoped coordinator so every screen (Agent, Jobs,
         // Terminal) talks to the same engine instance. Previously this
         // service created a private coordinator which meant AgentSession
         // never saw the loaded model — it would always surface the
         // "No model loaded" error.
-        coordinator = app.inferenceCoordinator
-        notificationCenter = app.notificationCenter
+        coordinator = koin.get<InferenceCoordinator>()
+        notificationCenter = koin.get<NotificationCenter>()
         startInForeground()
         log.info("fgs.create", "InferenceForegroundService created")
 
@@ -115,22 +121,25 @@ class InferenceForegroundService : Service() {
         // Models → Re-extract does it manually). The bundled-model
         // path is the default; a custom path the user has saved in
         // Settings wins when present.
-        scope.launch { autoLoadDefaultModel(app) }
+        scope.launch { autoLoadDefaultModel() }
 
         // Build router stack and start the embedded HTTP/SSE server.
         try {
-            val reg = app.peerRegistry
+            val reg = koin.get<PeerRegistry>()
+            val metrics = koin.get<MetricsRegistry>()
+            val capabilityTier = { koin.get<CapabilityTier>() }
+            val meshFirewall = koin.get<MeshlitFirewall>()
             val factory = RemoteInferenceClientFactory()
             val cache = PeerHealthCache(factory)
             val router = MiniRouter(coordinator, reg, cache)
             val proxy = ForwardingProxy(factory)
             val enricher = HealthEnricherImpl(
-                tierProvider = { app.capabilityTier },
+                tierProvider = capabilityTier,
                 engineTagProvider = { coordinator.engineTag },
-                metrics = app.metricsRegistry,
+                metrics = metrics,
                 loadedShardsProvider = { coordinator.loadedShards.value },
             )
-            val jobLifecycle = AppJobLifecycle(app.metricsRegistry)
+            val jobLifecycle = AppJobLifecycle(metrics)
             // Wire the cluster-shard surface on the same port. ShardServer
             // answers /v1/capabilities, /v1/shards/{modelId}/{shardId},
             // /v1/manifest/{modelId}; peer's InferenceHttpServer.serve()
@@ -138,7 +147,7 @@ class InferenceForegroundService : Service() {
             // coordinator mutex.
             val shard = ShardServer(
                 filesDir = filesDir,
-                selfCapabilities = { app.selfCapabilities() },
+                selfCapabilities = { koin.get<LocalPeerCapabilitiesResolver>().resolve() },
             )
             val server = InferenceHttpServer(
                 coordinator = coordinator,
@@ -153,15 +162,15 @@ class InferenceForegroundService : Service() {
                 // can't even probe `/v1/capabilities` until the
                 // user has explicitly opened the port they're
                 // trying to hit.
-                meshFirewall = app.meshlitFirewall,
+                meshFirewall = meshFirewall,
             )
             peerRegistry = reg
             clientFactory = factory
             healthCache = cache
-            app.setActivePeerHealthCache(cache)
+            koin.get<MeshlitApplication>().setActivePeerHealthCache(cache)
             miniRouter = router
             forwardingProxy = proxy
-            metricsRegistry = app.metricsRegistry
+            metricsRegistry = metrics
             shardServer = shard
             httpServer = server
             // Raw-TCP activation transport server. Inbound channels
@@ -221,7 +230,7 @@ class InferenceForegroundService : Service() {
                 // model + origin + version so when the user asks
                 // "what's your name / identify yourself" the
                 // model answers with the right tags.
-                val fgsApp = applicationContext as MeshlitApplication
+                val fgsApp = koinInject<MeshlitApplication>()
                 val seededPrompt = buildIdentitySeededPrompt(
                     app = fgsApp,
                     coordinator = coordinator,
@@ -296,7 +305,8 @@ class InferenceForegroundService : Service() {
      * up — the user can hit Re-extract from Models or the Jobs Send
      * button will re-evaluate next time.
      */
-    private suspend fun autoLoadDefaultModel(app: MeshlitApplication) {
+    private suspend fun autoLoadDefaultModel() {
+        val app = koinInject<MeshlitApplication>()
         val settingsRepo: SettingsRepository = app.settingsRepository
         val customPath = settingsRepo.customModelPathSync()
         if (customPath.isNullOrBlank()) {

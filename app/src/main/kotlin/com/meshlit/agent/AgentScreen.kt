@@ -93,8 +93,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
-import com.meshlit.core.common.CapabilityTier
+import com.meshlit.capability.CapabilityTier
 import com.meshlit.core.inference.CoordinatorState
+import com.meshlit.core.inference.InferenceCoordinator
+import com.meshlit.di.koinInject
+import com.meshlit.settings.SettingsRepository
 import com.meshlit.ui.components.MeshlitHeader
 import com.meshlit.ui.components.LlmOutputActions
 import kotlinx.coroutines.launch
@@ -135,7 +138,10 @@ fun AgentScreen(
     onOpenModels: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val app = remember(context) { context.applicationContext as MeshlitApplication }
+    val app = remember { koinInject<MeshlitApplication>() }
+    val inferenceCoordinator: InferenceCoordinator = koinInject()
+    val settingsRepository: SettingsRepository = koinInject()
+    val tier: CapabilityTier = koinInject()
     val scope = rememberCoroutineScope()
     val session = remember { AgentSession(context, app, scope) }
 
@@ -143,9 +149,8 @@ fun AgentScreen(
     val isRunning by session.isRunning.collectAsState()
     val mode by session.mode.collectAsState()
     val autopilot by session.autopilot.collectAsState()
-    val coordinatorState by app.inferenceCoordinator.state.collectAsState()
-    val customPath by app.settingsRepository.customModelPathFlow.collectAsState(initial = "")
-    val tier = app.capabilityTier
+    val coordinatorState by inferenceCoordinator.state.collectAsState()
+    val customPath by settingsRepository.customModelPathFlow.collectAsState(initial = "")
 
     // Identity snapshot — recomputes whenever the coordinator's
     // state flips (model loaded / unloaded / engine swap) so the
@@ -161,7 +166,7 @@ fun AgentScreen(
     // imported-models directory + the active custom-path override.
     val models by produceState(initialValue = emptyList<ModelEntry>(), app) {
         val bundled = app.bundledModelPath()
-        val imported = java.io.File(app.filesDir, "imported-models")
+        val imported = java.io.File(context.filesDir, "imported-models")
             .takeIf { it.exists() }
             ?.listFiles { f -> f.isFile && f.name.endsWith(".gguf", true) }
             ?.toList()

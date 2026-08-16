@@ -51,10 +51,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.meshlit.MeshlitApplication
 import com.meshlit.R
 import com.meshlit.core.inference.RunAnywhereCatalogEngine
 import com.meshlit.core.inference.RunAnywhereInferenceEngine
+import com.meshlit.di.koinInject
 import com.meshlit.inference.buildLoadModelIntent
 import com.meshlit.ui.components.MeshlitHeader
 import com.meshlit.ui.components.RaGetButton
@@ -86,8 +86,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun CatalogScreen(onOpenDrawer: () -> Unit) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
-    val engine = app.catalogEngine
+    val engine = koinInject<RunAnywhereCatalogEngine>()
+    val capabilityTier: com.meshlit.capability.CapabilityTier = koinInject()
+    val inferenceCoordinator: com.meshlit.core.inference.InferenceCoordinator = koinInject()
     val scope = rememberCoroutineScope()
 
     val entries by engine.entries.collectAsState()
@@ -120,7 +121,7 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
             MeshlitHeader(
                 title = stringResource(R.string.catalog_title),
                 subtitle = stringResource(R.string.catalog_subtitle),
-                tier = app.capabilityTier,
+                tier = capabilityTier,
                 active = refreshInFlight,
                 onOpenDrawer = onOpenDrawer,
             )
@@ -214,7 +215,7 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
                                 onGet = {
                                     downloads = downloads + (entry.id to DownloadStatus.Running(0))
                                     scope.launch {
-                                        val llm = app.inferenceCoordinator.runAnywhereEngine()
+                                        val llm = inferenceCoordinator.runAnywhereEngine()
                                         runCatching {
                                             llm.downloadModelById(entry.id).collect { progress ->
                                                 val pct = (progress.progress * 100f).toInt()
@@ -266,7 +267,7 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
                 // Re-fire the same download path used by the row.
                 downloads = downloads + (entry.id to DownloadStatus.Running(0))
                 scope.launch {
-                    val llm = app.inferenceCoordinator.runAnywhereEngine()
+                    val llm = inferenceCoordinator.runAnywhereEngine()
                     runCatching {
                         llm.downloadModelById(entry.id).collect { progress ->
                             val pct = (progress.progress * 100f).toInt().coerceIn(0, 100)

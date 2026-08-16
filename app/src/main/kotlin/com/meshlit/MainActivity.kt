@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.meshlit.core.common.logger
+import com.meshlit.di.koinInject
 import com.meshlit.permissions.PermissionHelper
 import com.meshlit.setup.SetupCoordinator
 import com.meshlit.ui.MeshlitApp
@@ -46,7 +47,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         log.info("activity.create", "MainActivity onCreate")
-        val app = application as MeshlitApplication
 
         // Trigger the POST_NOTIFICATIONS runtime permission on API 33+.
         // On older devices the manifest grant is sufficient; the helper
@@ -62,24 +62,34 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
+            // Phase 0.3 — resolve Koin singletons directly rather than
+            // casting `application as MeshlitApplication`. The
+            // Compose tree is built inside a KoinAndroidContext
+            // (see MeshlitApp.kt), so `koinInject()` works here.
+            val settingsRepository: com.meshlit.settings.SettingsRepository = koinInject()
+            val oemDetection: com.meshlit.core.common.OemDetectionResult = koinInject()
+            val firstRunSetupRepository: com.meshlit.setup.FirstRunSetupRepository = koinInject()
+            val notificationCenter: com.meshlit.notifications.NotificationCenter = koinInject()
+            val appContext = applicationContext
+
             // Bind the live theme config to the CompositionLocal so any
             // control in the Settings panel that writes to DataStore
             // immediately re-themes the whole UI.
-            val config by app.settingsRepository.flow.collectAsState(
+            val config by settingsRepository.flow.collectAsState(
                 initial = com.meshlit.ui.theme.MeshlitThemeConfig.Default,
             )
             CompositionLocalProvider(LocalMeshlitThemeConfig provides config) {
                 MeshlitTheme {
                     val navController = rememberNavController()
-                    val profile = app.oemDetection.profile
+                    val profile = oemDetection.profile
                     val coordinator = remember {
                         SetupCoordinator(
-                            context = app.applicationContext,
-                            repository = app.firstRunSetupRepository,
-                            notificationCenter = app.notificationCenter,
+                            context = appContext,
+                            repository = firstRunSetupRepository,
+                            notificationCenter = notificationCenter,
                         )
                     }
-                    val firstRunDone by app.firstRunSetupRepository.hasFinishedFirstRunFlow
+                    val firstRunDone by firstRunSetupRepository.hasFinishedFirstRunFlow
                         .collectAsState(initial = false)
                     var showWizard by remember { mutableStateOf(false) }
 

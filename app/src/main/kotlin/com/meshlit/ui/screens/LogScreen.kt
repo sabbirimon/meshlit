@@ -56,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
+import com.meshlit.di.koinInject
 import com.meshlit.core.observability.LogSource
 import com.meshlit.observability.LogBuffer
 import com.meshlit.observability.LogExporter
@@ -88,7 +89,7 @@ fun LogScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as MeshlitApplication
+    val app = koinInject<MeshlitApplication>()
     val scope = rememberCoroutineScope()
     val buffer = remember { app.logBuffer }
     val entries by buffer.entries.collectAsState()
@@ -446,7 +447,7 @@ private suspend fun exportLogs(
     entries: List<LogBuffer.Entry>,
     format: LogExporter.Format,
 ) {
-    val app = context.applicationContext as MeshlitApplication
+    val app = koinInject<MeshlitApplication>()
     val outFile = withContext(Dispatchers.IO) {
         val dir = File(app.cacheDir, "logs")
         LogExporter.export(
