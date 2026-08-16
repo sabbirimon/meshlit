@@ -117,6 +117,14 @@ fun DeviceScreen(
 
         item {
             Spacer(Modifier.height(8.dp))
+            GpuPanelSummaryCard(
+                effective = state.profile.effective,
+                detection = state.profile.detection,
+            )
+        }
+
+        item {
+            Spacer(Modifier.height(8.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -363,6 +371,51 @@ private fun FactRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Compact GPU + eGPU summary shown on the Device screen. The
+ * detailed view (Vulkan toggle, re-probe, link-speed graph) lives
+ * under Advanced → Devices → GPU panel; this card is just a teaser.
+ */
+@Composable
+private fun GpuPanelSummaryCard(
+    effective: EffectiveDeviceInfo,
+    detection: com.meshlit.core.common.DetectedDeviceInfo,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = "GPU panel",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = "Backend: ${effective.gpuFamily.displayName}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            effective.externalGpu?.let { egpu ->
+                Text(
+                    text = "eGPU: ${egpu.displayName} · ${egpu.kind.displayName} · ${egpu.transport.displayName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } ?: Text(
+                text = "No external GPU detected. Plug an RTX 4060 / RX 8000 over USB-C for desktop-class compute.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "ABI: ${detection.primaryAbi}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

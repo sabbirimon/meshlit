@@ -10,11 +10,18 @@ import com.meshlit.core.common.MeshlitResult
  *
  * Implementations:
  *  - [LlamaCppInferenceEngine] — production. Calls `libmeshlit_inference.so`
- *    via JNI. Not yet linked; Phase 1 ships [JvmStubInferenceEngine] so
- *    the upper layers can be exercised end-to-end without native code.
- *  - [JvmStubInferenceEngine] — development. Echoes the prompt back as
- *    a stream of tokens. Lets UI / orchestration / service plumbing be
- *    tested on any device, including emulators without NDK support.
+ *    via JNI. Not yet linked; the upper layers exercise the coordinator
+ *    with [RunAnywhereInferenceEngine] until the .so lands.
+ *  - [RunAnywhereInferenceEngine] — production. Wraps the vendored
+ *    RunAnywhere SDK (libllama.so + JNI). The coordinator dispatches
+ *    GGUF loads here whenever the SDK has been initialised at app start.
+ *  - [OnnxOrtInferenceEngine] — production. Wraps ONNX Runtime Mobile
+ *    for `.onnx` files. Optional; only loaded when the user picks an
+ *    ONNX model.
+ *  - [NoOpInferenceEngine] — last-resort fallback. Returns a typed
+ *    `MeshlitError.Native("no_engine_for_format:...")` on every
+ *    operation so a load never silently produces a placeholder reply.
+ *    Used when no native runtime came up at process start.
  *
  * Lifecycle:
  *  - [loadModel] / [unloadModel] are called by [com.meshlit.core.inference.InferenceCoordinator]

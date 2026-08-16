@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -12,6 +13,7 @@ dependencies {
     implementation(project(":core-common"))
     implementation(project(":core-trust"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.core.ktx)
 
     testImplementation(libs.junit)

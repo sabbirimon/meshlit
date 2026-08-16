@@ -2,8 +2,12 @@ package com.meshlit.core.inference.net
 
 import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.logger
+import com.meshlit.core.firewall.Decision
+import com.meshlit.core.firewall.PortFilter
+import com.meshlit.core.firewall.RateLimiter
 import com.meshlit.core.inference.InferenceCoordinator
 import com.meshlit.core.inference.InferenceRequest
+import com.meshlit.core.inference.cluster.ShardServer
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +57,30 @@ class InferenceHttpServer(
     private val lifecycle: JobLifecycle = JobLifecycle.NOOP,
     private val port: Int = DEFAULT_PORT,
     private val host: String = DEFAULT_HOST,
+    /**
+     * Optional cluster-shard surface (`/v1/capabilities`, `/v1/shards/...`,
+     * `/v1/manifest/{modelId}`). When non-null, shard traffic is answered
+     * before the local inference routes so it never takes the coordinator
+     * mutex. Default null preserves the pre-cluster ABI for tests / unit
+     * harnesses that don't spin up a cluster.
+     */
+    private val shardServer: ShardServer? = null,
+    /**
+     * Phase 3 firewall gate. Optional so existing unit tests and local-only
+     * harnesses preserve their pre-Phase-3 behaviour. Production injects
+     * a [PortFilter] from the FGS.
+     */
+    private val portFilter: PortFilter? = null,
+    /**
+     * Port + protocol firewall. Phase 3's "who" (CIDR / node / tier) is
+     * followed by the port layer's "what" (which port this peer may
+     * hit on this device, which protocols). Production injects a
+     * [com.meshlit.core.firewall.MeshlitFirewall] from the FGS;
+     * null preserves the pre-port-layer behaviour for unit tests.
+     */
+    private val meshFirewall: com.meshlit.core.firewall.MeshlitFirewall? = null,
+    /** Per-IP token bucket. Null disables rate limiting for tests. */
+    private val rateLimiter: RateLimiter? = null,
 ) {
 
     private val log = logger("InferenceHttpServer")
@@ -101,6 +129,97 @@ class InferenceHttpServer(
         override fun serve(session: IHTTPSession): Response {
             val uri = session.uri.trimEnd('/').ifBlank { "/" }
             return try {
+                // Port-layer firewall — runs before the phase-3 gate so
+                // an unauthorized peer can't even probe `/v1/capabilities`
+                // until the user has opened the port they're trying to hit.
+                // The verdict is the same `Decision` enum so the rest of
+                // the gate stays a single switch.
+                if (meshFirewall != null) {
+                    val remoteAddr = session.remoteIpAddress ?: ""
+                    val portDecision = meshFirewall.decideLegacy(
+                        remoteAddr = remoteAddr,
+                        remoteNodeId = null,
+                        remoteTier = null,
+                        port = port,
+                        protocol = com.meshlit.core.firewall.PortProtocol.TCP,
+                        direction = com.meshlit.core.firewall.PortDirection.INBOUND,
+                    )
+                    if (portDecision == Decision.DENY) {
+                        log.warn(
+                            "http.portfw.deny",
+                            "port-layer firewall denied request",
+                            mapOf("ip" to remoteAddr, "port" to port),
+                        )
+                        return newFixedLengthResponse(
+                            Response.Status.FORBIDDEN,
+                            MIME_PLAINTEXT,
+                            "port-blocked",
+                        )
+                    }
+                }
+                // Phase 3 — firewall + rate-limit gate. Both are
+                // optional in the constructor so the pre-Phase-3 unit
+                // tests still build; production wires them in via the
+                // FGS. The gate runs BEFORE the shard/capabilities
+                // route map so an unpaired peer can't even probe
+                // `/v1/capabilities` until they're paired.
+                if (portFilter != null) {
+                    val remoteAddr = session.remoteIpAddress ?: ""
+                    val decision = portFilter.decide(
+                        remoteAddr = remoteAddr,
+                        remoteNodeId = null, // TODO: forward tier via header once the handshake ships
+                        remoteTier = null,
+                        endpointPath = uri,
+                    )
+                    when (decision) {
+                        Decision.DENY -> {
+                            log.warn(
+                                "http.firewall.deny",
+                                "firewall denied request",
+                                mapOf("ip" to remoteAddr, "path" to uri),
+                            )
+                            return newFixedLengthResponse(
+                                Response.Status.FORBIDDEN,
+                                MIME_PLAINTEXT,
+                                "forbidden",
+                            )
+                        }
+                        Decision.QUARANTINE -> {
+                            // Only let the request through to read-only
+                            // endpoints — anything in WRITE should have
+                            // already returned DENY from PortFilter.
+                            // Here we additionally rate-limit harder.
+                            if (rateLimiter != null && !rateLimiter.tryAcquire(remoteAddr, "sandboxed")) {
+                                return newFixedLengthResponse(
+                                    Response.Status.SERVICE_UNAVAILABLE,
+                                    MIME_PLAINTEXT,
+                                    "rate-limited",
+                                )
+                            }
+                        }
+                        Decision.ALLOW -> {
+                            if (rateLimiter != null) {
+                                val endpointKey = when {
+                                    uri.endsWith("/v1/infer") -> "infer"
+                                    else -> "other"
+                                }
+                                if (!rateLimiter.tryAcquire(remoteAddr, endpointKey)) {
+                                    return newFixedLengthResponse(
+                                        Response.Status.SERVICE_UNAVAILABLE,
+                                        MIME_PLAINTEXT,
+                                        "rate-limited",
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                // Cluster-shard traffic is dispatched before the
+                // coordinator mutex path. ShardServer.route() returns
+                // null when the URI isn't shard-related (e.g. /v1/infer
+                // for the local engine) so it acts as a pure pre-filter.
+                val shardResp = shardServer?.route(session)
+                if (shardResp != null) return shardResp
                 when {
                     session.method == Method.GET && uri.endsWith("/v1/health") -> handleHealth()
                     session.method == Method.GET && uri.endsWith("/v1/model") -> handleModel()

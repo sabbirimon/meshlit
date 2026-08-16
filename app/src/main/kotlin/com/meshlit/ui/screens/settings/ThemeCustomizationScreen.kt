@@ -327,6 +327,7 @@ private fun palettePreviewColor(palette: BasePalette): Color = when (palette) {
     BasePalette.COFFEE -> Color(0xFF2A2018)
     BasePalette.OCEAN -> Color(0xFF122530)
     BasePalette.FOREST -> Color(0xFF162520)
+    BasePalette.RUNANYWHERE -> Color(0xFF0A0A0A)
 }
 
 @Composable

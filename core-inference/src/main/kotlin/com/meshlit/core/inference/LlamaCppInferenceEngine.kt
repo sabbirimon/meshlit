@@ -7,7 +7,7 @@ import com.meshlit.core.common.logger
  * Production inference engine — wraps llama.cpp via JNI.
  *
  * Phase 1 ships this as a stub that fails to load and forces the
- * coordinator to fall back to [JvmStubInferenceEngine]. The actual
+ * coordinator to fall back to [NoOpInferenceEngine]. The actual
  * JNI surface is defined here as `external` declarations so the
  * project compiles before the native code is built.
  *
@@ -71,7 +71,7 @@ class LlamaCppInferenceEngine : InferenceEngine {
     override suspend fun infer(request: InferenceRequest): MeshlitResult<InferenceResult> {
         return MeshlitResult.Failure(
             com.meshlit.core.common.MeshlitError.Native(
-                "llama.cpp not yet implemented — use JvmStubInferenceEngine",
+                "llama.cpp JNI surface declared but not yet implemented",
             ),
         )
     }
@@ -79,7 +79,7 @@ class LlamaCppInferenceEngine : InferenceEngine {
     /**
      * Try to load `libmeshlit_inference.so`. Returns true on
      * success. The coordinator calls this at startup; on failure
-     * it picks [JvmStubInferenceEngine] instead.
+     * it picks [NoOpInferenceEngine] instead.
      */
     fun loadNativeLibrary(): Boolean {
         return try {
@@ -90,7 +90,7 @@ class LlamaCppInferenceEngine : InferenceEngine {
             true
         } catch (t: Throwable) {
             nativeReady = false
-            log.warn("llama.cpp.missing", "native library missing — falling back to stub: ${t.message}")
+            log.warn("llama.cpp.missing", "native library missing — no engine available: ${t.message}")
             false
         }
     }

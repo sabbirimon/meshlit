@@ -3,37 +3,35 @@ package com.meshlit.ui.nav
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.meshlit.R
 
 /**
- * The top-level destinations in the Meshlit app. Phase 0 ships all
- * nine as empty-state stubs — subsequent phases fill them in.
+ * The top-level destinations in the Meshlit app.
  *
- * Agent is the "Claude-Code-like" surface: full chat, code generation,
- * autopilot (model-iterates-on-its-own), and a system prompt tuned
- * for code/agentic work. Slots in between Jobs and Models since
- * it's a more interactive counterpart to the prompt box on Jobs.
+ * The bottom bar shows all 9 user-facing entry points in display order:
+ * Devices, Jobs, Voice, Agent, Models, Structured, Vision, Catalog,
+ * Advanced. Each one has a dedicated tab — the user wants the model
+ * categories (Voice / Chat / Vision / etc.) separated on the bar the
+ * way the legacy build did, not bundled into the Advanced hub.
  *
- * Phase 2.x — added four SDK-backed screens at the end of the nav:
- *
- *  - Voice     — STT/TTS/VAD via sherpa-onnx. Needs mic permission.
- *  - JSON      — structured output + tool calling against the LLM.
- *  - Catalog   — dynamic model registry served by `RunAnywhere.listModels`.
- *  - Vision    — image picker → VLM prompt. Currently surfaces a
- *                "backend not yet shipped" card until the VLM AAR lands.
+ * The drawer (hamburger) still surfaces the power-user pages: Files,
+ * Sessions, Cluster, Network, Users, Settings.
  */
 enum class TopLevelDestination(
     val route: String,
@@ -44,6 +42,7 @@ enum class TopLevelDestination(
     Jobs("jobs", R.string.screen_jobs, Icons.Outlined.GraphicEq),
     Agent("agent", R.string.screen_agent, Icons.Outlined.AutoAwesome),
     Models("models", R.string.screen_models, Icons.Outlined.Memory),
+    Advanced("advanced", R.string.screen_advanced, Icons.Outlined.Tune),
     Files("files", R.string.screen_files, Icons.Outlined.Folder),
     Sessions("sessions", R.string.screen_sessions, Icons.Outlined.Terminal),
     Cluster("cluster", R.string.screen_cluster, Icons.Outlined.GridView),
@@ -53,9 +52,29 @@ enum class TopLevelDestination(
     Voice("voice", R.string.screen_voice, Icons.Outlined.Mic),
     Structured("structured", R.string.screen_structured, Icons.Outlined.Code),
     Catalog("catalog", R.string.screen_catalog, Icons.Outlined.CloudDownload),
-    Vision("vision", R.string.screen_vision, Icons.Outlined.Image);
+    Vision("vision", R.string.screen_vision, Icons.Outlined.Image),
+    Cloud("cloud", R.string.screen_cloud, Icons.Outlined.Cloud),
+    Help("help", R.string.screen_help, Icons.Outlined.HelpOutline);
 
     companion object {
+        /**
+         * Bottom-bar destinations in display order. The bar is
+         * horizontally scrollable so all 9 fit even on narrow
+         * phones. Voice / Structured / Vision / Catalog get their own
+         * tabs so model categories stay separated like the legacy
+         * build. Cloud + Help live in the drawer — 10 items in a
+         * bottom bar is unusable; users reach them via swipe + tap,
+         * which keeps all model categories visible without scroll.
+         */
+        val barItems: List<TopLevelDestination> = listOf(
+            Devices, Jobs, Voice, Agent, Models, Structured, Vision, Catalog, Advanced,
+        )
+        /** Drawer-only destinations. */
+        val drawerOnly: List<TopLevelDestination> = listOf(
+            Files, Sessions, Cluster, Network, Users, Settings, Cloud, Help,
+        )
+        /** Every destination — kept for callers that want the
+         *  complete graph. */
         val all: List<TopLevelDestination> = entries.toList()
     }
 }

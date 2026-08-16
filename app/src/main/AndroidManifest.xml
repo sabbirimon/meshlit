@@ -64,6 +64,31 @@
          permission list rather than the SDK's. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Phase Cloud 2 — on-device agent capabilities. Each permission is
+         optional (the user must opt in via Settings → Cloud → Agent
+         capabilities AND grant the runtime permission). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <!-- Battery-optimization whitelist. Required so the
+         ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS intent (fired by the
+         first-run setup wizard on Samsung One UI / MIUI / EMUI) doesn't
+         get rejected. Google Play policy restricts the auto-request flow
+         to VoIP / alarm-clock apps; we surface it as a manual action. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Phase Observability 1 — opt-in device-wide packet capture.
+         BIND_VPN_SERVICE is a signature permission: only the system can
+         bind the in-app MeshlitCaptureVpnService. The user enables it
+         via the system "VPN profile" consent dialog fired from the
+         Network monitor screen. Same gating as Tasker / NetGuard.
+         FOREGROUND_SERVICE_SPECIAL_USE is the official FGS type for the
+         packet-capture foreground service on Android 14+ (API 34). -->
+    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <queries>
         <!-- For Wi-Fi Direct / Aware discovery on supporting devices. -->
         <intent>
@@ -101,6 +126,50 @@
             android:name=".inference.InferenceForegroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Cloud-MCP SSE foreground service — keeps the agentic
+             loop's connection alive when the user backgrounds the
+             app. Same type as the inference FGS. -->
+        <service
+            android:name="com.meshlit.core.cloudmcp.CloudMcpForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- AccessibilityService for the Android in-app automation
+             tools (app_list / app_open / app_click / app_type / etc.).
+             The user opts in via Settings → Cloud → Android automation,
+             which routes to Settings.ACTION_ACCESSIBILITY_SETTINGS.
+             Behind feature.cloud.android_automation — when the flag is
+             off, the agent loop never exposes the app_* tools and the
+             service is a no-op. The service uses Google's official
+             Android UI Automator library for cross-app node traversal
+             (same library the Espresso / Compose-test framework uses). -->
+        <service
+            android:name="com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Phase Observability 1 — opt-in device-wide packet capture
+             (the network monitor). The user enables this via the
+             Network monitor screen; the system prompts for the VPN
+             profile consent. ForegroundServiceType=specialUse is the
+             only allowed type for in-app capture on Android 14+; we
+             declare the explanation in res/xml/vpn_service_config.xml. -->
+        <service
+            android:name="com.meshlit.core.net.capture.MeshlitCaptureVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
 
         <!-- Phase M.4 — share exported log files via FileProvider so the
              receiver app can read them. Authority must match the one used

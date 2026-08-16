@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -193,19 +194,13 @@ private fun AdvancedToggle(
 
 @Composable
 private fun SettingRow(match: SettingsSearchIndex.Match) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = match.label,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = match.description,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-    }
+    com.meshlit.ui.components.RaNavRow(
+        leadingIcon = Icons.Filled.ChevronRight,
+        title = match.label,
+        subtitle = match.description,
+        onClick = { /* match click is wired by the parent category list */ },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 private data class Section(

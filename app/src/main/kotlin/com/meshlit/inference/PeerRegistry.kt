@@ -4,10 +4,26 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.meshlit.core.common.NodeId
 import com.meshlit.core.common.logger
+import com.meshlit.core.trust.TrustStore
+import com.meshlit.core.trust.TrustTier
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+
+/**
+ * A forwarding peer enriched with the Phase-3 trust posture.
+ *
+ * [nodeId] is the stable device id when the pairing handshake has
+ * completed. For pre-Phase-3 / manually-added peers it falls back to
+ * the IPv4 string so callers can still correlate the health cache.
+ */
+data class TrustedPeer(
+    val nodeId: String,
+    val ip: String,
+    val tier: TrustTier,
+)
 
 /**
  * DataStore-backed list of forwarding peers (IPs).
@@ -16,6 +32,11 @@ import kotlinx.coroutines.flow.map
  * is small (single digits in v1) so a flat string is simpler than
  * a JSON blob. Reads emit the current value as a [Flow] so the
  * embedded server's router can react to changes without restart.
+ *
+ * Phase 3 keeps the original [peers] API for source compatibility and
+ * adds [trustedPeers] / [trustedSnapshot]. The latter consult the
+ * injected [TrustStore]. Existing call sites can migrate one at a
+ * time; no DataStore schema change is needed.
  *
  * Validation:
  *  - [add] trims whitespace, rejects empties, validates IPv4-ish
@@ -27,17 +48,38 @@ import kotlinx.coroutines.flow.map
  * process); the FGS creates the registry in `onCreate` and exposes
  * the [peers] flow to the router and the Settings UI.
  */
-class PeerRegistry(private val dataStore: DataStore<Preferences>) {
+class PeerRegistry(
+    private val dataStore: DataStore<Preferences>,
+    private val trustStore: TrustStore? = null,
+) {
 
     private val log = logger("PeerRegistry")
 
-    /** Reactive list of peers. Emits the current value, then on every change. */
+    /** Reactive list of peer IPv4 addresses (legacy / UI API). */
     val peers: Flow<List<String>> = dataStore.data.map { prefs ->
         parseList(prefs[KEY])
     }
 
-    /** Snapshot read (not flow). Returns the current list synchronously by taking the first emission. */
+    /**
+     * Reactive list enriched with trust tiers. Pre-Phase-3 peers have
+     * no policy and are therefore LOCAL_SANDBOXED (least privilege).
+     */
+    val trustedPeers: Flow<List<TrustedPeer>> = peers.map { ips ->
+        ips.map { ip ->
+            val policy = trustStore?.policyFor(NodeId(ip))
+            TrustedPeer(
+                nodeId = policy?.nodeId ?: ip,
+                ip = ip,
+                tier = policy?.trustTier ?: TrustTier.LOCAL_SANDBOXED,
+            )
+        }
+    }
+
+    /** Snapshot read (not flow). Returns the current legacy IP list. */
     suspend fun snapshot(): List<String> = peers.first()
+
+    /** Snapshot read with Phase-3 trust posture. */
+    suspend fun trustedSnapshot(): List<TrustedPeer> = trustedPeers.first()
 
     /** Add an IP. Dedups, validates, no-op on bad input. */
     suspend fun add(ip: String) {
