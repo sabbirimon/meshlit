@@ -58,6 +58,7 @@ import com.meshlit.R
 fun CategoryScreen(
     category: SettingsCategory,
     onBack: () -> Unit,
+    onOpenCustomPalette: (() -> Unit)? = null,
 ) {
     // rememberSaveable keeps the toggle state across config changes
     // and process death. Per-category via the route key so toggling
@@ -124,7 +125,10 @@ fun CategoryScreen(
             // Specialize per category — only Theme and Device are wired today.
             when (category) {
                 SettingsCategory.THEME -> {
-                    ThemeCustomizationScreen(advanced = advanced)
+                    ThemeCustomizationScreen(
+                        advanced = advanced,
+                        onOpenCustomPalette = onOpenCustomPalette,
+                    )
                     return@Column
                 }
                 SettingsCategory.DEVICE -> {

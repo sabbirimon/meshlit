@@ -57,6 +57,7 @@ import com.meshlit.ui.screens.help.HelpHubScreen
 import com.meshlit.ui.screens.help.UiTourScreen
 import com.meshlit.ui.screens.help.UserManualScreen
 import com.meshlit.ui.screens.network.NetworkMonitorScreen
+import com.meshlit.ui.screens.settings.CustomThemeScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
 import com.meshlit.ui.screens.settings.RagSettingsScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
@@ -254,8 +255,18 @@ fun MeshlitApp() {
                         CategoryScreen(
                             category = cat,
                             onBack = { navController.popBackStack() },
+                            onOpenCustomPalette = {
+                                navController.navigate("settings/custom-theme")
+                            },
                         )
                     }
+                }
+
+                // Phase 12.2 — custom color palette editor.
+                composable("settings/custom-theme") {
+                    CustomThemeScreen(
+                        onBack = { navController.popBackStack() },
+                    )
                 }
 
                 // Forwarding peers screen (Phase 1, task #7).

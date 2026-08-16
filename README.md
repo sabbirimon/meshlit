@@ -79,6 +79,7 @@
 - [Why Meshlit?](#why-meshlit)
 - [Highlights](#-highlights)
 - [Status](#status)
+- [Compatibility & recommended devices](docs/DEVICE_COMPATIBILITY.md)
 - [Architecture](#architecture)
 - [Project layout](#project-layout)
 - [Build](#build)
@@ -118,6 +119,14 @@ inlines four on-device backends wired to real Compose UI:
 
 Detailed progress journal: [PROGRESS.md](PROGRESS.md).
 Build guide: [app/BUILD_GUIDE.md](app/BUILD_GUIDE.md).
+
+> **Will it run on my device?** See [docs/DEVICE_COMPATIBILITY.md](docs/DEVICE_COMPATIBILITY.md)
+> for the per-tier compatibility chart (Tier A/B/C/D for phones, E/F for
+> tablets, G/H/I for PC/Mac/Linux, J for servers), what features unlock
+> on each tier, and known issues per device class. The 0.2.x debug build
+> is **feature-complete but still in active development** — UI may glitch
+> on low-end devices, and the cluster handover is best-effort. Please
+> report what you find.
 
 ---
 

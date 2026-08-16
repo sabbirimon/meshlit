@@ -56,6 +56,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.meshlit.R
 import com.meshlit.ui.theme.AccentHue
 import com.meshlit.ui.theme.BasePalette
+import com.meshlit.ui.theme.CustomPalette
 import com.meshlit.ui.theme.MeshlitThemeConfig
 import com.meshlit.ui.theme.ThemeMode
 
@@ -79,7 +80,10 @@ import com.meshlit.ui.theme.ThemeMode
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ThemeCustomizationScreen(advanced: Boolean) {
+fun ThemeCustomizationScreen(
+    advanced: Boolean,
+    onOpenCustomPalette: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     val viewModel: ThemeSettingsViewModel = viewModel(
         factory = themeSettingsViewModelFactory(context),
@@ -114,6 +118,24 @@ fun ThemeCustomizationScreen(advanced: Boolean) {
                 current = config.basePalette,
                 onPick = viewModel::setBasePalette,
             )
+        }
+
+        // Phase 12.2 — entry point to the custom palette screen.
+        // Hidden until the caller wires `onOpenCustomPalette`; older
+        // call sites that don't provide it keep the old surface.
+        if (onOpenCustomPalette != null) {
+            LabeledBlock(
+                label = "Custom color palette",
+                description = customPaletteDescription(config.customPalette),
+            ) {
+                Button(onClick = onOpenCustomPalette) {
+                    Text(
+                        if (config.customPalette is CustomPalette.None)
+                            "Pick custom colors"
+                        else "Edit custom palette",
+                    )
+                }
+            }
         }
 
         LabeledBlock(
@@ -404,4 +426,16 @@ private fun DensityScaleSlider(
             }
         }
     }
+}
+
+/**
+ * Phase 12.2 — short description for the currently active
+ * [CustomPalette]. Drives the "Custom color palette" LabeledBlock
+ * subtitle in [ThemeCustomizationScreen].
+ */
+private fun customPaletteDescription(palette: CustomPalette): String = when (palette) {
+    CustomPalette.None -> "Solid / gradient stops / animated gradient. Tap to design your own."
+    is CustomPalette.Solid -> "Solid (5 swatches)"
+    is CustomPalette.GradientStops -> "Static gradient (${palette.stops.size} stops, ${palette.angleDeg}°)"
+    is CustomPalette.AnimatedGradient -> "Animated gradient (${palette.stops.size} stops, ${palette.cycleSeconds}s cycle, ${palette.angleDeg}°)"
 }
