@@ -64,12 +64,11 @@ dependencies {
     implementation(libs.runanywhere.sdk)
     implementation(libs.runanywhere.llamacpp)
     implementation(libs.runanywhere.onnx)
-    // Pull in runanywhere-sdk's .so files (librunanywhere_jni.so +
-    // librac_commons.so + libomp.so + librac_backend_cloud.so). The
-    // vendored module's namespace (com.runanywhere.sdk.kotlin.vendored)
-    // differs from this AAR's (com.runanywhere.sdk.kotlin) so the
-    // manifest merger no longer flags the duplicate.
-    runtimeOnly(libs.runanywhere.sdk)
+    // runanywhere-llamacpp + runanywhere-onnx already pull in
+    // runanywhere-sdk transitively; the explicit `implementation(...)`
+    // above makes the version pin visible at this module's root so a
+    // future SDK bump surfaces here at sync time instead of silently
+    // resolving through a transitive constraint.
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

@@ -25,8 +25,9 @@ zxing = "3.5.3"
 securityCrypto = "1.1.0-alpha06"
 
 # Local RAG store — Room + sqlite-vss for vector similarity search
-# on-device. Both versions track the Kotlin 2.4.x line and the
-# Room 2.7.x release line that supports it.
+# on-device. `room` is on the 2.7.x alpha line — Room 2.7 stable is
+# the first release built against Kotlin 2.4.x metadata. Bump to
+# stable when AGP 9 + Kotlin 2.4.10 + Room 2.7.0 stable all line up.
 room = "2.7.0-alpha11"
 sqliteVss = "0.1.4"
 
@@ -39,6 +40,10 @@ navigationCompose = "2.9.0"
 
 # Serialization
 kotlinxSerialization = "1.8.0"
+# kotlinx-coroutines — pinned to the 1.10.x line. The RunAnywhere
+# SDK 0.20.12 transitively requests 1.11.0 which is binary-compatible
+# forward; Gradle resolves to 1.10.x without intervention so we
+# don't need a force block.
 kotlinxCoroutines = "1.10.0"
 
 # Logging
