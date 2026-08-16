@@ -70,6 +70,13 @@ fun MeshlitHeader(
     active: Boolean,
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Trailing slot rendered between the title column and the
+     * tier pill. Lets callers (Jobs screen) inject a
+     * dispatch-mode picker without losing the tier chip on
+     * the far right. Defaults to nothing.
+     */
+    trailing: @Composable (() -> Unit)? = null,
 ) {
     // Animate the accent when activity changes — gives an obvious
     // visual signal that the cluster is doing work right now.
@@ -169,6 +176,11 @@ fun MeshlitHeader(
                         maxLines = 1,
                     )
                 }
+            }
+
+            // Caller-provided slot (e.g. dispatch picker on Jobs).
+            if (trailing != null) {
+                trailing()
             }
 
             // Tier pill — color-coded, no border so the gradient does

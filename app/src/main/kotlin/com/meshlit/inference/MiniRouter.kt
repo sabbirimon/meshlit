@@ -60,7 +60,17 @@ class MiniRouter(
 
         // Either local is busy / unhealthy, or the hints want GPU.
         // Try to find a peer.
-        for (ip in peerList) {
+        //
+        // Phase 3 — prefer LOCAL_TRUSTED peers before falling back to
+        // LOCAL_SANDBOXED (which we still route to as long as the
+        // peer is healthy — the firewall does the final gate per
+        // /v1/{infer,capabilities,…}).
+        val trusted = runCatching { peers.trustedSnapshot() }.getOrDefault(emptyList())
+        val trustedIps = trusted.filter { it.tier == com.meshlit.core.trust.TrustTier.LOCAL_TRUSTED }
+            .map { it.ip }
+            .toSet()
+        val orderedIps = peerList.sortedByDescending { if (it in trustedIps) 1 else 0 }
+        for (ip in orderedIps) {
             val h = peerHealth[ip]
             if (h != null && h.ok && h.modelLoaded) {
                 return RouterDecision.forward(

@@ -92,6 +92,46 @@ class RunAnywhereCatalogEngine(
      * @property language coverage hint.
      * @property strengths short list of tags.
      */
+    /**
+     * Architecture marker. The row UI surfaces this as a small
+     * "MoE" or "Dense" badge next to the model name.
+     *
+     *  - DENSE — single FFN per layer, every parameter runs every
+     *    token (Qwen 2.5 1.5B, Llama 3.2 1B, Phi-3-mini, …)
+     *  - MOE   — multiple experts per layer, only the active ones
+     *    run per token (Qwen3-A3B, Granite-4-Tiny-MoE, Mixtral, …)
+     */
+    enum class Architecture { DENSE, MOE }
+
+    /**
+     * Quantization tier. The row UI shows this as a Q-tag.
+     *  - Q8_0  — high quality, ~2x model size
+     *  - Q4_K_M — conventional "small + decent" sweet spot
+     *  - Q2_K  — aggressive; only on >12 GB-RAM devices
+     *  - F16 / F32 — full precision, only on dev / test runs
+     *  - UNKNOWN — SDK returned no quant hint
+     */
+    enum class Quant { Q8_0, Q4_K_M, Q2_K, F16, F32, UNKNOWN }
+
+    /**
+     * Coarse size class. The row UI shows a "S / M / L" tag so the
+     * user can spot at a glance whether the model will fit their
+     * phone. Boundaries are intentionally generous.
+     *  - SMALL   — ≤ 500 MB (SmolLM2 360M, Granite-Tiny-MoE)
+     *  - MEDIUM  — 500 MB – 2.5 GB (Qwen 2.5 1.5B, Llama 3.2 1B, Phi-3-mini)
+     *  - LARGE   — 2.5 GB – 8 GB (Qwen 2.5 3B, …)
+     *  - HUGE    — > 8 GB (Qwen3-A3B, Mixtral-8x7B) — needs sharding
+     */
+    enum class SizeClass { SMALL, MEDIUM, LARGE, HUGE }
+
+    /** Lightweight badge descriptor returned by [Entry.badges]. Each
+     *  UI badge has a short text label and a Material color hint so
+     *  the row can render it consistently without re-decoding the
+     *  raw entry fields. */
+    data class Badge(val label: String, val tone: Tone) {
+        enum class Tone { INFO, SUCCESS, WARN, ERROR, ACCENT }
+    }
+
     data class Entry(
         val id: String,
         val displayName: String,
@@ -101,7 +141,49 @@ class RunAnywhereCatalogEngine(
         val approxSizeMb: Long,
         val language: String,
         val strengths: List<String>,
-    )
+        val architecture: Architecture = Architecture.DENSE,
+        val quant: Quant = Quant.UNKNOWN,
+        val sizeClass: SizeClass = SizeClass.MEDIUM,
+        val bundled: Boolean = false,
+    ) {
+        /** Computed list of badges for this row. UI calls this once
+         *  per compose and renders the returned list as a small
+         *  `Row` of colored chips. Order is stable so the UI doesn't
+         *  shimmer on recomposition. */
+        fun badges(): List<Badge> = buildList {
+            // Architecture is the first thing a user looks at.
+            add(Badge(label = architecture.name, tone = if (architecture == Architecture.MOE) Badge.Tone.ACCENT else Badge.Tone.INFO))
+            // Quantization tag.
+            if (quant != Quant.UNKNOWN) add(Badge(label = quant.name.replace('_', '-'), tone = Badge.Tone.INFO))
+            // Size class.
+            add(
+                Badge(
+                    label = sizeClass.name,
+                    tone = when (sizeClass) {
+                        SizeClass.SMALL -> Badge.Tone.SUCCESS
+                        SizeClass.MEDIUM -> Badge.Tone.INFO
+                        SizeClass.LARGE -> Badge.Tone.WARN
+                        SizeClass.HUGE -> Badge.Tone.ERROR
+                    },
+                ),
+            )
+            // Multilingual coverage.
+            if (language.startsWith("EN/") || language.contains("multilingual", ignoreCase = true)) {
+                if ("multilingual" in language.lowercase() || "/" in language) {
+                    add(Badge(label = "multi", tone = Badge.Tone.INFO))
+                }
+            }
+            // Bundled-with-APK tag — shown only when true.
+            if (bundled) add(Badge(label = "bundled", tone = Badge.Tone.SUCCESS))
+            // Strengths that look like a badge already (e.g. "fast",
+            // "reasoning", "edge") — skip if already implied.
+            strengths.forEach { tag ->
+                when (tag) {
+                    "fast", "starter", "edge", "reasoning" -> add(Badge(label = tag, tone = if (tag == "reasoning") Badge.Tone.ACCENT else Badge.Tone.INFO))
+                }
+            }
+        }
+    }
 
     private val log = logger("RunAnywhereCatalogEngine")
 
@@ -221,7 +303,55 @@ class RunAnywhereCatalogEngine(
             approxSizeMb = approxMb,
             language = inferLanguage(family),
             strengths = inferStrengths(family, approxMb),
+            architecture = inferArchitecture(name, family),
+            quant = inferQuant(name),
+            sizeClass = inferSizeClass(approxMb),
+            bundled = id in BUNDLED_IDS,
         )
+    }
+
+    /** Architecture inference — most families default to DENSE; only
+     *  the well-known MoE names ("MoE", "Mixtral", "Granite-*-MoE",
+     *  Qwen3-A3B) flip the bit. Conservative on purpose — getting
+     *  this wrong is more confusing than showing a wrong badge. */
+    private fun inferArchitecture(name: String, family: String): Architecture {
+        val lower = name.lowercase()
+        return when {
+            "moe" in lower -> Architecture.MOE
+            "mixtral" in lower -> Architecture.MOE
+            family == "Granite" && "moe" in lower -> Architecture.MOE
+            "a3b" in lower && "qwen" in lower -> Architecture.MOE
+            else -> Architecture.DENSE
+        }
+    }
+
+    /** Quant inference from the displayName. Looks for the canonical
+     *  GGUF quant tags (`Q8_0`, `Q4_K_M`, `Q2_K`) and the floating-
+     *  point formats (`F16`, `F32`). Falls back to UNKNOWN when the
+     *  SDK doesn't tell us — the row renders without a quant chip. */
+    private fun inferQuant(name: String): Quant = when {
+        "Q8_0" in name -> Quant.Q8_0
+        "Q4_K_M" in name -> Quant.Q4_K_M
+        "Q2_K" in name -> Quant.Q2_K
+        "F16" in name -> Quant.F16
+        "F32" in name -> Quant.F32
+        else -> Quant.UNKNOWN
+    }
+
+    /** Size class — boundaries intentionally generous:
+     *  - SMALL ≤ 500 MB (SmolLM2 360M, Granite-Tiny-MoE)
+     *  - MEDIUM 500 MB – 2.5 GB (Qwen 2.5 1.5B, Llama 3.2 1B)
+     *  - LARGE 2.5 GB – 8 GB (Qwen 2.5 3B, Phi-3-mini)
+     *  - HUGE > 8 GB (Qwen3-30B-A3B, Mixtral-8x7B) — needs sharding
+     *
+     *  0 MB (unknown size) maps to MEDIUM so the row doesn't render
+     *  a misleading "SMALL" chip. */
+    private fun inferSizeClass(approxMb: Long): SizeClass = when {
+        approxMb <= 0L -> SizeClass.MEDIUM
+        approxMb <= 500L -> SizeClass.SMALL
+        approxMb <= 2_500L -> SizeClass.MEDIUM
+        approxMb <= 8_000L -> SizeClass.LARGE
+        else -> SizeClass.HUGE
     }
 
     /** Best-guess family from the model name. Falls back to
@@ -276,6 +406,22 @@ class RunAnywhereCatalogEngine(
     }
 
     companion object {
+        /** Set of SDK canonical ids that ship inside the APK as
+         *  bundled assets. The engine flips `bundled = true` for
+         *  these so the Catalog row can show a green "bundled"
+         *  badge and downstream installers can skip the network
+         *  download for them. Add new entries here when a model
+         *  is added to `assets/models/`. */
+        val BUNDLED_IDS: Set<String> = setOf(
+            // The single starter model — SmolLM2-360M-Instruct
+            // Q8_0. The APK ships this asset (≈ 368 MB) so first-
+            // launch has a working FGS within seconds of cold
+            // start. The asset basename matches the SDK's
+            // `DEFAULT_MODEL_ID` so the FGS auto-loads it
+            // without a rename step.
+            "smollm2-360m-instruct-q8_0",
+        )
+
         /** Singleton holder used by [com.meshlit.MeshlitApplication] —
          *  one engine instance per process, mirroring
          *  `inferenceCoordinator.runAnywhereEngine()`. */

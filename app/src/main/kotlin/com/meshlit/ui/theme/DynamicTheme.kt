@@ -98,7 +98,7 @@ enum class AccentHue(val displayName: String, val primary: Color, val primaryCon
     SKY("Sky", Color(0xFF38BDF8), Color(0xFF0369A1)),
     INDIGO("Indigo", Color(0xFF6366F1), Color(0xFF3730A3)),
     ROSE("Rose", Color(0xFFF43F5E), Color(0xFF9F1239)),
-    AMBER("Amber", Color(0xFFF59E0B), Color(0xFFB45309)),
+    AMBER("Amber (RunAnywhere orange)", MeshlitAmber, MeshlitAmberDim),
     EMERALD("Emerald", MeshlitEmerald, MeshlitEmeraldDim),
     FUCHSIA("Fuchsia", Color(0xFFD946EF), Color(0xFF86198F)),
     SLATE("Slate", Color(0xFF64748B), Color(0xFF334155)),
@@ -112,6 +112,7 @@ enum class BasePalette(val displayName: String) {
     COFFEE("Coffee"),
     OCEAN("Ocean"),
     FOREST("Forest"),
+    RUNANYWHERE("RunAnywhere (dark + orange)"),
 }
 
 /** When to apply the dark scheme. SYSTEM follows the phone. */
@@ -189,6 +190,7 @@ fun buildColorScheme(
         BasePalette.COFFEE -> MeshlitCoffeeShades
         BasePalette.OCEAN -> MeshlitOceanShades
         BasePalette.FOREST -> MeshlitForestShades
+        BasePalette.RUNANYWHERE -> MeshlitRunAnywhereShades
     }
     val isLight = base == BasePalette.PAPER
 
@@ -376,6 +378,21 @@ private val MeshlitForestShades = PaletteShades(
     outline = Color(0xFF30503D),
     textPrimary = Color(0xFFE6F2EC),
     textSecondary = Color(0xFFA0C2B0),
+)
+
+// Mirrors the RunAnywhere sample's dark+orange palette
+// (examples/android/RunAnywhereAI — see plan §External reference).
+// Resolution ties accent (config.accentHue) to whatever the user picks;
+// switching BasePalette to RUNANYHERE alone is a palette flip without
+// changing the accent hue, matching the upstream behavior where
+// BasePalette.RUNANYWHERE sits next to a free accent choice.
+private val MeshlitRunAnywhereShades = PaletteShades(
+    background = RaBackground,           // = #0A0A0A
+    surface = RaSurface,                 // = #1A1A1A
+    surfaceVariant = RaSurfaceVariant,   // = #222222
+    outline = RaOutline,                 // = #2E2E2E
+    textPrimary = RaTextPrimary,         // = #F5F5F5
+    textSecondary = RaTextSecondary,     // = #B0B0B0
 )
 
 /**

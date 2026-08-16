@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +23,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.meshlit.MeshlitApplication
 import com.meshlit.agent.AgentScreen
+import com.meshlit.feature.advanced.AdvancedScreen
+import com.meshlit.feature.advanced.GhostyHost
+import com.meshlit.feature.advanced.LocalGhostyHost
+import com.meshlit.feature.ghosty.GhostyOverlayService
+import com.meshlit.mcp.AppMcpHost
 import com.meshlit.ui.components.MeshlitBottomBar
 import com.meshlit.ui.components.MeshlitDrawerContent
 import com.meshlit.ui.components.QuickAction
@@ -29,6 +35,7 @@ import com.meshlit.ui.components.tierAccentColor
 import com.meshlit.ui.nav.TopLevelDestination
 import com.meshlit.ui.screens.CatalogScreen
 import com.meshlit.ui.screens.DevicesScreen
+import com.meshlit.ui.screens.FilesScreen
 import com.meshlit.ui.screens.JobsScreen
 import com.meshlit.ui.screens.LogScreen
 import com.meshlit.ui.screens.MetricsScreen
@@ -37,8 +44,22 @@ import com.meshlit.ui.screens.ScreenStub
 import com.meshlit.ui.screens.StructuredScreen
 import com.meshlit.ui.screens.VisionScreen
 import com.meshlit.ui.screens.VoiceScreen
+import com.meshlit.ui.screens.cloud.AgentLoopMode
+import com.meshlit.ui.screens.cloud.AgentTerminalScreen
+import com.meshlit.ui.screens.cloud.AddCustomCloudResult
+import com.meshlit.ui.screens.cloud.AddCustomCloudScreen
+import com.meshlit.ui.screens.cloud.CloudHubScreen
+import com.meshlit.ui.quickactions.BoostViewModel
+import com.meshlit.ui.quickactions.SyncViewModel
 import com.meshlit.ui.screens.settings.CategoryScreen
+import com.meshlit.ui.screens.help.FeedbackScreen
+import com.meshlit.ui.screens.help.HelpHubScreen
+import com.meshlit.ui.screens.help.UiTourScreen
+import com.meshlit.ui.screens.help.UserManualScreen
+import com.meshlit.ui.screens.network.NetworkMonitorScreen
+import com.meshlit.ui.screens.settings.CustomThemeScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
+import com.meshlit.ui.screens.settings.RagSettingsScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
 import com.meshlit.ui.screens.settings.ModelsScreen
 import com.meshlit.ui.screens.settings.SettingsScreen
@@ -70,9 +91,27 @@ fun MeshlitApp() {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val capabilityTier = (context.applicationContext as MeshlitApplication).capabilityTier
+    val app: MeshlitApplication = context.applicationContext as MeshlitApplication
+    val mcpHost = remember { AppMcpHost(app) }
+    val ghostyHost = remember {
+        object : GhostyHost {
+            override fun setEnabled(enabled: Boolean) {
+                if (enabled) {
+                    GhostyOverlayService.start(context)
+                } else {
+                    GhostyOverlayService.stop(context)
+                }
+            }
+        }
+    }
 
     val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
     val closeDrawer: () -> Unit = { scope.launch { drawerState.close() } }
+
+    // Quick-action view models. Created lazily so the drawer can
+    // call into them without rebuilding the whole nav tree.
+    val syncVm = remember { SyncViewModel(app) }
+    val boostVm = remember { BoostViewModel(app) }
 
     val navigateTo: (TopLevelDestination) -> Unit = { dest ->
         navController.navigate(dest.route) {
@@ -85,12 +124,16 @@ fun MeshlitApp() {
         closeDrawer()
     }
 
+    // Phase Observability 1 — drawer quick actions. Sync resyncs
+    // the model catalog, Boost toggles inference-boost (thread
+    // priority + NPU/GPU engine preference), About opens the
+    // new Help root which hosts the manual + tour + feedback.
     val onQuickAction: (QuickAction) -> Unit = { action ->
         closeDrawer()
         when (action) {
-            QuickAction.SYNC -> navController.navigate(TopLevelDestination.Cluster.route)
-            QuickAction.BOOST -> navController.navigate(TopLevelDestination.Jobs.route)
-            QuickAction.ABOUT -> navController.navigate(TopLevelDestination.Settings.route)
+            QuickAction.SYNC -> syncVm.sync(context)
+            QuickAction.BOOST -> boostVm.boost(context)
+            QuickAction.ABOUT -> navController.navigate(TopLevelDestination.Help.route)
         }
     }
 
@@ -114,7 +157,7 @@ fun MeshlitApp() {
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 MeshlitBottomBar(
-                    destinations = TopLevelDestination.all,
+                    destinations = TopLevelDestination.barItems,
                     currentRoute = currentRoute,
                     accentColor = tierAccentColor(capabilityTier),
                     onSelect = { dest ->
@@ -144,10 +187,32 @@ fun MeshlitApp() {
                                 },
                             )
                             TopLevelDestination.Devices -> DevicesScreen(onOpenDrawer = openDrawer)
-                            TopLevelDestination.Jobs -> JobsScreen(onOpenDrawer = openDrawer)
-                            TopLevelDestination.Agent -> AgentScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Jobs -> JobsScreen(
+                                onOpenDrawer = openDrawer,
+                                onOpenModels = {
+                                    navController.navigate(TopLevelDestination.Models.route) {
+                                        launchSingleTop = true
+                                    }
+                                },
+                            )
+                            TopLevelDestination.Agent -> AgentScreen(
+                                onOpenDrawer = openDrawer,
+                                onOpenModels = {
+                                    navController.navigate(TopLevelDestination.Models.route) {
+                                        launchSingleTop = true
+                                    }
+                                },
+                            )
                             TopLevelDestination.Models -> ModelsScreen(onBack = openDrawer)
+                            TopLevelDestination.Advanced -> AdvancedScreen(
+                                accent = tierAccentColor(capabilityTier),
+                                accentDim = tierAccentColor(capabilityTier),
+                                onNavigate = { dest ->
+                                    navController.navigate(dest.route)
+                                },
+                            )
                             TopLevelDestination.Sessions -> TerminalScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Files -> FilesScreen(onOpenDrawer = openDrawer)
                             TopLevelDestination.Cluster -> MetricsScreen(
                                 onOpenDrawer = openDrawer,
                                 onBack = { navController.popBackStack() },
@@ -157,6 +222,24 @@ fun MeshlitApp() {
                             TopLevelDestination.Structured -> StructuredScreen(onOpenDrawer = openDrawer)
                             TopLevelDestination.Catalog -> CatalogScreen(onOpenDrawer = openDrawer)
                             TopLevelDestination.Vision -> VisionScreen(onOpenDrawer = openDrawer)
+                            TopLevelDestination.Cloud -> CloudHubScreen(
+                                onOpenDrawer = openDrawer,
+                                onOpenAddCustom = { navController.navigate("cloud/add") },
+                                onOpenTerminal = { providerId ->
+                                    val arg = providerId ?: ""
+                                    navController.navigate("cloud/terminal?providerId=$arg")
+                                },
+                            )
+                            TopLevelDestination.Network -> NetworkMonitorScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenDrawer = openDrawer,
+                            )
+                            TopLevelDestination.Help -> HelpHubScreen(
+                                onBack = { navController.popBackStack() },
+                                onOpenManual = { navController.navigate("help/manual") },
+                                onOpenTour = { navController.navigate("help/tour") },
+                                onOpenFeedback = { navController.navigate("help/feedback") },
+                            )
                             else -> ScreenStub(
                                 destination = dest,
                                 icon = dest.icon,
@@ -172,8 +255,18 @@ fun MeshlitApp() {
                         CategoryScreen(
                             category = cat,
                             onBack = { navController.popBackStack() },
+                            onOpenCustomPalette = {
+                                navController.navigate("settings/custom-theme")
+                            },
                         )
                     }
+                }
+
+                // Phase 12.2 — custom color palette editor.
+                composable("settings/custom-theme") {
+                    CustomThemeScreen(
+                        onBack = { navController.popBackStack() },
+                    )
                 }
 
                 // Forwarding peers screen (Phase 1, task #7).
@@ -193,6 +286,126 @@ fun MeshlitApp() {
                 // Log viewer (Phase M.4).
                 composable("logs") {
                     LogScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Cloud MCP — Add Custom provider form.
+                composable("cloud/add") {
+                    AddCustomCloudScreen(
+                        onBack = { navController.popBackStack() },
+                        onSave = { result: AddCustomCloudResult ->
+                            // Wire to coordinator. For now we just pop
+                            // back; the coordinator will be installed in
+                            // MeshlitApplication and picked up via the
+                            // ViewModel layer in the follow-up phase.
+                            val app = context.applicationContext as MeshlitApplication
+                            app.cloudCoordinator.connect(
+                                com.meshlit.core.cloudmcp.ProviderConfig(
+                                    id = result.name.lowercase().replace(" ", "-"),
+                                    name = result.name,
+                                    kind = com.meshlit.core.cloudmcp.ProviderKind.Custom,
+                                    baseUrl = result.endpoint,
+                                    authKind = result.authKind,
+                                    credentialRef = if (result.token.isNotBlank()) {
+                                        "${result.name.lowercase()}/token"
+                                    } else {
+                                        ""
+                                    },
+                                    ragNamespace = result.ragNamespace,
+                                    openApiSpecUrl = result.openApiUrl,
+                                ),
+                            )
+                            if (result.token.isNotBlank()) {
+                                app.cloudCredentialStore.put(
+                                    result.name.lowercase(),
+                                    "token",
+                                    result.token,
+                                )
+                            }
+                            navController.popBackStack()
+                        },
+                    )
+                }
+
+                // Cloud MCP — Agent Terminal (Live / Step log).
+                composable(
+                    route = "cloud/terminal?providerId={providerId}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("providerId") {
+                            type = androidx.navigation.NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        },
+                    ),
+                ) { backStack ->
+                    val providerId = backStack.arguments?.getString("providerId")
+                    val app = context.applicationContext as MeshlitApplication
+                    AgentTerminalScreen(
+                        providerId = providerId,
+                        loopMode = app.settingsRepository.loopModeFlowNow(),
+                        ragMode = app.settingsRepository.ragModeFlowNow(),
+                        ragDecision = null,
+                        onBack = { navController.popBackStack() },
+                        onLoopModeChange = { mode ->
+                            app.appScope.launch {
+                                app.settingsRepository.setLoopMode(mode)
+                            }
+                        },
+                        onSend = { prompt ->
+                            app.runAgentPrompt(
+                                providerId = providerId,
+                                prompt = prompt,
+                            )
+                        },
+                    )
+                }
+
+                // Cloud MCP — Settings → RAG / Loop mode.
+                composable("settings/rag") {
+                    val app = context.applicationContext as MeshlitApplication
+                    RagSettingsScreen(
+                        initialRagMode = app.settingsRepository.ragModeFlowNow(),
+                        initialLoopMode = app.settingsRepository.loopModeFlowNow(),
+                        onRagModeChange = { mode ->
+                            app.appScope.launch {
+                                app.settingsRepository.setRagMode(mode)
+                            }
+                        },
+                        onLoopModeChange = { mode ->
+                            app.appScope.launch {
+                                app.settingsRepository.setLoopMode(mode)
+                            }
+                        },
+                    )
+                }
+
+                // Phase Observability 1 — Help sub-routes. The Help
+                // tile and the About quick action land on the
+                // HelpHubScreen which dispatches here.
+                composable("help/manual") {
+                    UserManualScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable("help/tour") {
+                    val app = context.applicationContext as MeshlitApplication
+                    UiTourScreen(
+                        firstRun = app.firstRunSetupRepository,
+                        onBack = { navController.popBackStack() },
+                        onOpenDestination = { dest ->
+                            navController.navigate(dest.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+
+                composable("help/feedback") {
+                    val app = context.applicationContext as MeshlitApplication
+                    FeedbackScreen(
+                        settings = app.settingsRepository,
                         onBack = { navController.popBackStack() },
                     )
                 }

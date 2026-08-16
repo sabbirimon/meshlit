@@ -12,27 +12,36 @@
      render. -->
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sabbirimon/meshlit/main/docs/assets/meshlit-hero.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/sabbirimon/meshlit/main/docs/assets/meshlit-hero-light.svg">
-    <img alt="Meshlit — Many phones. One mind." src="https://raw.githubusercontent.com/sabbirimon/meshlit/main/docs/assets/meshlit-hero.svg" width="100%" style="max-width:860px;">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-hero.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-hero-light.svg">
+    <img alt="Meshlit — Many phones. One mind." src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-hero.svg" width="100%" style="max-width:860px;">
   </picture>
 </p>
 
 # Meshlit — Many phones. One mind.
+
+> ## 🚧 **THIS IS THE `dev` BRANCH — ACTIVE DEVELOPMENT IN PROGRESS**
+>
+> **You are reading the latest integration branch.** Things here change daily, may break, and may not be tied to a release yet. The interface, screens, and SDK wiring are evolving as Phase 2.x → Phase 3 work lands. For the frozen snapshot, see the [`main`](https://github.com/sabbirimon/meshlit/tree/main) branch instead.
+>
+> **Status:** 🟡 **Active development** · Phase 2.x shipped · Phase 3 (cluster-shard federation, MoE routing) in progress · latest tag: none yet.
+>
+> Quick links: [📦 main (frozen)](https://github.com/sabbirimon/meshlit/tree/main) · [🌿 dev (this branch)](https://github.com/sabbirimon/meshlit/tree/dev) · [📓 PROGRESS.md](PROGRESS.md) · [🛠 TODO.md](TODO.md) · [📋 Issues](https://github.com/sabbirimon/meshlit/issues) · [💬 Discussions](https://github.com/sabbirimon/meshlit/discussions)
 
 > **On-device AI runtime + federated inference cluster for Android.**
 > Turn a fleet of Android phones into a private LLM cluster — no cloud,
 > no telemetry, full SDK-backed voice / vision / structured / catalog surfaces.
 
 <p align="left">
-  <a href="https://github.com/sabbirimon/meshlit/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge&logo=apache" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/sabbirimon/meshlit/blob/dev/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge&logo=apache" alt="License: Apache 2.0"></a>
   <a href="https://github.com/sabbirimon/meshlit/stargazers"><img src="https://img.shields.io/github/stars/sabbirimon/meshlit?style=for-the-badge&logo=github" alt="GitHub stars"></a>
   <a href="https://github.com/sabbirimon/meshlit/network/members"><img src="https://img.shields.io/github/forks/sabbirimon/meshlit?style=for-the-badge&logo=github" alt="GitHub forks"></a>
   <a href="https://github.com/sabbirimon/meshlit/issues"><img src="https://img.shields.io/github/issues/sabbirimon/meshlit?style=for-the-badge&logo=github" alt="Open issues"></a>
-  <a href="https://github.com/sabbirimon/meshlit/commits/main"><img src="https://img.shields.io/github/last-commit/sabbirimon/meshlit?style=for-the-badge&logo=github" alt="Last commit"></a>
+  <a href="https://github.com/sabbirimon/meshlit/commits/dev"><img src="https://img.shields.io/github/last-commit/sabbirimon/meshlit/dev?style=for-the-badge&logo=github" alt="Last commit"></a>
   <a href="https://github.com/sabbirimon/meshlit"><img src="https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android 7.0+"></a>
   <a href="https://github.com/sabbirimon/meshlit"><img src="https://img.shields.io/badge/Kotlin-2.1-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin 2.1"></a>
   <a href="https://github.com/sabbirimon/meshlit"><img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose"></a>
+  <a href="https://github.com/sabbirimon/meshlit/tree/dev"><img src="https://img.shields.io/badge/branch-dev-orange?style=for-the-badge&logo=git" alt="Branch: dev"></a>
 </p>
 
 **Meshlit** is an open-source **Android app** that orchestrates **local LLMs, speech-to-text, text-to-speech, vision (VLM), structured output, and tool-calling** across a private fleet of phones using **federated inference**. It runs entirely **on-device by default** — no cloud, no telemetry — with optional LAN, Wi-Fi Direct, Tailscale, VPN, and relay transports for cluster federation. Built on the [RunAnywhere SDK](https://github.com/RunanywhereAI/runanywhere-sdks) 0.20.12 (llama.cpp + sherpa-onnx + ONNX Runtime Mobile).
@@ -60,7 +69,8 @@
 - ⚙️ **Foreground service for inference.** Android `dataSync` FGS with persistent notification, LocalBinder IPC, Android 15+ `onTimeout()` handling.
 - 🧰 **MCP tool server.** Tools registered with the LLM drive Meshlit itself: file ops, device control, peer queries.
 - 🛡️ **Trust tiers.** LAN / temporary-local / WAN each carry a different auth burden. The Devices screen lets the user lock scopes precisely.
-- 🔕 **No telemetry by default.** OpenTelemetry exports are also opt-in — the Tracing toggle in Settings defaults to Off.
+- 📜 **Self-describing runtime.** Opt-in OpenTelemetry tracing (Off / Local / Otel), in-app user manual with intent / use case / configuration / troubleshooting per feature, UI tour overlay fired on first visit, and GitHub-Issues-backed feedback that auto-attaches the last 200 log lines. Network monitor surfaces Meshlit's own HTTP calls plus an opt-in `VpnService`-backed packet capture that writes libpcap-format files for inspection in Wireshark / `tshark` / Termux / PCAPdroid.
+- 🔕 **No telemetry by default.** Every byte leaving the device — including OpenTelemetry exports — is the user's explicit, visible choice. The Tracing toggle in Settings defaults to Off.
 
 ---
 
@@ -69,10 +79,12 @@
 - [Why Meshlit?](#why-meshlit)
 - [Highlights](#-highlights)
 - [Status](#status)
+- [Compatibility & recommended devices](docs/DEVICE_COMPATIBILITY.md)
 - [Architecture](#architecture)
 - [Project layout](#project-layout)
 - [Build](#build)
-- [Installation](#installation)
+- [Branching strategy](#branching-strategy)
+- [Building from source](#building-from-source)
 - [Running](#running)
 - [The four SDK-backed screens](#the-four-sdk-backed-screens)
 - [Cluster model](#cluster-model)
@@ -80,7 +92,7 @@
 - [FAQ — Frequently asked questions](#faq--frequently-asked-questions)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
-- [Roadmap / Phase ledger](#phase-ledger)
+- [Phase ledger](#phase-ledger)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 
@@ -108,13 +120,21 @@ inlines four on-device backends wired to real Compose UI:
 Detailed progress journal: [PROGRESS.md](PROGRESS.md).
 Build guide: [app/BUILD_GUIDE.md](app/BUILD_GUIDE.md).
 
+> **Will it run on my device?** See [docs/DEVICE_COMPATIBILITY.md](docs/DEVICE_COMPATIBILITY.md)
+> for the per-tier compatibility chart (Tier A/B/C/D for phones, E/F for
+> tablets, G/H/I for PC/Mac/Linux, J for servers), what features unlock
+> on each tier, and known issues per device class. The 0.2.x debug build
+> is **feature-complete but still in active development** — UI may glitch
+> on low-end devices, and the cluster handover is best-effort. Please
+> report what you find.
+
 ---
 
 ## Architecture
 
 <p align="center">
   <img alt="Meshlit inference architecture — Compose UI → InferenceCoordinator → engine pool → InferenceForegroundService → NanoHTTPD server, with cluster peers on the side."
-       src="https://raw.githubusercontent.com/sabbirimon/meshlit/main/docs/assets/meshlit-architecture.svg"
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-architecture.svg"
        width="100%" style="max-width:1100px;">
 </p>
 
@@ -195,7 +215,11 @@ meshlit/
 │     ├─ devices/          # Peer / endpoint management
 │     ├─ inference/        # FGS + RemoteInferenceClient + DownloadStatus
 │     ├─ models/           # GGUF import + on-device catalog
-│     ├─ observability/    # LogBuffer + AppLoggerFactory
+│     ├─ observability/    # LogBuffer + LogExporter + TracingController wiring
+│     ├─ network/          # TermuxBridge + PcapdroidBridge
+│     ├─ quickactions/     # SyncViewModel + BoostViewModel
+│     ├─ ui/screens/help/  # HelpHubScreen + UserManualScreen +
+│     │                    #   UiTourScreen + FeedbackScreen
 │     ├─ permissions/      # PermissionHelper
 │     ├─ power/            # BatteryOptimizationHelper
 │     ├─ scripts/          # ScriptLibrary snapshot storage
@@ -229,6 +253,11 @@ meshlit/
 ├─ core-tunnel/            # Tailscale / WireGuard plumbing
 ├─ core-users/             # Identity + keychain
 ├─ core-orchestration/     # Job queue, retries, timeouts
+├─ core-observability/     # TracingController + OtelBootstrap + SinkSpanProcessor
+│                          #   + TracerHolder + LogSource
+├─ core-net/               # NetworkObserver (OkHttp EventListener) +
+│                          #   MeshlitCaptureVpnService + PcapWriter +
+│                          #   PcapParser + PacketParser + PacketCaptureRegistry
 │
 ├─ build-logic/            # Gradle convention plugins
 ├─ dist/                   # Built APK outputs
@@ -278,50 +307,18 @@ The most recent additions live in `OnnxOrtInferenceEngineTest`
 
 ---
 
-## Installation
-
-### Option 1 — Pre-built debug APK (recommended)
-
-After a successful `:app:assembleDebug`, install on a connected device:
-
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-A debug APK is ~1.6 GB (it ships all four native libs across
-arm64-v8a, armeabi-v7a, x86, x86_64). Release builds with R8
-full mode and ABI splits are a separate plan; today we ship
-universal debug.
-
-### Option 2 — Build from source
-
-```bash
-git clone https://github.com/sabbirimon/meshlit
-cd meshlit
-./gradlew :app:assembleDebug
-```
-
-First launch extracts the bundled `smollm2-360m-instruct-q8_0.gguf`
-(~368 MB, from `app/src/main/assets/models/`) into
-`filesDir/bundled-models/`. To rebuild the asset after a fresh
-clone, follow `app/src/main/assets/models/README.md` — it documents
-the Hugging Face URL and the SHA-256 sentinel the installer
-verifies against.
-
-### Option 3 — Sideload a model from Hugging Face
-
-Use **Models → Import** in the app, or drop a `.gguf` into
-`filesDir/imported-models/` via SAF. Imported models never leave
-the app-private storage tree.
-
----
-
 ## Running
 
 First launch:
 
-1. The app extracts the bundled Qwen2.5-1.5B GGUF into
-   `filesDir/bundled-models/` (~940 MB; runs in the background).
+1. The app extracts the bundled `smollm2-360m-instruct-q8_0.gguf`
+   from `assets/models/` into `filesDir/bundled-models/`
+   (~368 MB; runs in the background on `appScope`). The asset
+   basename matches the SDK's `DEFAULT_MODEL_ID` so the FGS
+   auto-loads it without a rename step. To swap in a larger
+   model, use **Models → Catalog** or the Models screen's import
+   flow. See `app/src/main/assets/models/README.md` for the
+   restore-from-HuggingFace instructions.
 2. You land on **Devices** — the screen lists this phone's
    pairing QR + address and any peers advertising on the LAN.
 3. The bottom nav has 14 destinations. New in Phase 2.x:
@@ -363,8 +360,9 @@ Reads `RunAnywhere.listModels(...)` against the SDK's CDN
 registry and renders rows in the shape
 `id / displayName / origin / license / family / approxSizeMb /
 language / strengths`. Falls back to the curated
-`RunAnywhereCatalog.all` (SmolLM2-360M, Qwen2.5-1.5B, Llama-3.2-1B,
-Phi-3-mini) when offline.
+`RunAnywhereCatalog.all` (SmolLM2-360M — bundled — plus
+Qwen2.5-1.5B, Llama-3.2-1B, Phi-3-mini and the MoE rows
+Qwen3-30B-A3B, Granite-4.0-Tiny-MoE, Mixtral-8x7B) when offline.
 
 - Search box filters by name or family.
 - Refresh button re-runs `refreshModelRegistry(forceRefresh=true)`.
@@ -393,7 +391,7 @@ itself needs no changes.
 
 <p align="center">
   <img alt="Federated cluster — 4 phones on the same LAN, each holding a different model slice (A/B/C/D), with token packets flowing along the mesh."
-       src="https://raw.githubusercontent.com/sabbirimon/meshlit/main/docs/assets/meshlit-cluster.svg"
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-cluster.svg"
        width="100%" style="max-width:1100px;">
 </p>
 
@@ -414,7 +412,7 @@ capability. See `core-trust/` for the attestation helpers and
 
 <p align="center">
   <img alt="Trust tiers — concentric LAN (innermost, green), temporary-local (middle, cyan), WAN (outermost, pink) rings around a central Meshlit node, with a per-tier capability legend."
-       src="https://raw.githubusercontent.com/sabbirimon/meshlit/main/docs/assets/meshlit-trust-tiers.svg"
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-trust-tiers.svg"
        width="100%" style="max-width:1100px;">
 </p>
 
@@ -436,7 +434,7 @@ capability. See `core-trust/` for the attestation helpers and
 
 <p align="center">
   <img alt="MoE shard federation — the router dispatches tokens to expert shards on different phones. Pixel 7 holds experts 1, 2; iPhone 14 Pro holds experts 3, 4, 5; Galaxy S23 holds experts 6, 7, 8. The route is by expert_id, not tensor-parallel."
-       src="https://raw.githubusercontent.com/sabbirimon/meshlit/main/docs/assets/meshlit-moe.svg"
+       src="https://raw.githubusercontent.com/sabbirimon/meshlit/dev/docs/assets/meshlit-moe.svg"
        width="100%" style="max-width:1100px;">
 </p>
 
@@ -495,6 +493,11 @@ Each node exposes a tiny HTTP/SSE surface on `:8080` for peers:
 - `GET  /v1/model`
 - `POST /v1/infer` (SSE)
 
+### What's the difference between `main` and `dev`?
+
+- **`main`** is frozen until the next tagged release (1.0). It's the safe surface.
+- **`dev`** is the integration branch. It receives `feat/*`, `fix/*`, and `chore/*` PRs and may break between merges. See [Branching strategy](#branching-strategy).
+
 ### How do I report a bug or request a feature?
 
 Use [GitHub Issues](https://github.com/sabbirimon/meshlit/issues). The in-app **Feedback** screen (Settings → Feedback) auto-attaches the last 200 log lines.
@@ -514,6 +517,67 @@ Use [GitHub Issues](https://github.com/sabbirimon/meshlit/issues). The in-app **
   records (role taxonomy, trust tiers, transport choices).
 - **[docs/journal/](docs/journal/)** — phase-by-phase narrative
   log.
+
+---
+
+## Branching strategy
+
+`main` is frozen until the next tagged release. Day-to-day
+integration happens on **`dev`**, and every non-trivial change
+lands on a short-lived feature branch off `dev`. The repo today
+looks like:
+
+```
+main              ← frozen (next: 1.0 release)
+└─ dev            ← integration branch — push here
+   ├─ feat/<name> ← one feature / fix per branch
+   ├─ fix/<name>
+   └─ chore/<name>
+```
+
+Workflow:
+
+```bash
+git checkout dev
+git pull --rebase origin dev
+git checkout -b feat/<short-name>   # or fix/, chore/
+# … work, conventional-commit messages …
+git push -u origin feat/<short-name>
+# open a PR into dev — squash-merge once CI is green
+```
+
+For one-off hotfixes, branch straight from `main`, but don't
+merge back until `dev` is ready — `main` is intentionally a
+release tag, not a moving target.
+
+## Building from source
+
+The full per-phase walkthrough lives in
+[app/BUILD_GUIDE.md](app/BUILD_GUIDE.md). The 30-second version:
+
+```bash
+git clone https://github.com/sabbirimon/meshlit
+cd meshlit
+./gradlew :app:assembleDebug                      # build the APK
+./gradlew :app:installDebug                       # install on a connected device
+./gradlew :app:testDebugUnitTest                  # run app-side unit tests
+./gradlew :core-inference:testDebugUnitTest       # run inference engine tests
+```
+
+Requirements:
+
+- Android Studio Ladybug (AGP 9.2.1)
+- JDK 21
+- Android SDK 36, build-tools 36
+- A device or emulator on **API 24+** (Android 7.0+)
+
+The first launch extracts `smollm2-360m-instruct-q8_0.gguf`
+(~368 MB) from `app/src/main/assets/models/` into
+`filesDir/bundled-models/`. To rebuild the asset after a fresh
+clone, follow
+[app/src/main/assets/models/README.md](app/src/main/assets/models/README.md)
+— it documents the Hugging Face URL and the SHA-256 sentinel
+the installer verifies against.
 
 ---
 
@@ -539,16 +603,17 @@ Pull requests welcome. A few rules of thumb:
 
 ## Phase ledger
 
-| Phase   | Status   | Notes                                                                                       |
-|---------|----------|---------------------------------------------------------------------------------------------|
-| 0       | DONE     | 14-module scaffold, Compose shell, brand assets.                                            |
-| 0.5     | DONE     | Cross-OS / OEM detection, full Settings hub, device-profile probes.                         |
-| 1       | DONE     | InferenceEngine abstraction, FGS, Jobs UI, embedded HTTP/SSE.                              |
-| 2       | DONE     | Multi-runtime engine abstraction, RuntimeRegistry, FileFormat union.                        |
-| 2.x     | DONE     | Full RunAnywhere SDK surface: Voice / JSON / Catalog / Vision screens.                      |
-| 3       | Planned  | Cluster-shard federation, frontier-model MoE routing.                                       |
-| 4       | Planned  | Cooperative training loops (LoRA on `:core-training`).                                      |
-| 5       | Planned  | Adaptive thermal/power tuning from real-usage telemetry.                                    |
+| Phase   | Status   | Notes |
+|---------|----------|-------|
+| 0       | DONE     | 14-module scaffold, Compose shell, brand assets. |
+| 0.5     | DONE     | Cross-OS / OEM detection, full Settings hub, device-profile probes. |
+| 1       | DONE     | InferenceEngine abstraction, FGS, Jobs UI, embedded HTTP/SSE. |
+| 2       | DONE     | Multi-runtime engine abstraction, RuntimeRegistry, FileFormat union. |
+| 2.x     | DONE     | Full RunAnywhere SDK surface: Voice / JSON / Catalog / Vision screens. |
+| Obs-1   | DONE     | Observability 1 — tracing (Off/Local/Otel) + log export + manual + tour + feedback + network monitor + VpnService capture. |
+| 3       | Planned  | Cluster-shard federation, frontier-model MoE routing. |
+| 4       | Planned  | Cooperative training loops (LoRA on `:core-training`). |
+| 5       | Planned  | Adaptive thermal/power tuning from real-usage telemetry. |
 
 ---
 

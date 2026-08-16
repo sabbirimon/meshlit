@@ -62,15 +62,16 @@ __pycache__/
 # SHA-256-pinned download command.
 app/src/main/assets/models/*.gguf
 
-# Vendored — kept locally as a development convenience but not part of
-# the open-source repo (too big to push, and the upstream is a
-# separate git tree that we don't own). Drop a `vendored/README.md`
-# explaining how to re-checkout if the user wants to rebuild.
-vendored/
-
-# Reference material (Stitch mockups, sample images) — kept locally
-# for design reviews; not part of the runtime codebase.
+# Local capture / screenshot artifacts (regenerated from the device)
 Screenshots/
+
+# Vendored third-party trees — kept locally for development but
+# not shipped. See vendored/README.md for the populate commands.
+vendored/upstream/
+vendored/runanywhere-kotlin/
+
+# Reference material (Stitch mockups) — kept locally for design
+# reviews; not part of the runtime codebase.
 stitch/
 stitch.zip
 

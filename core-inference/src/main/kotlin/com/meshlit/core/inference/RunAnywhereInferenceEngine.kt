@@ -3,11 +3,15 @@ package com.meshlit.core.inference
 import android.content.Context
 import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.logger
+import com.runanywhere.sdk.foundation.bridge.extensions.CppBridgeModelPaths
+import com.runanywhere.sdk.foundation.bridge.extensions.CppBridgeModelRegistry
 import com.runanywhere.sdk.llm.llamacpp.LlamaCPP
 import com.runanywhere.sdk.public.RunAnywhere
+import com.runanywhere.sdk.public.extensions.deleteModel
 import com.runanywhere.sdk.public.extensions.downloadModelStream
 import com.runanywhere.sdk.public.extensions.generateStream
 import com.runanywhere.sdk.public.extensions.loadModel
+import com.runanywhere.sdk.public.extensions.registerModel
 import com.runanywhere.sdk.public.types.RAModelInfo
 import com.runanywhere.sdk.public.types.RAModelLoadRequest
 import ai.runanywhere.proto.v1.DownloadProgress
@@ -34,8 +38,8 @@ import java.io.File
  * app already speaks. The Jobs / Agent / Terminal screens talk to
  * [InferenceCoordinator] exactly as they always have; this engine is
  * swapped into the coordinator's runtime registry so the user gets
- * real on-device LLM generation rather than the placeholder
- * JvmStubInferenceEngine reply.
+ * real on-device LLM generation rather than the typed
+ * no_engine_for_format failure returned by [NoOpInferenceEngine].
  *
  * Why a new engine and not extending the existing ones:
  *
@@ -44,8 +48,9 @@ import java.io.File
  *    that .so for the RunAnywhere-shipped `libllama.so` would
  *    require maintaining our own JNI surface — a long-term cost for
  *    no user-visible gain.
- *  - `JvmStubInferenceEngine` is the placeholder engine we want to
- *    move away from on real devices.
+ *  - `NoOpInferenceEngine` is the last-resort fallback used when no
+ *    shipped runtime came up native-ready; it surfaces typed
+ *    `no_engine_for_format` failures instead of synthetic replies.
  *  - `OnnxOrtInferenceEngine` is the second shipped runtime; it
  *    handles `.onnx` only. The RunAnywhere integration handles
  *    `.gguf` via llama.cpp — different format, different runtime,
@@ -145,7 +150,7 @@ class RunAnywhereInferenceEngine(
                 // Don't claim initialisation succeeded if either
                 // call threw — leave `initialized` at false so the
                 // coordinator's `engineFor(.gguf)` falls through to
-                // the next available engine (likely the stub).
+                // the next available engine (likely NoOp).
                 log.warn(
                     "runanywhere.init_failed",
                     "RunAnywhere init failed",
@@ -157,6 +162,17 @@ class RunAnywhereInferenceEngine(
 
     /** Whether the SDK is registered and ready to accept `loadModel`. */
     override fun isReady(): Boolean = initialized && loadedModelId != null
+
+    /**
+     * Whether [initialize] has been called successfully. This is
+     * distinct from [isReady] (which additionally requires a model
+     * to be loaded). The coordinator's dispatch uses this so a fresh
+     * `loadModel(...)` call can route to the SDK even when no model
+     * has been loaded yet — using [isReady] here was the root cause
+     * of the stub-reply bug (the very first load skipped the real
+     * engine and landed on the placeholder stub).
+     */
+    fun isInitialized(): Boolean = initialized
 
     /** Currently loaded model, or null when nothing is loaded. */
     override fun loadedModel(): ModelInfo? = modelInfo
@@ -202,11 +218,94 @@ class RunAnywhereInferenceEngine(
                 // the SDK's canonical id (`smollm2-360m-instruct-q8_0`,
                 // etc.) directly, so the two code paths land on the same
                 // catalog row.
-                Triple(
-                    file.nameWithoutExtension.ifBlank { defaultModelId },
-                    file.name,
-                    file.length(),
+                val resolvedId = file.nameWithoutExtension.ifBlank { defaultModelId }
+
+                // **The actual root cause for "model not loading".** The
+                // RunAnywhere SDK's `loadModel(model_id=...)` call resolves
+                // the on-disk path via
+                // `rac_model_paths_get_model_file_path(...)`, which
+                // computes `{filesDir}/RunAnywhere/Models/LlamaCpp/{modelId}/{modelId}.gguf`
+                // and hands that to the llama.cpp backend. If the file
+                // isn't at that canonical path (e.g. we extracted the
+                // bundled GGUF to `filesDir/bundled-models/`, or the user
+                // imported it via SAF into `Downloads/...`), the SDK's
+                // resolver returns a directory path, then `load_model`
+                // scans that directory for a `.gguf`, finds none, and
+                // logs `No .gguf file found in directory: ...`. The user
+                // sees the Jobs status flip to `Error` and the Send
+                // button does nothing.
+                //
+                // Fix: when the input file isn't already under the SDK's
+                // canonical models dir, copy it into
+                // `{filesDir}/RunAnywhere/Models/LlamaCpp/{modelId}/{modelId}.gguf`
+                // before calling `RunAnywhere.loadModel`. Copy (not
+                // hard-link) so the user's source file is left alone —
+                // important for SAF imports which may be on read-only
+                // storage anyway. The copy is idempotent: if the
+                // destination already exists with the same size we skip
+                // the write entirely. Subsequent loads hit the cache.
+                val canonicalDir = File(
+                    CppBridgeModelPaths.getFrameworkDirectory(
+                        CppBridgeModelRegistry.Framework.LLAMACPP,
+                    ),
+                    resolvedId,
                 )
+                val canonicalPath = File(canonicalDir, "$resolvedId.gguf").absolutePath
+                if (canonicalPath != file.absolutePath &&
+                    !file.absolutePath.startsWith(canonicalDir.absolutePath)
+                ) {
+                    val needsCopy = run {
+                        val dst = File(canonicalPath)
+                        !dst.exists() || dst.length() != file.length()
+                    }
+                    if (needsCopy) {
+                        try {
+                            canonicalDir.mkdirs()
+                            // Use a `.tmp` rename pattern so a partial
+                            // copy never leaves the canonical dir with a
+                            // half-written GGUF (which would fail
+                            // llama.cpp's mmap check and look like the
+                            // original bug all over again).
+                            val tmp = File(canonicalDir, "$resolvedId.gguf.tmp")
+                            runCatching { tmp.delete() }
+                            file.inputStream().use { input ->
+                                tmp.outputStream().use { output ->
+                                    input.copyTo(output, bufferSize = 1 shl 20)
+                                }
+                            }
+                            if (!tmp.renameTo(File(canonicalPath))) {
+                                tmp.copyTo(File(canonicalPath), overwrite = true)
+                                tmp.delete()
+                            }
+                            log.info(
+                                "runanywhere.model_mirrored",
+                                "mirrored GGUF to canonical SDK location",
+                                mapOf(
+                                    "id" to resolvedId,
+                                    "src" to file.absolutePath,
+                                    "dst" to canonicalPath,
+                                    "bytes" to file.length(),
+                                ),
+                            )
+                        } catch (t: Throwable) {
+                            log.warn(
+                                "runanywhere.model_mirror_failed",
+                                "could not mirror GGUF into SDK dir; SDK load will fail",
+                                mapOf(
+                                    "id" to resolvedId,
+                                    "src" to file.absolutePath,
+                                    "dst" to canonicalPath,
+                                    "error" to (t.message ?: t.javaClass.simpleName),
+                                ),
+                            )
+                            // Fall through — the SDK load will fail
+                            // loudly with its own diagnostic so the user
+                            // sees a real error rather than silent
+                            // fallback.
+                        }
+                    }
+                }
+                Triple(resolvedId, file.name, file.length())
             }
 
             return@withContext try {
@@ -307,8 +406,8 @@ class RunAnywhereInferenceEngine(
                 // terminal event whose `is_final == true`. We map
                 // each non-terminal event into a single-token chunk
                 // for the existing `onToken` callback contract used
-                // by `JvmStubInferenceEngine` and
-                // `OnnxOrtInferenceEngine`.
+                // by `NoOpInferenceEngine`'s fallback path and
+                // `OnnxOrtInferenceEngine`'s downstream consumers.
                 val events: Flow<LLMStreamEvent> = RunAnywhere.generateStream(
                     prompt = request.prompt,
                     options = null,
@@ -383,14 +482,81 @@ class RunAnywhereInferenceEngine(
 
     /**
      * Public hook for the Models screen: download a model by id and
-     * stream progress. Returns a `Flow<DownloadProgress>` so the
+     * stream progress. Returns a `Flow<DownloadProgressView>` so the
      * UI can render a progress bar without coupling to the SDK's
      * concrete type.
      *
+     * Two things have to happen before the SDK can plan a download:
+     *
+     *  1. The model id has to be **registered** with a URL, framework,
+     *     and memory hint via `RunAnywhere.registerModel(...)`. The
+     *     SDK's `resolveModelForDownload(...)` walks the registry
+     *     looking for `download_url`; without that field populated
+     *     the planner aborts with "Unable to create a download plan".
+     *  2. The SDK's `downloadModelStream(...)` is then called with a
+     *     `RAModelInfo(id = modelId)` — the id is the only required
+     *     field because step 1 already attached the URL.
+     *
      * The flow is collected on [dispatcher] because the SDK does
      * network IO on the producer side.
+     *
+     * @param url direct HTTPS URL the SDK should fetch from. Defaults
+     *   to the entry's catalog URL via [setCatalogDownloadUrl] when
+     *   the host calls [downloadModelById] with an entry that already
+     *   carries a URL.
+     * @param displayName human-readable name shown in the SDK's
+     *   `Registered models` list. Defaults to `modelId` when the
+     *   caller doesn't supply one.
+     * @param memoryRequirementBytes upper-bound memory hint that the
+     *   SDK uses for compatibility preflight. Defaults to 0 so the
+     *   preflight doesn't gate the download when the caller doesn't
+     *   know the size up front.
      */
-    fun downloadModelById(modelId: String): Flow<DownloadProgressView> = flow {
+    fun downloadModelById(
+        modelId: String,
+        url: String = currentCatalogUrl(modelId),
+        displayName: String = modelId,
+        memoryRequirementBytes: Long = 0L,
+    ): Flow<DownloadProgressView> = flow {
+        // 1) Register (or re-register) the model so the SDK's
+        //    planner has a URL to plan against. Re-register is
+        //    idempotent: a model with the same id just has its
+        //    metadata refreshed. The `LLAMA_CPP` framework matches
+        //    every entry in the curated catalog — STT / TTS / VLM
+        //    use `ONNX` and aren't routed through this engine.
+        if (url.isNotBlank()) {
+            runCatching {
+                RunAnywhere.registerModel(
+                    id = modelId,
+                    name = displayName,
+                    url = url,
+                    framework = InferenceFramework.INFERENCE_FRAMEWORK_LLAMA_CPP,
+                    modality = ModelCategory.MODEL_CATEGORY_LANGUAGE,
+                    memoryRequirement = memoryRequirementBytes.takeIf { it > 0 },
+                )
+                log.info(
+                    "runanywhere.register",
+                    "model registered for download",
+                    mapOf("id" to modelId, "url" to url),
+                )
+            }.onFailure { t ->
+                log.warn(
+                    "runanywhere.register.fail",
+                    "${t.message}",
+                    mapOf("id" to modelId, "url" to url),
+                )
+                throw t
+            }
+        } else {
+            log.warn(
+                "runanywhere.register.skip",
+                "no URL for model; SDK planner will likely reject the download",
+                mapOf("id" to modelId),
+            )
+        }
+        // 2) Drive the SDK's download flow. The id is the only
+        //    required field on `RAModelInfo` because step 1 already
+        //    registered the URL with the registry.
         val sdkFlow: Flow<DownloadProgress> = RunAnywhere.downloadModelStream(
             model = RAModelInfo(id = modelId),
         )
@@ -398,6 +564,69 @@ class RunAnywhereInferenceEngine(
             emit(adaptDownloadProgress(progress))
         }
     }.flowOn(dispatcher)
+
+    /**
+     * Catalog-side URL cache, populated by [setCatalogDownloadUrl].
+     * The Models screen pushes the canonical URL into this map before
+     * launching [downloadModelById] so the SDK registration step has
+     * a URL even when the caller doesn't pass one explicitly.
+     */
+    private val catalogUrlById: MutableMap<String, String> = java.util.concurrent.ConcurrentHashMap()
+
+    /**
+     * Record the canonical URL for a given catalog id. Called by
+     * the Models screen once it has resolved an entry from
+     * [com.meshlit.inference.RunAnywhereCatalog]. The URL survives
+     * across coroutines so a re-download (e.g. after delete) hits
+     * the same artifact.
+     */
+    fun setCatalogDownloadUrl(modelId: String, url: String) {
+        if (url.isNotBlank()) catalogUrlById[modelId] = url
+    }
+
+    /**
+     * Drop the on-disk copy of a model previously downloaded via
+     * the SDK. Mirrors the upstream `RunAnywhere.deleteModel(id)`
+     * contract used by `ModelSelectionViewModel.delete(...)` —
+     * paired with the bundled-model interlock so the user can
+     * safely swap a model mid-session.
+     *
+     * Returns `MeshlitResult.Success(Unit)` when the SDK reports
+     * the deletion succeeded, or a typed `MeshlitError.Native` if
+     * the SDK is uninitialized / throws. The Files API clears the
+     * disk and the in-memory registry entry but does not touch the
+     * currently-loaded session — callers must call
+     * [com.meshlit.core.inference.InferenceCoordinator.unloadModel]
+     * themselves first.
+     */
+    suspend fun deleteDownloadedModel(modelId: String): MeshlitResult<Unit> {
+        if (!isInitialized()) {
+            return MeshlitResult.Failure(
+                com.meshlit.core.common.MeshlitError.Native(
+                    "runanywhere.delete.not_initialized",
+                ),
+            )
+        }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                RunAnywhere.deleteModel(modelId)
+                Unit
+            }.fold(
+                onSuccess = { MeshlitResult.Success(Unit) },
+                onFailure = { t ->
+                    MeshlitResult.Failure(
+                        com.meshlit.core.common.MeshlitError.Native(
+                            "runanywhere.delete.failed:${t.message ?: t.javaClass.simpleName}",
+                            t,
+                        ),
+                    )
+                },
+            )
+        }
+    }
+
+    private fun currentCatalogUrl(modelId: String): String =
+        catalogUrlById[modelId].orEmpty()
 
     /**
      * Best-effort extraction of token text from the SDK's stream

@@ -18,6 +18,7 @@
     <string name="screen_structured">JSON</string>
     <string name="screen_catalog">Catalog</string>
     <string name="screen_vision">Vision</string>
+    <string name="screen_advanced">Advanced</string>
 
     <!-- Voice screen -->
     <string name="voice_title">Voice (STT + TTS + VAD)</string>
@@ -108,8 +109,11 @@
     <string name="logs_filter_query_label">Search</string>
     <string name="logs_filter_query_hint">Tag or message text…</string>
     <string name="logs_filter_tag_any">All tags</string>
+    <string name="logs_filter_source_prefix">Source</string>
     <string name="logs_clear">Clear</string>
     <string name="logs_export">Export</string>
+    <string name="logs_export_txt">Export as TXT</string>
+    <string name="logs_export_jsonl">Export as JSONL</string>
     <string name="logs_empty">No log entries match the current filter</string>
     <string name="logs_open">Open logs</string>
 
@@ -173,7 +177,7 @@
     <string name="jobs_remote_ip_placeholder">192.168.1.42</string>
     <string name="jobs_remote_dispatch_failed">Peer unreachable: %1$s</string>
     <string name="jobs_remote_no_ip">Enter a peer IP for Remote dispatch.</string>
-    <string name="jobs_stub_banner">Demo engine active — replies are placeholders. Load a model from the Models tab.</string>
+    <string name="jobs_no_engine_banner">No engine available — open Models, pick a model, and tap Load to start answering prompts.</string>
     <string name="jobs_model_picker_label">Model</string>
     <string name="jobs_service_start">Start</string>
     <string name="jobs_service_stop">Stop</string>
@@ -210,6 +214,9 @@
     <!-- Files screen -->
     <string name="files_empty_title">Your cluster workspace is empty</string>
     <string name="files_empty_body">Browse files on this device, copy them across cluster nodes, or fetch a model from another node.</string>
+    <string name="files_empty">This directory is empty.</string>
+    <string name="files_up">Up one level</string>
+    <string name="files_refresh">Refresh</string>
 
     <!-- Sessions (SSH) -->
     <string name="sessions_empty_title">No active sessions</string>
@@ -362,6 +369,37 @@
     <string name="models_override_save">Save</string>
     <string name="models_override_clear">Clear override</string>
 
+    <!-- Multi-source model import -->
+    <string name="models_import_section">Import a model from anywhere</string>
+    <string name="models_import_section_subtitle">Paste a URL, resolve a GitHub link, pick a file from device storage, or browse what\'s already imported.</string>
+    <string name="models_import_url_title">From a URL</string>
+    <string name="models_import_url_placeholder">https://huggingface.co/…/model.gguf</string>
+    <string name="models_import_url_button">Download</string>
+    <string name="models_import_git_title">From Git / GitHub</string>
+    <string name="models_import_git_placeholder">https://github.com/owner/repo/blob/main/file.gguf</string>
+    <string name="models_import_git_button">Resolve &amp; download</string>
+    <string name="models_import_storage_title">From device storage</string>
+    <string name="models_import_external_button">External storage (SAF)</string>
+    <string name="models_import_internal_button">Browse internal</string>
+    <string name="models_import_internal_none">No models imported yet. Use the buttons above to add one.</string>
+    <string name="models_import_cluster_title">From cluster (peer shards)</string>
+    <string name="models_import_cluster_placeholder">Model ID (e.g. qwen2.5-1.5b-instruct-q4_k_m)</string>
+    <string name="models_import_cluster_button">Acquire via cluster</string>
+    <string name="models_import_cluster_disabled">No peers reachable — cluster acquisition unavailable</string>
+    <string name="models_import_internal_delete">Delete</string>
+    <string name="models_import_internal_open">Activate</string>
+    <string name="models_import_resolve_fail">Could not resolve that URL. Paste a direct file link to a .gguf, .onnx, or .safetensors file.</string>
+    <string name="models_import_resolved">Resolved %1$s → downloading</string>
+    <string name="models_import_progress">Importing %1$s… %2$d%%</string>
+
+    <!-- HuggingFace repo + file picker (Wave 3C.2 importer UI) -->
+    <string name="models_import_hf_title">From a HuggingFace repo</string>
+    <string name="models_import_hf_repo_placeholder">owner/repo (e.g. TheBloke/Llama-2-7B-Chat-GGUF)</string>
+    <string name="models_import_hf_file_placeholder">file.gguf (e.g. llama-2-7b-chat.Q4_K_M.gguf)</string>
+    <string name="models_import_hf_button">Resolve &amp; download</string>
+    <string name="models_import_hf_invalid">Enter both a repo (owner/name) and a file in that repo.</string>
+    <string name="models_import_hf_resolved">HF: %1$s → downloading %2$s</string>
+
     <!-- Cluster capacity (Phase 2 foundation) -->
     <string name="cluster_capacity_section">Cluster capacity</string>
     <string name="cluster_capacity_total_ram">Total free RAM across the cluster: %1$d MB</string>
@@ -497,6 +535,7 @@
     <string name="devices_edit_title">Edit inference endpoint</string>
     <string name="devices_field_name">Display name</string>
     <string name="devices_field_url">Base URL (https://…)</string>
+    <string name="devices_field_url_hint">First field — paste the server URL. Most reliable on dev devices.</string>
     <string name="devices_field_api_key">API key (optional)</string>
     <string name="devices_field_protocol">Protocol</string>
     <string name="devices_field_insecure">Allow plain HTTP (private networks only)</string>
@@ -589,4 +628,244 @@
     <string name="models_first_run_banner_cta">Extract bundled model</string>
     <string name="models_first_run_banner_extracting">Extracting bundled model…</string>
     <string name="models_first_run_banner_dismiss">Dismiss</string>
+
+    <!-- RunAnywhere visual style tokens — see plan §9. The Ra*
+         composables (RaPillChip, RaHeroIcon, RaGetButton, RaListCard)
+         read these via the res system. Keep in sync with
+         Color.kt's `Ra*` token aliases. -->
+    <string name="ra_top_pick">Top pick</string>
+    <string name="ra_active">ACTIVE</string>
+    <string name="ra_installed">INSTALLED</string>
+    <string name="ra_bundled">BUNDLED</string>
+    <string name="ra_npu">NPU</string>
+    <string name="ra_loaded">Loaded</string>
+    <string name="ra_use">Use</string>
+    <string name="ra_get">Get</string>
+    <string name="ra_set_token">Set token</string>
+    <string name="ra_re_extract">Re-extract</string>
+    <string name="ra_delete_bundled">Delete bundled</string>
+    <string name="ra_delete">Delete</string>
+    <string name="ra_cancel">Cancel</string>
+    <string name="ra_model_chip">Model: %1$s</string>
+    <string name="ra_model_chip_none">No model — open Models</string>
+    <string name="ra_working_late">Working late?</string>
+    <string name="ra_working_late_subtitle">Ask anything — AI runs locally on your device by default.</string>
+    <string name="ra_plan_day">Plan my day</string>
+    <string name="ra_rewrite">Rewrite clearly</string>
+    <string name="ra_compare">Compare options</string>
+    <string name="ra_tools_unavailable_title">Web &amp; tools unavailable</string>
+    <string name="ra_tools_unavailable_subtitle">Choose a chat model before enabling Web &amp; tools.</string>
+    <string name="ra_base_palette_runanywhere">RunAnywhere (dark + orange)</string>
+    <string name="ra_backend_filter_all">All</string>
+    <string name="ra_backend_filter_llamacpp">Llama.cpp</string>
+    <string name="ra_backend_filter_npu">NPU</string>
+    <string name="ra_section_recommended">Recommended for your device</string>
+    <string name="ra_dialog_delete_title">Delete model?</string>
+    <string name="ra_dialog_delete_body">%1$s and its %2$d MB will be removed from this device. You can re-download it later.</string>
+    <string name="ra_dialog_delete_confirm">Delete</string>
+    <string name="ra_dialog_delete_cancel">Cancel</string>
+    <string name="ra_dialog_error_title">Something went wrong</string>
+    <string name="ra_dialog_error_ok">OK</string>
+    <string name="ra_inference_service">Inference service</string>
+    <string name="ra_no_engine_picker">No model loaded — pick one from Models</string>
+    <string name="ra_jobs_start">Start</string>
+    <string name="ra_jobs_stop">Stop</string>
+    <string name="ra_search_filter">Filter models</string>
+    <string name="ra_search_filter_placeholder">name, family, origin, language, runtime</string>
+    <string name="ra_post_notifications_rationale">Allow notifications to see download progress.</string>
+    <string name="ra_open_models_picker">Open Models picker…</string>
+
+    <!-- Cloud Hub + multi-cloud MCP control center -->
+    <string name="screen_cloud">Cloud</string>
+    <string name="cloud_hub_connected">Connected infrastructure</string>
+    <string name="cloud_hub_agent_workspace">AI Agent workspace</string>
+    <string name="cloud_provider_connected">Connected</string>
+    <string name="cloud_provider_disconnected">Disconnected</string>
+    <string name="cloud_add_custom">Add Custom Cloud</string>
+    <string name="cloud_add_custom_subtitle">Point at a private MCP bridge — bearer, OAuth2, or AWS IAM</string>
+    <string name="cloud_provider_name">Provider name</string>
+    <string name="cloud_endpoint_label">MCP bridge endpoint</string>
+    <string name="cloud_openapi_label">OpenAPI spec URL (optional)</string>
+    <string name="cloud_auth_profile">Authentication profile</string>
+    <string name="cloud_auth_bearer">Bearer</string>
+    <string name="cloud_auth_oauth">OAuth2</string>
+    <string name="cloud_auth_aws_iam">AWS IAM</string>
+    <string name="cloud_token_label">Token</string>
+    <string name="cloud_rag_namespace">RAG knowledge-base namespace</string>
+    <string name="cloud_test_handshake">Test handshake</string>
+    <string name="cloud_save_provider">Save provider</string>
+    <string name="cloud_open_terminal">Open Agent Terminal</string>
+    <string name="cloud_open_terminal_subtitle">Stream thoughts, tool calls, and observations live</string>
+    <string name="cloud_prompt_hint">Ask the agent anything…</string>
+    <string name="cloud_send">Send</string>
+    <string name="cloud_terminal_empty">No events yet — send a prompt to start the loop.</string>
+    <string name="cloud_terminal_thought">Thought: %1$s</string>
+    <string name="cloud_terminal_tool_call">Tool call: %1$s(%2$s)</string>
+    <string name="cloud_terminal_tool_result">Result: %1$s</string>
+    <string name="cloud_terminal_error">Error: %1$s</string>
+    <string name="cloud_loop_live">Live stream</string>
+    <string name="cloud_loop_step">Step-by-step log</string>
+    <string name="cloud_settings_rag_title">RAG backend</string>
+    <string name="cloud_settings_rag_subtitle">Where the agent retrieves context from</string>
+    <string name="cloud_settings_loop_title">Agent loop display</string>
+    <string name="cloud_settings_loop_subtitle">Live stream scrolls into view; step log renders a static numbered list</string>
+    <string name="cloud_rag_local">Local</string>
+    <string name="cloud_rag_remote">Remote</string>
+    <string name="cloud_rag_auto">Auto</string>
+    <string name="cloud_rag_auto_local">Auto · Local</string>
+    <string name="cloud_rag_auto_remote">Auto · Remote</string>
+    <string name="cloud_rag_ask">Ask</string>
+    <string name="cloud_nararouter_model">NaraRouter model</string>
+    <string name="cloud_settings_section">Cloud &amp; agent</string>
+
+    <!-- Phase Cloud 2 — Search / Web / Tools / Browser / Android automation. -->
+    <string name="cloud_tools_row_title">Tools</string>
+    <string name="cloud_tools_web_search">Web search</string>
+    <string name="cloud_tools_http_tool">HTTP tool</string>
+    <string name="cloud_tools_browser">Browser automation</string>
+    <string name="cloud_tools_android">Android automation</string>
+    <string name="cloud_add_search">Add web search</string>
+    <string name="cloud_add_http_tool">Add HTTP tool</string>
+    <string name="cloud_add_browser">Add browser automation</string>
+    <string name="cloud_add_android">Add Android automation</string>
+    <string name="cloud_llm_endpoint">LLM endpoint</string>
+    <string name="cloud_llm_api_key">LLM API key</string>
+    <string name="cloud_llm_model">Model</string>
+    <string name="cloud_llm_test_connection">Test connection</string>
+    <string name="cloud_browser_allowlist">Browser allowlist</string>
+    <string name="cloud_browser_action_confirm">Allow this browser action?</string>
+    <string name="cloud_browser_form_submit_confirm">This will submit a form. Continue?</string>
+    <string name="cloud_android_settings">Android automation</string>
+    <string name="cloud_android_master_toggle">Enable Android automation</string>
+    <string name="cloud_android_service_status">Accessibility service: %1$s</string>
+    <string name="cloud_android_service_description">Allows Meshlit to read your screen and drive installed apps at your request. Enable in Settings → Accessibility to use the Android automation tools.</string>
+    <string name="cloud_android_service_enabled">enabled</string>
+    <string name="cloud_android_service_disabled">disabled</string>
+    <string name="cloud_android_service_missing">binary missing</string>
+    <string name="cloud_android_open_settings">Open Android settings</string>
+    <string name="cloud_android_allowlist">App allowlist</string>
+    <string name="cloud_android_high_risk">High-risk apps</string>
+    <string name="cloud_android_test_action">Test action</string>
+    <string name="cloud_android_action_confirm">Allow this Android action?</string>
+    <string name="cloud_android_sensitive_target">This is a sensitive target. Proceed?</string>
+    <string name="cloud_android_allow_once">Allow once</string>
+    <string name="cloud_android_allow_for_app">Allow for this app</string>
+    <string name="cloud_android_deny">Deny</string>
+
+    <!-- Phase Observability 1 — drawer quick actions, help, feedback, network -->
+    <string name="drawer_sync_ok">Resynced %1$d models</string>
+    <string name="drawer_sync_failed">Sync failed: %1$s</string>
+    <string name="drawer_boost_on">Inference boost on (NPU/GPU preferred)</string>
+    <string name="drawer_boost_off">Inference boost off</string>
+    <string name="screen_help">Help</string>
+    <string name="help_hub_title">Help &amp; manual</string>
+    <string name="help_hub_manual">User manual</string>
+    <string name="help_hub_manual_subtitle">Every feature, intent, use case, configuration, troubleshooting</string>
+    <string name="help_hub_tour">UI tour</string>
+    <string name="help_hub_tour_subtitle">First-visit popovers + a permanent guide</string>
+    <string name="help_hub_feedback">Send feedback</string>
+    <string name="help_hub_feedback_subtitle">Opens a GitHub Issue with logs attached</string>
+    <string name="help_hub_connected">Connected</string>
+    <string name="help_manual_title">User manual</string>
+    <string name="help_tour_section_intent">Intent</string>
+    <string name="help_tour_section_usecase">Use case</string>
+    <string name="help_tour_section_config">How to configure</string>
+    <string name="help_tour_section_trouble">Troubleshooting</string>
+    <string name="help_tour_title">UI tour</string>
+    <string name="help_tour_reset">Reset tour</string>
+    <string name="help_tour_blurb_open">Open</string>
+    <string name="help_tour_blurb_mark_seen">Mark as seen</string>
+    <string name="help_overlay_show_more">Show me more</string>
+    <string name="help_overlay_got_it">Got it</string>
+    <string name="feedback_title">Send feedback</string>
+    <string name="feedback_type_bug">Bug</string>
+    <string name="feedback_type_feature">Feature request</string>
+    <string name="feedback_title_field">Title</string>
+    <string name="feedback_body_field">Describe what happened</string>
+    <string name="feedback_attach_logs">Attach last %1$d log lines</string>
+    <string name="feedback_repo_slug">GitHub repo (owner/name)</string>
+    <string name="feedback_submit">Submit</string>
+    <string name="feedback_submit_ok">Opening GitHub…</string>
+    <string name="feedback_submit_failed">Could not open browser</string>
+    <string name="net_monitor_title">Network monitor</string>
+    <string name="settings_tracing_title">Tracing</string>
+    <string name="settings_tracing_mode">Tracing mode</string>
+    <string name="settings_tracing_endpoint">OTLP endpoint</string>
+    <string name="settings_tracing_headers">OTLP headers</string>
+    <string name="settings_about_feedback">Send feedback</string>
+    <string name="settings_about_manual">User manual</string>
+    <string name="settings_about_tour">UI tour</string>
+
+    <!-- Existing model / agent strings retained for the screens that use them. -->
+    <string name="cloud_agent_permission_granted">Permission granted</string>
+    <string name="cloud_agent_no_permission_required">No permission required</string>
+    <string name="cloud_agent_sms_allowlist_label">SMS recipient allowlist</string>
+    <string name="cloud_agent_storage_allowlist_label">Storage grant</string>
+    <string name="cloud_agent_storage_grant">Choose a directory</string>
+    <string name="models_download_eta">ETA %1$s</string>
+    <string name="models_chip_easy">Easy</string>
+    <string name="models_chip_fast">Fast</string>
+    <string name="models_chip_balanced">Balanced</string>
+    <string name="models_chip_heavy">Heavy</string>
+    <string name="models_chip_llamacpp">llama.cpp</string>
+    <!-- auto-added cloud strings -->
+    <string name="cloud_agent_capabilities_intro">Cloud agent capabilities intro</string>
+    <string name="cloud_agent_capabilities_title">Cloud agent capabilities title</string>
+    <string name="cloud_agent_grant_permission">Cloud agent grant permission</string>
+    <string name="cloud_agent_permission_required">Cloud agent permission required</string>
+    <string name="cloud_risk_high">Cloud risk high</string>
+    <string name="cloud_risk_low">Cloud risk low</string>
+    <string name="cloud_risk_medium">Cloud risk medium</string>
+    <!-- auto-added devices strings -->
+    <string name="devices_nearby_empty_idle">Devices nearby empty idle</string>
+    <string name="devices_nearby_empty_scanning">Devices nearby empty scanning</string>
+    <string name="devices_nearby_header">Devices nearby header</string>
+    <string name="devices_nearby_scan">Devices nearby scan</string>
+    <string name="devices_nearby_stop">Devices nearby stop</string>
+    <string name="devices_nearby_subtitle">Devices nearby subtitle</string>
+    <string name="devices_qr_scan_failed">Devices qr scan failed</string>
+    <string name="devices_qr_scan_failed_code">Devices qr scan failed code</string>
+    <string name="devices_qr_scan_invalid">Devices qr scan invalid</string>
+    <string name="devices_qr_scan_play_services">Devices qr scan play services</string>
+    <!-- auto-added files strings -->
+    <string name="files_action_done">Files action done</string>
+    <string name="files_copied">Files copied</string>
+    <string name="files_copy">Files copy</string>
+    <string name="files_copy_failed">Files copy failed</string>
+    <string name="files_delete">Files delete</string>
+    <string name="files_delete_confirm_body">Files delete confirm body</string>
+    <string name="files_delete_confirm_button">Files delete confirm button</string>
+    <string name="files_delete_confirm_title">Files delete confirm title</string>
+    <string name="files_delete_failed">Files delete failed</string>
+    <string name="files_deleted">Files deleted</string>
+    <string name="files_mkdir">Files mkdir</string>
+    <string name="files_mkdir_button">Files mkdir button</string>
+    <string name="files_mkdir_failed">Files mkdir failed</string>
+    <string name="files_mkdir_hint">Files mkdir hint</string>
+    <string name="files_more">Files more</string>
+    <string name="files_move">Files move</string>
+    <string name="files_move_failed">Files move failed</string>
+    <string name="files_moved">Files moved</string>
+    <string name="files_open">Files open</string>
+    <string name="files_open_external">Files open external</string>
+    <string name="files_open_failed">Files open failed</string>
+    <string name="files_rename">Files rename</string>
+    <string name="files_share">Files share</string>
+    <string name="files_source_saf">Files source saf</string>
+    <!-- auto-added jobs strings -->
+    <string name="jobs_dispatch_cluster">Jobs dispatch cluster</string>
+    <!-- auto-added llm strings -->
+    <string name="llm_output_copied">Llm output copied</string>
+    <string name="llm_output_copy">Llm output copy</string>
+    <string name="llm_output_export">Llm output export</string>
+    <string name="llm_output_export_failed">Llm output export failed</string>
+    <string name="llm_output_save">Llm output save</string>
+    <string name="llm_output_save_failed">Llm output save failed</string>
+    <string name="llm_output_saved">Llm output saved</string>
+    <string name="llm_output_share">Llm output share</string>
+    <!-- auto-added voice strings -->
+    <string name="voice_import_audio">Voice import audio</string>
+    <string name="voice_save_recording">Voice save recording</string>
+    <string name="voice_share_recording">Voice share recording</string>
+    <string name="voice_share_transcript">Voice share transcript</string>
 </resources>

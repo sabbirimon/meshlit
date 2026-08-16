@@ -19,6 +19,17 @@ okhttp = "4.12.0"
 nanohttpd = "2.3.1"
 zxing = "3.5.3"
 
+# Security — Android Keystore-backed EncryptedSharedPreferences
+# for cloud-provider tokens. Pulled in by core-trust +
+# core-cloud-mcp only; ~250 KB.
+securityCrypto = "1.1.0-alpha06"
+
+# Local RAG store — Room + sqlite-vss for vector similarity search
+# on-device. Both versions track the Kotlin 2.4.x line and the
+# Room 2.7.x release line that supports it.
+room = "2.7.0-alpha11"
+sqliteVss = "0.1.4"
+
 # Desugaring
 desugar = "2.1.4"
 
@@ -48,6 +59,55 @@ runanywhere = "0.20.12"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
+robolectric = "4.13"
+
+# UI Automator — Google's official cross-app automation library.
+# Pulled in as a `main` implementation because
+# MeshlitAccessibilityService binds against UiDevice / By /
+# UiObject2 at runtime (see AndroidUiAutomatorBridge.kt), not
+# just during tests. 2.3.0 is the latest stable on the
+# AGP 8.x baseline. UI Automator is API 21+ so it covers the
+# project's minSdk floor.
+uiAutomator = "2.3.0"
+
+# Google Play Services — Code Scanner. The dedicated,
+# Google-blessed barcode / QR scanner API. Unlike
+# `com.google.mlkit:barcode-scanning`, it does NOT bundle the
+# model into the APK — Play Services downloads the scanner
+# module on first launch and serves a self-contained camera UI.
+# No CAMERA permission required in our manifest, no CameraX dep,
+# no Camera2 plumbing — just `startScan()` → rawValue string.
+# 16.1.0 is the latest stable (Aug 2023).
+playServicesCodeScanner = "16.1.0"
+
+# CameraX — used by the `agent_camera_capture` tool. The
+# agent_loop asks CameraX for a single `ImageCapture`; we don't
+# render a preview, just resolve the deferred and read the
+# captured JPEG bytes. 1.4.x is the current stable line.
+camerax = "1.4.1"
+
+# Fused location provider — last-known fix for the
+# `agent_location_get` tool. Pulls from GPS / Wi-Fi / cell
+# triangulation. 21.3.0 is the latest stable.
+playServicesLocation = "21.3.0"
+
+# kotlinx-coroutines-play-services — the `.await()` extension
+# on Play Services Tasks. Without it, the Task<Location> from
+# FusedLocationProviderClient has no coroutine bridge.
+kotlinxCoroutinesPlayServices = "1.10.0"
+
+# OpenTelemetry — runtime tracing SDK + OTLP/gRPC exporter. Used
+# by :core-observability to forward spans to Grafana Cloud /
+# Tempo / any OTLP-compatible backend. The user pastes the OTLP
+# endpoint URL + optional headers in Settings → Tracing.
+# 1.43.0 is the latest stable on the AGP 8.x / Kotlin 2.4.x line.
+opentelemetry = "1.43.0"
+
+# Vendored RunAnywhere SDK — Square Wire runtime (protobuf codec
+# used by the SDK's generated proto classes). 5.5.1 matches the
+# upstream SDK's wire-compiler output version.
+wire = "5.5.1"
+androidxAnnotation = "1.8.2"
 
 [libraries]
 # Gradle plugin marker artifacts (used only by build-logic)
@@ -57,19 +117,36 @@ compose-gradle-plugin = { group = "org.jetbrains.kotlin", name = "compose-compil
 
 # AndroidX core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-annotation-jvm = { group = "androidx.annotation", name = "annotation", version.ref = "androidxAnnotation" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycle" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycle" }
+androidx-savedstate = { group = "androidx.savedstate", name = "savedstate-ktx", version = "1.2.1" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 # HTTP clients
 okhttp-core = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 nanohttpd-core = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+
+# Security — Android Keystore-backed EncryptedSharedPreferences
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+
+# Room + sqlite-vss (local RAG vector store)
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+sqlite-vss = { group = "io.github.z-huang", name = "sqlite-vss", version.ref = "sqliteVss" }
+
+# Vendored RunAnywhere SDK runtime support.
+wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "wire" }
 
 # Phase 2.x — ONNX Runtime Mobile (the second shipped engine)
 onnxruntime-mobile = { group = "com.microsoft.onnxruntime", name = "onnxruntime-mobile", version.ref = "onnxruntime" }
@@ -108,6 +185,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 # Logging
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
@@ -119,6 +197,45 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+
+# UI Automator — Google's official Android UI Automator library.
+# Used at runtime by MeshlitAccessibilityService (in
+# AndroidUiAutomatorBridge.kt) to find / click / type into
+# nodes across apps. Same library the Espresso / Compose-test
+# UI Automator framework uses.
+androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiAutomator" }
+
+# Google Play Services — Code Scanner. QR pairing on the Devices
+# screen. GmsBarcodeScanning.getClient(context).startScan() returns
+# a Task<String> with the decoded raw value (no camera permission
+# required, scanner UI bundled with Play Services).
+play-services-code-scanner = { group = "com.google.android.gms", name = "play-services-code-scanner", version.ref = "playServicesCodeScanner" }
+
+# CameraX — agent_camera_capture tool. Pulls in the
+# lifecycle-aware camera surface we resolve for a single shot.
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+
+# Fused location provider — agent_location_get tool. Pulls the
+# last-known fix without spinning up GPS.
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# kotlinx-coroutines-play-services — `Task<T>.await()` extension
+# used to bridge FusedLocationProviderClient's Tasks into suspend
+# functions.
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+
+# OpenTelemetry — runtime SDK + OTLP exporter. The four artifacts
+# below are the production minimum: API (interfaces the app codes
+# against), SDK (TracerProvider + SpanProcessor implementations),
+# OTLP exporter (gRPC push to Grafana / Tempo), and the logging
+# exporter (used in Local mode for in-process span dumps).
+opentelemetry-api = { group = "io.opentelemetry", name = "opentelemetry-api", version.ref = "opentelemetry" }
+opentelemetry-sdk = { group = "io.opentelemetry", name = "opentelemetry-sdk", version.ref = "opentelemetry" }
+opentelemetry-exporter-otlp = { group = "io.opentelemetry", name = "opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
+opentelemetry-exporter-logging = { group = "io.opentelemetry", name = "opentelemetry-exporter-logging", version.ref = "opentelemetry" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

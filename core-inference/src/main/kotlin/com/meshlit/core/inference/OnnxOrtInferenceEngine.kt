@@ -31,12 +31,13 @@ import java.io.File
  *        <reason>")`.
  *      - `infer(prompt)` → succeeds if a model is loaded AND the
  *        session has a known text-input schema. We do not invent a
- *        synthetic reply here: that's what the JvmStubInferenceEngine
- *        is for.
+ *        synthetic reply here: that's what `[NoOpInferenceEngine]`
+ *        prevents.
  *  - Until a real `.onnx` is bundled and the input schema is known,
- *    the coordinator's `pickEngine()` falls through to the JvmStub
- *    engine after a successful ORT aar probe. The stub still streams
- *    placeholder replies so the UI stays functional.
+ *    the coordinator's `pickEngine()` falls through to
+ *    `NoOpInferenceEngine` after a successful ORT aar probe. NoOp
+ *    surfaces a typed `MeshlitError.Native` rather than a fake
+ *    reply.
  *
  * JNI surface (Phase 3):
  *  - The `external fun` declarations were removed when no JNI symbols
@@ -48,7 +49,8 @@ import java.io.File
  * Status: shipped as a runtime *registry* entry (the second shipped
  * runtime for `FileFormat.Onnx`). The engine code itself is
  * functional end-to-end but the APK does not bundle an `.onnx` model,
- * so production loads of bundled assets still hit the stub. Loading
+ * so loads of bundled assets without ORT readiness surface a typed
+ * `no_engine_for_format` failure from `NoOpInferenceEngine`. Loading
  * an externally-imported `.onnx` file via the Models screen does work
  * end-to-end (assuming the model file has a compatible input schema).
  */
@@ -78,7 +80,7 @@ class OnnxOrtInferenceEngine : InferenceEngine {
         if (!nativeReady) {
             return MeshlitResult.Failure(
                 com.meshlit.core.common.MeshlitError.Native(
-                    "ONNX Runtime aar not loaded — falling back to stub",
+                    "ONNX Runtime aar not loaded — no engine available",
                 ),
             )
         }
@@ -164,7 +166,7 @@ class OnnxOrtInferenceEngine : InferenceEngine {
             // We don't synthesize text here. If the loaded model
             // exposes a string-input schema, we feed the prompt in;
             // otherwise we surface a typed error so the caller can
-            // fall back to the stub instead of returning bogus text.
+            // see why inference failed instead of receiving bogus text.
             val result = runOrtSession(sess, request.prompt)
                 ?: return MeshlitResult.Failure(
                     com.meshlit.core.common.MeshlitError.Invalid(
@@ -208,7 +210,7 @@ class OnnxOrtInferenceEngine : InferenceEngine {
      * reflective `getEnvironment()` call. If the aar's classes
      * resolve but `getEnvironment` throws (e.g. the on-device native
      * `.so` is missing), we treat the engine as not-shipped and
-     * fall back to the stub.
+     * fall back to `NoOpInferenceEngine`.
      */
     fun loadNativeLibrary(): Boolean {
         return try {

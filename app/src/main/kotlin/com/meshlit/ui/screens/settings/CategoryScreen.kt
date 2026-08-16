@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -57,6 +58,7 @@ import com.meshlit.R
 fun CategoryScreen(
     category: SettingsCategory,
     onBack: () -> Unit,
+    onOpenCustomPalette: (() -> Unit)? = null,
 ) {
     // rememberSaveable keeps the toggle state across config changes
     // and process death. Per-category via the route key so toggling
@@ -123,7 +125,10 @@ fun CategoryScreen(
             // Specialize per category — only Theme and Device are wired today.
             when (category) {
                 SettingsCategory.THEME -> {
-                    ThemeCustomizationScreen(advanced = advanced)
+                    ThemeCustomizationScreen(
+                        advanced = advanced,
+                        onOpenCustomPalette = onOpenCustomPalette,
+                    )
                     return@Column
                 }
                 SettingsCategory.DEVICE -> {
@@ -193,19 +198,13 @@ private fun AdvancedToggle(
 
 @Composable
 private fun SettingRow(match: SettingsSearchIndex.Match) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = match.label,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = match.description,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-    }
+    com.meshlit.ui.components.RaNavRow(
+        leadingIcon = Icons.Filled.ChevronRight,
+        title = match.label,
+        subtitle = match.description,
+        onClick = { /* match click is wired by the parent category list */ },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 private data class Section(

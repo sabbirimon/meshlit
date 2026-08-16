@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -70,9 +71,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.meshlit.MeshlitApplication
 import com.meshlit.R
@@ -87,6 +91,10 @@ import com.meshlit.inference.buildInferIntent
 import com.meshlit.inference.buildLoadModelIntent
 import com.meshlit.inference.defaultRequestHints
 import com.meshlit.ui.motion.MeshlitMotion
+import com.meshlit.ui.components.IdentityBadge
+import com.meshlit.ui.components.IdentityBadgeVariant
+import com.meshlit.ui.components.IdentityResolver
+import com.meshlit.ui.components.LlmOutputActions
 import kotlinx.coroutines.launch
 
 /**
@@ -109,6 +117,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun JobsScreen(
     onOpenDrawer: () -> Unit = {},
+    onOpenModels: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as com.meshlit.MeshlitApplication }
@@ -124,6 +133,11 @@ fun JobsScreen(
     // discovery is wired.
     var dispatchMode by remember { mutableStateOf(InferenceDispatchMode.LOCAL) }
     var remoteIp by remember { mutableStateOf("") }
+    // Resolved cluster peer label (e.g. "node-abc:8080") — populated
+    // by the cluster-dispatch branch so the identity badge can show
+    // which peer the current prompt is being routed to. Empty
+    // when cluster mode hasn't resolved a peer yet.
+    var resolvedClusterPeer by remember { mutableStateOf("") }
 
     // Stable factory used by remote dispatches. Owned by the app
     // singleton so we share one HttpClient across the app.
@@ -228,6 +242,18 @@ fun JobsScreen(
                 tier = (context.applicationContext as com.meshlit.MeshlitApplication).capabilityTier,
                 active = currentReply.value != null,
                 onOpenDrawer = onOpenDrawer,
+                trailing = {
+                    // Dispatch picker — Local / Remote / Cluster.
+                    // Anchored in the top bar so the chat surface
+                    // above the input stays unencumbered. The active
+                    // option is filled with the tier accent; the
+                    // other two are ghost icons.
+                    DispatchPicker(
+                        mode = dispatchMode,
+                        onChange = { dispatchMode = it },
+                        enabled = currentReply.value == null,
+                    )
+                },
             )
         },
     ) { innerPadding ->
@@ -236,13 +262,13 @@ fun JobsScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // Stub banner — only visible when the engine is the demo
-            // stub. Tells the user up front that replies are
-            // placeholders, so the streaming bubble below doesn't
+            // No-engine banner — only visible when no real runtime
+            // is loaded. Tells the user up front that prompts
+            // can't be answered, so the input field below doesn't
             // look like a broken model.
-            val isStub = remember { app.inferenceCoordinator.engineTag == "stub" }
+            val isNoEngine = remember { app.inferenceCoordinator.engineTag == "none" }
             AnimatedVisibility(
-                visible = isStub,
+                visible = isNoEngine,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
             ) {
@@ -254,7 +280,7 @@ fun JobsScreen(
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.jobs_stub_banner),
+                        text = stringResource(R.string.jobs_no_engine_banner),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                         modifier = Modifier.padding(12.dp),
@@ -262,16 +288,23 @@ fun JobsScreen(
                 }
             }
 
-            // Controls row: model picker + Start/Stop service toggle.
-            // The picker lists bundled + imported GGUFs plus a
-            // "Download starter model" entry that pulls a model from
-            // the RunAnywhere catalog. Tapping a row dispatches
-            // `buildLoadModelIntent` to the FGS. The toggle button
-            // label flips between "Start" and "Stop" based on the
-            // live `CoordinatorState`.
-            ControlsRow(
+            // Compact toolbar — model picker (icon only) + Start/Stop
+            // (icon only) + status pill. The previous implementation
+            // carved a full-width card row that swallowed ~30% of
+            // the screen; this version is a single-line strip so the
+            // chat surface dominates.
+            CompactToolbar(
                 app = app,
                 state = coordinatorState,
+                dispatchMode = dispatchMode,
+                peerLabel = when (dispatchMode) {
+                    InferenceDispatchMode.LOCAL -> ""
+                    InferenceDispatchMode.REMOTE -> remoteIp
+                    // Cluster peer label is set when the user
+                    // picks cluster mode and the dispatch
+                    // resolves a peer; before that it's blank.
+                    InferenceDispatchMode.CLUSTER -> resolvedClusterPeer
+                },
                 onLoadModel = { path ->
                     context.startService(buildLoadModelIntent(context, path))
                 },
@@ -290,11 +323,7 @@ fun JobsScreen(
                 onStop = {
                     InferenceForegroundService.stop(context)
                 },
-            )
-
-            // Status card
-            StatusCard(
-                state = coordinatorState,
+                onOpenModels = onOpenModels,
                 onRefresh = {
                     scope.launch {
                         runCatching {
@@ -306,7 +335,9 @@ fun JobsScreen(
 
             HorizontalDivider()
 
-            // Conversation history + current reply
+            // Conversation history + current reply. The chat surface
+            // now owns the entire vertical real-estate between the
+            // toolbar strip and the input row.
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -331,151 +362,499 @@ fun JobsScreen(
                 }
             }
 
-            HorizontalDivider()
-
-            // Dispatch-mode toggle + IP field. Above the prompt input
-            // so users see *where* their prompt is going before they
-            // hit Send.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(
-                        selected = dispatchMode == InferenceDispatchMode.LOCAL,
-                        onClick = { dispatchMode = InferenceDispatchMode.LOCAL },
-                        enabled = currentReply.value == null,
-                    )
-                    Text(
-                        text = stringResource(R.string.jobs_dispatch_local),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(end = 16.dp),
-                    )
-                    RadioButton(
-                        selected = dispatchMode == InferenceDispatchMode.REMOTE,
-                        onClick = { dispatchMode = InferenceDispatchMode.REMOTE },
-                        enabled = currentReply.value == null,
-                    )
-                    Text(
-                        text = stringResource(R.string.jobs_dispatch_remote),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                OutlinedTextField(
-                    value = remoteIp,
-                    onValueChange = { remoteIp = it.trim() },
-                    label = { Text(stringResource(R.string.jobs_remote_ip_label)) },
-                    placeholder = { Text(stringResource(R.string.jobs_remote_ip_placeholder)) },
-                    enabled = dispatchMode == InferenceDispatchMode.REMOTE && currentReply.value == null,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            HorizontalDivider()
-
-            // Input row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = prompt,
-                    onValueChange = { prompt = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.jobs_prompt_hint)) },
-                    singleLine = false,
-                    maxLines = 4,
-                    enabled = currentReply.value == null,
-                )
-                Spacer(Modifier.height(8.dp))
-                if (currentReply.value == null) {
-                    IconButton(
-                        onClick = {
-                            val p = prompt.trim()
-                            if (p.isNotEmpty()) {
-                                when (dispatchMode) {
-                                    InferenceDispatchMode.LOCAL -> {
-                                        context.startService(buildInferIntent(context, p))
+            // ── Input row (compact) ─────────────────────────────────
+            // Remote IP field stays below the prompt so the chat
+            // surface above stays clean. Tapping the input field
+            // collapses the field; the corner button reveals it.
+            InputRow(
+                prompt = prompt,
+                onPromptChange = { prompt = it },
+                onSend = {
+                    val p = prompt.trim()
+                    if (p.isEmpty()) return@InputRow
+                    when (dispatchMode) {
+                        InferenceDispatchMode.LOCAL -> {
+                            context.startService(buildInferIntent(context, p))
+                        }
+                        InferenceDispatchMode.REMOTE -> {
+                            if (remoteIp.isBlank()) return@InputRow
+                            currentReply.value = PromptExchange(
+                                prompt = p,
+                                reply = "",
+                                finished = false,
+                            )
+                            prompt = ""
+                            scope.launch {
+                                dispatchRemote(p, remoteFactory, remoteIp) { event ->
+                                    when (event) {
+                                        is RemoteEvent.Token -> {
+                                            val cur = currentReply.value ?: return@dispatchRemote
+                                            currentReply.value = cur.copy(reply = cur.reply + event.text)
+                                        }
+                                        is RemoteEvent.Done -> {
+                                            val cur = currentReply.value ?: return@dispatchRemote
+                                            val final = cur.copy(
+                                                reply = if (cur.reply.isNotEmpty()) cur.reply else "[empty reply]",
+                                                finished = true,
+                                            )
+                                            history.add(final)
+                                            currentReply.value = null
+                                        }
+                                        is RemoteEvent.Error -> {
+                                            val cur = currentReply.value ?: return@dispatchRemote
+                                            history.add(
+                                                cur.copy(
+                                                    reply = "[error: ${event.tag}]",
+                                                    finished = true,
+                                                ),
+                                            )
+                                            currentReply.value = null
+                                        }
                                     }
-                                    InferenceDispatchMode.REMOTE -> {
-                                        if (remoteIp.isBlank()) return@IconButton
-                                        // Push the user prompt into the
-                                        // currentReply bubble up front so
-                                        // the UI has something to render
-                                        // while the SSE wire comes back.
-                                        currentReply.value = PromptExchange(
-                                            prompt = p,
-                                            reply = "",
-                                            finished = false,
-                                        )
-                                        prompt = ""
-                                        scope.launch {
-                                            dispatchRemote(p, remoteFactory, remoteIp) { event ->
-                                                when (event) {
-                                                    is RemoteEvent.Token -> {
-                                                        val cur = currentReply.value ?: return@dispatchRemote
-                                                        currentReply.value = cur.copy(reply = cur.reply + event.text)
-                                                    }
-                                                    is RemoteEvent.Done -> {
-                                                        val cur = currentReply.value ?: return@dispatchRemote
-                                                        val final = cur.copy(
-                                                            reply = if (cur.reply.isNotEmpty()) cur.reply else "[empty reply]",
-                                                            finished = true,
-                                                        )
-                                                        history.add(final)
-                                                        currentReply.value = null
-                                                    }
-                                                    is RemoteEvent.Error -> {
-                                                        val cur = currentReply.value ?: return@dispatchRemote
-                                                        history.add(
-                                                            cur.copy(
-                                                                reply = "[error: ${event.tag}]",
-                                                                finished = true,
-                                                            ),
-                                                        )
-                                                        currentReply.value = null
-                                                    }
-                                                }
+                                }
+                            }
+                        }
+                        InferenceDispatchMode.CLUSTER -> {
+                            // Cluster dispatch — picks the first
+                            // reachable cluster peer and streams the
+                            // prompt through the same RemoteEvent
+                            // pipeline as REMOTE. The actual peer
+                            // resolution lives in ClusterDispatch —
+                            // `firstPeer()` is a suspend DataStore
+                            // read, so the whole branch is wrapped
+                            // in `scope.launch`.
+                            scope.launch {
+                                val peer = app.clusterDispatch.firstPeer()
+                                if (peer == null) {
+                                    resolvedClusterPeer = ""
+                                    val empty = PromptExchange(
+                                        prompt = p,
+                                        reply = "[no cluster peers reachable]",
+                                        finished = true,
+                                    )
+                                    history.add(empty)
+                                } else {
+                                    resolvedClusterPeer = peer
+                                    currentReply.value = PromptExchange(
+                                        prompt = p,
+                                        reply = "",
+                                        finished = false,
+                                    )
+                                    prompt = ""
+                                    dispatchRemote(p, remoteFactory, peer) { event ->
+                                        when (event) {
+                                            is RemoteEvent.Token -> {
+                                                val cur = currentReply.value ?: return@dispatchRemote
+                                                currentReply.value = cur.copy(reply = cur.reply + event.text)
+                                            }
+                                            is RemoteEvent.Done -> {
+                                                val cur = currentReply.value ?: return@dispatchRemote
+                                                history.add(
+                                                    cur.copy(
+                                                        reply = cur.reply.ifEmpty { "[empty reply]" },
+                                                        finished = true,
+                                                    ),
+                                                )
+                                                currentReply.value = null
+                                            }
+                                            is RemoteEvent.Error -> {
+                                                val cur = currentReply.value ?: return@dispatchRemote
+                                                history.add(
+                                                    cur.copy(
+                                                        reply = "[error: ${event.tag}]",
+                                                        finished = true,
+                                                    ),
+                                                )
+                                                currentReply.value = null
                                             }
                                         }
                                     }
                                 }
-                                if (dispatchMode == InferenceDispatchMode.LOCAL) {
-                                    prompt = ""
-                                }
                             }
-                        },
-                        enabled = prompt.isNotBlank() &&
-                            (dispatchMode == InferenceDispatchMode.LOCAL || remoteIp.isNotBlank()),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = stringResource(R.string.jobs_send),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                        }
                     }
-                } else {
-                    IconButton(
+                    if (dispatchMode == InferenceDispatchMode.LOCAL) {
+                        prompt = ""
+                    }
+                },
+                onCancel = {
+                    context.startService(buildCancelIntent(context))
+                },
+                isGenerating = currentReply.value != null,
+                isRemoteEnabled = remoteIp.isNotBlank(),
+                remoteIp = remoteIp,
+                onRemoteIpChange = { remoteIp = it.trim() },
+                showRemoteIp = dispatchMode == InferenceDispatchMode.REMOTE,
+            )
+        }
+    }
+}
+
+/**
+ * Three-segment dispatch picker rendered in the top bar so the
+ * chat surface above the input row stays unencumbered. The
+ * Local / Remote / Cluster options map to the same
+ * [InferenceDispatchMode] enum used by the older full-width
+ * radio row.
+ */
+@Composable
+private fun DispatchPicker(
+    mode: InferenceDispatchMode,
+    onChange: (InferenceDispatchMode) -> Unit,
+    enabled: Boolean,
+) {
+    val options = listOf(
+        InferenceDispatchMode.LOCAL to stringResource(R.string.jobs_dispatch_local),
+        InferenceDispatchMode.REMOTE to stringResource(R.string.jobs_dispatch_remote),
+        InferenceDispatchMode.CLUSTER to stringResource(R.string.jobs_dispatch_cluster),
+    )
+    Row(
+        modifier = Modifier
+            .padding(end = 8.dp)
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                RoundedCornerShape(20.dp),
+            )
+            .padding(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        options.forEach { (value, label) ->
+            val selected = mode == value
+            val accent = com.meshlit.ui.theme.MeshlitAmber
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(if (selected) accent else androidx.compose.ui.graphics.Color.Transparent)
+                    .clickable(enabled = enabled) { onChange(value) }
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Single-line toolbar that owns the model picker and the
+ * Start/Stop control. Replaces the previous full-width card row
+ * so the chat surface above gets the full vertical real-estate.
+ *
+ *  - Left: model picker (icon + selected model name, dropdown on tap)
+ *  - Center: status pill (Ready / Loading / Generating / Error)
+ *    + IdentityBadge so the user always sees which model is
+ *    answering
+ *  - Right: Start/Stop icon button
+ */
+@Composable
+private fun CompactToolbar(
+    app: MeshlitApplication,
+    state: com.meshlit.core.inference.CoordinatorState?,
+    dispatchMode: InferenceDispatchMode,
+    peerLabel: String,
+    onLoadModel: (String) -> Unit,
+    onDownloadStarterModel: () -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+    onOpenModels: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    val identity = remember(state, dispatchMode, peerLabel) {
+        IdentityResolver(app).resolve(dispatchMode, peerLabel, app.inferenceCoordinator)
+    }
+    val coroutineScope = rememberCoroutineScope()
+    var installStatus by remember { mutableStateOf<InstallStatus>(InstallStatus.Idle) }
+    val pickerEntries = remember(installStatus) {
+        buildList<Pair<String, String>> {
+            app.bundledModelPath()?.let { bundled ->
+                add("Bundled · ${bundled.name}" to bundled.absolutePath)
+            }
+            com.meshlit.models.ModelCatalog.importedFiles(app).forEach { f ->
+                add(f.name.replaceAfterLast('.', "gguf").removeSuffix(".gguf") to f.absolutePath)
+            }
+            val customPath = app.settingsRepository.customModelPathSync()
+            if (customPath.isNotBlank() && none { it.second == customPath }) {
+                val file = java.io.File(customPath)
+                if (file.exists()) {
+                    add(file.name to customPath)
+                }
+            }
+        }
+    }
+    val isRunning = state is com.meshlit.core.inference.CoordinatorState.Loading ||
+        state is com.meshlit.core.inference.CoordinatorState.Generating
+    val isLive = state is com.meshlit.core.inference.CoordinatorState.Ready ||
+        state is com.meshlit.core.inference.CoordinatorState.Generating
+    var menuOpen by remember { mutableStateOf(false) }
+
+    fun attemptExtract() {
+        if (installStatus is InstallStatus.Running) return
+        installStatus = InstallStatus.Running
+        coroutineScope.launch {
+            val installed = runCatching {
+                app.bundledModelInstaller.ensureInstalled(app, onProgress = null)
+            }.getOrNull()
+            installStatus = if (installed != null && installed.exists()) {
+                app.setBundledModelPath(installed)
+                InstallStatus.Done(installed.absolutePath)
+            } else {
+                InstallStatus.Failed
+            }
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            CompactModelPicker(
+                pickerEntries = pickerEntries,
+                isReady = pickerEntries.isNotEmpty(),
+                isRunning = isRunning,
+                onTap = {
+                    if (pickerEntries.isEmpty()) attemptExtract()
+                    menuOpen = true
+                },
+            )
+            androidx.compose.material3.DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { menuOpen = false },
+            ) {
+                if (pickerEntries.isEmpty()) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = {
+                            Text(
+                                when (installStatus) {
+                                    is InstallStatus.Running -> "Installing…"
+                                    is InstallStatus.Failed -> "Install failed"
+                                    else -> "No models on disk"
+                                },
+                            )
+                        },
+                        onClick = { menuOpen = false },
+                    )
+                }
+                pickerEntries.forEach { (label, path) ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         onClick = {
-                            // Cancel works locally; remote cancel is
-                            // handled by client disconnect (the server
-                            // detects it and stops inference).
-                            context.startService(buildCancelIntent(context))
+                            menuOpen = false
+                            onLoadModel(path)
                         },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Stop,
-                            contentDescription = stringResource(R.string.jobs_cancel),
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                    )
+                }
+                androidx.compose.material3.HorizontalDivider()
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text("Download starter model") },
+                    onClick = {
+                        menuOpen = false
+                        onDownloadStarterModel()
+                    },
+                )
+                androidx.compose.material3.DropdownMenuItem(
+                    text = { Text("Open Models picker") },
+                    onClick = {
+                        menuOpen = false
+                        onOpenModels()
+                    },
+                )
+            }
+        }
+        StatusPill(state = state)
+        // Identity badge — Meshlit · model · origin. Surfaces
+        // the running model + dispatch origin next to the
+        // status pill so the user always sees which model is
+        // answering and where it's running.
+        IdentityBadge(
+            identity = identity,
+            variant = IdentityBadgeVariant.Toolbar,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        IconButton(
+            // Always clickable. When live → onStop cancels the
+            // running inference; when not live → onStart boots
+            // the foreground service. The previous
+            // `enabled = !isRunning` blocked the Stop button
+            // while the model was running, so users couldn't
+            // cancel a generation from the toolbar.
+            onClick = { if (isLive) onStop() else onStart() },
+        ) {
+            Icon(
+                imageVector = if (isLive) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                contentDescription = if (isLive) "Stop" else "Start",
+                tint = if (isLive) MaterialTheme.colorScheme.error
+                       else MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactModelPicker(
+    pickerEntries: List<Pair<String, String>>,
+    isReady: Boolean,
+    isRunning: Boolean,
+    onTap: () -> Unit,
+) {
+    val label = when {
+        pickerEntries.isEmpty() -> "Pick model"
+        pickerEntries.size == 1 -> pickerEntries.first().first
+        else -> "${pickerEntries.first().first} · ${pickerEntries.size - 1} more"
+    }
+    val accent = com.meshlit.ui.theme.MeshlitAmber
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp))
+            .clickable(enabled = !isRunning, onClick = onTap)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Memory,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = Icons.Filled.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/**
+ * Inline status pill — Ready / Loading / Generating / Error. Replaces
+ * the old full-width `StatusCard` so the chat surface dominates.
+ */
+@Composable
+private fun StatusPill(state: com.meshlit.core.inference.CoordinatorState?) {
+    val (label, color) = when (state) {
+        is com.meshlit.core.inference.CoordinatorState.Ready -> "Ready" to MaterialTheme.colorScheme.primary
+        is com.meshlit.core.inference.CoordinatorState.Loading -> "Loading" to MaterialTheme.colorScheme.tertiary
+        is com.meshlit.core.inference.CoordinatorState.Generating -> "Generating" to MaterialTheme.colorScheme.tertiary
+        is com.meshlit.core.inference.CoordinatorState.Error -> "Error" to MaterialTheme.colorScheme.error
+        else -> "Idle" to MaterialTheme.colorScheme.outline
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Compact input surface. Replaces the old `Row { OutlinedTextField + IconButton }`
+ * with a single chat-style row: rounded background, inline mic + send
+ * buttons, collapsible remote-IP field.
+ */
+@Composable
+private fun InputRow(
+    prompt: String,
+    onPromptChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onCancel: () -> Unit,
+    isGenerating: Boolean,
+    isRemoteEnabled: Boolean,
+    remoteIp: String,
+    onRemoteIpChange: (String) -> Unit,
+    showRemoteIp: Boolean,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (showRemoteIp) {
+            OutlinedTextField(
+                value = remoteIp,
+                onValueChange = onRemoteIpChange,
+                label = { Text("Remote IP") },
+                placeholder = { Text("192.168.1.42:8080") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = prompt,
+                onValueChange = onPromptChange,
+                placeholder = { Text(stringResource(R.string.jobs_prompt_hint)) },
+                singleLine = false,
+                maxLines = 4,
+                modifier = Modifier.weight(1f),
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                ),
+            )
+            if (isGenerating) {
+                IconButton(
+                    onClick = onCancel,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Stop,
+                        contentDescription = stringResource(R.string.jobs_cancel),
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = onSend,
+                    enabled = prompt.isNotBlank() && (isRemoteEnabled || !showRemoteIp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = stringResource(R.string.jobs_send),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
@@ -488,101 +867,6 @@ data class PromptExchange(
     val reply: String,
     val finished: Boolean,
 )
-
-@Composable
-private fun StatusCard(
-    state: com.meshlit.core.inference.CoordinatorState?,
-    onRefresh: () -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        ),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Memory,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(8.dp))
-            Column(modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp)) {
-                // Crossfade the title + subtitle as `state` changes so
-                // the card doesn't snap between "Loading…" → "Ready"
-                // → "Generating…" without a transition.
-                val stateKey = state?.let { describeState(it) }
-                    ?: stringResource(R.string.jobs_status_idle)
-                AnimatedContent(
-                    targetState = stateKey,
-                    transitionSpec = {
-                        (fadeIn() + slideInVertically { it / 2 })
-                            .togetherWith(fadeOut() + slideOutVertically { -it / 2 })
-                    },
-                    label = "jobs-status-title",
-                ) { value ->
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-                AnimatedContent(
-                    targetState = state,
-                    transitionSpec = {
-                        (fadeIn() + slideInVertically { it / 2 })
-                            .togetherWith(fadeOut() + slideOutVertically { -it / 2 })
-                    },
-                    label = "jobs-status-subtitle",
-                ) { s ->
-                    Text(
-                        text = when (s) {
-                            is com.meshlit.core.inference.CoordinatorState.Ready ->
-                                s.model.modelName + " · ${s.model.parameterCount / 1_000_000}M params" +
-                                    // Phase 2 — surface the runtime name so the user
-                                    // sees *which* runtime is currently serving
-                                    // this model. Falls back to "" if no runtime
-                                    // has been resolved yet (e.g. before any load).
-                                    s.runtime?.let { " · ${it.displayName}" }.orEmpty()
-                            is com.meshlit.core.inference.CoordinatorState.Loading ->
-                                s.runtime?.let { stringResource(R.string.jobs_runtime_loading, it.displayName) }
-                                    ?: stringResource(R.string.jobs_engine_stub_hint)
-                            is com.meshlit.core.inference.CoordinatorState.Generating ->
-                                s.runtime?.let { stringResource(R.string.jobs_runtime_generating, it.displayName) }
-                                    ?: stringResource(R.string.jobs_engine_stub_hint)
-                            is com.meshlit.core.inference.CoordinatorState.Error ->
-                                s.runtime?.let { stringResource(R.string.jobs_runtime_error, it.displayName) }
-                                    ?: stringResource(R.string.jobs_engine_stub_hint)
-                            else -> stringResource(R.string.jobs_engine_stub_hint)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.jobs_refresh),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun describeState(state: com.meshlit.core.inference.CoordinatorState): String = when (state) {
-    com.meshlit.core.inference.CoordinatorState.Idle -> stringResource(R.string.jobs_status_idle)
-    is com.meshlit.core.inference.CoordinatorState.Loading -> stringResource(R.string.jobs_status_loading)
-    is com.meshlit.core.inference.CoordinatorState.Ready -> stringResource(R.string.jobs_status_ready)
-    is com.meshlit.core.inference.CoordinatorState.Generating -> stringResource(R.string.jobs_status_generating)
-    is com.meshlit.core.inference.CoordinatorState.Error -> stringResource(R.string.jobs_status_error)
-}
 
 @Composable
 private fun ExchangeBubble(
@@ -598,6 +882,11 @@ private fun ExchangeBubble(
                     .fillMaxWidth()
                     .padding(top = 4.dp),
             )
+        } else {
+            // Copy / Save / Share / Export toolbar. Hidden while
+            // the reply is still streaming so the toolbar doesn't
+            // flash a "Copy" button on every token.
+            LlmOutputActions(text = exchange.reply)
         }
     }
 }
@@ -807,234 +1096,6 @@ private suspend fun downloadRunAnywhereStarterModel(
  * model (RunAnywhere)" row. Picking it kicks off a streaming
  * download via the RunAnywhere SDK and auto-loads the model once
  * the bytes are on disk.
- */
-@Composable
-private fun ControlsRow(
-    app: MeshlitApplication,
-    state: com.meshlit.core.inference.CoordinatorState?,
-    onLoadModel: (String) -> Unit,
-    onDownloadStarterModel: () -> Unit,
-    onStart: () -> Unit,
-    onStop: () -> Unit,
-) {
-    val coroutineScope = rememberCoroutineScope()
-    // Tracks install attempts: Idle, Running, Done, Failed. We rebuild
-    // the picker entries on each transition so a successful extract
-    // appears without forcing the user to navigate away.
-    var installStatus by remember { mutableStateOf<InstallStatus>(InstallStatus.Idle) }
-    val pickerEntries = remember(installStatus) {
-        buildList<Pair<String, String>> {
-            // Bundled model — only listed if it has been extracted.
-            app.bundledModelPath()?.let { bundled ->
-                val name = bundled.name
-                add("Bundled · $name" to bundled.absolutePath)
-            }
-            // Imported models from the catalog.
-            com.meshlit.models.ModelCatalog.importedFiles(app).forEach { f ->
-                add(f.name.replaceAfterLast('.', "gguf").removeSuffix(".gguf") to f.absolutePath)
-            }
-            // Custom override path (if set and not already listed).
-            val customPath = app.settingsRepository.customModelPathSync()
-            if (customPath.isNotBlank() && none { it.second == customPath }) {
-                val file = java.io.File(customPath)
-                if (file.exists()) {
-                    add(file.name to customPath)
-                }
-            }
-        }
-    }
-    val canOpen = pickerEntries.isNotEmpty() || installStatus is InstallStatus.Running
-    fun attemptExtract() {
-        if (installStatus is InstallStatus.Running) return
-        installStatus = InstallStatus.Running
-        coroutineScope.launch {
-            val installed = runCatching {
-                app.bundledModelInstaller.ensureInstalled(app, onProgress = null)
-            }.getOrNull()
-            installStatus = if (installed != null && installed.exists()) {
-                app.setBundledModelPath(installed)
-                InstallStatus.Done(installed.absolutePath)
-            } else {
-                InstallStatus.Failed
-            }
-        }
-    }
-    var menuOpen by remember { mutableStateOf(false) }
-    val isRunning = state is com.meshlit.core.inference.CoordinatorState.Loading ||
-        state is com.meshlit.core.inference.CoordinatorState.Generating
-    val isLive = state is com.meshlit.core.inference.CoordinatorState.Ready ||
-        state is com.meshlit.core.inference.CoordinatorState.Generating
-    val pickerLabel = when {
-        installStatus is InstallStatus.Running ->
-            stringResource(R.string.jobs_model_picker_installing)
-        installStatus is InstallStatus.Failed && pickerEntries.isEmpty() ->
-            stringResource(R.string.jobs_model_picker_install_failed)
-        else -> stringResource(R.string.jobs_model_picker_label)
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(modifier = Modifier.weight(1f)) {
-            OutlinedButton(
-                onClick = {
-                    // If the picker would otherwise be empty, kick off
-                    // the bundled-model installer so the next open has
-                    // entries. We always open the dropdown so the user
-                    // sees the "Installing…" hint instead of silence.
-                    if (pickerEntries.isEmpty()) {
-                        attemptExtract()
-                    }
-                    menuOpen = true
-                },
-                enabled = canOpen,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = pickerLabel,
-                    modifier = Modifier.weight(1f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Start,
-                )
-                Icon(
-                    imageVector = Icons.Filled.ExpandMore,
-                    contentDescription = null,
-                )
-            }
-            DropdownMenu(
-                expanded = menuOpen,
-                onDismissRequest = { menuOpen = false },
-            ) {
-                if (pickerEntries.isEmpty()) {
-                    when (installStatus) {
-                        is InstallStatus.Running -> DropdownMenuItem(
-                            text = {
-                                Text(stringResource(R.string.jobs_model_picker_installing))
-                            },
-                            onClick = { menuOpen = false },
-                        )
-                        is InstallStatus.Failed -> DropdownMenuItem(
-                            text = {
-                                Text(stringResource(R.string.jobs_model_picker_install_failed))
-                            },
-                            onClick = { menuOpen = false },
-                        )
-                        else -> DropdownMenuItem(
-                            text = {
-                                Text(stringResource(R.string.jobs_model_no_models))
-                            },
-                            onClick = { menuOpen = false },
-                        )
-                    }
-                }
-                pickerEntries.forEach { (label, path) ->
-                    DropdownMenuItem(
-                        text = { Text(label) },
-                        onClick = {
-                            menuOpen = false
-                            onLoadModel(path)
-                        },
-                    )
-                }
-                // Phase 2.x — always available, even when other entries
-                // exist. Lets the user pull a known-good starter model
-                // regardless of what's on disk. Tapping it kicks off a
-                // streaming download in `JobsScreen`; the actual
-                // progress / finish reporting happens in the snackbar
-                // surface added below the picker.
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = {
-                        Text(stringResource(R.string.jobs_model_download_runanywhere))
-                    },
-                    onClick = {
-                        menuOpen = false
-                        onDownloadStarterModel()
-                    },
-                )
-            }
-        }
-        // Animated label flip between "Start service" and "Stop service".
-        // The button is a prominent Meshlit-branded primary: filled
-        // with the accent colour, a thick rounded outline, and a
-        // glyph prefix so the active state reads at a glance even
-        // for first-time users.
-        AnimatedContent(
-            targetState = if (isLive) "stop" else "start",
-            transitionSpec = {
-                (fadeIn() + slideInVertically { it / 2 })
-                    .togetherWith(fadeOut() + slideOutVertically { -it / 2 })
-            },
-            label = "jobs-service-toggle",
-        ) { which ->
-            val accent = MaterialTheme.colorScheme.primary
-            val surface = MaterialTheme.colorScheme.surface
-            val onSurface = MaterialTheme.colorScheme.onSurface
-            val glyph = if (which == "stop") "■  " else "▶  "
-            // The branded strings embed the glyph (e.g. "■  Stop service").
-            // Strip them so the rendered Text doesn't show two glyphs.
-            val stopLabel = stringResource(R.string.jobs_service_stop_brand)
-                .replace("■  ", "").replace("■ ", "").trim()
-            val startLabel = stringResource(R.string.jobs_service_start_brand)
-                .replace("▶  ", "").replace("▶ ", "").trim()
-            val labelText = if (which == "stop") stopLabel else startLabel
-            val enabled = if (which == "stop") {
-                state is com.meshlit.core.inference.CoordinatorState.Ready ||
-                    state is com.meshlit.core.inference.CoordinatorState.Generating
-            } else !isRunning
-            val onClick = if (which == "stop") onStop else onStart
-            // Meshlit-branded primary: filled accent on the active
-            // stop state, outlined accent on the inactive start state.
-            // The two-tone treatment makes the toggle unambiguous even
-            // when the engine is the stub.
-            val container = if (which == "stop") accent else surface
-            val content = if (which == "stop") {
-                MaterialTheme.colorScheme.onPrimary
-            } else if (enabled) accent else onSurface.copy(alpha = 0.45f)
-            val borderColor = if (enabled) accent else onSurface.copy(alpha = 0.3f)
-            val borderWidth = if (which == "stop") 0.dp else 1.5.dp
-            Box(
-                modifier = Modifier
-                    .height(48.dp)
-                    .background(container, RoundedCornerShape(14.dp))
-                    .border(borderWidth, borderColor, RoundedCornerShape(14.dp))
-                    .then(
-                        if (enabled) Modifier.clickable(onClick = onClick)
-                        else Modifier,
-                    )
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = glyph,
-                        color = content,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = labelText,
-                        color = content,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * Internal state machine for the bundled-model install attempt kicked
- * off from the picker dropdown when no model is on disk yet.
- *
- * Lives in `ControlsRow` scope only — we don't persist or share this
- * across screens because the installer's own sentinel file is the
- * source of truth for "is the bundled model on disk?".
  */
 private sealed interface InstallStatus {
     data object Idle : InstallStatus

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ForegroundServiceType=specialUse explanation for the
+     MeshlitCaptureVpnService. Android 14+ requires apps to declare
+     why they need a specialUse FGS. The reason MUST be one of the
+     allowed values; we use "ExcludingDemoteFromFgs" with a
+     human-readable explanation surfaced in the Network monitor
+     screen's "Device capture" CTA. -->
+<resources>
+    <string-array name="special_use">
+        <item>
+            On-device packet capture for the Network monitor screen.
+            Meshlit captures only while the user has explicitly enabled
+            device capture; captured traffic is written to
+            filesDir/exports/captures/ and never uploaded.
+        </item>
+    </string-array>
+</resources>

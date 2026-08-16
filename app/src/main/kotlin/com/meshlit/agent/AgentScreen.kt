@@ -96,6 +96,7 @@ import com.meshlit.R
 import com.meshlit.core.common.CapabilityTier
 import com.meshlit.core.inference.CoordinatorState
 import com.meshlit.ui.components.MeshlitHeader
+import com.meshlit.ui.components.LlmOutputActions
 import kotlinx.coroutines.launch
 
 /**
@@ -131,6 +132,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AgentScreen(
     onOpenDrawer: () -> Unit = {},
+    onOpenModels: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as MeshlitApplication }
@@ -144,6 +146,16 @@ fun AgentScreen(
     val coordinatorState by app.inferenceCoordinator.state.collectAsState()
     val customPath by app.settingsRepository.customModelPathFlow.collectAsState(initial = "")
     val tier = app.capabilityTier
+
+    // Identity snapshot — recomputes whenever the coordinator's
+    // state flips (model loaded / unloaded / engine swap) so the
+    // badge stays in sync with whatever is actually answering.
+    val agentIdentity = remember(coordinatorState) {
+        com.meshlit.ui.components.IdentityResolver(app).resolve(
+            dispatchMode = com.meshlit.inference.InferenceDispatchMode.LOCAL,
+            peerLabel = "",
+        )
+    }
 
     // Discover all locally-available model files. Bundled +
     // imported-models directory + the active custom-path override.
@@ -214,6 +226,23 @@ fun AgentScreen(
                 tier = tier,
                 active = isRunning,
                 onOpenDrawer = onOpenDrawer,
+                trailing = {
+                    // Identity badge — Meshlit · model · origin.
+                    // The agent session is always LOCAL, so we
+                    // hard-code the dispatch mode + leave the
+                    // peer label empty. Re-evaluates whenever
+                    // activeModelName flips (load / unload).
+                    val identity = remember(activeModelName) {
+                        com.meshlit.ui.components.IdentityResolver(app).resolve(
+                            dispatchMode = com.meshlit.inference.InferenceDispatchMode.LOCAL,
+                            peerLabel = "",
+                        )
+                    }
+                    com.meshlit.ui.components.IdentityBadge(
+                        identity = identity,
+                        variant = com.meshlit.ui.components.IdentityBadgeVariant.Toolbar,
+                    )
+                },
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -288,7 +317,7 @@ fun AgentScreen(
                         items(messages) { msg ->
                             when (msg) {
                                 is ChatMessage.UserMessage -> UserBubble(msg.text)
-                                is ChatMessage.AgentMessage -> AgentBubble(msg)
+                                is ChatMessage.AgentMessage -> AgentBubble(msg, agentIdentity)
                                 is ChatMessage.SystemMessage -> SystemBubble(msg)
                             }
                         }
@@ -296,6 +325,26 @@ fun AgentScreen(
                 }
             }
 
+            // Tappable "Model: <name>" pill — routes the user into the
+            // Models picker regardless of whether the loaded model is
+            // local (bundled / downloaded) or cluster-shared. Mirrors
+            // upstream's "Model: …" chip on the chat surface so the
+            // user has a single jump-to-picker affordance.
+            ActiveModelPill(
+                displayName = activeModelName,
+                onClick = onOpenModels,
+            )
+
+            // "Web & tools unavailable" banner — surfaces when no
+            // chat model is loaded. Mirrors the upstream banner
+            // pattern from the screenshot. Tap → open Models.
+            if (coordinatorState !is CoordinatorState.Ready && models.isEmpty()) {
+                com.meshlit.ui.components.ErrorBanner(
+                    title = stringResource(R.string.ra_tools_unavailable_title),
+                    subtitle = stringResource(R.string.ra_tools_unavailable_subtitle),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             InputBar(
                 input = input,
                 isRunning = isRunning,
@@ -556,31 +605,82 @@ private fun EmptyAgent() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                modifier = Modifier.size(96.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.AutoAwesome,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp),
-                    )
-                }
-            }
-            Text(
-                text = stringResource(R.string.agent_empty_title),
-                style = MaterialTheme.typography.headlineSmall,
+            com.meshlit.ui.components.RaHeroIcon(
+                icon = Icons.Filled.Bolt,
+                contentDescription = null,
             )
             Text(
-                text = stringResource(R.string.agent_empty_body),
+                text = stringResource(R.string.ra_working_late),
+                style = MaterialTheme.typography.headlineLarge,
+            )
+            Text(
+                text = stringResource(R.string.ra_working_late_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = com.meshlit.ui.theme.RaTextSecondary,
                 modifier = Modifier.padding(horizontal = 32.dp),
             )
+            // Three suggestion chips below the hero — fill the slot
+            // the upstream "Plan my day / Rewrite clearly / Compare
+            // options" chip row occupies in the screenshot.
+            SuggestionChipsRow()
         }
+    }
+}
+
+@Composable
+private fun SuggestionChipsRow(
+    onPick: (String) -> Unit = {},
+) {
+    val plan = stringResource(R.string.ra_plan_day)
+    val rewrite = stringResource(R.string.ra_rewrite)
+    val compare = stringResource(R.string.ra_compare)
+    androidx.compose.foundation.layout.Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        com.meshlit.ui.components.SuggestionChipPill(
+            label = plan,
+            onClick = { onPick(plan) },
+        )
+        com.meshlit.ui.components.SuggestionChipPill(
+            label = rewrite,
+            onClick = { onPick(rewrite) },
+        )
+        com.meshlit.ui.components.SuggestionChipPill(
+            label = compare,
+            onClick = { onPick(compare) },
+        )
+    }
+}
+
+/**
+ * Tappable surface that surfaces the currently-loaded model —
+ * local (bundled / downloaded GGUF) OR cluster-shared (a remote
+ * peer's runtime reporting back through `CoordinatorState.Ready`).
+ *
+ * Tapping the pill opens the Models picker so the user can swap,
+ * re-extract, or inspect the source regardless of provenance.
+ * Matches the upstream "Model: <name>" chip on the chat input bar.
+ */
+@Composable
+private fun ActiveModelPill(
+    displayName: String,
+    onClick: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        com.meshlit.ui.components.RaPillChip(
+            text = stringResource(R.string.ra_model_chip, displayName),
+            tone = com.meshlit.ui.components.RaPillTone.NEUTRAL,
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(horizontal = 4.dp),
+        )
     }
 }
 
@@ -620,7 +720,7 @@ private fun UserBubble(text: String) {
 }
 
 @Composable
-private fun AgentBubble(msg: AgentMessageImpl) {
+private fun AgentBubble(msg: AgentMessageImpl, identity: com.meshlit.ui.components.Identity) {
     val display = if (msg.finalText.isNotEmpty()) msg.finalText else msg.streamingText
     val isStreaming = msg.finalText.isEmpty() && msg.streamingText.isNotEmpty()
     Row(modifier = Modifier.fillMaxWidth()) {
@@ -636,6 +736,15 @@ private fun AgentBubble(msg: AgentMessageImpl) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    // Identity tag — same Meshlit · model · origin
+                    // strip the toolbar shows. Pinned to the bubble
+                    // header so the user can confirm which model
+                    // answered each turn.
+                    com.meshlit.ui.components.IdentityBadge(
+                        identity = identity,
+                        variant = com.meshlit.ui.components.IdentityBadgeVariant.Bubble,
                     )
                     Spacer(Modifier.weight(1f))
                     if (msg.tokenCount > 0) {
@@ -685,6 +794,13 @@ private fun AgentBubble(msg: AgentMessageImpl) {
                         CodeBlockView(block)
                         Spacer(Modifier.height(8.dp))
                     }
+                }
+                // Copy / Save / Share / Export toolbar. Hidden while
+                // the message is still streaming so the toolbar
+                // doesn't flash a "Copy" button on every token.
+                if (!isStreaming && display.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    LlmOutputActions(text = display)
                 }
             }
         }

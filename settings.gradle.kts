@@ -25,6 +25,10 @@ dependencyResolutionManagement {
 
 rootProject.name = "meshlit"
 
+// Vendored RunAnywhere SDK Kotlin sources.
+// See vendored/runanywhere-kotlin/{LICENSE,README,MODIFICATIONS}.md.
+includeBuild("vendored/runanywhere-kotlin")
+
 // Modules in topological order: leaves first, then app consuming them.
 include(
     ":core-common",
@@ -32,6 +36,7 @@ include(
     ":core-discovery",
     ":core-inference",
     ":core-mcp",
+    ":core-cloud-mcp",
     ":core-training",
     ":core-files",
     ":core-ssh",
@@ -39,6 +44,13 @@ include(
     ":core-guardrails",
     ":core-tunnel",
     ":core-users",
+    ":core-terminal",
     ":core-orchestration",
+    ":core-advanced-engines",
+    ":core-gpu",
+    ":core-net",
+    ":core-observability",
+    ":feature-advanced",
+    ":feature-ghosty",
     ":app"
 )

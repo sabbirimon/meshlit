@@ -197,6 +197,7 @@ val TopLevelDestination.shortLabel: String
         TopLevelDestination.Jobs -> "Jobs"
         TopLevelDestination.Agent -> "Agent"
         TopLevelDestination.Models -> "Models"
+        TopLevelDestination.Advanced -> "Advanced"
         TopLevelDestination.Files -> "Files"
         TopLevelDestination.Sessions -> "Terminal"
         TopLevelDestination.Cluster -> "Cluster"
@@ -207,4 +208,6 @@ val TopLevelDestination.shortLabel: String
         TopLevelDestination.Structured -> "JSON"
         TopLevelDestination.Catalog -> "Catalog"
         TopLevelDestination.Vision -> "Vision"
+        TopLevelDestination.Cloud -> "Cloud"
+        TopLevelDestination.Help -> "Help"
     }

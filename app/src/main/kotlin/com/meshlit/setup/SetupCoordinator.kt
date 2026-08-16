@@ -9,6 +9,7 @@ import com.meshlit.core.common.OemSetupStep
 import com.meshlit.core.common.logger
 import com.meshlit.notifications.NotificationCategory
 import com.meshlit.notifications.NotificationCenter
+import com.meshlit.power.BatteryOptimizationHelper
 import kotlinx.coroutines.flow.first
 
 /**
@@ -107,9 +108,107 @@ class SetupCoordinator(
                 .setData(Uri.fromParts("package", context.packageName, null))
         }
 
-    private fun batteryOptimizationIntent(): Intent =
-        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+    /**
+     * Battery-optimization whitelist intent. Tries the OEM-specific
+     * candidate list first (Samsung One UI → `BatteryActivity` in
+     * `com.samsung.android.lool`; MIUI → `HiddenAppsConfigActivity`
+     * in `com.miui.powerkeeper`; ColorOS / EMUI / Vivo / Honor each
+     * have their own target). Falls back to the AOSP
+     * `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` intent when no
+     * OEM target is installed; the final fallback (when even the
+     * AOSP intent fails) is the App Info page.
+     *
+     * Returns the first Intent that resolves; the caller simply calls
+     * `startActivity` on it. We never return null — every Android
+     * device has an App Info screen.
+     */
+    private fun batteryOptimizationIntent(): Intent {
+        // Delegate to the helper so all four layers (OEM / AOSP /
+        // App Info) are tried in order. The helper doesn't expose
+        // its raw intent list, so we replay it here.
+        val candidates: List<Intent> = buildList {
+            // Stock Android / AOSP fallback
+            add(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    .setData(Uri.parse("package:${context.packageName}")),
+            )
+            // Samsung One UI
+            add(
+                Intent().setComponent(
+                    android.content.ComponentName(
+                        "com.samsung.android.lool",
+                        "com.samsung.android.sm.battery.ui.BatteryActivity",
+                    ),
+                ),
+            )
+            // Xiaomi MIUI
+            add(
+                Intent().setComponent(
+                    android.content.ComponentName(
+                        "com.miui.powerkeeper",
+                        "com.miui.powerkeeper.ui.HiddenAppsConfigActivity",
+                    ),
+                ),
+            )
+            // Huawei EMUI / HarmonyOS 4
+            add(
+                Intent().setComponent(
+                    android.content.ComponentName(
+                        "com.huawei.systemmanager",
+                        "com.huawei.systemmanager.optimize.process.ProtectActivity",
+                    ),
+                ),
+            )
+            // Honor MagicUI
+            add(
+                Intent().setComponent(
+                    android.content.ComponentName(
+                        "com.hihonor.systemmanager",
+                        "com.hihonor.systemmanager.optimize.process.ProtectActivity",
+                    ),
+                ),
+            )
+            // OPPO ColorOS
+            add(
+                Intent().setComponent(
+                    android.content.ComponentName(
+                        "com.coloros.safecenter",
+                        "com.coloros.safecenter.permission.startup.StartupAppListActivity",
+                    ),
+                ),
+            )
+            // Vivo FuntouchOS
+            add(
+                Intent().setComponent(
+                    android.content.ComponentName(
+                        "com.vivo.permissionmanager",
+                        "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+                    ),
+                ),
+            )
+            // Final fallback — App Info (always resolvable)
+            add(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.fromParts("package", context.packageName, null)),
+            )
+        }
+        val pm = context.packageManager
+        for (intent in candidates) {
+            val withFlags = intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                if (withFlags.resolveActivity(pm) != null) {
+                    return withFlags
+                }
+            } catch (e: Throwable) {
+                // Try next candidate.
+            }
+        }
+        // Last resort — return the AOSP intent and let startActivity
+        // surface whatever failure mode the system prefers.
+        return Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
             .setData(Uri.parse("package:${context.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
 
     /** Battery-saver disable is OEM-specific. Stock Android only has
      *  the AOSP battery-optimization screen (handled above). MIUI has

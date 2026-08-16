@@ -112,32 +112,17 @@ private fun CategoryCard(
     category: SettingsCategory,
     onClick: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
+    // RunAnywhere-style dark card: dark surface, orange-tinted
+    // leading icon, chevron trailing. Mirrors the picker row shape
+    // so the user sees consistent chrome between Settings and
+    // Models.
+    com.meshlit.ui.components.RaNavRow(
+        leadingIcon = category.icon,
+        title = category.displayName,
+        subtitle = category.subtitle,
         onClick = onClick,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(16.dp),
-        ) {
-            Icon(
-                imageVector = category.icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = category.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = category.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-    }
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

@@ -401,6 +401,116 @@ object SettingsSearchIndex {
             tag = "about.acknowledgements",
             advanced = true,
         ),
+        Match(
+            SettingsCategory.ABOUT,
+            label = "User manual",
+            description = "Per-feature intent, use case, configuration, and troubleshooting",
+            tag = "about.manual",
+        ),
+        Match(
+            SettingsCategory.ABOUT,
+            label = "UI tour",
+            description = "Per-screen overview + first-visit overlay reset",
+            tag = "about.tour",
+        ),
+        Match(
+            SettingsCategory.ABOUT,
+            label = "Send feedback",
+            description = "Open a Bug or Feature Request on the GitHub repo",
+            tag = "about.feedback",
+        ),
+
+        // ---- TRACING ----
+        // Off / Local / Otel, plus endpoint + headers + per-source toggles.
+        // Surfaced as a dedicated category so advanced users can find
+        // everything in one place without scrolling through Developer.
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Tracing mode",
+            description = "Off, Local (in-app log buffer), or Otel (OTLP/gRPC)",
+            tag = "tracing.mode",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Sample rate",
+            description = "1-in-N span capture ratio for tracing",
+            tag = "tracing.sample_rate",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Include network spans",
+            description = "Meshlit HTTP client events",
+            tag = "tracing.include_network",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Include inference spans",
+            description = "Model load, infer, token-stream, stop",
+            tag = "tracing.include_inference",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Include agent spans",
+            description = "Tool call + agent loop events",
+            tag = "tracing.include_agent",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "OTLP endpoint",
+            description = "OTLP/gRPC URL (Grafana Cloud, Tempo, etc.)",
+            tag = "tracing.otel_endpoint",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "OTLP headers",
+            description = "k=v lines, typically Authorization=Basic <base64>",
+            tag = "tracing.otel_headers",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Export traces",
+            description = "Write the current trace buffer to a JSONL file",
+            tag = "tracing.export",
+            advanced = true,
+        ),
+
+        // ---- NETWORK MONITOR ----
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Device packet capture",
+            description = "Opt-in VpnService that writes a .pcap file",
+            tag = "net.device_capture",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "PCAPdroid",
+            description = "Deep-link / install instructions for the external capture app",
+            tag = "net.pcapdroid",
+            advanced = true,
+        ),
+        Match(
+            SettingsCategory.DEVELOPER,
+            label = "Termux tcpdump",
+            description = "Run tcpdump in Termux for command-line capture",
+            tag = "net.termux",
+            advanced = true,
+        ),
+
+        // ---- FEEDBACK ----
+        Match(
+            SettingsCategory.PRIVACY,
+            label = "Feedback repo",
+            description = "GitHub repo slug the Feedback screen targets (default: meshlit/meshlit-android)",
+            tag = "feedback.repo",
+        ),
 
         // ---- DEVELOPER ----
         // All developer entries are advanced by definition — they are

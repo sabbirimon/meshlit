@@ -20,11 +20,12 @@ android {
         minSdk = 24
         targetSdk = 36
         // Hivemind-1 cluster + Stitch glass UI + RunAnywhere SDK
-        // parity (Phase 4.x). Bumped from 0.1.0 → 0.2.0 so the
-        // /v1/health `version` field distinguishes the new
-        // cluster surface from the pre-cluster build.
-        versionCode = 2
-        versionName = "0.2.0"
+        // parity (Phase 4.x). Bumped from 0.1.0 → 0.2.3 so the
+        // /v1/health `version` field distinguishes the cluster
+        // build from the pre-cluster baseline, and the GitHub
+        // dev release gets a fresh version tag.
+        versionCode = 3
+        versionName = "0.2.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -78,6 +79,7 @@ dependencies {
     implementation(project(":core-discovery"))
     implementation(project(":core-inference"))
     implementation(project(":core-mcp"))
+    implementation(project(":core-cloud-mcp"))
     implementation(project(":core-training"))
     implementation(project(":core-files"))
     implementation(project(":core-ssh"))
@@ -85,6 +87,12 @@ dependencies {
     implementation(project(":core-guardrails"))
     implementation(project(":core-tunnel"))
     implementation(project(":core-users"))
+    implementation(project(":core-terminal"))
+    implementation(project(":core-advanced-engines"))
+    implementation(project(":core-net"))
+    implementation(project(":core-observability"))
+    implementation(project(":feature-advanced"))
+    implementation(project(":feature-ghosty"))
 
     // AndroidX
     implementation(libs.androidx.core.ktx)
@@ -116,10 +124,35 @@ dependencies {
     // DEX 040 bytecode from API 33.
     implementation(libs.okhttp.core)
 
-    // QR pairing code generation. The core artifact is pure Java and
-    // only adds the QR encoder; scanning is delegated to any installed
-    // barcode-scanner app with a manual paste fallback.
+    // QR pairing code generation (we render our own Meshlit pairing
+    // QR on the Devices screen) + Google Play Services Code Scanner
+    // (we scan peers' QR codes via Play Services' bundled scanner
+    // UI). The scanner ships as a small stub that downloads the
+    // module from Play Services on first launch — no CAMERA
+    // permission needed in the manifest, no CameraX dep.
     implementation(libs.zxing.core)
+    implementation(libs.play.services.code.scanner)
+
+    // CameraX — `agent_camera_capture` tool. Lifecycle-aware
+    // camera surface, ~3 MB across the three artifacts.
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+
+    // Fused location provider — `agent_location_get` tool.
+    implementation(libs.play.services.location)
+    // Bridge `Task<Location>` into suspend functions via `.await()`.
+    implementation(libs.kotlinx.coroutines.play.services)
+
+    // Phase Observability 1 — OpenTelemetry SDK + OTLP exporter.
+    // The TracingController in :core-observability owns the SDK
+    // lifecycle (Off / Local / Otel). When Otel is on, the OTLP
+    // exporter pushes spans to the endpoint the user pastes in
+    // Settings → Tracing.
+    implementation(libs.opentelemetry.api)
+    implementation(libs.opentelemetry.sdk)
+    implementation(libs.opentelemetry.exporter.otlp)
+    implementation(libs.opentelemetry.exporter.logging)
 
     // Core-library desugaring: required for java.time + ConcurrentHashMap
     // on Android 6/7.
