@@ -11,32 +11,14 @@ plugins {
 // Global dependency constraints.
 //
 // The RunAnywhere SDK 0.20.12 transitively pulls
-// `kotlinx-coroutines-core:1.11.0` → `kotlin-stdlib:2.4.0`, but the
-// project pins Kotlin 2.1.0 (compiler version 2.2.0) which cannot
-// read 2.4.0 metadata. Without these constraints every compile of
-// `:core-inference` fails with "Class 'kotlin.Unit' was compiled
-// with an incompatible version of Kotlin". Forcing the stdlib back
-// to the Kotlin 2.1.x line + coroutines to the 1.10.x line lets the
-// compiler resolve to versions it understands.
+// `kotlinx-coroutines-core:1.11.0` → `kotlin-stdlib:2.4.0`, which
+// the project's Kotlin 2.4.10 compiler (declared in
+// `gradle/libs.versions.toml` as `kotlin = "2.4.10"`) reads natively.
+// No force block needed; Gradle resolves everything to 2.4.x / 1.11.x
+// without intervention.
 //
-// Add new constraints here when a new SDK pulls in a higher Kotlin
-// minor than the compiler supports. The compileSdk target (Kotlin
-// 2.1.0 in `gradle/libs.versions.toml`) is the source of truth.
-allprojects {
-    configurations.all {
-        resolutionStrategy {
-            // Match the version the Kotlin 2.1.x compiler ships.
-            force(
-                "org.jetbrains.kotlin:kotlin-stdlib:2.1.20",
-                "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.20",
-                "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.20",
-                "org.jetbrains.kotlin:kotlin-reflect:2.1.20",
-                // 1.11.0 introduced `kotlin.Result` overloads that
-                // require kotlin-stdlib 2.3+, which we can't read.
-                // Pin to 1.10.0 (the version pinned in libs.versions.toml).
-                "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.0",
-                "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.0",
-            )
-        }
-    }
-}
+// If a future SDK upgrade transitively pulls a Kotlin metadata version
+// newer than 2.4.x, either (a) bump the project's Kotlin plugin in
+// `gradle/libs.versions.toml`, or (b) re-introduce a force block here
+// to pin to a compiler-readable line. Don't silently invent a force.
+//

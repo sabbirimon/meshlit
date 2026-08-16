@@ -660,5 +660,63 @@ agent-loop display mode (Live / Step). Persisted in
 
 ---
 
+## Current state — 2026-08-16 (Phase 0.1 — version reconciliation)
+
+**This session:**
+
+- **Removed the `resolutionStrategy.force(...)` block from
+  `build.gradle.kts`.** The block was authored when `libs.versions.toml`
+  pinned `kotlin = "2.1.0"` and the bundled compiler was 2.2.0. After
+  the Kotlin bump to `2.4.10` (commit b54e1de, prior session), the
+  forces were over-pinning `kotlin-stdlib:2.1.20` and
+  `kotlinx-coroutines-core:1.10.0` even though the 2.4.10 compiler
+  reads 2.4.0 stdlib metadata natively.
+
+- **Verified resolutions without the forces:**
+
+  | Library | Was (forced) | Now (natural) |
+  |---|---|---|
+  | `kotlin-stdlib` | 2.1.20 | **2.4.10** ← matches compiler |
+  | `kotlin-stdlib-jdk7` | 2.1.20 | **2.4.10** |
+  | `kotlin-stdlib-jdk8` | 2.1.20 | **2.4.10** |
+  | `kotlin-reflect` | 2.1.20 | **2.4.10** |
+  | `kotlinx-coroutines-core` | 1.10.0 | **1.11.0** ← matches RunAnywhere AAR |
+  | `kotlinx-coroutines-android` | 1.10.0 | **1.11.0** |
+
+  Resolved via `./gradlew :app:dependencyInsight --dependency
+  <lib> --configuration debugRuntimeClasspath`.
+
+- **Updated the comment** to reflect current truth: "the Kotlin
+  2.4.10 compiler reads 2.4.0 stdlib metadata natively. No force
+  block needed. If a future SDK upgrade transitively pulls a
+  Kotlin metadata version newer than 2.4.x, either bump the
+  Kotlin plugin in `libs.versions.toml` or re-introduce a
+  force block — don't silently invent a force."
+
+**Verification:**
+
+- `./gradlew :app:assembleDebug` → **green**.
+- `./gradlew :core-inference:assembleDebug` → **green** (the
+  module the forces were originally protecting).
+- `./gradlew :app:dependencyInsight --dependency kotlin-stdlib
+  --configuration debugRuntimeClasspath` → resolves to
+  `kotlin-stdlib:2.4.10`, selected by `By constraint` (the
+  Kotlin plugin's stdlib constraint), no `Forced` reason.
+- `./gradlew --version` → Gradle 9.4.1, Kotlin 2.3.0 (Gradle
+  daemon's Kotlin DSL — distinct from the project's compile
+  Kotlin, which is 2.4.10 via the `kotlin-android` plugin).
+
+**Not changed (already correct):**
+
+- `libs.versions.toml` version pins — every entry (Kotlin 2.4.10,
+  AGP 9.2.1, RunAnywhere 0.20.12, Room 2.7.0-alpha11, Compose BOM
+  2025.05.00, etc.) resolves cleanly without changes. The pinned
+  `kotlinxCoroutines = "1.10.0"` direct-dep version remains for
+  the project's own `implementation(libs.kotlinx.coroutines.core)`
+  lines; the conflict-resolver picks 1.11.0 from the RunAnywhere
+  AAR for the runtime classpath.
+
+---
+
 *This file is the journal; `app/BUILD_GUIDE.md` is the spec; `app/CLAUDE.md`
 is the operating manual for the next agent.*
