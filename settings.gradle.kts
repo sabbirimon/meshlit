@@ -33,6 +33,8 @@ rootProject.name = "meshlit"
 // Modules in topological order: leaves first, then app consuming them.
 include(
     ":core-common",
+    ":core-config",
+    ":core-flags",
     ":core-trust",
     ":core-discovery",
     ":core-inference",
@@ -46,6 +48,11 @@ include(
     ":core-tunnel",
     ":core-users",
     ":core-terminal",
+    ":core-bootstrap",
+    ":core-registry",
+    ":core-lifecycle",
+    ":core-probe",
+    ":core-role",
     ":core-orchestration",
     ":core-advanced-engines",
     ":core-gpu",

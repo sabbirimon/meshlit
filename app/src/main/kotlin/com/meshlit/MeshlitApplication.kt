@@ -1,6 +1,7 @@
 package com.meshlit
 
 import android.os.Build
+import com.meshlit.core.bootstrap.BootstrapCoordinator
 import com.meshlit.core.common.HostOS
 import com.meshlit.core.common.HostOSDetection
 import com.meshlit.core.common.MeshlitResult
@@ -98,6 +99,8 @@ class MeshlitApplication : android.app.Application() {
     val trustStore: com.meshlit.core.trust.TrustStore get() = get()
     val bundledModelInstaller: com.meshlit.core.inference.BundledModelInstaller get() = get()
     val deviceInfo: DeviceInfo get() = get()
+    val bootstrapCoordinator: com.meshlit.core.bootstrap.BootstrapCoordinator get() = get()
+    val roleManager: com.meshlit.core.role.RoleManager get() = get()
 
     // ---- volatile refs (FGS-shared mutable state) ----
     private val bundledModelPathRef: RefHolder<File?> get() = get()
@@ -174,6 +177,9 @@ class MeshlitApplication : android.app.Application() {
         appScope.launch { runSystemProbe() }
         appScope.launch { extractBundledModel() }
         appScope.launch { bootMcp() }
+        // Phase 0.1 — resolve the stable node id + hot-load feature
+        // flags. Persists the node id immediately on first boot (Fix 4).
+        appScope.launch { runBootstrap() }
         val settingsRepository: SettingsRepository = get()
         val tracingController: TracingController = get()
         settingsRepository.startTracingCache(appScope)
@@ -270,6 +276,41 @@ class MeshlitApplication : android.app.Application() {
             ))
         } catch (t: Throwable) {
             log.error("app.mcp.boot.fail", "MCP bootstrap failed", t)
+        }
+    }
+
+    /**
+     * Phase 0.1 bootstrap. Resolves the stable node id and hot-loads
+     * feature flags. The id is written to DataStore before being
+     * exposed anywhere (Fix 4), so the local trust policy + gossip
+     * membership see the same identity across restarts.
+     */
+    private suspend fun runBootstrap() {
+        try {
+            val coordinator: BootstrapCoordinator = get()
+            val snapshotHolder: com.meshlit.bootstrap.BootstrapSnapshotProvider = get()
+            when (val res = coordinator.boot()) {
+                is MeshlitResult.Success -> {
+                    val snap = res.value
+                    snapshotHolder.publish(snap)
+                    setStableNodeId(snap.nodeId)
+                    log.info(
+                        "app.bootstrap.ok",
+                        "dynamic foundation bootstrap complete",
+                        mapOf(
+                            "nodeId" to snap.nodeId,
+                            "phases" to snap.report.entries.joinToString { e ->
+                                "${e.phase}=${e.outcome}"
+                            },
+                            "flagCount" to snap.flags.size,
+                        ),
+                    )
+                }
+                is MeshlitResult.Failure ->
+                    log.error("app.bootstrap.fail", "dynamic foundation bootstrap failed: ${res.error.tag}")
+            }
+        } catch (t: Throwable) {
+            log.error("app.bootstrap.crash", "dynamic foundation bootstrap crashed", t)
         }
     }
 }

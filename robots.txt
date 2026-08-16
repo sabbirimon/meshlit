@@ -1,0 +1,43 @@
+# robots.txt — Meshlit Android (mllm)
+#
+# This file governs crawler behaviour for any HTTP surface that
+# serves the contents of this repository (GitHub Pages, the rendered
+# /docs folder, a future docs site, etc.).
+#
+# Conventions used here:
+#   - The Android app itself (APK, Play Store listing, in-app
+#     content) is NOT a web surface; it is not addressable here.
+#     Web crawlers should not be expected to find anything beyond
+#     what is served at the public docs path.
+#   - Public marketing / docs paths are allowed. Internal build
+#     outputs and tooling directories are disallowed so search
+#     engines don't surface them as broken links.
+#
+# If you fork this repo and serve your fork on a different domain,
+# copy this file alongside any static-site generator config.
+
+User-agent: *
+Allow: /
+
+# ---------------------------------------------------------------------------
+# Disallow: build artefacts, generated docs, and tool directories.
+# These paths exist in the repo but are not user-facing destinations.
+# ---------------------------------------------------------------------------
+Disallow: /build/
+Disallow: /dist/
+Disallow: /examples/build/
+Disallow: /screenshots/
+
+# ---------------------------------------------------------------------------
+# Disallow: per-module Gradle outputs. These show up if anyone serves the
+# repo at the root rather than a curated subset.
+# ---------------------------------------------------------------------------
+Disallow: /core-*/build/
+Disallow: /feature-*/build/
+Disallow: /app/build/
+
+# ---------------------------------------------------------------------------
+# Sitemap. Point crawlers at the canonical docs index when one exists.
+# Update the host below if you publish under a different domain.
+# ---------------------------------------------------------------------------
+# Sitemap: https://meshlit.app/sitemap.xml

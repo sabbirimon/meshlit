@@ -44,7 +44,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -52,6 +53,23 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            // Phase 1.0 — R8 minification on debug. The Debug APK
+            // is what we ship to hardware for the two-phone
+            // validation runs (Phase 1.1) and to internal testers
+            // — a 450 MB unminified debug binary is a non-starter.
+            // `proguard-android-optimize.txt` is the standard R8
+            // ruleset; the project's `proguard-rules.pro` only
+            // declares Compose-relevant keeps. The bundled GGUF
+            // is excluded via `bundledModel` build flag (see
+            // `androidResources { noCompress += ... }` below) so
+            // resource shrinking doesn't drop the asset out from
+            // under `BundledModelInstaller`.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
@@ -97,6 +115,28 @@ android {
         noCompress += "gguf"
     }
 
+    // Phase 1.0 — Lean APK. The bundled `smollm2-360m-instruct-q8_0.gguf`
+    // is ~369 MB and dominates the debug APK size (~450 MB before this
+    // change). Debug installs skip it; the user downloads the model on
+    // first launch via `BundledModelInstaller` -> Models screen's
+    // "Download starter model" flow. The `release` build still ships
+    // the GGUF for one-shot installs in environments without network
+    // access — flip `bundledModel` to `true` to restore the bundle.
+    //
+    // The flag is read at config time so the asset is excluded from
+    // `mergeDebugAssets` (no APK file, no AAsset entry) rather than
+    // stripped post-merge. The README.md next to the GGUF is kept in
+    // both variants so anyone poking at `assets/models/` sees the
+    // restore instructions.
+    val bundledModel = false
+    sourceSets {
+        getByName("main") {
+            if (!bundledModel) {
+                assets.excludes += setOf("models/smollm2-360m-instruct-q8_0.gguf")
+            }
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -123,6 +163,8 @@ dependencies {
     // Project modules (app consumes the orchestration facade)
     implementation(project(":core-orchestration"))
     implementation(project(":core-common"))
+    implementation(project(":core-config"))
+    implementation(project(":core-flags"))
     implementation(project(":core-trust"))
     implementation(project(":core-discovery"))
     implementation(project(":core-inference"))
@@ -136,6 +178,11 @@ dependencies {
     implementation(project(":core-tunnel"))
     implementation(project(":core-users"))
     implementation(project(":core-terminal"))
+    implementation(project(":core-bootstrap"))
+    implementation(project(":core-registry"))
+    implementation(project(":core-lifecycle"))
+    implementation(project(":core-probe"))
+    implementation(project(":core-role"))
     implementation(project(":core-advanced-engines"))
     implementation(project(":core-net"))
     implementation(project(":core-observability"))

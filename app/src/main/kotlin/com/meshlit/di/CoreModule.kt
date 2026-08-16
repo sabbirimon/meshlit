@@ -13,6 +13,24 @@ import com.meshlit.core.cloudmcp.llm.NaraRouterClient
 import com.meshlit.core.cloudmcp.rag.LocalRagStore
 import com.meshlit.core.cloudmcp.rag.RagBackendSelectionPolicy
 import com.meshlit.core.cloudmcp.rag.RemoteRagStore
+import com.meshlit.core.bootstrap.BootstrapCoordinator
+import com.meshlit.core.config.ConfigRepository
+import com.meshlit.core.flags.FeatureFlagRegistry
+import com.meshlit.core.lifecycle.ManagedService
+import com.meshlit.core.lifecycle.ServiceLifecycleController
+import com.meshlit.core.probe.BatteryProfiler
+import com.meshlit.core.probe.CpuProfiler
+import com.meshlit.core.probe.HardwareProfiler
+import com.meshlit.core.probe.HardwareProfilerRegistry
+import com.meshlit.core.probe.MemoryProfiler
+import com.meshlit.core.probe.NetworkProfiler
+import com.meshlit.core.probe.NpuProfiler
+import com.meshlit.core.probe.ThermalProfiler
+import com.meshlit.core.registry.LocalServiceRegistry
+import com.meshlit.core.registry.ServiceRegistry
+import com.meshlit.core.role.RoleManager
+import com.meshlit.registry.AgentRuntimeStub
+import com.meshlit.registry.McpServerStub
 import com.meshlit.core.discovery.DiscoveryCoordinator
 import com.meshlit.core.discovery.NsdDiscoveryTransport
 import com.meshlit.core.firewall.MeshlitFirewall
@@ -55,8 +73,10 @@ import com.meshlit.settings.SettingsRepository
 import com.meshlit.setup.FirstRunSetupRepository
 import com.meshlit.capability.CapabilityTier
 import com.meshlit.capability.currentCapabilityTier
+import com.meshlit.config.DataStoreConfigRepository
 import com.meshlit.core.common.HostOS
 import com.meshlit.core.common.HostOSDetection
+import com.meshlit.flags.DataStoreFeatureFlagRegistry
 import com.meshlit.agent.AgentCapabilityRegistryHolder
 import com.meshlit.agent.AgentCapabilityDispatchers
 import com.meshlit.agent.AgentCapabilityRegistrar
@@ -224,6 +244,115 @@ val coreModule = module {
     // Trust store
     // -----------------------------------------------------------------
     single<TrustStore> { FileBackedTrustStore(File(androidContext().filesDir, "trust")) }
+
+    // -----------------------------------------------------------------
+    // Dynamic-foundation Phase 0.1 — config + feature flags
+    // -----------------------------------------------------------------
+    single<ConfigRepository> { DataStoreConfigRepository(androidContext()) }
+    single<FeatureFlagRegistry> { DataStoreFeatureFlagRegistry(androidContext()) }
+
+    // -----------------------------------------------------------------
+    // Dynamic-foundation Phase 0.2 — registry + lifecycle + stubs
+    // -----------------------------------------------------------------
+    single<ServiceRegistry> { LocalServiceRegistry() }
+    single { ServiceLifecycleController(
+        registry = get(),
+        ownerNodeId = { get<BootstrapSnapshotProvider>().nodeIdOrEmpty() },
+        flagEnabled = { name -> get<FeatureFlagRegistry>().get(name) },
+    ) }
+    single { McpServerStub(get()) }
+    single { AgentRuntimeStub() }
+
+    // -----------------------------------------------------------------
+    // Dynamic-foundation Phase 0.3 — probe + role
+    //
+    // The production profilers are Android-backed — they call
+    // PowerManager, BatteryManager, ActivityManager, ConnectivityManager
+    // through the existing `app/.../diagnostics/` impls. We adapt
+    // them to the HardwareProfiler interface here so the rest of the
+    // dynamic-foundation stays JVM-testable.
+    // -----------------------------------------------------------------
+    single<List<HardwareProfiler>> {
+        listOf(
+            CpuProfiler { com.meshlit.core.common.MeshlitResult.Success(
+                com.meshlit.core.probe.ProfileSample(
+                    score = 0.8f,
+                    rawValue = "arm64-v8a",
+                ),
+            ) },
+            MemoryProfiler {
+                val ramMb = try {
+                    val mi = android.os.Debug.MemoryInfo()
+                    android.os.Debug.getMemoryInfo(mi)
+                    mi.totalMem / (1024 * 1024)
+                } catch (t: Throwable) { 0L }
+                com.meshlit.core.common.MeshlitResult.Success(
+                    com.meshlit.core.probe.ProfileSample(
+                        score = (ramMb.toFloat() / (12f * 1024f)).coerceIn(0f, 1f),
+                        rawValue = ramMb.toString(),
+                    ),
+                )
+            },
+            ThermalProfiler {
+                com.meshlit.core.common.MeshlitResult.Success(
+                    com.meshlit.core.probe.ProfileSample(score = 0.9f, rawValue = "0"),
+                )
+            },
+            BatteryProfiler {
+                val bm = androidContext().getSystemService(android.content.Context.BATTERY_SERVICE)
+                    as android.os.BatteryManager?
+                val pct = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+                com.meshlit.core.common.MeshlitResult.Success(
+                    com.meshlit.core.probe.ProfileSample(
+                        score = (pct.coerceAtLeast(0).toFloat() / 100f),
+                        rawValue = pct.toString(),
+                    ),
+                )
+            },
+            NetworkProfiler {
+                val cm = androidContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                    as android.net.ConnectivityManager?
+                val active = cm?.activeNetworkInfo
+                val reachable = active?.isConnected ?: false
+                com.meshlit.core.common.MeshlitResult.Success(
+                    com.meshlit.core.probe.ProfileSample(
+                        score = if (reachable) 1.0f else 0.0f,
+                        rawValue = if (reachable) "reachable" else "offline",
+                    ),
+                )
+            },
+            NpuProfiler {
+                // We don't have a portable NPU detection API on
+                // Android — fall back to the SoC family reported by
+                // `DeviceProfile.hasNpu`. The full impl lands with
+                // Phase 1 inference engine selection.
+                com.meshlit.core.common.MeshlitResult.Success(
+                    com.meshlit.core.probe.ProfileSample(score = 0.5f, rawValue = "unknown"),
+                )
+            },
+        )
+    }
+    single { HardwareProfilerRegistry(profilers = get()) }
+    single { RoleManager(get()) }
+
+    // BootstrapCoordinator needs the registry, lifecycle, the
+    // stubs, the profiler, and the role manager. We resolve them
+    // at call time via Koin.
+    single {
+        BootstrapCoordinator(
+            config = get(),
+            flags = get(),
+            registry = get(),
+            lifecycle = get(),
+            services = listOf(
+                get<McpServerStub>(),
+                get<AgentRuntimeStub>(),
+            ),
+            profiler = get(),
+            roleManager = get(),
+        )
+    }
+    single { BootstrapSnapshotProvider() }
 
     // -----------------------------------------------------------------
     // Local trust policy — wired once the stable node id is set

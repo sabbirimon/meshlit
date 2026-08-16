@@ -1,0 +1,82 @@
+# Meshlit docs site — publish /docs to GitHub Pages.
+#
+# Trigger:
+#   - Push to `main` / `dev` that touches `docs/**` or `robots.txt`.
+#   - Manual: `Actions → Pages → Run workflow`.
+#
+# The site is served from the root of the published directory, so
+# docs URLs look like:
+#   https://<owner>.github.io/meshlit/PHASE1_VALIDATION.html
+#   https://<owner>.github.io/meshlit/STITCH_GLASS_UI.html
+#   https://<owner>.github.io/meshlit/architecture/
+#   https://<owner>.github.io/meshlit/robots.txt
+#
+# `robots.txt` (from the repo root) is copied into the published root
+# so search engines see the same crawl rules regardless of where the
+# page links come from. Edit the file at the repo root, not in
+# `docs/`.
+#
+# Required setup (one-time, on github.com):
+#   1. Settings → Pages → Source = "GitHub Actions".
+#   2. No additional secrets required; the workflow uses the
+#      built-in `GITHUB_TOKEN` with `pages: write` + `id-token: write`
+#      permissions (declared below).
+name: Pages
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "docs/**"
+      - "robots.txt"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Avoid concurrent deploys fighting for the live URL.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Stage publish directory
+        # Copy /docs as the publish root, then drop the repo-root
+        # `robots.txt` next to it so search engines see the crawl
+        # rules at the published root (e.g.
+        # https://<owner>.github.io/meshlit/robots.txt).
+        run: |
+          mkdir -p _site
+          cp -R docs/. _site/
+          cp robots.txt _site/robots.txt
+
+      - name: Publish to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
