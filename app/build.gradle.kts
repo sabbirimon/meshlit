@@ -19,8 +19,12 @@ android {
         // 23-floor build also runs 24.
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // Hivemind-1 cluster + Stitch glass UI + RunAnywhere SDK
+        // parity (Phase 4.x). Bumped from 0.1.0 → 0.2.0 so the
+        // /v1/health `version` field distinguishes the new
+        // cluster surface from the pre-cluster build.
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
