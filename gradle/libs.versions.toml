@@ -109,6 +109,13 @@ opentelemetry = "1.43.0"
 wire = "5.5.1"
 androidxAnnotation = "1.8.2"
 
+# Koin DI — used by `:app` to break the MeshlitApplication
+# god object. 4.2.2 is the latest stable on Maven Central as of
+# 2026-06-15. Koin 4 ships Kotlin 2.3.20 stdlib metadata; resolution
+# against the project's 2.4.10 stdlib is binary-compatible forward
+# and gradle resolves to 2.4.10 by constraint.
+koin = "4.2.2"
+
 [libraries]
 # Gradle plugin marker artifacts (used only by build-logic)
 android-gradle-plugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
@@ -236,6 +243,16 @@ opentelemetry-api = { group = "io.opentelemetry", name = "opentelemetry-api", ve
 opentelemetry-sdk = { group = "io.opentelemetry", name = "opentelemetry-sdk", version.ref = "opentelemetry" }
 opentelemetry-exporter-otlp = { group = "io.opentelemetry", name = "opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
 opentelemetry-exporter-logging = { group = "io.opentelemetry", name = "opentelemetry-exporter-logging", version.ref = "opentelemetry" }
+
+# Koin DI — the runtime DI container. 4.2.2 is the latest stable
+# on Maven Central. Pulling both `koin-android` (for `androidContext()`
+# + `androidLogger()`) and `koin-androidx-compose` (for `koinViewModel()`)
+# via the BOM keeps the artifact set in lock-step.
+koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koin" }
+koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
+koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
+koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
+koin-test = { group = "io.insert-koin", name = "koin-test", version.ref = "koin" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

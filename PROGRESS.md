@@ -716,6 +716,60 @@ agent-loop display mode (Live / Step). Persisted in
   lines; the conflict-resolver picks 1.11.0 from the RunAnywhere
   AAR for the runtime classpath.
 
+## Current state — 2026-08-16 (Phase 0.3 — Koin DI scaffolding)
+
+**This session:**
+
+- The 50+ `by lazy { ... }` singleton fields on
+  `MeshlitApplication` are dissolved. Each one is now a
+  `single { ... }` provider in `app/src/main/kotlin/com/meshlit/di/`
+  (`coreModule` for `:core-*` singletons, `appModule` for the
+  FGS-shared mutable refs). The application class reads them via
+  `get<T>()`-backed getters so existing call sites
+  (`(applicationContext as MeshlitApplication).inferenceCoordinator`,
+  etc.) keep compiling without churning 129 call sites.
+
+- `Koin 4.2.2` (latest stable on Maven Central as of 2026-06-15)
+  is wired in via the BOM. Pulls in `koin-android`,
+  `koin-androidx-compose`, `koin-core` for the app. Koin 4 ships
+  Kotlin 2.3.20 stdlib metadata; resolution against the project's
+  2.4.10 stdlib is binary-compatible forward and the conflict
+  resolver picks 2.4.10 by the Kotlin plugin's constraint.
+
+- `RefHolder<T>` replaces the three `@Volatile private var ... =`
+  fields (`bundledModelPath`, `activePeerHealthCache`,
+  `stableNodeId`) that needed read/write API on the Application
+  class. Koin singletons for `RefHolder<X>` provide the same
+  single-instance semantics with a `get()` / `set()` interface.
+
+- `MeshlitRuntime.kt` and `DeviceInfo.kt` extract the file/IO
+  and the network/IP/displayName helpers out of the application
+  class so the boot flow + Koin container are the only logic
+  remaining on `MeshlitApplication`. The application class still
+  exposes 41 thin getters as a backwards-compat façade for the
+  ~129 call sites that read `app.<field>`. Migrating those to
+  `koinInject<X>()` is a follow-up cosmetic pass — the DI
+  architecture is in place.
+
+**Verification:**
+
+- `./gradlew :app:compileDebugKotlin` → green.
+- `./gradlew :app:assembleDebug` → BUILD SUCCESSFUL.
+- Effective LOC change: `MeshlitApplication.kt` 945 → 324 (the
+  ~40 getter properties are still preserved as Koin-backed
+  accessors — see "follow-up" note above).
+
+**Not changed (deferred):**
+
+- Migrating existing `.inferenceCoordinator` / `.peerRegistry` /
+  etc. call sites to `koinInject<X>()`. The application class
+  still exposes the same property names, so the call sites
+  compile. A future phase can do the sweep if the property
+  accessors become a maintenance burden.
+- Switching to `koinViewModel()` for the Compose screens; the
+  `Context.applicationContext as MeshlitApplication` pattern
+  remains for the `ViewModelFactory.create()` sites.
+
 ---
 
 *This file is the journal; `app/BUILD_GUIDE.md` is the spec; `app/CLAUDE.md`

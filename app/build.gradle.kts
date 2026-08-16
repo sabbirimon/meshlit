@@ -154,12 +154,22 @@ dependencies {
     implementation(libs.opentelemetry.exporter.otlp)
     implementation(libs.opentelemetry.exporter.logging)
 
+    // Phase 0.3 — Koin DI. Replaces the 50+ `by lazy { ... }`
+    // singletons that lived on MeshlitApplication. The BOM pins
+    // koin-android / koin-core / koin-androidx-compose to the same
+    // transitively-resolved version (4.2.2).
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+    implementation(libs.koin.core)
+
     // Core-library desugaring: required for java.time + ConcurrentHashMap
     // on Android 6/7.
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Tests
     testImplementation(libs.junit)
+    testImplementation(libs.koin.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
