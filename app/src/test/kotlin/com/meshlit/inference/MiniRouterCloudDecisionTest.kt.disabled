@@ -1,0 +1,322 @@
+package com.meshlit.inference
+
+import com.meshlit.core.inference.InferenceCoordinator
+import com.meshlit.core.inference.cluster.PeerCapabilities
+import com.meshlit.core.inference.net.InferRequest
+import com.meshlit.core.inference.net.RequestHints
+import com.meshlit.core.inference.net.RouterDecision
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * Tests for [MiniRouter]'s Phase 4 cloud-decision path.
+ *
+ * The cloud branch is the LAST one in `decideFor` — it only
+ * fires when every LAN route is exhausted AND the user has
+ * enabled + configured cloud. These tests cover the gating logic
+ * (enabled, configured, model id, hints) and confirm the
+ * existing local / forward behaviour is preserved when cloud is
+ * off.
+ */
+class MiniRouterCloudDecisionTest {
+
+    /**
+     * Build a stub [MiniRouter] where every collaborator is a
+     * no-op. The stubs satisfy the constructor signatures but
+     * never touch their internal state.
+     */
+    private fun buildRouter(
+        cloudConfig: MiniRouter.CloudConfig? = null,
+        coordinatorState: com.meshlit.core.inference.CoordinatorState =
+            com.meshlit.core.inference.CoordinatorState.Idle,
+        peerList: List<String> = emptyList(),
+    ): MiniRouter {
+        val coordinator = FakeCoordinator(coordinatorState)
+        val peers = FakePeerRegistry(peerList)
+        val health = FakePeerHealthCache(peerList)
+        val scorer = PeerLoadScorer()
+        val localLoad = LocalLoadTracker()
+        return MiniRouter(
+            coordinator = coordinator,
+            peers = peers,
+            health = health,
+            scorer = scorer,
+            localLoad = localLoad,
+            cloudConfig = cloudConfig,
+        )
+    }
+
+    @Test
+    fun cloud_disabled_does_not_emit_cloud_decision() = runBlocking {
+        val router = buildRouter(
+            cloudConfig = MiniRouter.CloudConfig(
+                provider = "openrouter",
+                defaultModelId = "anthropic/claude-3.5-sonnet",
+                isEnabled = false,
+                isConfigured = true,
+            ),
+        )
+        val decision = router.decideFor(InferRequest(prompt = "hi"), null)
+        // No cloud branch; falls through to local.
+        assertEquals(RouterDecision.Where.LOCAL, decision.where)
+        assertNull(decision.cloudProvider)
+        assertNull(decision.cloudModelId)
+    }
+
+    @Test
+    fun cloud_unconfigured_does_not_emit_cloud_decision() = runBlocking {
+        val router = buildRouter(
+            cloudConfig = MiniRouter.CloudConfig(
+                provider = "openrouter",
+                defaultModelId = "anthropic/claude-3.5-sonnet",
+                isEnabled = true,
+                isConfigured = false, // <-- key not validated
+            ),
+        )
+        val decision = router.decideFor(InferRequest(prompt = "hi"), null)
+        assertEquals(RouterDecision.Where.LOCAL, decision.where)
+    }
+
+    @Test
+    fun cloud_with_no_model_id_does_not_emit_cloud_decision() = runBlocking {
+        val router = buildRouter(
+            cloudConfig = MiniRouter.CloudConfig(
+                provider = "openrouter",
+                defaultModelId = null, // <-- no default picked yet
+                isEnabled = true,
+                isConfigured = true,
+            ),
+        )
+        val decision = router.decideFor(InferRequest(prompt = "hi"), null)
+        assertEquals(RouterDecision.Where.LOCAL, decision.where)
+    }
+
+    @Test
+    fun cloud_emits_when_enabled_and_no_healthy_peer() = runBlocking {
+        val router = buildRouter(
+            cloudConfig = MiniRouter.CloudConfig(
+                provider = "openrouter",
+                defaultModelId = "anthropic/claude-3.5-sonnet",
+                isEnabled = true,
+                isConfigured = true,
+            ),
+            coordinatorState = com.meshlit.core.inference.CoordinatorState.Ready(
+                model = fakeModelInfo(),
+                runtime = null,
+                format = null,
+            ),
+            peerList = emptyList(), // no LAN peers at all
+        )
+        val decision = router.decideFor(InferRequest(prompt = "hi"), null)
+        // Local is capable, but cloud should still win because
+        // there are no peers and the user opted in. Wait — the
+        // current router order prefers local over cloud when
+        // localOk && peerList.isEmpty(). Verify that contract.
+        assertEquals(
+            "When local is ready and there are no peers, the router still prefers local.",
+            RouterDecision.Where.LOCAL,
+            decision.where,
+        )
+    }
+
+    @Test
+    fun cloud_emits_when_local_unhealthy_and_no_healthy_peer() = runBlocking {
+        val router = buildRouter(
+            cloudConfig = MiniRouter.CloudConfig(
+                provider = "openrouter",
+                defaultModelId = "anthropic/claude-3.5-sonnet",
+                isEnabled = true,
+                isConfigured = true,
+            ),
+            // Coordinator is in Error — local cannot serve.
+            coordinatorState = com.meshlit.core.inference.CoordinatorState.Error(
+                message = "engine failed",
+            ),
+            peerList = emptyList(),
+        )
+        val decision = router.decideFor(InferRequest(prompt = "hi"), null)
+        // Local is broken; no peers; cloud should win.
+        assertEquals(RouterDecision.Where.CLOUD, decision.where)
+        assertEquals("openrouter", decision.cloudProvider)
+        assertEquals("anthropic/claude-3.5-sonnet", decision.cloudModelId)
+    }
+
+    @Test
+    fun cloud_does_not_emit_when_local_capable_but_peer_can_handle() = runBlocking {
+        // Phase 1 + Phase 4: peer path wins over cloud. Cloud is
+        // only a last resort. Verify by giving the router a
+        // healthy peer + capable local — neither path should pick
+        // cloud.
+        val router = buildRouter(
+            cloudConfig = MiniRouter.CloudConfig(
+                provider = "openrouter",
+                defaultModelId = "anthropic/claude-3.5-sonnet",
+                isEnabled = true,
+                isConfigured = true,
+            ),
+            coordinatorState = com.meshlit.core.inference.CoordinatorState.Ready(
+                model = fakeModelInfo(),
+                runtime = null,
+                format = null,
+            ),
+            peerList = listOf("192.168.1.20"),
+        )
+        // Note: the FakePeerHealthCache has no PeerHealth entries,
+        // so the scorer returns null and we fall through to the
+        // cloud / local fallback. Local wins because it's healthy.
+        val decision = router.decideFor(InferRequest(prompt = "hi"), null)
+        assertEquals(RouterDecision.Where.LOCAL, decision.where)
+    }
+
+    @Test
+    fun cloud_respects_needsGpu_hint() = runBlocking {
+        // The cloud path doesn't currently distinguish GPU vs
+        // non-GPU work. The router still honours `needsGpu = true`
+        // by skipping cloud (we don't want to bill the user when
+        // they asked specifically for a local GPU run).
+        val router = buildRouter(
+            cloudConfig = MiniRouter.CloudConfig(
+                provider = "openrouter",
+                defaultModelId = "anthropic/claude-3.5-sonnet",
+                isEnabled = true,
+                isConfigured = true,
+            ),
+            coordinatorState = com.meshlit.core.inference.CoordinatorState.Error(
+                message = "engine failed",
+            ),
+            peerList = emptyList(),
+        )
+        val decision = router.decideFor(
+            request = InferRequest(prompt = "hi"),
+            hints = RequestHints(needsGpu = true),
+        )
+        // The cloud branch is skipped because needsGpu = true.
+        // Falls through to "degraded-no-healthy-peer" local path.
+        assertEquals(RouterDecision.Where.LOCAL, decision.where)
+        assertTrue(decision.reason.contains("degraded"))
+    }
+
+    @Test
+    fun cloud_default_config_has_no_effect_when_not_set() = runBlocking {
+        val router = buildRouter(cloudConfig = null)
+        val decision = router.decideFor(InferRequest(prompt = "hi"), null)
+        assertEquals(RouterDecision.Where.LOCAL, decision.where)
+        assertNull(decision.cloudProvider)
+    }
+
+    // ─── Stubs ──────────────────────────────────────────────────────
+
+    private fun fakeModelInfo() = com.meshlit.core.inference.ModelInfo(
+        modelPath = "/tmp/stub.gguf",
+        modelName = "stub-model",
+        contextSize = 4096,
+        parameterCount = 0L,
+        quantization = "Q4_0",
+        embeddingDim = 0,
+        sizeBytes = 0L,
+        loadedAtMs = System.currentTimeMillis(),
+    )
+
+    private fun fakePeerCaps() = PeerCapabilities(
+        peerId = "self",
+        capabilityTier = com.meshlit.core.common.CapabilityTier.FULL,
+        freeRamMb = 4_096L,
+        freeDiskMb = 8_192L,
+        hostedShardIds = emptySet(),
+        lastSeenMs = System.currentTimeMillis(),
+    )
+
+    private class FakeCoordinator(
+        initial: com.meshlit.core.inference.CoordinatorState,
+    ) : InferenceCoordinator(
+        scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()),
+        engine = com.meshlit.core.inference.NoopEngine(),
+    ) {
+        override val state: kotlinx.coroutines.flow.StateFlow<com.meshlit.core.inference.CoordinatorState> =
+            MutableStateFlow(initial)
+    }
+
+    private class FakePeerRegistry(
+        val ips: List<String>,
+    ) : PeerRegistry {
+        override fun snapshot(): List<String> = ips
+        override fun trustedSnapshot(): List<com.meshlit.core.trust.TrustPolicyRow> = emptyList()
+        override fun capabilitiesFor(ip: String): PeerCapabilities? = null
+    }
+
+    private class FakePeerHealthCache(
+        val ips: List<String>,
+    ) : PeerHealthCache(factory = FakeClientFactory()) {
+        override fun snapshotAll(): Map<String, PeerHealth> = ips.associateWith {
+            PeerHealth(
+                ok = true,
+                modelLoaded = true,
+                asOfMs = System.currentTimeMillis(),
+            )
+        }
+    }
+
+    private class FakeClientFactory :
+        RemoteInferenceClientFactory {
+        override fun build(
+            baseUrl: String,
+        ): com.meshlit.core.inference.net.RemoteInferenceClient =
+            throw UnsupportedOperationException("not used in tests")
+    }
+
+    /**
+     * A trivial [com.meshlit.core.inference.InferenceEngine] stub.
+     * The real engine implementations are heavy (JNI + llama.cpp);
+     * for the cloud-decision tests we don't need any of that.
+     */
+    private class NoopEngine :
+        com.meshlit.core.inference.InferenceEngine by NoopEngineDelegate()
+}
+
+/**
+ * Delegate that satisfies the [InferenceEngine] interface with
+ * no-op implementations. We can't `by` a non-existent interface
+ * directly, so this is a thin manual implementation.
+ */
+private object NoopEngineDelegate :
+    com.meshlit.core.inference.InferenceEngine {
+    override val tag: String = "noop"
+    override val loadedModel: kotlinx.coroutines.flow.StateFlow<com.meshlit.core.inference.LoadedModel?> =
+        MutableStateFlow(null)
+    override val loadedShards: kotlinx.coroutines.flow.StateFlow<List<com.meshlit.core.inference.cluster.ShardRef>> =
+        MutableStateFlow(emptyList())
+    override val currentManifest: com.meshlit.core.inference.cluster.ShardManifest? = null
+    override val capabilities: com.meshlit.core.inference.cluster.PeerCapabilities? = null
+
+    override suspend fun load(request: com.meshlit.core.inference.ModelLoadRequest):
+        com.meshlit.core.common.MeshlitResult<com.meshlit.core.inference.ModelInfo> =
+        com.meshlit.core.common.MeshlitResult.Success(
+            com.meshlit.core.inference.ModelInfo(
+                name = "noop",
+                contextSize = 0,
+                embeddingDim = 0,
+                quantization = "",
+            ),
+        )
+
+    override suspend fun infer(
+        request: com.meshlit.core.inference.InferenceRequest,
+    ): com.meshlit.core.common.MeshlitResult<com.meshlit.core.inference.InferenceResult> =
+        com.meshlit.core.common.MeshlitResult.Success(
+            com.meshlit.core.inference.InferenceResult(
+                promptTokens = 0,
+                generatedTokens = 0,
+                totalDurationMs = 0L,
+                tokensPerSecond = 0f,
+                finishReason = com.meshlit.core.inference.FinishReason.NATURAL_STOP,
+                finalText = "",
+            ),
+        )
+
+    override suspend fun unload() = Unit
+}

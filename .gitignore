@@ -61,3 +61,19 @@ __pycache__/
 # artefact — see app/src/main/assets/models/README.md for the
 # SHA-256-pinned download command.
 app/src/main/assets/models/*.gguf
+
+# Vendored — kept locally as a development convenience but not part of
+# the open-source repo (too big to push, and the upstream is a
+# separate git tree that we don't own). Drop a `vendored/README.md`
+# explaining how to re-checkout if the user wants to rebuild.
+vendored/
+
+# Reference material (Stitch mockups, sample images) — kept locally
+# for design reviews; not part of the runtime codebase.
+Screenshots/
+stitch/
+stitch.zip
+
+# Imported GGUF copies the user drops into the app at runtime. Tracked
+# elsewhere as a release artefact.
+app/imported-models/

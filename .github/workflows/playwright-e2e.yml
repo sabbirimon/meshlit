@@ -1,0 +1,101 @@
+# Meshlit Playwright E2E — runs the `tests/e2e` suite against a
+# live Meshlit Android device (or emulator) reachable from the
+# CI runner via `adb`.
+#
+# This is a self-hosted runner workflow — the GitHub-hosted macOS
+# runners can't see a USB-attached phone. The runner host must:
+#   - Have adb on $PATH
+#   - Have a connected device visible via `adb devices`
+#   - Run as a user that can talk to the device's USB stack
+#
+# Override behaviour via repo variables:
+#   MESHLIT_DEVICE_SERIAL   the device's adb serial
+#                           (default: R9KN2009CZJ)
+#   MESHLIT_PACKAGE         the apk's applicationId
+#                           (default: com.meshlit.debug)
+#   MESHLIT_RUN_UI          "true" to run the @ui spec (needs a
+#                           human-friendly screen on the device)
+#                           (default: false)
+#
+# Outputs:
+#   - playwright-report/   HTML report
+#   - test-results/        JUnit XML + per-test artefacts
+name: Playwright E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/e2e/**'
+      - 'app/**'
+      - 'core-inference/**'
+      - 'core-net/**'
+  workflow_dispatch:
+    inputs:
+      grep:
+        description: 'playwright --grep filter (e.g. @smoke)'
+        required: false
+        default: '@smoke'
+
+jobs:
+  e2e:
+    runs-on: [self-hosted, meshlit-android]
+    timeout-minutes: 30
+
+    env:
+      MESHLIT_DEVICE: ${{ vars.MESHLIT_DEVICE_SERIAL || 'R9KN2009CZJ' }}
+      MESHLIT_PACKAGE: ${{ vars.MESHLIT_PACKAGE || 'com.meshlit.debug' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify adb sees the device
+        run: |
+          set -euo pipefail
+          adb start-server
+          adb devices
+          if ! adb devices | grep -q "${MESHLIT_DEVICE}"; then
+            echo "::error::adb does not see ${MESHLIT_DEVICE}"
+            exit 1
+          fi
+
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright + Chromium
+        working-directory: tests/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright suite
+        working-directory: tests/e2e
+        run: |
+          set -euo pipefail
+          GREP_FILTER='${{ github.event.inputs.grep || github.event.inputs.grep || "@smoke" }}'
+          # The @ui spec crashes with `wm size` mismatches on some
+          # emulators; gate it on the workflow input.
+          if [ "${MESHLIT_RUN_UI:-false}" != "true" ]; then
+            GREP_FILTER="${GREP_FILTER} --grep-invert '@ui'"
+          fi
+          echo "Effective --grep: ${GREP_FILTER}"
+          npx playwright test ${GREP_FILTER}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+          retention-days: 7
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: tests/e2e/test-results
+          retention-days: 7

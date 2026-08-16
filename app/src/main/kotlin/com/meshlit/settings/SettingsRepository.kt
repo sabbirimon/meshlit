@@ -14,6 +14,7 @@ import com.meshlit.core.common.NetworkScope
 import com.meshlit.core.common.RemoteEndpoint
 import com.meshlit.ui.theme.AccentHue
 import com.meshlit.ui.theme.BasePalette
+import com.meshlit.ui.theme.CustomPalette
 import com.meshlit.ui.theme.MeshlitThemeConfig
 import com.meshlit.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -52,6 +53,7 @@ class SettingsRepository(private val context: Context) {
             densityScale = prefs[Keys.densityScale] ?: MeshlitThemeConfig.Default.densityScale,
             animationsEnabled = prefs[Keys.animationsEnabled] ?: MeshlitThemeConfig.Default.animationsEnabled,
             highContrast = prefs[Keys.highContrast] ?: MeshlitThemeConfig.Default.highContrast,
+            customPalette = decodeCustomPalette(prefs[Keys.customPaletteJson]),
         )
     }
 
@@ -197,6 +199,18 @@ class SettingsRepository(private val context: Context) {
         store.edit { it[Keys.highContrast] = enabled }
     }
 
+    suspend fun setCustomPalette(palette: CustomPalette) {
+        store.edit { prefs ->
+            if (palette is CustomPalette.None) {
+                prefs.remove(Keys.customPaletteJson)
+            } else {
+                prefs[Keys.customPaletteJson] = json.encodeToString(
+                    CustomPalette.serializer(), palette,
+                )
+            }
+        }
+    }
+
     suspend fun setCustomModelPath(path: String) {
         store.edit { prefs ->
             if (path.isBlank()) {
@@ -229,11 +243,24 @@ class SettingsRepository(private val context: Context) {
         val densityScale = floatPreferencesKey("theme.density_scale")
         val animationsEnabled = booleanPreferencesKey("theme.animations_enabled")
         val highContrast = booleanPreferencesKey("theme.high_contrast")
+        val customPaletteJson = stringPreferencesKey("theme.custom_palette_json")
         val customModelPath = stringPreferencesKey("model.custom_path")
         val networkScope = stringPreferencesKey("network.scope")
         val remoteEndpoints = stringPreferencesKey("network.remote_endpoints")
         val activeEndpointId = stringPreferencesKey("network.active_endpoint_id")
         val runtimeRegistryVersion = intPreferencesKey("runtime.registry_version")
+    }
+
+    /**
+     * Phase 12.2 — deserialize the saved custom palette. Missing
+     * key → None (graceful migration). Malformed JSON → None
+     * (Schema changes don't crash the user's saved theme).
+     */
+    private fun decodeCustomPalette(raw: String?): CustomPalette {
+        if (raw.isNullOrBlank()) return CustomPalette.None
+        return runCatching {
+            json.decodeFromString(CustomPalette.serializer(), raw)
+        }.getOrDefault(CustomPalette.None)
     }
 
     companion object {

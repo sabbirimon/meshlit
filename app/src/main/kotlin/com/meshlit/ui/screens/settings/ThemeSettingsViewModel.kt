@@ -11,6 +11,7 @@ import com.meshlit.MeshlitApplication
 import com.meshlit.settings.SettingsRepository
 import com.meshlit.ui.theme.AccentHue
 import com.meshlit.ui.theme.BasePalette
+import com.meshlit.ui.theme.CustomPalette
 import com.meshlit.ui.theme.MeshlitThemeConfig
 import com.meshlit.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.SharingStarted
@@ -64,6 +65,10 @@ class ThemeSettingsViewModel(
 
     fun setHighContrast(enabled: Boolean) {
         viewModelScope.launch { repository.setHighContrast(enabled) }
+    }
+
+    fun setCustomPalette(palette: CustomPalette) {
+        viewModelScope.launch { repository.setCustomPalette(palette) }
     }
 
     fun resetToDefaults() {

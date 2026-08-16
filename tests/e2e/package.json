@@ -1,0 +1,21 @@
+{
+  "name": "meshlit-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright-driven end-to-end test harness for the Meshlit Android app on R9KN2009CZJ. Drives adb + the on-device HTTP server.",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep @smoke",
+    "test:e2e:ui": "playwright test --grep @ui",
+    "test:e2e:http": "playwright test --grep @http",
+    "test:e2e:infer": "playwright test --grep @infer",
+    "test:e2e:peer": "playwright test --grep @peer",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:list": "playwright test --list"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.0",
+    "@types/node": "22.10.2"
+  }
+}

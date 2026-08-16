@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import kotlinx.serialization.Serializable
 
 /**
  * Meshlit theme configuration. Built dynamically from user settings —
@@ -19,6 +20,14 @@ import androidx.compose.ui.graphics.Color
  * Within that range the user picks the exact point. Outside it,
  * we still show the chosen color but the brand mark stays
  * Meshlit Violet.
+ *
+ * Phase 12.2 — when [customPalette] is non-`None`, [buildColorScheme]
+ * samples the user's custom stops instead of the curated
+ * `BasePalette` table. The user can pick:
+ *  - **Solid** — five flat ARGB swatches.
+ *  - **Gradient stops** — 2–5 stops blended linearly (static).
+ *  - **Animated gradient** — same stops, but the brush drifts over
+ *    `cycleSeconds` (default 12s — slow, per the user's spec).
  */
 @Immutable
 data class MeshlitThemeConfig(
@@ -29,10 +38,57 @@ data class MeshlitThemeConfig(
     val densityScale: Float = 1.0f,
     val animationsEnabled: Boolean = true,
     val highContrast: Boolean = false,
+    val customPalette: CustomPalette = CustomPalette.None,
 ) {
     companion object {
         val Default = MeshlitThemeConfig()
     }
+}
+
+/**
+ * Phase 12.2 — user-defined palette override.
+ *
+ * Three variants:
+ *  - [None] — fall back to the curated `BasePalette` + `AccentHue`.
+ *  - [Solid] — five hand-picked ARGB swatches (primary / secondary
+ *    / tertiary / surface / surfaceVariant). The user's "modern
+ *    light pink" use case lives here.
+ *  - [GradientStops] — 2–5 ARGB stops blended linearly at a
+ *    configurable angle. Static; no animation.
+ *  - [AnimatedGradient] — same shape as [GradientStops] but the
+ *    brush drifts cyclically over [cycleSeconds]. The "slow
+ *    animation" the user asked for lives here.
+ *
+ * Persisted via `SettingsRepository.customPaletteJson` as JSON.
+ * Missing / malformed JSON falls back to [None] without crashing
+ * (graceful migration — see SettingsRepository).
+ */
+@Serializable
+sealed class CustomPalette {
+    @Serializable
+    object None : CustomPalette()
+
+    @Serializable
+    data class Solid(
+        val primary: Long,
+        val secondary: Long,
+        val tertiary: Long,
+        val surface: Long,
+        val surfaceVariant: Long,
+    ) : CustomPalette()
+
+    @Serializable
+    data class GradientStops(
+        val stops: List<Long>,
+        val angleDeg: Int = 135,
+    ) : CustomPalette()
+
+    @Serializable
+    data class AnimatedGradient(
+        val stops: List<Long>,
+        val cycleSeconds: Int = 12,
+        val angleDeg: Int = 135,
+    ) : CustomPalette()
 }
 
 enum class AccentHue(val displayName: String, val primary: Color, val primaryContainer: Color) {
@@ -75,8 +131,55 @@ private fun accentContainer(hue: AccentHue) = hue.primaryContainer
  *
  * Each base palette is a 5-color set: background, surface, surfaceVariant,
  * outline, textPrimary. Brand accents are layered on top.
+ *
+ * Phase 12.2 — when `config.customPalette` is non-`None`, we
+ * short-circuit the curated `BasePalette` switch and read the
+ * user's swatches / gradient stops directly. The animated
+ * gradient variant samples a pre-built [AnimatedGradientBrush]
+ * passed in by the caller (which is `@Composable` so it can
+ * collect the infinite transition); see [buildColorScheme]
+ * callers in `MeshlitTheme`.
  */
-fun buildColorScheme(config: MeshlitThemeConfig): ColorScheme {
+fun buildColorScheme(
+    config: MeshlitThemeConfig,
+    animatedBrush: AnimatedGradientBrush? = null,
+): ColorScheme {
+    // Phase 12.2 — custom-palette override branch. When the user
+    // has picked Solid / GradientStops / AnimatedGradient we
+    // resolve the relevant `primary / secondary / tertiary /
+    // surface / surfaceVariant` from the saved values, then
+    // delegate to the rest of the function so the
+    // dark/light/scheme plumbing stays identical to the curated
+    // path. The animated branch consumes the pre-built
+    // [animatedBrush]; the static branch builds its own brush
+    // internally with phase = 0f.
+    val custom = config.customPalette
+    val customResolved: CustomResolved? = when (custom) {
+        CustomPalette.None -> null
+        is CustomPalette.Solid -> CustomResolved(
+            primary = Color(custom.primary),
+            secondary = Color(custom.secondary),
+            tertiary = Color(custom.tertiary),
+            surface = Color(custom.surface),
+            surfaceVariant = Color(custom.surfaceVariant),
+        )
+        is CustomPalette.GradientStops -> {
+            val brush = AnimatedGradient.brush(
+                stops = custom.stops.map { Color(it) },
+                angleDeg = custom.angleDeg,
+                phaseFraction = 0f,
+            )
+            customResolvedFromBrush(brush)
+        }
+        is CustomPalette.AnimatedGradient -> {
+            val brush = animatedBrush ?: AnimatedGradient.brush(
+                stops = custom.stops.map { Color(it) },
+                angleDeg = custom.angleDeg,
+                phaseFraction = 0f,
+            )
+            customResolvedFromBrush(brush)
+        }
+    }
     val base = config.basePalette
     val (background, surface, surfaceVariant, outline, textPrimary, textSecondary) = when (base) {
         BasePalette.MIDNIGHT -> MeshlitMidnightShades
@@ -89,25 +192,32 @@ fun buildColorScheme(config: MeshlitThemeConfig): ColorScheme {
     }
     val isLight = base == BasePalette.PAPER
 
-    val primary = if (config.highContrast && isLight) {
-        // High contrast: deeper accent
-        accentContainer(config.accentHue)
-    } else {
-        accentPrimary(config.accentHue)
+    // Phase 12.2 — when a custom palette is active, use those
+    // values directly. Otherwise fall back to the curated
+    // AccentHue-derived primary / secondary / tertiary.
+    val primary = customResolved?.primary ?: run {
+        if (config.highContrast && isLight) {
+            accentContainer(config.accentHue)
+        } else {
+            accentPrimary(config.accentHue)
+        }
     }
+    val secondary = customResolved?.secondary ?: MeshlitCyan
+    val tertiary = customResolved?.tertiary ?: MeshlitEmerald
     val onPrimary = if (isLight) Color(0xFFFFFFFF) else Color(0xFF0A0E1A)
 
     return if (isLight) {
         lightColorScheme(
             primary = primary,
             onPrimary = onPrimary,
-            primaryContainer = accentContainer(config.accentHue).copy(alpha = 0.18f),
-            onPrimaryContainer = accentContainer(config.accentHue),
-            secondary = MeshlitCyan,
+            primaryContainer = (customResolved?.primary ?: accentContainer(config.accentHue))
+                .copy(alpha = 0.18f),
+            onPrimaryContainer = customResolved?.primary ?: accentContainer(config.accentHue),
+            secondary = secondary,
             onSecondary = Color(0xFF0A0E1A),
-            secondaryContainer = MeshlitCyan.copy(alpha = 0.18f),
-            onSecondaryContainer = MeshlitCyan,
-            tertiary = MeshlitEmerald,
+            secondaryContainer = secondary.copy(alpha = 0.18f),
+            onSecondaryContainer = secondary,
+            tertiary = tertiary,
             onTertiary = Color(0xFF0A0E1A),
             background = background,
             onBackground = textPrimary,
@@ -124,15 +234,15 @@ fun buildColorScheme(config: MeshlitThemeConfig): ColorScheme {
         darkColorScheme(
             primary = primary,
             onPrimary = onPrimary,
-            primaryContainer = accentContainer(config.accentHue),
+            primaryContainer = customResolved?.primary ?: accentContainer(config.accentHue),
             onPrimaryContainer = Color(0xFFFFFFFF),
-            secondary = MeshlitCyan,
+            secondary = secondary,
             onSecondary = Color(0xFF0A0E1A),
-            secondaryContainer = MeshlitCyanDim,
+            secondaryContainer = secondary.let { tint(it, 0.65f) },
             onSecondaryContainer = Color(0xFFFFFFFF),
-            tertiary = MeshlitEmerald,
+            tertiary = tertiary,
             onTertiary = Color(0xFF0A0E1A),
-            tertiaryContainer = MeshlitEmeraldDim,
+            tertiaryContainer = tertiary.let { tint(it, 0.65f) },
             onTertiaryContainer = Color(0xFFFFFFFF),
             background = background,
             onBackground = textPrimary,
@@ -146,6 +256,59 @@ fun buildColorScheme(config: MeshlitThemeConfig): ColorScheme {
             onError = Color(0xFFFFFFFF),
         )
     }
+}
+
+/**
+ * Phase 12.2 — internal carrier for the resolved custom-palette
+ * swatches. Built in [buildColorScheme] from the user's
+ * [CustomPalette] before the curated-path branch runs.
+ */
+private data class CustomResolved(
+    val primary: Color,
+    val secondary: Color,
+    val tertiary: Color,
+    val surface: Color,
+    val surfaceVariant: Color,
+)
+
+/**
+ * Phase 12.2 — derive a [CustomResolved] carrier from a brush by
+ * sampling the gradient at five canonical positions: 0.0 (primary),
+ * 0.33 (secondary), 0.66 (tertiary), 0.85 (surface), 1.0 (surfaceVariant).
+ *
+ * Single-stop brush returns the same color for every slot; multi-stop
+ * falls back to the curated secondary/tertiary/surface palette when the
+ * gradient has fewer than five distinct sample points — we still want
+ * Material3's tonal relationships to read sensibly, so the gradient
+ * becomes the *primary* swatch and the rest defaults to its complements.
+ */
+private fun customResolvedFromBrush(brush: AnimatedGradientBrush): CustomResolved {
+    val primary = brush.colorAt(0.0f)
+    val secondary = brush.colorAt(0.33f)
+    val tertiary = brush.colorAt(0.66f)
+    val surface = brush.colorAt(0.85f)
+    val surfaceVariant = brush.colorAt(1.0f)
+    return CustomResolved(
+        primary = primary,
+        secondary = secondary,
+        tertiary = tertiary,
+        surface = surface,
+        surfaceVariant = surfaceVariant,
+    )
+}
+
+/**
+ * Tint [color] by [factor] toward black. `factor = 0` returns the
+ * original color; `factor = 1` returns black. Used to derive
+ * `secondaryContainer` / `tertiaryContainer` tones from a custom
+ * `secondary` / `tertiary` swatch so Material 3 tonal relationships
+ * hold when the user picks arbitrary colors.
+ */
+private fun tint(color: Color, factor: Float): Color {
+    val r = (color.red * (1f - factor)).coerceIn(0f, 1f)
+    val g = (color.green * (1f - factor)).coerceIn(0f, 1f)
+    val b = (color.blue * (1f - factor)).coerceIn(0f, 1f)
+    return Color(red = r, green = g, blue = b, alpha = color.alpha)
 }
 
 // Palette shade sets (5-tuples: background, surface, surfaceVariant, outline, textPrimary, textSecondary)

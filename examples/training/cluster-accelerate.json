@@ -1,0 +1,27 @@
+{
+  "configSchemaVersion": 1,
+  "strategy": "ACCELERATE",
+  "sharding": {
+    "mode": "LAYER",
+    "optimizerOffload": "NONE",
+    "activationOffload": false,
+    "checkpointEvery": 25,
+    "keepLastN": 5
+  },
+  "diloco": {
+    "innerSteps": 500,
+    "outerLr": 0.7
+  },
+  "p2p": {
+    "maxStaleness": 8,
+    "minMatchmakingDelaySec": 5.0
+  },
+  "logs": {
+    "intervalSec": 5.0,
+    "webui": true
+  },
+  "durability": {
+    "resumeToken": null,
+    "onCrash": "RESUME"
+  }
+}

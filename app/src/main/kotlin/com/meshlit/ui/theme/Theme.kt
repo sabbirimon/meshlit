@@ -7,6 +7,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -53,11 +55,30 @@ fun MeshlitTheme(
         }
     }
     val context = LocalContext.current
+    // Phase 12.2 — when the user picked an AnimatedGradient custom
+    // palette we need a live AnimatedGradientBrush sampled from the
+    // current infinite-transition phase. `phaseFor` is @Composable
+    // (it calls `rememberInfiniteTransition`) so we collect the
+    // phase here and build the brush right at the call site — that
+    // way `buildColorScheme` stays a pure function. For Solid /
+    // GradientStops we don't need a brush (the static path builds
+    // its own internally with phase = 0f).
+    val animatedBrush: AnimatedGradientBrush? = remember(effectiveConfig) {
+        val custom = effectiveConfig.customPalette
+        if (custom is CustomPalette.AnimatedGradient) {
+            val phase = AnimatedGradient.phaseFor(effectiveConfig, custom)
+            AnimatedGradient.brush(
+                stops = custom.stops.map { Color(it) },
+                angleDeg = custom.angleDeg,
+                phaseFraction = phase,
+            )
+        } else null
+    }
     val colorScheme = if (useDynamicColor) {
         if (systemDark) dynamicDarkColorScheme(context)
         else dynamicLightColorScheme(context)
     } else {
-        buildColorScheme(effectiveConfig)
+        buildColorScheme(effectiveConfig, animatedBrush)
     }
     CompositionLocalProvider(LocalMeshlitThemeConfig provides effectiveConfig) {
         MaterialTheme(

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Meshlit Cluster</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<canvas id="orb-bg" aria-hidden="true"></canvas>
+
+<header class="topbar">
+  <div class="title">
+    <span class="dot"></span>
+    <h1>Meshlit Cluster</h1>
+  </div>
+  <div class="host-meta">
+    <span class="muted">Host</span>
+    <strong id="host-name">…</strong>
+    <span class="kube-badge" id="kube-score">·</span>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="chat-pane">
+    <div class="messages" id="messages" aria-live="polite"></div>
+    <form class="composer" id="composer">
+      <textarea id="prompt" rows="2" placeholder="Ask the cluster…" autofocus></textarea>
+      <button type="submit" id="send-btn">Send</button>
+    </form>
+  </section>
+
+  <aside class="side-pane">
+    <div class="card glass">
+      <h2>Models</h2>
+      <select id="model-picker" aria-label="Model"></select>
+    </div>
+    <div class="card glass">
+      <h2>Cluster members</h2>
+      <ul id="members" class="member-list"></ul>
+      <button id="reelect-btn" class="ghost">Re-elect host</button>
+    </div>
+    <div class="card glass">
+      <h2>QR</h2>
+      <img src="/qr.svg" alt="Scan to share" class="qr">
+    </div>
+  </aside>
+</main>
+
+<script src="/chat.js"></script>
+</body>
+</html>
