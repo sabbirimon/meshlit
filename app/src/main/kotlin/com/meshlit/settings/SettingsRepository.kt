@@ -22,9 +22,11 @@ import com.meshlit.ui.theme.BasePalette
 import com.meshlit.ui.theme.CustomPalette
 import com.meshlit.ui.theme.MeshlitThemeConfig
 import com.meshlit.ui.theme.ThemeMode
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -450,19 +452,47 @@ class SettingsRepository(private val context: Context) {
     // --- Sync (non-flow) accessors ----------------------------------------
     //
     // MeshlitApplication.onCreate wires the TracingController from
-    // the persisted values. We can't `collect` from a flow there
-    // because onCreate runs before any coroutine scope is ready —
-    // a `runBlocking { first() }` is the simpler choice.
+    // the persisted values via [tracingModeNow] / [tracingOtelEndpointNow]
+    // / [tracingOtelHeadersNow]. We can't `collect` from a flow
+    // directly in onCreate because the application scope's
+    // collector hasn't emitted yet — the cached `cachedTracingMode`
+    // / `cachedOtlpEndpoint` / `cachedOtlpHeaders` fields are
+    // populated by [startTracingCache] (called on `appScope` from
+    // onCreate) so the very first synchronous read returns the
+    // user's persisted value without a DataStore round-trip.
+
+    /**
+     * Cached snapshot of [tracingModeFlow], updated by
+     * [startTracingCache]. Reads on the main thread are O(1)
+     * without blocking on DataStore I/O — the value is written by
+     * a long-lived collector on the application scope.
+     */
+    @Volatile private var cachedTracingMode: TracingMode = TracingMode.Off
+
+    @Volatile private var cachedOtlpEndpoint: String = ""
+
+    @Volatile private var cachedOtlpHeaders: String = ""
+
+    /**
+     * Subscribe to the three tracing-related DataStore flows and
+     * keep [cachedTracingMode] / [cachedOtlpEndpoint] /
+     * [cachedOtlpHeaders] current. Called once from
+     * [com.meshlit.MeshlitApplication.onCreate] on `appScope` so
+     * the very first `tracingModeNow()` read after a process start
+     * reflects whatever the user previously saved — without making
+     * `onCreate` block on DataStore I/O.
+     */
+    fun startTracingCache(scope: CoroutineScope) {
+        scope.launch { tracingModeFlow.collect { cachedTracingMode = it } }
+        scope.launch { tracingOtelEndpointFlow.collect { cachedOtlpEndpoint = it } }
+        scope.launch { tracingOtelHeadersFlow.collect { cachedOtlpHeaders = it } }
+    }
 
     /** Synchronous accessor for the active tracing mode. */
-    fun tracingModeNow(): TracingMode = runCatching {
-        kotlinx.coroutines.runBlocking { tracingModeFlow.first() }
-    }.getOrDefault(TracingMode.Off)
+    fun tracingModeNow(): TracingMode = cachedTracingMode
 
     /** Synchronous accessor for the OTLP endpoint URL. */
-    fun tracingOtelEndpointNow(): String = runCatching {
-        kotlinx.coroutines.runBlocking { tracingOtelEndpointFlow.first() }
-    }.getOrDefault("")
+    fun tracingOtelEndpointNow(): String = cachedOtlpEndpoint
 
     /**
      * Synchronous accessor for the parsed OTLP headers. Format
@@ -470,9 +500,8 @@ class SettingsRepository(private val context: Context) {
      * Empty / blank lines are ignored; the first `=` is the
      * separator so values may contain additional `=` (e.g. base64).
      */
-    fun tracingOtelHeadersNow(): Map<String, String> = runCatching {
-        kotlinx.coroutines.runBlocking { tracingOtelHeadersFlow.first() }
-    }.getOrDefault("").let(::parseOtelHeaders)
+    fun tracingOtelHeadersNow(): Map<String, String> =
+        parseOtelHeaders(cachedOtlpHeaders)
 
     /** Convenience parser so other call sites can reuse the format. */
     fun parseOtelHeadersNow(): Map<String, String> = tracingOtelHeadersNow()

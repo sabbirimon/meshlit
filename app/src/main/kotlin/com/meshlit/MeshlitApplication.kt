@@ -221,11 +221,16 @@ class MeshlitApplication : android.app.Application() {
         appScope.launch { runSystemProbe() }
         appScope.launch { extractBundledModel() }
         appScope.launch { bootMcp() }
-        tracingController.reconfigure(
-            mode = settingsRepository.tracingModeNow().toCoreTracingMode(),
-            otlpEndpoint = settingsRepository.tracingOtelEndpointNow(),
-            otlpHeaders = settingsRepository.tracingOtelHeadersNow(),
-        )
+        // Phase 0.2 — single tracing source of truth. The cache
+        // fields populated by `startTracingCache()` give us a
+        // synchronous read of the persisted values without
+        // `runBlocking` on the main thread, and the `combine`
+        // collector handles every subsequent change from a single
+        // subscription. The `combine` flow emits the current
+        // values of all three upstream flows on first collection,
+        // so the initial reconfigure lands on the collector thread
+        // instead of duplicating it on the main thread.
+        settingsRepository.startTracingCache(appScope)
         appScope.launch {
             combine(
                 settingsRepository.tracingModeFlow,
