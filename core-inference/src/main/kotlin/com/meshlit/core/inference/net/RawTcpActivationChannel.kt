@@ -211,24 +211,34 @@ class RawTcpActivationServer(
     private val onChannel: (RawTcpActivationChannel) -> Unit,
 ) : AutoCloseable {
 
-    private val closed = AtomicBoolean(false)
+    private val running = AtomicBoolean(false)
     private val serverRef = AtomicReference<ServerSocket?>(null)
     private var acceptThread: Thread? = null
 
+    /**
+     * The live port the server is bound to. Returns the requested
+     * port after [start], or 0 before [start] / after [close]. The
+     * FGS surfaces this on `/v1/health` so peers can dial the
+     * activation channel without hard-coding a port.
+     */
+    val boundPort: Int
+        get() = serverRef.get()?.localPort ?: 0
+
     fun start() {
-        if (!closed.compareAndSet(false, true)) return
+        if (!running.compareAndSet(false, true)) return
         val srv = try {
             ServerSocket(port)
         } catch (t: Throwable) {
             // Port already bound or permission denied — surface to
             // caller via the missing channel callback (silent skip).
+            running.set(false)
             return
         }
         serverRef.set(srv)
         acceptThread = Thread({
-            while (!closed.get()) {
+            while (running.get()) {
                 val sock = try { srv.accept() } catch (_: Throwable) {
-                    if (closed.get()) return@Thread
+                    if (!running.get()) return@Thread
                     continue
                 }
                 val ch = RawTcpActivationChannel()
@@ -245,7 +255,7 @@ class RawTcpActivationServer(
     }
 
     override fun close() {
-        if (!closed.compareAndSet(false, true)) return
+        if (!running.compareAndSet(true, false)) return
         val srv = serverRef.getAndSet(null)
         if (srv != null) {
             try { srv.close() } catch (_: Throwable) { /* swallow */ }

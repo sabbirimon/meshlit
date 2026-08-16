@@ -102,6 +102,21 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // OkHttp 4.x ↔ 5.x is not binary compatible. OpenTelemetry's OTLP
+    // sender pulls OkHttp 5.3.2 transitively, but the project pins
+    // OkHttp to 4.12.0 (the last 4.x line — the only line
+    // MockWebServer 4.12.0 understands). Force resolution to 4.12.0
+    // so the unit test runtime classpath is consistent.
+    configurations.all {
+        resolutionStrategy {
+            force("com.squareup.okhttp3:okhttp:4.12.0")
+            force("com.squareup.okhttp3:okhttp-android:4.12.0")
+            force("com.squareup.okhttp3:okhttp-jvm:4.12.0")
+            force("com.squareup.okhttp3:mockwebserver:4.12.0")
+            force("com.squareup.okhttp3:logging-interceptor:4.12.0")
+        }
+    }
 }
 
 dependencies {
@@ -203,6 +218,8 @@ dependencies {
     // Tests
     testImplementation(libs.junit)
     testImplementation(libs.koin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

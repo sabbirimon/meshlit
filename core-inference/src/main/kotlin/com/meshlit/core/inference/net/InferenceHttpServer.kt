@@ -102,7 +102,13 @@ class InferenceHttpServer(
         val d = Delegate()
         delegate = d
         log.info("http.start", "NanoHTTPD inference server starting", mapOf("host" to host, "port" to port))
-        d.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
+        // NanoHTTPD's default SOCKET_READ_TIMEOUT is 5 s. The chunked
+        // SSE response on /v1/infer takes a beat longer than that when
+        // the coordinator walks through the infer mutex + dispatcher
+        // path before the first event lands on the pipe. Bump to
+        // 60 s — well past any legitimate cold-start window for an
+        // embedded inference engine on Android hardware.
+        d.start(60_000, false)
     }
 
     /**
@@ -523,17 +529,28 @@ class InferenceHttpServer(
         }
 
         private fun readBody(session: IHTTPSession): String {
+            // NanoHTTPD's `parseBody()` reads the request body for us
+            // and lands the bytes either in `parameters["postData"]`
+            // (when Content-Type is form-encoded) or in `files`. For
+            // JSON bodies — which is what /v1/infer expects — the
+            // body lands in `files["postData"]`. Read from there
+            // first; fall back to `parameters["postData"]` for older
+            // clients that hit a different branch.
             val files = mutableMapOf<String, String>()
             try {
                 session.parseBody(files)
             } catch (t: Throwable) {
                 log.warn("http.infer.parse_body", "parseBody failed", mapOf("err" to (t.message ?: "")))
             }
-            // POST JSON comes through as a "postData" parameter when
-            // the Content-Length is set and the body is small enough.
-            val direct = session.parameters["postData"]?.firstOrNull()
-            if (direct != null) return direct
-            // Fallback: read from input stream.
+            // JSON bodies: NanoHTTPD writes the raw bytes to
+            // `files["postData"]` (a String containing the JSON text).
+            files["postData"]?.let { return it }
+            // Form-encoded bodies: land in parameters["postData"].
+            session.parameters["postData"]?.firstOrNull()?.let { return it }
+            // Fallback: read whatever's left on the input stream.
+            // After parseBody this is usually empty, but if the
+            // client sent a chunked body without Content-Length
+            // we'll still get the bytes here.
             return try {
                 session.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
             } catch (t: Throwable) {

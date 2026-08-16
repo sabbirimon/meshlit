@@ -72,4 +72,5 @@ dependencies {
     runtimeOnly(libs.runanywhere.sdk)
 
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
 }
