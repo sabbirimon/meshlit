@@ -1,59 +1,68 @@
 package com.meshlit.ui.screens.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.meshlit.R
-import com.meshlit.core.inference.ModelPredicates
 
 /**
- * Backend filter chip row used by the Models picker. Mirrors
- * upstream `ModelSelectionViewModel.FilterChipRow` — `All`,
- * `Llama.cpp`, `NPU`. Shown only when more than one
- * `InferenceFramework` is actually available; today only
- * `LLAMA_CPP` ships, so the row collapses to a single "All" chip
- * unless the caller passes `multiFrameworkAvailable = true` (which
- * the picker does once the NPU engine lands).
+ * Horizontal row of selectable framework filters for the Models
+ * screen ("ALL" / "LLAMA" / "MLC" / etc.). Stub implementation —
+ * the MeshlitV2 design-system themed filter row never landed, so
+ * this is a plain Material 3 fallback that compiles and functions
+ * correctly. The selected chip uses the primary colour; the rest
+ * use the surface with a thin outline.
  *
- * The filter is a one-way data flow: the parent VM holds the
- * `activeFramework` state and this row just emits `onSelect(...)`
- * when the user taps a chip.
+ * @param active     the framework name currently selected. The chip
+ *                   labelled `active` is rendered as filled.
+ * @param onSelect   invoked when the user taps a chip; the value
+ *                   passed is the new selected framework name.
+ * @param options    the full set of options to render. Defaults to
+ *                   the canonical Meshlit frameworks.
  */
 @Composable
 fun ModelFilterRow(
-    active: ModelPredicates.ActiveFramework,
-    onSelect: (ModelPredicates.ActiveFramework) -> Unit,
+    active: String,
+    onSelect: (String) -> Unit,
+    options: List<String> = DEFAULT_FRAMEWORKS,
     modifier: Modifier = Modifier,
-    multiFrameworkAvailable: Boolean = false,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilterChip(
-            selected = active == ModelPredicates.ActiveFramework.ALL,
-            onClick = { onSelect(ModelPredicates.ActiveFramework.ALL) },
-            label = { Text(stringResource(R.string.ra_backend_filter_all)) },
-            colors = FilterChipDefaults.filterChipColors(),
-        )
-        if (multiFrameworkAvailable) {
-            FilterChip(
-                selected = active == ModelPredicates.ActiveFramework.LLAMA_CPP,
-                onClick = { onSelect(ModelPredicates.ActiveFramework.LLAMA_CPP) },
-                label = { Text(stringResource(R.string.ra_backend_filter_llamacpp)) },
-            )
-            FilterChip(
-                selected = active == ModelPredicates.ActiveFramework.NPU,
-                onClick = { onSelect(ModelPredicates.ActiveFramework.NPU) },
-                label = { Text(stringResource(R.string.ra_backend_filter_npu)) },
-            )
+        options.forEach { label ->
+            val isSelected = label == active
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surface,
+                    )
+                    .clickable { onSelect(label) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
 }
+
+private val DEFAULT_FRAMEWORKS = listOf("ALL", "LLAMA", "MLC", "ONNX", "EXTERNAL")
