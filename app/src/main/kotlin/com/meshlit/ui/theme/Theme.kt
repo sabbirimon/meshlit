@@ -63,7 +63,7 @@ fun MeshlitTheme(
     // way `buildColorScheme` stays a pure function. For Solid /
     // GradientStops we don't need a brush (the static path builds
     // its own internally with phase = 0f).
-    val animatedBrush: AnimatedGradientBrush? = remember(effectiveConfig) {
+    val animatedBrush: AnimatedGradientBrush? = run {
         val custom = effectiveConfig.customPalette
         if (custom is CustomPalette.AnimatedGradient) {
             val phase = AnimatedGradient.phaseFor(effectiveConfig, custom)

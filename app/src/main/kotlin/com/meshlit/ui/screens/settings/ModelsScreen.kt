@@ -158,9 +158,17 @@ fun ModelsScreen(onBack: () -> Unit) {
             // ── Filter row + search ───────────────────────────────
             item(key = "filter-row") {
                 Spacer(Modifier.height(4.dp))
+                // The stub ModelFilterRow takes a String label;
+                // bridge ActiveFramework ↔ String at the call-site
+                // so the filter row stays a plain Material 3
+                // fallback that doesn't depend on the enum.
                 ModelFilterRow(
-                    active = activeFramework,
-                    onSelect = vm::setActiveFramework,
+                    active = activeFramework.name,
+                    onSelect = { label ->
+                        runCatching { ModelPredicates.ActiveFramework.valueOf(label) }
+                            .getOrNull()
+                            ?.let(vm::setActiveFramework)
+                    },
                 )
             }
             item(key = "search-field") {

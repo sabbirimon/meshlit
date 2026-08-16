@@ -57,7 +57,6 @@ import com.meshlit.ui.screens.help.HelpHubScreen
 import com.meshlit.ui.screens.help.UiTourScreen
 import com.meshlit.ui.screens.help.UserManualScreen
 import com.meshlit.ui.screens.network.NetworkMonitorScreen
-import com.meshlit.ui.screens.settings.CustomThemeScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
 import com.meshlit.ui.screens.settings.RagSettingsScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
@@ -262,12 +261,12 @@ fun MeshlitApp() {
                     }
                 }
 
-                // Phase 12.2 — custom color palette editor.
-                composable("settings/custom-theme") {
-                    CustomThemeScreen(
-                        onBack = { navController.popBackStack() },
-                    )
-                }
+                // Phase 12.2 — custom color palette editor (custom-theme
+                // route removed; CustomThemeScreen.kt was deleted as part
+                // of the Phase 12.x design-system rollback. The route was
+                // not reachable from the runtime nav graph because the
+                // design system itself was rolled back, so dropping the
+                // route here is a no-op for users.)
 
                 // Forwarding peers screen (Phase 1, task #7).
                 composable("settings/forwarding-peers") {
