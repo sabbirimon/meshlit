@@ -78,3 +78,4 @@ stitch.zip
 # Imported GGUF copies the user drops into the app at runtime. Tracked
 # elsewhere as a release artefact.
 app/imported-models/
+vendored/

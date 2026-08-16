@@ -29,6 +29,7 @@ data class McpToolSpec(
     val description: String,
     val inputSchema: JsonElement = EMPTY_OBJECT_SCHEMA,
     val origin: Origin = Origin.BuiltIn,
+    val requiredResource: String? = null,
     val handler: suspend (args: JsonElement) -> McpToolResult,
 ) {
     enum class Origin { BuiltIn, UserAdded }

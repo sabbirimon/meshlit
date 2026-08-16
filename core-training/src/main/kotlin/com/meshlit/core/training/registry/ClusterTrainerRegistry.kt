@@ -222,7 +222,7 @@ class ClusterTrainerRegistry private constructor(
                 peerId = localPeerId,
                 host = localHost,
                 port = localPort,
-                role = com.meshlit.core.training.ring.RingRole.RANK0,
+                role = com.meshlit.core.training.ring.RingRole.INNER,
             )
         )
 

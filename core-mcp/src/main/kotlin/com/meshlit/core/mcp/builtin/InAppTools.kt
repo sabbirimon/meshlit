@@ -62,7 +62,7 @@ import java.io.File
  */
 class InAppTools(
     private val context: Context,
-    private val policy: FileSystemPolicy = defaultFilesystemPolicy(context.filesDir),
+    private val policy: FileSystemPolicy = FileSystemPolicy(listOf(context.filesDir)),
 ) {
     private val log = logger("InAppTools")
 
