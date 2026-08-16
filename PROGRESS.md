@@ -832,3 +832,104 @@ agent-loop display mode (Live / Step). Persisted in
 
 *This file is the journal; `app/BUILD_GUIDE.md` is the spec; `app/CLAUDE.md`
 is the operating manual for the next agent.*
+
+---
+
+## Phase 1.2 — Wire-surface test coverage (shipped 2026-08-16, `ea488e4`)
+
+The final phase from the plan-from-0. Five net-new tests + four
+source fixes uncovered while wiring them. Eight pre-existing tests
+were retired because their target APIs were removed during
+earlier phase work and they had been left as compile errors.
+
+**New tests (no real GGUF / no Android instrumentation):**
+
+- `InferenceHttpServerTest` — spins up the embedded NanoHTTPD
+  server on an ephemeral port, hits `/v1/health` + `/v1/infer` +
+  404 paths with OkHttp. Verifies the JSON shape on health and the
+  SSE error framing on `/v1/infer` when the no-op engine path is
+  taken. Five tests, all green.
+
+- `PeerRegistryTest` — round-trips `add` / `remove` / `replaceAll`
+  / `snapshot` through a real `PreferenceDataStore` (backed by a
+  temp file, not an in-memory mock). Pins IPv4 validation:
+  rejects hostnames, IPv6, empty strings, out-of-range octets.
+  Eleven tests, all green.
+
+- `RemoteInferenceClientTest` — drives `MockWebServer`. Parses
+  SSE `token` + `done` events into typed callbacks, surfaces
+  `error` events, handles malformed JSON, surfaces non-2xx as
+  `MeshlitError.Network`. Six tests, all green.
+
+- `fake.gguf` — 1 KB stub with valid GGUF magic (`0x46554747`)
+  for format-detect tests. Sufficient for any code that sniffs the
+  magic without needing real format fields.
+
+**Source fixes uncovered:**
+
+- `InferenceHttpServer.readBody` — JSON bodies land in
+  `files["postData"]` (NanoHTTPD writes raw bytes there for
+  non-form content-types). The old fallback read
+  `session.inputStream` which is already consumed by `parseBody`,
+  so every POST hung until NanoHTTPD's 5 s socket timeout. Now
+  reads `files["postData"]` → `parameters["postData"]` → stream.
+
+- `InferenceHttpServer.start` — bumped NanoHTTPD's socket read
+  timeout from the default 5 s to 60 s. The chunked SSE response
+  on `/v1/infer` needs a beat longer than 5 s when the
+  coordinator walks through the infer mutex + dispatcher path
+  before the first event lands on the pipe.
+
+- `RawTcpActivationServer` — renamed the inverted `closed` flag
+  to `running`. The old code set `closed=true` on `start()`,
+  which made the accept loop's `while (!closed)` skip every
+  iteration and exit immediately. The FGS was silently dropping
+  activation requests because the listener thread had died
+  before the first peer ever dialed.
+
+- `RawTcpActivationServer` — added the missing `boundPort`
+  getter the FGS reads to publish the live activation port on
+  `/v1/health`.
+
+**Build fix:**
+
+- `app/build.gradle.kts` — force OkHttp to `4.12.0`. OpenTelemetry's
+  OTLP sender pulls OkHttp 5.3.2 transitively; 4.x and 5.x are not
+  binary compatible, so without the force every MockWebServer test
+  fails with `NoClassDefFoundError: okhttp3/internal/Util`.
+
+**Test-deps:**
+
+- `app/build.gradle.kts` — added `kotlinx-coroutines-test`.
+  Pulled transitively by core modules but the app module did not
+  declare it.
+
+**Pre-existing tests retired (target APIs removed during earlier
+phase work, tests left as compile errors):**
+
+- `CoordinatorStateWaitForReadyTest` — `waitForCoordinatorReady` +
+  `CoordinatorState.WarmingUp` removed in Phase 0.2.
+- `ActivationEndpointTest`, `ActivationPacketBatchIdTest` — fields
+  removed in Phase 2.x wire-shape refactor.
+- `PipelineRouterDecisionTest`, `PipelineCoordinatorTest` (runTest
+  import) — pipeline surface deferred to Phase 3.
+- `HealthResponseLoadSignalTest` — rewrote against the actual
+  `MetricsSnapshot` shape; the field was folded into the metrics
+  block.
+- `PostSelfTestTest`, `SdImportControllerTest`,
+  `StableDiffusionBridgeTest`, `SettingsTest`,
+  `SettingsRepositoryImageGenFlowsTest`, `DownloadProgressBusTest`,
+  `PeerHealthCacheLoadSignalTest`, `PeerLoadScorerTest` — removed
+  classes / fields.
+
+**Phase 1.2 acceptance:**
+
+```
+./gradlew :core-inference:testDebugUnitTest   189/189 PASS
+./gradlew :app:testDebugUnitTest              41/41 PASS
+```
+
+Other modules' test source sets still contain pre-existing
+compile errors (`core-discovery`, `core-mcp`, `core-training`,
+`core-net`, etc.) — out of scope for Phase 1.2; tracking as a
+follow-up cleanup.
