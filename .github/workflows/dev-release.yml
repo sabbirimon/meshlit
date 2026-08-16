@@ -1,0 +1,107 @@
+# Meshlit dev release — build a debug APK from the dev branch and
+# attach it to a GitHub release tagged `dev-v<version>`.
+#
+# Two trigger modes:
+#   1. Manual: `Actions → Dev Release → Run workflow` (uses the
+#      current dev branch HEAD).
+#   2. Tag push: `git tag dev-v0.2.0 && git push origin dev-v0.2.0`
+#      (creates a release pinned to that exact commit).
+#
+# The job:
+#   - Checks out the dev branch (or the tag if a tag was pushed).
+#   - Sets up JDK 17 (the project compiles against Java 11 source
+#     level; AGP 8.7 requires JDK 17 to run).
+#   - Runs `./gradlew :app:assembleDebug` to produce
+#     `app/build/outputs/apk/debug/app-debug.apk`.
+#   - Reads `versionName` from `app/build.gradle.kts` so the APK
+#     file name + release title reflect the source-of-truth
+#     version.
+#   - Creates (or updates) a GitHub release with the APK attached.
+#
+# Outputs:
+#   - `app-debug-v<version>.apk` (attached to the release).
+#   - `release-notes.md` (auto-generated from the merged commits
+#     since the previous dev-v tag).
+#
+# Required secrets / permissions:
+#   - `GITHUB_TOKEN` (built-in, scope = `contents: write`).
+name: Dev Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "release title suffix"
+        type: choice
+        required: true
+        default: "dev"
+        options:
+          - dev
+          - nightly
+          - rc
+  push:
+    tags:
+      - 'dev-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Read versionName from build.gradle.kts
+        id: read-version
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version-name=${VERSION}" >> $GITHUB_OUTPUT
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Rename APK with version
+        run: |
+          VERSION=${{ steps.read-version.outputs.version }}
+          cp app/build/outputs/apk/debug/app-debug.apk \
+             app/build/outputs/apk/debug/app-debug-v${VERSION}.apk
+      - name: Generate release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate | grep '^dev-v' | sed -n '2p' || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" > release-notes.md || true
+          echo "## Full Changelog" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "https://github.com/sabbirimon/meshlit/compare/${PREV_TAG}...${GITHUB_REF_NAME}" >> release-notes.md
+      - name: Create / update GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Meshlit ${{ steps.read-version.outputs.version }} (${{ github.event.inputs.release_type || 'dev' }})"
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          body_path: ${{ startsWith(github.ref, 'refs/tags/') && 'release-notes.md' || '' }}
+          files: |
+            app/build/outputs/apk/debug/app-debug-v${{ steps.read-version.outputs.version }}.apk
+          fail_on_unmatched_files: false
