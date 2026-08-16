@@ -153,10 +153,10 @@
 
     <!-- Jobs screen -->
     <string name="jobs_empty_title">No jobs running</string>
-    <string name="jobs_empty_body">Send a prompt from any Brain device to see jobs flow across the cluster.</string>
-    <string name="jobs_prompt_hint">Enter a prompt</string>
-    <string name="jobs_send">Send prompt</string>
-    <string name="jobs_cancel">Stop generation</string>
+    <string name="jobs_empty_body">Send a prompt to see jobs flow across the cluster.</string>
+    <string name="jobs_prompt_hint">Message</string>
+    <string name="jobs_send">Send</string>
+    <string name="jobs_cancel">Stop</string>
     <string name="jobs_refresh">Start or refresh inference service</string>
     <string name="jobs_status_idle">No model loaded</string>
     <string name="jobs_status_loading">Loading model</string>
