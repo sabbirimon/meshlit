@@ -54,12 +54,14 @@ dependencies {
     // depend on `onnxruntime-mobile` — the two AARs both ship the
     // same native lib and AGP's merger rejects the duplicate.
     //
-    // Vendored: the Kotlin core is now sourced from
-    // vendored/runanywhere-kotlin (see that module's LICENSE /
-    // MODIFICATIONS.md). The AARs below contribute the native `.so`
-    // files at runtime AND the small Kotlin backend binding files
-    // (LlamaCPP.kt, ONNX.kt, LlamaCPPBridge.kt, etc.) at compile time.
-    implementation(project(":runanywhere-kotlin:runanywhere-kotlin"))
+    // The Kotlin core (`runanywhere-sdk` here) is fetched from Maven
+    // (`libs.runanywhere.sdk`). The vendored sources under
+    // `vendored/runanywhere-kotlin/` are kept for reference only —
+    // see that module's LICENSE / MODIFICATIONS.md. The AARs below
+    // contribute the native `.so` files at runtime AND the small
+    // Kotlin backend binding files (LlamaCPP.kt, ONNX.kt,
+    // LlamaCPPBridge.kt, etc.) at compile time.
+    implementation(libs.runanywhere.sdk)
     implementation(libs.runanywhere.llamacpp)
     implementation(libs.runanywhere.onnx)
     // Pull in runanywhere-sdk's .so files (librunanywhere_jni.so +

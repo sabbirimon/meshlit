@@ -25,9 +25,10 @@ dependencyResolutionManagement {
 
 rootProject.name = "meshlit"
 
-// Vendored RunAnywhere SDK Kotlin sources.
+// Vendored RunAnywhere SDK Kotlin sources live in
+// `vendored/runanywhere-kotlin/` for reference only — the actual
+// artifact is fetched via Maven (`libs.runanywhere.sdk`).
 // See vendored/runanywhere-kotlin/{LICENSE,README,MODIFICATIONS}.md.
-includeBuild("vendored/runanywhere-kotlin")
 
 // Modules in topological order: leaves first, then app consuming them.
 include(
