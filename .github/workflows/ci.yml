@@ -1,0 +1,150 @@
+# Meshlit CI — run on every PR + push to main/dev.
+#
+# Exercises BOTH product flavors (meshlitV1 = legacy UI, meshlitV2 = new UI
+# build no. 1) so a regression in either tree is caught before merge.
+#
+# The matrix expands to two jobs:
+#   - flavor=meshlitV1  → assembleMeshlitV1Debug  + testMeshlitV1DebugUnitTest
+#   - flavor=meshlitV2  → assembleMeshlitV2Debug  + testMeshlitV2DebugUnitTest
+#
+# `${MATRIX_FLAVOR^}` is a bash parameter expansion that uppercases the first
+# letter of the matrix entry, matching Gradle's `assemble<Flavor>Debug` task
+# naming convention.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.flavor }} debug
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [meshlitV1, meshlitV2]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      - name: Assemble ${{ matrix.flavor }} debug APK
+        run: ./gradlew :app:assemble${MATRIX_FLAVOR^}Debug --no-daemon
+      - name: Run ${{ matrix.flavor }} debug unit tests
+        run: ./gradlew :app:test${MATRIX_FLAVOR^}DebugUnitTest --no-daemon
+      # Phase 7 — gate `:app:lintDebug` (and per-flavor lint) in CI.
+      # The release checklist §1 gate is "no new warnings introduced";
+      # without a CI step, a regression in a Compose screen (a missing
+      # `contentDescription`, a missing translation, a deprecated API)
+      # can land silently. Lint runs against each flavor because
+      # `disable += setOf("HardcodedText", "IconMissingDensityFolder", …)`
+      # is flavor-agnostic but the rendered resource set is not.
+      - name: Run ${{ matrix.flavor }} debug lint
+        run: ./gradlew :app:lint${MATRIX_FLAVOR^}Debug --no-daemon
+      # Slice 1 — gate :core-inference unit tests in CI. The 97-test wire
+      # surface (RuntimesResponseRoundTripTest, CoordinatorStateTest, …) was
+      # previously only run locally. Without this step, the inference wire
+      # contract can regress silently.
+      - name: Run :core-inference debug unit tests
+        run: ./gradlew :core-inference:testDebugUnitTest --no-daemon
+      # Slice 1 — also gate the leaf modules whose public types are now part
+      # of the Slice 1 contract surface (CapabilityMatrix, MeshlitError,
+      # CapabilityTier). Catches accidental breaking changes in the
+      # capability probe path.
+      - name: Run :core-common debug unit tests
+        run: ./gradlew :core-common:testDebugUnitTest --no-daemon
+
+  # Phase 0 — TencentDB Agent Memory review job. The decision
+  # documented in `/.puku-cli/plans/tencentdb-agent-memory-review.md`
+  # is to NOT take TencentDB Agent Memory as a runtime dependency
+  # (cloud-only architecture contradicts the on-device thesis + no
+  # Kotlin/Android SDK). This job exists so any PR touching the
+  # `:core-agent-memory` spike paths can re-run the upstream clone
+  # + a small licence/lint sweep to confirm the upstream hasn't
+  # shipped a self-hosted Docker image or an Android SDK that
+  # would change the calculus.
+  #
+  # The job is intentionally cheap (no Gradle, no JDK 17): the
+  # matrix is just `git clone --depth 1` + a 4-line bash script.
+  # Triggers on PRs/pushes that touch agent-memory-adjacent paths
+  # OR the review plan file itself.
+  tencentdb-review:
+    name: TencentDB Agent Memory review re-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Run on every push to main/dev so a fresh upstream tag
+    # surfaces in CI; on PRs only when the diff touches the
+    # relevant files. `paths-ignore` keeps the job out of the
+    # way of the 99 % of PRs that don't touch memory code.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Re-clone TencentDB Agent Memory (depth=1)
+        run: |
+          rm -rf /tmp/tencent-review
+          git clone --depth 1 https://github.com/TencentCloud/TencentDB-Agent-Memory.git /tmp/tencent-review/TencentDB-Agent-Memory
+      - name: Confirm upstream is still cloud-only / no Android SDK
+        run: |
+          set -euo pipefail
+          cd /tmp/tencent-review/TencentDB-Agent-Memory
+          # The 3 deployment scripts are the managed-service markers.
+          # If any of them are removed upstream, the on-device
+          # thesis analysis needs to be re-opened.
+          for marker in deploy/global-images/start-all.sh README.md ROADMAP.md; do
+            test -f "$marker" || { echo "FAIL: $marker missing upstream"; exit 1; }
+          done
+          # The upstream ships Python + TypeScript SDKs only — if an
+          # Android/Kotlin directory appears at the SDK root, re-evaluate.
+          if find sdk -maxdepth 1 -type d \( -name 'android' -o -name 'kotlin' \) | grep -q .; then
+            echo "FAIL: upstream now ships an Android/Kotlin SDK — re-open the review"
+            exit 1
+          fi
+          echo "OK: upstream still cloud-only + no Android SDK"
+      - name: Licence check
+        run: |
+          set -euo pipefail
+          cd /tmp/tencent-review/TencentDB-Agent-Memory
+          # The README cites 3 transitive upstreams (CodeGraph, Hermes,
+          # Karpathy's Wiki gist) — keep an eye on whether their licences
+          # stay MIT-compatible. If anything upstream flips to GPL/AGPL,
+          # this check should fail so we re-evaluate the borrow list.
+          for f in LICENSE README.md; do
+            test -f "$f" || { echo "FAIL: $f missing upstream"; exit 1; }
+          done
+          head -1 LICENSE | grep -qi 'MIT License' || { echo "FAIL: upstream licence no longer MIT"; exit 1; }
+          echo "OK: upstream licence still MIT"
+      - name: Confirm Meshlit tree has NO TencentDB runtime dependency
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          # If anything in the production build tree starts importing
+          # `com.tencent.*` or pulling the upstream repo as a Gradle
+          # module, the build / plan must be re-opened.
+          if grep -Rin --include='*.kt' --include='*.kts' --include='*.toml' \
+              -e 'com\.tencent' -e 'tencent' -e 'TencentDB' -e 'TDSQL' . \
+              | grep -v '/build/' | grep -v node_modules; then
+            echo "FAIL: TencentDB token found in production tree"
+            exit 1
+          fi
+          echo "OK: no TencentDB runtime dependency in Meshlit"

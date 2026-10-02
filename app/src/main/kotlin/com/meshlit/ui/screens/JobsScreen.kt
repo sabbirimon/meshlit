@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -118,6 +119,18 @@ import kotlinx.coroutines.launch
 fun JobsScreen(
     onOpenDrawer: () -> Unit = {},
     onOpenModels: () -> Unit = {},
+    /**
+     * When true, skips the v1 [com.meshlit.ui.components.MeshlitHeader]
+     * entirely. The v2 wrapper sets this to true because the v2 chrome
+     * already renders a lead bar with the same title — the v1 header
+     * would stack a second title row + dispatch picker + tier pill on
+     * top, eating ~70dp of chat real-estate.
+     *
+     * When the v1 header is skipped, the dispatch picker still needs
+     * a host — the v2 wrapper renders it directly above the input
+     * row so the chat surface gets the vertical space back.
+     */
+    omitHeader: Boolean = false,
 ) {
     val context = LocalContext.current
     val app = remember(context) { context.applicationContext as com.meshlit.MeshlitApplication }
@@ -201,7 +214,21 @@ fun JobsScreen(
         coordinator?.state?.collectAsState(initial = com.meshlit.core.inference.CoordinatorState.Idle)?.value
 
     // Subscribe to events for streaming tokens.
-    LaunchedEffect(binderValue) {
+    //
+    // The key is a Boolean (bound? true/false) rather than the
+    // LocalBinder instance. LocalBinder is a non-stable class (no
+    // @Stable / @Immutable annotation), and the Compose compiler
+    // generates a `$stable` field-read on each composable parameter
+    // it cannot prove stable. Passing the binder directly as the
+    // LaunchedEffect key triggers `NoSuchFieldError: $stable` at
+    // composition time on the v2 NavHost — the v1 shell launched
+    // directly into Devices / Agent so the JobsScreen composable
+    // was rarely re-mounted under v1; under v2 the user can
+    // navigate to Jobs at any time, so the bug surfaces. Using a
+    // Boolean (always-stable primitive) re-triggers the effect when
+    // the binder flips between bound and unbound, which is the
+    // only signal the effect actually needs.
+    LaunchedEffect(binderValue != null) {
         val coord = binderValue?.coordinator() ?: return@LaunchedEffect
         coord.events.collect { event ->
             when (event) {
@@ -235,26 +262,33 @@ fun JobsScreen(
     }
 
     Scaffold(
-        topBar = {
-            com.meshlit.ui.components.MeshlitHeader(
-                title = stringResource(R.string.screen_jobs),
-                subtitle = if (currentReply.value != null) "generating…" else null,
-                tier = (context.applicationContext as com.meshlit.MeshlitApplication).capabilityTier,
-                active = currentReply.value != null,
-                onOpenDrawer = onOpenDrawer,
-                trailing = {
-                    // Dispatch picker — Local / Remote / Cluster.
-                    // Anchored in the top bar so the chat surface
-                    // above the input stays unencumbered. The active
-                    // option is filled with the tier accent; the
-                    // other two are ghost icons.
-                    DispatchPicker(
-                        mode = dispatchMode,
-                        onChange = { dispatchMode = it },
-                        enabled = currentReply.value == null,
-                    )
-                },
-            )
+        topBar = if (omitHeader) {
+            // v2 wrapper owns the chrome — no second header row
+            // above the toolbar. Saves ~70dp of vertical space for
+            // the chat surface.
+            @Composable { Box(Modifier.fillMaxWidth().height(0.dp)) }
+        } else {
+            {
+                com.meshlit.ui.components.MeshlitHeader(
+                    title = stringResource(R.string.screen_jobs),
+                    subtitle = if (currentReply.value != null) "generating…" else null,
+                    tier = (context.applicationContext as com.meshlit.MeshlitApplication).capabilityTier,
+                    active = currentReply.value != null,
+                    onOpenDrawer = onOpenDrawer,
+                    trailing = {
+                        // Dispatch picker — Local / Remote / Cluster.
+                        // Anchored in the top bar so the chat surface
+                        // above the input stays unencumbered. The active
+                        // option is filled with the tier accent; the
+                        // other two are ghost icons.
+                        DispatchPicker(
+                            mode = dispatchMode,
+                            onChange = { dispatchMode = it },
+                            enabled = currentReply.value == null,
+                        )
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         Column(
@@ -323,6 +357,27 @@ fun JobsScreen(
                 onStop = {
                     InferenceForegroundService.stop(context)
                 },
+                onRetry = {
+                    // Re-load the bundled model — same path as the
+                    // dropdown picker. We pick bundled rather than
+                    // the last-picked model because the
+                    // Error→Ready transition in the picker is what
+                    // the user just saw fail; retrying the same
+                    // path keeps the experience predictable. If no
+                    // bundled path is available we fall back to
+                    // restart-FGS so the user can at least try a
+                    // fresh coordinator.
+                    val bundled = app.bundledModelPath()
+                    if (bundled != null) {
+                        context.startService(
+                            buildLoadModelIntent(context, bundled.absolutePath),
+                        )
+                    } else {
+                        runCatching {
+                            InferenceForegroundService.startForInference(context)
+                        }
+                    }
+                },
                 onOpenModels = onOpenModels,
                 onRefresh = {
                     scope.launch {
@@ -343,7 +398,7 @@ fun JobsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (history.isEmpty() && currentReply.value == null) {
@@ -511,6 +566,7 @@ private fun DispatchPicker(
     Row(
         modifier = Modifier
             .padding(end = 8.dp)
+            .widthIn(max = 220.dp)
             .background(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                 RoundedCornerShape(20.dp),
@@ -523,17 +579,20 @@ private fun DispatchPicker(
             val accent = com.meshlit.ui.theme.MeshlitAmber
             Box(
                 modifier = Modifier
+                    .weight(1f, fill = false)
                     .clip(RoundedCornerShape(18.dp))
                     .background(if (selected) accent else androidx.compose.ui.graphics.Color.Transparent)
                     .clickable(enabled = enabled) { onChange(value) }
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = if (selected) MaterialTheme.colorScheme.onPrimary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
         }
@@ -561,6 +620,7 @@ private fun CompactToolbar(
     onDownloadStarterModel: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onRetry: () -> Unit,
     onOpenModels: () -> Unit,
     onRefresh: () -> Unit,
 ) {
@@ -588,8 +648,25 @@ private fun CompactToolbar(
     }
     val isRunning = state is com.meshlit.core.inference.CoordinatorState.Loading ||
         state is com.meshlit.core.inference.CoordinatorState.Generating
+    // The play/stop toggle reads `isLive` to decide which glyph to
+    // show. We previously excluded `Loading` from `isLive` — the
+    // user picked a model, the coordinator transitioned
+    // `Idle → Loading`, the "Loading" status pill flipped orange,
+    // but the toolbar's play button stayed a ▶. Clicking it called
+    // `onStart()` which just bounced off the already-running FGS,
+    // so the model load looked broken. Including `Loading` here
+    // makes the button flip to ⏹ (Stop, error tint) the moment
+    // the coordinator enters the loading state, and clicking it
+    // while loading fires `onStop()` — which now cancels the load
+    // via `stopService()` plus `coordinator.cancel()` (the
+    // coordinator's current job is null during loading, so the
+    // cancel is a no-op and the state machine settles back to
+    // `Idle` from the next state emission). The picker dropdown
+    // is already gated on `!isRunning` so a second load can't
+    // race the first one.
     val isLive = state is com.meshlit.core.inference.CoordinatorState.Ready ||
-        state is com.meshlit.core.inference.CoordinatorState.Generating
+        state is com.meshlit.core.inference.CoordinatorState.Generating ||
+        state is com.meshlit.core.inference.CoordinatorState.Loading
     var menuOpen by remember { mutableStateOf(false) }
 
     fun attemptExtract() {
@@ -611,10 +688,19 @@ private fun CompactToolbar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Dropdown anchored via an explicit Box wrapper around the
+        // picker. The previous implementation co-located the
+        // DropdownMenu inside an unconstrained Box and Material3
+        // placed the popup offscreen in some window-size classes —
+        // the user tapped the chevron, the picker callback fired,
+        // but the popup never appeared, so they couldn't pick a
+        // model. Wrapping the picker + menu in a Box that
+        // explicitly fills the toolbar slot anchors the popup to
+        // the picker's bounds.
         Box(modifier = Modifier.weight(1f)) {
             CompactModelPicker(
                 pickerEntries = pickerEntries,
@@ -628,6 +714,10 @@ private fun CompactToolbar(
             androidx.compose.material3.DropdownMenu(
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
+                offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp),
+                properties = androidx.compose.ui.window.PopupProperties(
+                    focusable = true,
+                ),
             ) {
                 if (pickerEntries.isEmpty()) {
                     androidx.compose.material3.DropdownMenuItem(
@@ -680,19 +770,44 @@ private fun CompactToolbar(
             modifier = Modifier.weight(1f, fill = false),
         )
         IconButton(
-            // Always clickable. When live → onStop cancels the
-            // running inference; when not live → onStart boots
-            // the foreground service. The previous
-            // `enabled = !isRunning` blocked the Stop button
-            // while the model was running, so users couldn't
-            // cancel a generation from the toolbar.
-            onClick = { if (isLive) onStop() else onStart() },
+            // Always clickable. Three branches:
+            //  - live (Ready/Generating/Loading) → onStop cancels
+            //    the running inference or the in-flight load.
+            //  - Error → onRetry re-runs loadModel on the bundled
+            //    (or last-selected) model path. Previously we
+            //    fell through to onStart which is a no-op for an
+            //    already-running FGS, leaving the user stuck on
+            //    the Error pill.
+            //  - otherwise (Idle) → onStart boots the FGS.
+            onClick = {
+                when {
+                    isLive -> onStop()
+                    state is com.meshlit.core.inference.CoordinatorState.Error -> onRetry()
+                    else -> onStart()
+                }
+            },
         ) {
+            val (icon, tint, desc) = when {
+                isLive -> Triple(
+                    Icons.Filled.Stop,
+                    MaterialTheme.colorScheme.error,
+                    "Stop",
+                )
+                state is com.meshlit.core.inference.CoordinatorState.Error -> Triple(
+                    Icons.Filled.Refresh,
+                    MaterialTheme.colorScheme.error,
+                    "Retry",
+                )
+                else -> Triple(
+                    Icons.Filled.PlayArrow,
+                    MaterialTheme.colorScheme.primary,
+                    "Start",
+                )
+            }
             Icon(
-                imageVector = if (isLive) Icons.Filled.Stop else Icons.Filled.PlayArrow,
-                contentDescription = if (isLive) "Stop" else "Start",
-                tint = if (isLive) MaterialTheme.colorScheme.error
-                       else MaterialTheme.colorScheme.primary,
+                imageVector = icon,
+                contentDescription = desc,
+                tint = tint,
             )
         }
     }
@@ -704,6 +819,7 @@ private fun CompactModelPicker(
     isReady: Boolean,
     isRunning: Boolean,
     onTap: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val label = when {
         pickerEntries.isEmpty() -> "Pick model"
@@ -712,12 +828,12 @@ private fun CompactModelPicker(
     }
     val accent = com.meshlit.ui.theme.MeshlitAmber
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp))
             .clickable(enabled = !isRunning, onClick = onTap)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -800,8 +916,8 @@ private fun InputRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (showRemoteIp) {
             OutlinedTextField(
@@ -818,7 +934,7 @@ private fun InputRow(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -884,10 +1000,16 @@ private fun ExchangeBubble(
                     .padding(top = 4.dp),
             )
         } else {
-            // Copy / Save / Share / Export toolbar. Hidden while
-            // the reply is still streaming so the toolbar doesn't
-            // flash a "Copy" button on every token.
-            LlmOutputActions(text = exchange.reply)
+            // Copy / Save / Export / Share / Regenerate toolbar.
+            // Hidden while the reply is still streaming so the
+            // toolbar doesn't flash a "Copy" button on every token.
+            // Save writes the prompt + reply to filesDir; Export
+            // opens the system file picker; Share fires
+            // ACTION_SEND; Copy uses the system clipboard.
+            LlmOutputActions(
+                text = exchange.reply,
+                prompt = exchange.prompt,
+            )
         }
     }
 }

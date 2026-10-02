@@ -2,6 +2,7 @@ package com.meshlit.agent
 
 import android.content.Context
 import com.meshlit.MeshlitApplication
+import com.meshlit.core.common.HookTrigger
 import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.logger
 import com.meshlit.core.inference.CoordinatorState
@@ -199,6 +200,14 @@ class AgentSession(
             try {
                 val sb = StringBuilder()
                 var tokens = 0
+                // Phase 8 — OnInferenceStart hook (fire-and-forget).
+                app.hookEngine.fire(
+                    HookTrigger.OnInferenceStart,
+                    mapOf(
+                        "mode" to mode.name.lowercase(),
+                        "max_tokens" to "512",
+                    ),
+                )
                 val request = InferenceRequest(
                     prompt = promptBuilder.toString(),
                     maxTokens = 512,
@@ -208,7 +217,7 @@ class AgentSession(
                         tokens++
                         update(placeholder.id) { it.copy(streamingText = sb.toString(), tokenCount = tokens) }
                     },
-                    onComplete = { _ ->
+                    onComplete = onComplete@ { _ ->
                         val finalText = sb.toString()
                         val elapsed = System.currentTimeMillis() - started
                         update(placeholder.id) {
@@ -220,18 +229,48 @@ class AgentSession(
                                 codeBlocks = CodeBlock.extractAll(finalText),
                             )
                         }
+                        // Phase 8 — OnInferenceEnd hook (fire-and-forget).
+                        app.hookEngine.fire(
+                            HookTrigger.OnInferenceEnd,
+                            mapOf(
+                                "token_count" to tokens.toString(),
+                                "elapsed_ms" to elapsed.toString(),
+                                "final_chars" to finalText.length.toString(),
+                            ),
+                        )
                         _isRunning.value = false
                         if (autopilot && shouldContinueAutopilot(finalText)) {
                             // Append an implicit "continue" message and
                             // re-run, so the model keeps iterating.
+                            // We do NOT fire OnTurnEnd here — the user
+                            // asked us to keep going, so the "turn"
+                            // hasn't ended yet.
                             append(ChatMessage.UserMessage(text = "(continue)"))
                             kickOffTurn()
+                            return@onComplete
                         }
+                        // Phase 8 — OnTurnEnd hook (fire-and-forget).
+                        app.hookEngine.fire(
+                            HookTrigger.OnTurnEnd,
+                            mapOf(
+                                "final_chars" to finalText.length.toString(),
+                                "autopilot" to autopilot.toString(),
+                                "token_count" to tokens.toString(),
+                            ),
+                        )
                     },
                 )
                 app.inferenceCoordinator.infer(request)
             } catch (t: Throwable) {
                 log.warn("agent.fail", "agent turn failed", mapOf("err" to (t.message ?: "")))
+                // Phase 8 — OnError hook (fire-and-forget).
+                app.hookEngine.fire(
+                    HookTrigger.OnError,
+                    mapOf(
+                        "phase" to "infer",
+                        "error" to (t.message ?: t.javaClass.simpleName),
+                    ),
+                )
                 update(placeholder.id) {
                     it.copy(
                         finalText = context.getString(com.meshlit.R.string.agent_error, t.message ?: t.javaClass.simpleName),

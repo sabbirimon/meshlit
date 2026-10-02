@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * The provider exposes [nodeIdOrEmpty] for the synchronous-readers
  * the lifecycle controller needs at construction time.
  */
-class BootstrapSnapshotProvider {
+open class BootstrapSnapshotProvider {
     private val state = MutableStateFlow<BootstrapSnapshot?>(null)
 
     fun publish(snapshot: BootstrapSnapshot) {

@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -61,11 +62,18 @@ object PermissionHelper {
     /**
      * Fire the POST_NOTIFICATIONS dialog on API 33+. Returns `true`
      * if the launcher fired, `false` if no dialog is needed (either
-     * granted already, or pre-API-33).
+     * granted already, pre-API-33, the user previously selected
+     * "Don't ask again", or we have already shown the prompt once
+     * on this device).
+     *
+     * Callers must call [markNotificationsAsked] after the request
+     * resolves so the dialog doesn't re-fire on every cold start.
      */
     fun requestNotificationsIfNeeded(activity: Activity): Boolean {
         if (!needsRuntimeNotifications) return false
         if (hasNotificationPermission(activity)) return false
+        if (wasNotificationsAsked(activity)) return false
+        if (isNotificationsPermanentlyDenied(activity)) return false
         log.info("perm.notif.request", "requesting POST_NOTIFICATIONS")
         ActivityCompat.requestPermissions(
             activity,
@@ -151,18 +159,22 @@ object PermissionHelper {
     }
 
     /**
-     * Fire the media-permissions dialog on devices that need it. The
-     * user gets one prompt — if they deny, we remember and stop
-     * asking until they re-launch from cold.
+     * Pure predicate: should the app fire the media-permissions batch
+     * dialog on first launch? Used by `MainActivity` (which owns the
+     * `RequestMultiplePermissions` launcher) to gate the call.
+     *
+     * Returns `false` if the batch is already granted, pre-API-29,
+     * or the user already saw the prompt once (so we don't re-pop
+     * the dialog on every cold start).
+     *
+     * On `MainActivity` the launcher callback must call
+     * [markMediaAsked] after the result is delivered so the
+     * shared-preferences flag flips.
      */
-    fun requestMediaPermissionsIfNeeded(activity: Activity): Boolean {
-        if (hasAllMediaPermissions(activity)) return false
+    fun shouldRequestMediaPermissions(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
-        ActivityCompat.requestPermissions(
-            activity,
-            mediaPermissions,
-            REQ_MEDIA,
-        )
+        if (hasAllMediaPermissions(context)) return false
+        if (wasMediaAsked(context)) return false
         return true
     }
 
@@ -190,12 +202,18 @@ object PermissionHelper {
     /**
      * Fire the `RECORD_AUDIO` dialog if the user hasn't granted it
      * yet. Returns `true` if a dialog was requested, `false` if the
-     * permission was already held or the user previously checked
-     * "Don't ask again" — in the latter case the screen must
+     * permission was already held, the user previously checked
+     * "Don't ask again", or we have already shown the prompt once on
+     * this device. In the silent-denial case the Voice screen must
      * deep-link to App Settings via [openAppSettings].
+     *
+     * Callers must call [markMicrophoneAsked] after the request
+     * resolves so the dialog doesn't re-fire on every cold start.
      */
     fun requestMicrophoneIfNeeded(activity: Activity): Boolean {
         if (hasMicrophonePermission(activity)) return false
+        if (wasMicrophoneAsked(activity)) return false
+        if (isMicrophonePermanentlyDenied(activity)) return false
         log.info("perm.mic.request", "requesting RECORD_AUDIO")
         ActivityCompat.requestPermissions(
             activity,
@@ -220,4 +238,73 @@ object PermissionHelper {
     private const val REQ_NOTIFICATIONS = 0xA51F
     private const val REQ_MEDIA = 0xA52E
     private const val REQ_MIC = 0xA52F
+
+    // -------------------------------------------------------------------
+    // "Asked once" persistence (Phase 7 P0 fix).
+    //
+    // Without this flag the `requestNotificationsIfNeeded` /
+    // `requestMediaPermissionsIfNeeded` / `requestMicrophoneIfNeeded`
+    // helpers fire on every `MainActivity.onCreate` even when the
+    // user has previously denied the request. On API 33+ the
+    // notification dialog would re-surface on every cold-start once
+    // the user declined once — the dialog returns silently to the
+    // system but still flashes for a frame, and on some OEM builds
+    // the dialog re-pops until the user selects "Don't ask again".
+    //
+    // The flag is purely additive: a `markAsked*` call records
+    // "we have already shown this prompt" and the guard checks it
+    // before the next call. The flag is cleared automatically when
+    // the underlying permission becomes granted (see
+    // `hasNotificationPermission` + the per-group helpers below),
+    // so if the user later flips the permission on in App Settings
+    // we will request a new permission the next time the relevant
+    // surface needs it.
+    // -------------------------------------------------------------------
+
+    private const val PREFS_NAME = "meshlit_permissions"
+    private const val KEY_ASKED_NOTIFICATIONS = "asked.post_notifications.v1"
+    private const val KEY_ASKED_MEDIA = "asked.media.v1"
+    private const val KEY_ASKED_MIC = "asked.mic.v1"
+
+    private fun prefs(context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(
+            PREFS_NAME,
+            Context.MODE_PRIVATE,
+        )
+
+    /** True when the app has already shown the POST_NOTIFICATIONS prompt
+     *  on this device. The notification system UI surfaces the dialog
+     *  exactly once per install after this flag flips. */
+    fun wasNotificationsAsked(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ASKED_NOTIFICATIONS, false)
+
+    /** Mark the POST_NOTIFICATIONS prompt as shown. */
+    fun markNotificationsAsked(context: Context) {
+        prefs(context).edit()
+            .putBoolean(KEY_ASKED_NOTIFICATIONS, true)
+            .apply()
+    }
+
+    /** True when the app has already shown the media-permissions batch
+     *  prompt. */
+    fun wasMediaAsked(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ASKED_MEDIA, false)
+
+    /** Mark the media batch prompt as shown. */
+    fun markMediaAsked(context: Context) {
+        prefs(context).edit()
+            .putBoolean(KEY_ASKED_MEDIA, true)
+            .apply()
+    }
+
+    /** True when the app has already shown the RECORD_AUDIO prompt. */
+    fun wasMicrophoneAsked(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ASKED_MIC, false)
+
+    /** Mark the RECORD_AUDIO prompt as shown. */
+    fun markMicrophoneAsked(context: Context) {
+        prefs(context).edit()
+            .putBoolean(KEY_ASKED_MIC, true)
+            .apply()
+    }
 }

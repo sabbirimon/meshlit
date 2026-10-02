@@ -70,7 +70,10 @@ import androidx.compose.material.icons.filled.Storage
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModelsScreen(onBack: () -> Unit) {
+fun ModelsScreen(
+    onBack: () -> Unit,
+    omitHeader: Boolean = false,
+) {
     val context = LocalContext.current
     val app = koinInject<MeshlitApplication>()
     val scope = rememberCoroutineScope()
@@ -127,14 +130,16 @@ fun ModelsScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.screen_models)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            if (!omitHeader) {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.screen_models)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         LazyColumn(

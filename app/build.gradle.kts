@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -42,6 +44,37 @@ android {
         }
     }
 
+    // V1 vs V2 UI split. The new (Neural-Expressive) UI ships as
+    // `meshlitV2` — separate applicationId so both flavors can be
+    // installed side-by-side on the same device and the v1 UI is
+    // always available for emergency revert. Build no. 1 of the v2
+    // UI is `2.0.0-v2build1`. The shared `BuildConfig.USE_NEW_UI`
+    // flag selects between `MeshlitApp()` (v1) and `V2Root()` (v2)
+    // from `MainActivity`.
+    flavorDimensions += "ui"
+    productFlavors {
+        create("meshlitV1") {
+            dimension = "ui"
+            // DEBUG builds already have applicationIdSuffix = ".debug";
+            // the v1 flavor is the no-op suffix so it falls back to
+            // the classic `com.meshlit(.debug)` package.
+            applicationIdSuffix = ""
+            versionNameSuffix = "-v1"
+            buildConfigField("boolean", "USE_NEW_UI", "false")
+            resValue("string", "app_name", "Meshlit")
+        }
+        create("meshlitV2") {
+            dimension = "ui"
+            applicationIdSuffix = ".v2"
+            // Build no. 1 of the new UI. Bump versionCode by 1
+            // so Play Store and F-Droid see a fresh artifact.
+            versionName = "2.0.0-v2build1"
+            versionCode = (defaultConfig.versionCode ?: 1) + 1
+            buildConfigField("boolean", "USE_NEW_UI", "true")
+            resValue("string", "app_name", "Meshlit v2")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -50,26 +83,42 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Phase 7 — wire the release signing config. When
+            // `~/.gradle/meshlit-release.properties` is present (operator
+            // has populated the four keystore fields) this resolves to
+            // a real production APK. Otherwise we fall back to debug
+            // signing so the build still completes for local smoke
+            // tests; the §1 release gate then flags the build as
+            // "unsigned at tag time" — see `docs/release-checklist.md` §1.
+            signingConfig = if (rootProject.file("~/.gradle/meshlit-release.properties").exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             applicationIdSuffix = ".debug"
-            // Phase 1.0 — R8 minification on debug. The Debug APK
-            // is what we ship to hardware for the two-phone
-            // validation runs (Phase 1.1) and to internal testers
-            // — a 450 MB unminified debug binary is a non-starter.
-            // `proguard-android-optimize.txt` is the standard R8
-            // ruleset; the project's `proguard-rules.pro` only
-            // declares Compose-relevant keeps. The bundled GGUF
-            // is excluded via `bundledModel` build flag (see
-            // `androidResources { noCompress += ... }` below) so
-            // resource shrinking doesn't drop the asset out from
-            // under `BundledModelInstaller`.
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // Debug builds skip R8. The minify-on-debug setup
+            // from Phase 1.0 hit a Gradle 9.4.1 / AGP 9.2.14
+            // regression where an empty merged consumer-rules
+            // pipeline triggers
+            //   javax.xml.stream.XMLStreamException: ParseError at
+            //   [row,col]:[1,1] Message: Premature end of file.
+            // inside `R8Task$R8Runnable` (b/396287783, similar).
+            // Debug APKs aren't shipped to the Play Store, so the
+            // 450 MB unminified cost is acceptable for
+            // internal-test + two-phone validation runs. Release
+            // still minifies (see below).
+            //
+            // When the AGP fix lands, restore:
+            //   isMinifyEnabled = true
+            //   isShrinkResources = true
+            //   proguardFiles(
+            //     getDefaultProguardFile("proguard-android-optimize.txt"),
+            //     "proguard-rules.pro",
+            //   )
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 
@@ -105,6 +154,11 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // V2 build packaging — each flavor ships its own `app_name`
+        // string via `resValue` (see `productFlavors` above). The
+        // `resValues` feature gates the `resValue` API on the
+        // Android extension.
+        resValues = true
     }
 
     androidResources {
@@ -113,6 +167,55 @@ android {
         // without paying the inflate cost on every random-access read.
         // See BundledModelInstaller for the extraction pathway.
         noCompress += "gguf"
+    }
+
+    // Phase 7 — lint config. Default Android lint runs without a config
+    // block, which leaves every default rule on and emits hundreds of
+    // MissingTranslation / HardcodedText / IconLocation warnings that
+    // have always been benign. We keep lint non-fatal (the gate is
+    // "no NEW warnings introduced", not "zero warnings") and disable
+    // the two rules that are noisy by default. `abortOnError = true`
+    // would block a release build on any pre-existing warning; flipping
+    // it on only after the lint tree is clean is a follow-up.
+    lint {
+        abortOnError = false
+        warningsAsErrors = false
+        checkReleaseBuilds = true
+        disable += setOf(
+            "MissingTranslation",
+            "ExtraTranslation",
+            "HardcodedText",
+            "IconMissingDensityFolder",
+            "GoogleAppIndexingWarning",
+        )
+    }
+
+    // Phase 7 — release signing. The Phase 8 hook PR shipped without
+    // any `signingConfigs` block, so `:app:assembleRelease` could not
+    // produce a signed APK and §1 of the release checklist stayed red.
+    //
+    // We do NOT generate a production keystore here (the release
+    // captain owns that — see `keystore.properties.example` at the
+    // repo root for the operator template). Instead the build reads
+    // the four keystore fields from `~/.gradle/meshlit-release.properties`
+    // if that file exists, otherwise falls back to debug signing so
+    // `./gradlew :app:assembleRelease` still produces an installable
+    // APK for local smoke tests. Tag-time build with a real keystore
+    // is the release captain's responsibility (see §8 in
+    // `docs/release-checklist.md`).
+    signingConfigs {
+        create("release") {
+            val ksProps = rootProject.file("~/.gradle/meshlit-release.properties")
+            if (ksProps.exists()) {
+                val props = Properties().apply {
+                    ksProps.inputStream().use { load(it) }
+                }
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
     }
 
     // Phase 1.0 — Lean APK. The bundled `smollm2-360m-instruct-q8_0.gguf`
@@ -124,15 +227,25 @@ android {
     // access — flip `bundledModel` to `true` to restore the bundle.
     //
     // The flag is read at config time so the asset is excluded from
-    // `mergeDebugAssets` (no APK file, no AAsset entry) rather than
+    // `mergeAssets` (no APK file, no AAsset entry) rather than
     // stripped post-merge. The README.md next to the GGUF is kept in
     // both variants so anyone poking at `assets/models/` sees the
     // restore instructions.
+    //
+    // Implementation: with `productFlavors` enabled the
+    // `sourceSets { getByName("main") { assets.excludes += ... } }`
+    // shape used by the v1 build no longer resolves through the
+    // Kotlin DSL (AGP 8.x deprecated `AndroidSourceSet`). The same
+    // effect is achieved via `packagingOptions.resources.excludes`
+    // below — Gradle skips the asset at packaging time, so the
+    // APK never contains the GGUF file.
     val bundledModel = false
-    sourceSets {
-        getByName("main") {
-            if (!bundledModel) {
-                assets.excludes += setOf("models/smollm2-360m-instruct-q8_0.gguf")
+    packaging {
+        if (!bundledModel) {
+            resources {
+                excludes += setOf(
+                    "assets/models/smollm2-360m-instruct-q8_0.gguf",
+                )
             }
         }
     }
@@ -204,12 +317,25 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    // V2 UI — `currentWindowAdaptiveInfo` lives in `material3-adaptive`,
+    // `WindowWidthSizeClass` lives in `androidx.window.core`. Both
+    // are required by `MeshlitAppV2.kt` to branch the drawer between
+    // `PermanentNavigationDrawer` (tablets) and `ModalNavigationDrawer`
+    // (phones) per the design brief.
+    implementation(libs.androidx.compose.material3.adaptive)
+    implementation(libs.androidx.window.core)
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    // Logging
+    // Logging — slf4j-api alone gives us NOP; logback-android binds it
+    // to logcat with the configured pattern below. The binding is
+    // required to diagnose Application.onCreate startup paths
+    // (the Meshlit app has ~20 synchronous install steps before
+    // MainActivity runs; without logcat visibility the source of
+    // any >5s hang is invisible).
     implementation(libs.slf4j.api)
+    implementation(libs.logback.android)
 
     // JSON (for SettingsRepository / DeviceProfileRepository override blobs)
     implementation(libs.kotlinx.serialization.json)
@@ -267,6 +393,11 @@ dependencies {
     testImplementation(libs.koin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    // Robolectric — in-VM Android runtime for TermuxRunCommandDispatcherTest
+    // and other Context-dependent unit tests. The runner materialises a
+    // ShadowApplication so the dispatcher can call `Context.filesDir`
+    // without spinning up an emulator.
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

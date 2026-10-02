@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 /**
  * Maintains the live role decision for a single node. Subscribes to
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.onEach
  * Exposes a [StateFlow<RoleDecision>] so the cluster UI / router can
  * react without polling.
  */
-class RoleManager(
+open class RoleManager(
     private val profiler: HardwareProfilerRegistry,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
@@ -38,11 +39,11 @@ class RoleManager(
     )
 
     /** Live role decision. */
-    val decision: StateFlow<RoleDecision> = state.asStateFlow()
+    open val decision: StateFlow<RoleDecision> = state.asStateFlow()
 
     /** Subscribe to the profiler and re-suggest on every new
      *  snapshot. Safe to call once. */
-    fun start() {
+    open fun start() {
         // The profiler doesn't expose a flow directly; we call it
         // once on start and emit. A future revision can subscribe
         // to a periodic re-profile channel.
@@ -76,11 +77,9 @@ class RoleManager(
     }
 }
 
-// Kotlin idiom for `scope.launch { ... }` without pulling in the
-// extension at the call site. Kept in this file so the file's
-// coroutine imports stay local.
+// Launch [block] on this scope. The host scope is already
+// `SupervisorJob + Dispatchers.Default`, so we just defer to the
+// standard `CoroutineScope.launch` extension.
 private fun CoroutineScope.launchCoroutine(block: suspend () -> Unit) {
-    kotlinx.coroutines.launch(this.coroutineContext + kotlinx.coroutines.Dispatchers.Default) {
-        block()
-    }
+    launch { block() }
 }

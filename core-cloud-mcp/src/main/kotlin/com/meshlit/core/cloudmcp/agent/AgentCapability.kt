@@ -101,6 +101,16 @@ enum class AgentCapability(
             + "outside the granted tree.",
         riskLabel = Risk.HIGH,
         permission = null,
+    ),
+    Termux(
+        tag = "termux",
+        title = "Termux (external shell)",
+        description = "Run commands inside the Termux app's userland. Requires "
+            + "Termux to be installed separately and the RUN_COMMAND permission "
+            + "to be granted. The agent can only invoke binaries inside "
+            + "/data/data/com.termux/files/usr/.",
+        riskLabel = Risk.HIGH,
+        permission = "com.termux.permission.RUN_COMMAND",
     );
 
     /** Per-capability risk label. Drives the confirmation dialog copy. */

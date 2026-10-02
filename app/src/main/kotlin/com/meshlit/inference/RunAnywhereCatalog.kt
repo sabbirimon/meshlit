@@ -21,14 +21,20 @@ import com.meshlit.core.inference.RunAnywhereCatalogEngine
  * the Catalog screen's Compose row can render both the live SDK
  * fetch and the offline fallback without branching on type.
  *
- * Every entry carries a [Entry.url] — the canonical RunAnywhere-
- * compatible HTTPS download URL the SDK's `registerModel(...)` +
- * `downloadModel(...)` flow expects. The SDK's `downloadModelById`
- * path resolves the URL by walking the registry, so this file is
- * what teaches the registry which model id maps to which HF artifact.
- * We mirror the upstream SDK's recommended starter list (see
- * `vendored/upstream/sdk/runanywhere-kotlin/docs/Documentation.md`
- * for the exact pattern the SDK's own samples use).
+ * **Multi-source policy.** Every entry carries a `sources` list
+ * — one or more [RunAnywhereCatalogEngine.DownloadSource] rows
+ * the SDK can register + download. The Catalog screen surfaces
+ * the source list as a chip group so the user can pick between
+ * official, community requant, and mirror variants of the same
+ * architecture. The order in `sources` is priority order
+ * (lowest `priority` = preferred); the SDK plans against the
+ * first reachable source.
+ *
+ * Why multiple sources: the same architecture (Qwen 2.5 1.5B,
+ * Phi-3-mini, etc.) is published by both the upstream owner and
+ * a community requant project (bartowski, unsloth). The
+ * community requant is usually a smaller or better-tuned GGUF;
+ * the upstream is the canonical source. The user picks.
  *
  * Quantization policy: Q4_K_M and Q8_0 only. These are the only
  * quants `libllama.so` (shipped by `runanywhere-llamacpp:0.20.12`)
@@ -75,12 +81,12 @@ object RunAnywhereCatalog {
      * @property quant quant tag — drives the Q-tag chip.
      * @property sizeClass size bucket — drives the S/M/L/HUGE chip
      *   and tone (success/info/warn/error).
-     * @property url canonical HTTPS URL the SDK's
-     *   `RunAnywhere.registerModel(...)` registers before
-     *   `RunAnywhere.downloadModel(...)` can plan against it. Always
-     *   populated for non-bundled rows; the bundled row keeps it
-     *   for parity but the FGS auto-load uses the local
-     *   `assets/models/...gguf` extract instead.
+     * @property modelType chat/code/vision/multimodal — drives the
+     *   second filter chip group on the Catalog screen.
+     * @property sources per-row downloadable artefacts, one per
+     *   Hugging Face org / quant variant. The Catalog screen
+     *   surfaces these as a chip group; the SDK plans against
+     *   the lowest-`priority` source by default.
      * @property bundled `true` when the model ships inside the APK
      *   (`assets/models/`); the row renders a green "bundled" chip
      *   and the importer skips the network download for it.
@@ -100,9 +106,43 @@ object RunAnywhereCatalog {
             RunAnywhereCatalogEngine.Quant.UNKNOWN,
         val sizeClass: RunAnywhereCatalogEngine.SizeClass =
             RunAnywhereCatalogEngine.SizeClass.MEDIUM,
-        val url: String = "",
+        val modelType: RunAnywhereCatalogEngine.ModelType =
+            RunAnywhereCatalogEngine.ModelType.CHAT,
+        val sources: List<RunAnywhereCatalogEngine.DownloadSource> = emptyList(),
         val bundled: Boolean = false,
-    )
+    ) {
+        /** Convenience accessor for the highest-priority URL. The
+         *  SDK plans against this when the user taps the row's
+         *  primary download button. Returns the bundled-row
+         *  sentinel (`"asset://bundled"`) when [sources] is empty
+         *  so callers don't have to null-check. */
+        val url: String
+            get() = sources.minByOrNull { it.priority }?.url ?: "asset://bundled"
+    }
+
+    /**
+     * Helper to build an [Entry] from a single (org, url, sizeBytes)
+     * tuple. Used by the curated list below — when an entry has
+     * multiple sources, call `Entry(sources = listOf(…))` directly.
+     */
+    private fun source(
+        id: String,
+        org: String,
+        quant: RunAnywhereCatalogEngine.Quant,
+        sizeBytes: Long,
+        url: String,
+        tier: RunAnywhereCatalogEngine.SourceTier,
+        priority: Int,
+    ): RunAnywhereCatalogEngine.DownloadSource =
+        RunAnywhereCatalogEngine.DownloadSource(
+            id = "${id}@$org:${quant.name}",
+            org = org,
+            quant = quant,
+            approxSizeBytes = sizeBytes,
+            url = url,
+            tier = tier,
+            priority = priority,
+        )
 
     /**
      * Curated catalog. Order matters — the Models screen renders
@@ -117,13 +157,17 @@ object RunAnywhereCatalog {
         // auto-loads it on first bind so the user sees real tokens
         // within seconds of cold start. The asset basename matches
         // the SDK's `DEFAULT_MODEL_ID`, so no rename step is
-        // required between extraction and load. The URL is still
-        // populated so the SDK can re-download the same model on
-        // user request (e.g. after the user deletes the bundled
-        // copy to free space).
+        // required between extraction and load.
+        //
+        // Sources: bundled (priority 1, no URL) + Hugging Face
+        // upstream Q8_0 (priority 20) + bartowski Q4_K_M
+        // (priority 30, smaller requant). The bundled copy is
+        // preferred; the Q8_0 fallback is the canonical HF URL;
+        // the Q4_K_M requant is the smaller alternative if the
+        // user wants to free space later.
         Entry(
             id = "smollm2-360m-instruct-q8_0",
-            displayName = "SmolLM2-360M-Instruct · Q8_0",
+            displayName = "SmolLM2-360M-Instruct",
             origin = "USA",
             license = "Apache 2.0",
             family = "SmolLM2",
@@ -133,20 +177,41 @@ object RunAnywhereCatalog {
             architecture = RunAnywhereCatalogEngine.Architecture.DENSE,
             quant = RunAnywhereCatalogEngine.Quant.Q8_0,
             sizeClass = RunAnywhereCatalogEngine.SizeClass.SMALL,
-            url = "https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct-GGUF/resolve/main/smollm2-360m-instruct-q8_0.gguf",
+            modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
             bundled = true,
+            sources = listOf(
+                RunAnywhereCatalogEngine.DownloadSource(
+                    id = "smollm2-360m-instruct-q8_0@HuggingFaceTB:Q8_0",
+                    org = "HuggingFaceTB",
+                    quant = RunAnywhereCatalogEngine.Quant.Q8_0,
+                    approxSizeBytes = 386_000_000L,
+                    url = "https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct-GGUF/resolve/main/smollm2-360m-instruct-q8_0.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.OFFICIAL,
+                    priority = 10,
+                ),
+                source(
+                    id = "smollm2-360m-instruct-q8_0",
+                    org = "bartowski",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 254_000_000L,
+                    url = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 20,
+                ),
+            ),
         ),
-        // Qwen 2.5 1.5B Q4_K_M — larger Chinese-built dense model.
-        // Available as a download from the Catalog; the APK no
-        // longer bundles it because the previous ~940 MB asset
+        // Qwen 2.5 1.5B Q4_K_M — Chinese-built dense model. The APK
+        // no longer bundles it because the previous ~940 MB asset
         // exceeded the user's "use a smaller model" guidance. The
         // row stays in the curated list so users who want a bigger
-        // general-purpose model can pull it via the SDK. The URL
-        // points at the upstream Qwen org's repo so the SDK
-        // doesn't need a re-quant.
+        // general-purpose model can pull it via the SDK.
+        //
+        // Sources: official Q4_K_M (priority 10) + official Q5_K_M
+        // (priority 20, slightly larger but better quality) +
+        // bartowski Q4_K_S (priority 30, smallest variant).
         Entry(
             id = "qwen2.5-1.5b-instruct-q4_k_m",
-            displayName = "Qwen2.5-1.5B-Instruct · Q4_K_M",
+            displayName = "Qwen2.5-1.5B-Instruct",
             origin = "China",
             license = "Apache 2.0",
             family = "Qwen 2.5",
@@ -156,16 +221,48 @@ object RunAnywhereCatalog {
             architecture = RunAnywhereCatalogEngine.Architecture.DENSE,
             quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
             sizeClass = RunAnywhereCatalogEngine.SizeClass.MEDIUM,
-            url = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
+            sources = listOf(
+                source(
+                    id = "qwen2.5-1.5b-instruct-q4_k_m",
+                    org = "Qwen",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 1_100_000_000L,
+                    url = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.OFFICIAL,
+                    priority = 10,
+                ),
+                source(
+                    id = "qwen2.5-1.5b-instruct-q5_k_m",
+                    org = "Qwen",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 1_250_000_000L,
+                    url = "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q5_k_m.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.OFFICIAL,
+                    priority = 20,
+                ),
+                source(
+                    id = "qwen2.5-1.5b-instruct-q4_k_m",
+                    org = "bartowski",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 1_050_000_000L,
+                    url = "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 30,
+                ),
+            ),
         ),
         // 1B / Q4_K_M — Meta's small open-weight model. Useful for
         // users who want Meta-family outputs for comparison. The
         // URL points at the bartowski re-quant (the de-facto
         // community source for Llama-3.2 GGUFs because the
         // official Meta release is GGUFs-only-on-Llama-3.1).
+        //
+        // Sources: bartowski Q4_K_M (priority 10) + bartowski Q5_K_M
+        // (priority 20) + bartowski Q8_0 (priority 30, highest quality).
         Entry(
             id = "llama-3.2-1b-instruct-q4_k_m",
-            displayName = "Llama-3.2-1B-Instruct · Q4_K_M",
+            displayName = "Llama-3.2-1B-Instruct",
             origin = "USA",
             license = "Llama community",
             family = "Llama 3.2",
@@ -175,7 +272,36 @@ object RunAnywhereCatalog {
             architecture = RunAnywhereCatalogEngine.Architecture.DENSE,
             quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
             sizeClass = RunAnywhereCatalogEngine.SizeClass.MEDIUM,
-            url = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+            modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
+            sources = listOf(
+                source(
+                    id = "llama-3.2-1b-instruct-q4_k_m",
+                    org = "bartowski",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 900_000_000L,
+                    url = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 10,
+                ),
+                source(
+                    id = "llama-3.2-1b-instruct-q5_k_m",
+                    org = "bartowski",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 1_050_000_000L,
+                    url = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q5_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 20,
+                ),
+                source(
+                    id = "llama-3.2-1b-instruct-q8_0",
+                    org = "bartowski",
+                    quant = RunAnywhereCatalogEngine.Quant.Q8_0,
+                    sizeBytes = 1_350_000_000L,
+                    url = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 30,
+                ),
+            ),
         ),
         // Phi-3-mini / Q4_K_M — current ceiling for the catalog.
         // Above this size we assume the user wants cluster-shard
@@ -183,9 +309,13 @@ object RunAnywhereCatalog {
         // plan. Phi-3-mini is the largest that comfortably fits
         // a 6 GB-RAM phone. URL points at the bartowski re-quant
         // because the official Microsoft release is fp16-only.
+        //
+        // Sources: bartowski Q4_K_M (priority 10) + unsloth
+        // Q4_K_M (priority 20, iQ4 variant tuned for phones) +
+        // bartowski Q5_K_M (priority 30, larger + better quality).
         Entry(
             id = "phi-3-mini-4k-instruct-q4_k_m",
-            displayName = "Phi-3-mini-4k-instruct · Q4_K_M",
+            displayName = "Phi-3-mini-4k-instruct",
             origin = "USA",
             license = "MIT",
             family = "Phi 3",
@@ -194,8 +324,37 @@ object RunAnywhereCatalog {
             strengths = listOf("reasoning", "general"),
             architecture = RunAnywhereCatalogEngine.Architecture.DENSE,
             quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
-            sizeClass = RunAnywhereCatalogEngine.SizeClass.MEDIUM,
-            url = "https://huggingface.co/bartowski/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q4_K_M.gguf",
+            sizeClass = RunAnywhereCatalogEngine.SizeClass.LARGE,
+            modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
+            sources = listOf(
+                source(
+                    id = "phi-3-mini-4k-instruct-q4_k_m",
+                    org = "bartowski",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 2_300_000_000L,
+                    url = "https://huggingface.co/bartowski/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 10,
+                ),
+                source(
+                    id = "phi-3-mini-4k-instruct-iq4",
+                    org = "unsloth",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 1_950_000_000L,
+                    url = "https://huggingface.co/unsloth/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 20,
+                ),
+                source(
+                    id = "phi-3-mini-4k-instruct-q5_k_m",
+                    org = "bartowski",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 2_650_000_000L,
+                    url = "https://huggingface.co/bartowski/Phi-3-mini-4k-instruct-GGUF/resolve/main/Phi-3-mini-4k-instruct-Q5_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 30,
+                ),
+            ),
         ),
 
         // ----------------------------------------------------------------
@@ -220,7 +379,7 @@ object RunAnywhereCatalog {
         // ships iQ4_XS as the standard phone-friendly variant.
         Entry(
             id = "qwen3-30b-a3b-instruct-q4_k_m",
-            displayName = "Qwen3-30B-A3B-Instruct · Q4_K_M",
+            displayName = "Qwen3-30B-A3B-Instruct",
             origin = "China",
             license = "Apache 2.0",
             family = "Qwen 3",
@@ -230,7 +389,27 @@ object RunAnywhereCatalog {
             architecture = RunAnywhereCatalogEngine.Architecture.MOE,
             quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
             sizeClass = RunAnywhereCatalogEngine.SizeClass.HUGE,
-            url = "https://huggingface.co/unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF/resolve/main/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
+            modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
+            sources = listOf(
+                source(
+                    id = "qwen3-30b-a3b-instruct-q4_k_m",
+                    org = "unsloth",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 18_000_000_000L,
+                    url = "https://huggingface.co/unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF/resolve/main/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 10,
+                ),
+                source(
+                    id = "qwen3-30b-a3b-instruct-q3_k_m",
+                    org = "unsloth",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 14_500_000_000L,
+                    url = "https://huggingface.co/unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF/resolve/main/Qwen3-30B-A3B-Instruct-2507-Q3_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 20,
+                ),
+            ),
         ),
         // IBM Granite-4.0-Tiny-MoE — small IBM MoE, ~1B total / 0.5B
         // active. Designed for edge / phone inference. Q4 ≈ 700 MB.
@@ -238,7 +417,7 @@ object RunAnywhereCatalog {
         // standard Q4_K_M for the Granite hybrid architecture.
         Entry(
             id = "granite-4.0-tiny-moe-q4_k_m",
-            displayName = "Granite-4.0-Tiny-MoE · Q4_K_M",
+            displayName = "Granite-4.0-Tiny-MoE",
             origin = "USA",
             license = "Apache 2.0",
             family = "Granite 4",
@@ -248,14 +427,34 @@ object RunAnywhereCatalog {
             architecture = RunAnywhereCatalogEngine.Architecture.MOE,
             quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
             sizeClass = RunAnywhereCatalogEngine.SizeClass.SMALL,
-            url = "https://huggingface.co/unsloth/granite-4.0-tiny-preview-GGUF/resolve/main/granite-4.0-tiny-preview-Q4_K_M.gguf",
+            modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
+            sources = listOf(
+                source(
+                    id = "granite-4.0-tiny-moe-q4_k_m",
+                    org = "unsloth",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 700_000_000L,
+                    url = "https://huggingface.co/unsloth/granite-4.0-tiny-preview-GGUF/resolve/main/granite-4.0-tiny-preview-Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+                    priority = 10,
+                ),
+                source(
+                    id = "granite-4.0-tiny-moe-q8_0",
+                    org = "ibm-granite",
+                    quant = RunAnywhereCatalogEngine.Quant.Q8_0,
+                    sizeBytes = 1_050_000_000L,
+                    url = "https://huggingface.co/ibm-granite/granite-4.0-tiny-preview-GGUF/resolve/main/granite-4.0-tiny-preview-Q8_0.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.OFFICIAL,
+                    priority = 20,
+                ),
+            ),
         ),
         // Mixtral-8x7B-Instruct — classic MoE reference. 47B total
         // / 13B active. Q4 ≈ 26 GB. Powerful, but only on laptops /
         // sharded phones. URL points at the upstream Mistral repo.
         Entry(
             id = "mixtral-8x7b-instruct-q4_k_m",
-            displayName = "Mixtral-8x7B-Instruct · Q4_K_M",
+            displayName = "Mixtral-8x7B-Instruct",
             origin = "France",
             license = "Apache 2.0",
             family = "Mixtral",
@@ -265,7 +464,27 @@ object RunAnywhereCatalog {
             architecture = RunAnywhereCatalogEngine.Architecture.MOE,
             quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
             sizeClass = RunAnywhereCatalogEngine.SizeClass.HUGE,
-            url = "https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1/resolve/main/Mixtral-8x7B-Instruct-v0.1.Q4_K_M.gguf",
+            modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
+            sources = listOf(
+                source(
+                    id = "mixtral-8x7b-instruct-q4_k_m",
+                    org = "mistralai",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 26_000_000_000L,
+                    url = "https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1/resolve/main/Mixtral-8x7B-Instruct-v0.1.Q4_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.OFFICIAL,
+                    priority = 10,
+                ),
+                source(
+                    id = "mixtral-8x7b-instruct-q3_k_m",
+                    org = "mistralai",
+                    quant = RunAnywhereCatalogEngine.Quant.Q4_K_M,
+                    sizeBytes = 21_500_000_000L,
+                    url = "https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1/resolve/main/Mixtral-8x7B-Instruct-v0.1.Q3_K_M.gguf",
+                    tier = RunAnywhereCatalogEngine.SourceTier.OFFICIAL,
+                    priority = 20,
+                ),
+            ),
         ),
     )
 

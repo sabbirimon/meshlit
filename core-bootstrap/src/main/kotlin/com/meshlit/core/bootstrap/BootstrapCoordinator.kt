@@ -31,7 +31,7 @@ import java.util.UUID
  * returning it, so the new value is durably stored before any
  * caller observes it.
  */
-class BootstrapCoordinator(
+open class BootstrapCoordinator(
     private val config: ConfigRepository,
     private val flags: FeatureFlagRegistry,
     private val registry: ServiceRegistry? = null,
@@ -56,7 +56,7 @@ class BootstrapCoordinator(
      * skipped because its dependency wasn't supplied). The first
      * hard failure short-circuits with [MeshlitResult.Failure].
      */
-    suspend fun boot(): MeshlitResult<BootstrapSnapshot> {
+    open suspend fun boot(): MeshlitResult<BootstrapSnapshot> {
         val entries = mutableListOf<BootstrapReport.Entry>()
 
         // ---- Config phase: node id -----------------------------------

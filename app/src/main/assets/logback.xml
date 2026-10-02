@@ -17,7 +17,15 @@
         </encoder>
     </appender>
 
-    <root level="WARN">
+    <!--
+      Root raised WARN → INFO so Application.onCreate steps and
+      any subsequent INFO/WARN/ERROR from the project code base
+      surface to logcat. `adb logcat -s Meshlit:V` (or by tag
+      pattern) shows the full startup chain.
+      The LogScreen ring buffer still gets every event via
+      `AppLoggerFactory.appLogger(name)` regardless of this level.
+    -->
+    <root level="INFO">
         <appender-ref ref="logcat" />
     </root>
 

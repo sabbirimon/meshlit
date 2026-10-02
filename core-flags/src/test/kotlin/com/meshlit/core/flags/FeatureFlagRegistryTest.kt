@@ -97,7 +97,7 @@ class FeatureFlagRegistryTest {
         val registry = InMemoryFeatureFlagRegistry(persistence = captured)
         registry.set("feature.discovery.nsd", true)
         val written = captured.lastWritten
-        requireNotNull("persistence.write must have been called", written)
+        requireNotNull(written) { "persistence.write must have been called" }
         val (name, value) = written
         assertEquals("feature.discovery.nsd", name)
         assertTrue(

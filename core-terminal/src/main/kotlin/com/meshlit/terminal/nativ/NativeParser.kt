@@ -32,6 +32,18 @@ object NativeParser {
 
     private const val PRINT_MARKER = 0xFF
 
+    /**
+     * Maximum number of payload words we'll accept from the native
+     * parser per action. The C++ side uses an 8 ints-per-input-byte
+     * upper bound, so the worst-case legitimate payload is roughly
+     * 8 × (max input length). We pick a generous ceiling that still
+     * rejects corrupted action headers (e.g. an uninitialized word
+     * that reads as ~2^31 after sign extension). If the native
+     * parser ever produces more, we drop the action rather than
+     * OOM-ing the process.
+     */
+    private const val MAX_PAYLOAD_WORDS = 65_536
+
     @Volatile private var loaded: Boolean = false
     @Volatile private var loadFailed: Boolean = false
 
@@ -71,6 +83,17 @@ object NativeParser {
         val output = ByteBuffer.allocateDirect(outBytes).order(ByteOrder.nativeOrder())
         val written = nativeParse(input, bytes.size, output)
         if (written <= 0) return emptyList()
+        // Defensive: never trust a `written` value larger than the buffer we
+        // handed the native side. The C++ side could in principle misreport
+        // (e.g. on a corrupted input) and the IntBuffer loop below would
+        // happily read past the buffer.
+        if (written > outBytes) {
+            android.util.Log.w(
+                "NativeParser",
+                "nativeParse reported written=$written > outBytes=$outBytes — truncating",
+            )
+            return emptyList()
+        }
 
         output.position(0)
         val intBuf: IntBuffer = output.order(ByteOrder.nativeOrder()).asIntBuffer()
@@ -82,7 +105,23 @@ object NativeParser {
             val aux1 = intBuf.get()
             val aux2 = intBuf.get()
             val payloadLen = intBuf.get()
-            val payload = IntArray(payloadLen) { intBuf.get() }
+            // Defensive bounds check: the native parser should never emit a
+            // payload longer than `outCap` (which is bytes.size * 8). If it
+            // does — e.g. because of a memory corruption or a release build
+            // with a busted word boundary — the JVM would otherwise attempt
+            // to allocate gigabytes of ints and the process would die with
+            // an OOM long before any UI feedback. Skip and surface as a
+            // truncated action; the next END_MARKER will re-sync the loop.
+            val safeLen = if (payloadLen < 0 || payloadLen > MAX_PAYLOAD_WORDS) {
+                android.util.Log.w(
+                    "NativeParser",
+                    "dropping action with implausible payloadLen=$payloadLen (kind=$kind)",
+                )
+                continue
+            } else {
+                payloadLen
+            }
+            val payload = IntArray(safeLen) { intBuf.get() }
             when (kind) {
                 ACTION_KIND_CSI -> {
                     if (aux0 == PRINT_MARKER) {
@@ -94,10 +133,33 @@ object NativeParser {
                         while (i < payload.size) {
                             val size = payload[i]
                             i++
-                            val arr = IntArray(size)
-                            for (k in 0 until size) arr[k] = payload[i + k]
+                            // Same defensive bound as the outer payload — a CSI
+                            // param group is normally a handful of ints; a
+                            // corrupted word must not OOM the process.
+                            val safeGroupSize = if (size < 0 || size > MAX_PAYLOAD_WORDS) {
+                                android.util.Log.w(
+                                    "NativeParser",
+                                    "dropping CSI group with implausible size=$size",
+                                )
+                                break
+                            } else {
+                                size
+                            }
+                            val arr = IntArray(safeGroupSize)
+                            for (k in 0 until safeGroupSize) {
+                                val idx = i + k
+                                if (idx >= payload.size) {
+                                    // Defensive: bail if the group claims more
+                                    // words than the payload actually holds.
+                                    // This avoids an AIOOBE if a CSI action's
+                                    // payload is shorter than the first group
+                                    // header claims.
+                                    break
+                                }
+                                arr[k] = payload[idx]
+                            }
                             groups += arr
-                            i += size
+                            i += safeGroupSize
                         }
                         actions += Action.Csi(
                             finalByte = aux0.toChar(),
