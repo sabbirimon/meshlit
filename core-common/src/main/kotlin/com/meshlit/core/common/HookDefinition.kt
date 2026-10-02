@@ -77,55 +77,69 @@ sealed class HookTrigger {
 
     @Serializable
     @SerialName("pre_tool_call")
-    data object PreToolCall : HookTrigger() {
+    object PreToolCall : HookTrigger() {
         override val label = "Before a tool runs"
         override val chipLabel = "Pre tool"
     }
 
     @Serializable
     @SerialName("post_tool_call")
-    data object PostToolCall : HookTrigger() {
+    object PostToolCall : HookTrigger() {
         override val label = "After a tool runs"
         override val chipLabel = "Post tool"
     }
 
     @Serializable
     @SerialName("on_inference_start")
-    data object OnInferenceStart : HookTrigger() {
+    object OnInferenceStart : HookTrigger() {
         override val label = "When inference starts"
         override val chipLabel = "Inf start"
     }
 
     @Serializable
     @SerialName("on_inference_end")
-    data object OnInferenceEnd : HookTrigger() {
+    object OnInferenceEnd : HookTrigger() {
         override val label = "When inference ends"
         override val chipLabel = "Inf end"
     }
 
     @Serializable
     @SerialName("on_error")
-    data object OnError : HookTrigger() {
+    object OnError : HookTrigger() {
         override val label = "When the loop hits an error"
         override val chipLabel = "On error"
     }
 
     @Serializable
     @SerialName("on_turn_end")
-    data object OnTurnEnd : HookTrigger() {
+    object OnTurnEnd : HookTrigger() {
         override val label = "When a turn ends"
         override val chipLabel = "Turn end"
     }
 
     companion object {
-        /** All triggers, in display order. Used by the trigger picker. */
-        val all: List<HookTrigger> = listOf(
-            PreToolCall,
-            PostToolCall,
-            OnInferenceStart,
-            OnInferenceEnd,
-            OnError,
-            OnTurnEnd,
-        )
+        /**
+         * All triggers, in display order. Used by the trigger picker.
+         *
+         * We deliberately construct the list via individual `listOf(...)`
+         * reads rather than a `listOf(PreToolCall, ...)` initializer.
+         * Some Kotlin compiler / R8 combinations leave the `INSTANCE`
+         * field of `data object` subclasses uninitialized at the moment
+         * the enclosing `companion object` runs (a Kotlin issue tracked
+         * upstream as KT-57692). Plain `object`s initialize eagerly and
+         * reliably on all Kotlin versions, so we also avoid `data`
+         * here. Each call also resolves the singleton field directly,
+         * so the list cannot contain a null.
+         */
+        val all: List<HookTrigger> by lazy {
+            listOf(
+                PreToolCall,
+                PostToolCall,
+                OnInferenceStart,
+                OnInferenceEnd,
+                OnError,
+                OnTurnEnd,
+            )
+        }
     }
 }

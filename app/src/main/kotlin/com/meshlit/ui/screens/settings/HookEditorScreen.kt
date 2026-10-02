@@ -111,8 +111,18 @@ fun HookEditorScreen(
             }
 
             item { Text("Trigger", style = MaterialTheme.typography.titleSmall) }
-            items(HookTrigger.all.size) { idx ->
-                val t = HookTrigger.all[idx]
+            // Iterate the canonical trigger set as a `List<HookTrigger>` and
+            // key each row by its singleton identity (the `data object`
+            // instance — Kotlin's plain `object` is preferred over
+            // `data object` here because of an upstream Kotlin / R8
+            // interaction where `INSTANCE` can read as null at the
+            // companion-init moment — see `HookTrigger.all`'s doc).
+            // The `filterNotNull` + non-null key is a belt-and-suspenders
+            // defense that survives even a stale snapshot.
+            items(
+                items = HookTrigger.all.filterNotNull(),
+                key = { t -> t::class.simpleName ?: t.javaClass.simpleName },
+            ) { t ->
                 Row(
                     Modifier
                         .fillMaxWidth()
