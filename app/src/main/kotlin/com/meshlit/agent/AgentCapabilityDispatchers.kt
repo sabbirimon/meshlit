@@ -12,6 +12,7 @@ import com.meshlit.core.cloudmcp.agent.AgentCapability
 import com.meshlit.core.cloudmcp.agent.AgentCapabilityRegistry
 import com.meshlit.core.cloudmcp.agent.AgentCapabilityRouter
 import com.meshlit.core.cloudmcp.agent.AgentCapabilityTools
+import com.meshlit.core.common.HookTrigger
 import com.meshlit.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -49,22 +50,90 @@ class AgentCapabilityDispatchers(
     private val appContext: Context,
     private val registry: AgentCapabilityRegistry,
     private val settings: SettingsRepository,
+    private val termuxBridge: com.meshlit.network.termux.TermuxBridge =
+        com.meshlit.network.termux.AndroidTermuxBridge(appContext),
+    // Production wiring in `CoreModule.kt` injects a real
+    // `TermuxAuditSink` (writes JSONL to filesDir/agent/) and a
+    // `DenyByDefaultApprovalSink` (denies any non-allowlisted
+    // command). The fallback default here is identical to the
+    // production behavior; we keep it only so this class can be
+    // instantiated in a unit test that doesn't bind Koin first.
+    private val termuxApprovals: ApprovalSink = DenyByDefaultApprovalSink(),
+    private val termuxAudit: AuditSink = TermuxAuditSink(appContext),
+    // Phase 8 — optional hooks engine. `null` is the default so the
+    // class can be instantiated in unit tests that don't bind Koin.
+    // When non-null we fire `PreToolCall` before each delegation
+    // and `PostToolCall` after.
+    private val hookEngine: com.meshlit.agent.hooks.HookEngine? = null,
 ) : AgentCapabilityRouter.DispatcherFacade {
     val camera = CameraDispatcher(appContext, registry)
     val microphone = MicrophoneDispatcher(appContext, registry)
     val location = LocationDispatcher(appContext, registry)
     val sms = SmsDispatcher(appContext, registry)
     val storage = StorageDispatcher(appContext, registry, settings)
+    val termux = TermuxRunCommandDispatcher(
+        appContext = appContext,
+        registry = registry,
+        bridge = termuxBridge,
+        approvals = termuxApprovals,
+        auditSink = termuxAudit,
+    )
 
-    override suspend fun cameraCapture(args: JsonObject) = camera.capture(args)
-    override suspend fun micListen(args: JsonObject) = microphone.listen(args)
-    override suspend fun locationGet(args: JsonObject) = location.get(args)
-    override suspend fun dataState(args: JsonObject): McpEvent.ToolResult = dataStateImpl(args)
-    override suspend fun callDial(args: JsonObject): McpEvent.ToolResult = callDialImpl(args)
-    override suspend fun smsSend(args: JsonObject) = sms.send(args)
-    override suspend fun storageList(args: JsonObject) = storage.list(args)
-    override suspend fun storageRead(args: JsonObject) = storage.read(args)
-    override suspend fun storageWrite(args: JsonObject) = storage.write(args)
+    override suspend fun cameraCapture(args: JsonObject) =
+        wrap("agent_camera_capture", args) { camera.capture(it) }
+    override suspend fun micListen(args: JsonObject) =
+        wrap("agent_mic_listen", args) { microphone.listen(it) }
+    override suspend fun locationGet(args: JsonObject) =
+        wrap("agent_location_get", args) { location.get(it) }
+    override suspend fun dataState(args: JsonObject): McpEvent.ToolResult =
+        wrap("agent_data_state", args) { dataStateImpl(it) }
+    override suspend fun callDial(args: JsonObject): McpEvent.ToolResult =
+        wrap("agent_call_dial", args) { callDialImpl(it) }
+    override suspend fun smsSend(args: JsonObject) =
+        wrap("agent_sms_send", args) { sms.send(it) }
+    override suspend fun storageList(args: JsonObject) =
+        wrap("agent_storage_list", args) { storage.list(it) }
+    override suspend fun storageRead(args: JsonObject) =
+        wrap("agent_storage_read", args) { storage.read(it) }
+    override suspend fun storageWrite(args: JsonObject) =
+        wrap("agent_storage_write", args) { storage.write(it) }
+    override suspend fun termuxRunCommand(args: JsonObject) =
+        wrap("agent_termux_run_command", args) { termux.runCommand(it) }
+
+    /**
+     * Fire `PreToolCall` (synchronous, awaited with the per-hook
+     * timeout) and `PostToolCall` (fire-and-forget) around each
+     * dispatch. The pre-hook is `await`ed but its result is ignored
+     * for v1 — deny semantics land in a follow-up. Errors thrown by
+     * the wrapped call are converted to a [HookTrigger.OnError] fire
+     * and re-thrown so the existing exception path keeps working.
+     */
+    private suspend fun wrap(
+        toolName: String,
+        args: JsonObject,
+        block: suspend (JsonObject) -> McpEvent.ToolResult,
+    ): McpEvent.ToolResult {
+        val engine = hookEngine ?: return block(args)
+        val vars = mapOf(
+            "tool_name" to toolName,
+            "call_id" to "",
+            "provider_id" to AgentCapabilityTools.PROVIDER_ID,
+            "args_preview" to args.toString().take(1024),
+        )
+        // Pre-hook: blocking but its result is logged-only for now.
+        engine.firePre(HookTrigger.PreToolCall, vars)
+        val result = try {
+            block(args)
+        } catch (t: Throwable) {
+            engine.fire(HookTrigger.OnError, vars + ("error" to (t.message ?: t.javaClass.simpleName)))
+            throw t
+        }
+        engine.fire(
+            HookTrigger.PostToolCall,
+            vars + ("ok" to result.ok.toString()),
+        )
+        return result
+    }
 
     /**
      * `agent_data_state` — read-only, no permission, no target.

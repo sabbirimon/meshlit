@@ -62,8 +62,12 @@ import com.meshlit.inference.MetricsRegistry
 import com.meshlit.inference.PeerHealthCache
 import com.meshlit.inference.PeerRegistry
 import com.meshlit.mcp.DataStoreUserMcpServerPersistence
+import com.meshlit.network.termux.AndroidTermuxBridge
+import com.meshlit.network.termux.InMemoryResultBus
+import com.meshlit.network.termux.TermuxBridge
 import com.meshlit.observability.AppLoggerFactory
 import com.meshlit.observability.LogBuffer
+import com.meshlit.bootstrap.BootstrapSnapshotProvider
 import com.meshlit.notifications.NotificationCenter
 import com.meshlit.notifications.NotificationPreferences
 import com.meshlit.power.BatteryOptimizationHelper
@@ -80,11 +84,22 @@ import com.meshlit.flags.DataStoreFeatureFlagRegistry
 import com.meshlit.agent.AgentCapabilityRegistryHolder
 import com.meshlit.agent.AgentCapabilityDispatchers
 import com.meshlit.agent.AgentCapabilityRegistrar
+import com.meshlit.agent.AuditSink
+import com.meshlit.agent.ApprovalSink
+import com.meshlit.agent.DenyByDefaultApprovalSink
+import com.meshlit.agent.TermuxAuditSink
+import com.meshlit.agent.hooks.HookAuditSink
+import com.meshlit.agent.hooks.HookEngine
+import com.meshlit.core.common.HookDefinition
+import com.meshlit.core.common.HookTrigger
+import com.meshlit.scripts.ConfigScriptRunner
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -161,9 +176,35 @@ val coreModule = module {
     // -----------------------------------------------------------------
     single {
         DiscoveryCoordinator(
-            transports = listOf(NsdDiscoveryTransport(androidContext())),
+            initialTransports = listOf(
+                NsdDiscoveryTransport(androidContext()),
+                com.meshlit.core.discovery.BluetoothLeDiscoveryTransport(androidContext()),
+            ),
         )
     }
+    // The v2 peer-discovery repository. Wraps the coordinator
+    // with classification (LOCAL/CLUSTER/GROUP/INTERNET) + a
+    // StateFlow that the v2 Scan screen reads via
+    // `collectAsStateWithLifecycle`. Started lazily from
+    // MeshlitApplication.onCreate via [PeerRepository.start].
+    single {
+        com.meshlit.disco.PeerRepository(
+            coordinator = get(),
+            localIPPrefixProvider = { com.meshlit.disco.collectLocalIPv4Prefixes() },
+            clusterFingerprintsProvider = { emptySet() },
+            trustStore = get<com.meshlit.core.trust.TrustStore>(),
+            usbTetherProvider = {
+                (androidContext() as com.meshlit.MeshlitApplication)
+                    .usbTetherActive
+                    .value
+            },
+        )
+    }
+    // v2 Scan screen wires the mDNS capture row + live packet stream
+    // through this singleton. The manager owns the multicast listener
+    // + .pcap recorder; the screen drives start/stop via the public
+    // methods below. Never starts automatically.
+    single { com.meshlit.pcap.PacketCaptureManager(androidContext()) }
 
     // -----------------------------------------------------------------
     // Firewall
@@ -174,7 +215,42 @@ val coreModule = module {
     // Agent capability subscriptions
     // -----------------------------------------------------------------
     single { AgentCapabilityRegistryHolder(androidContext(), get()) }
-    single { AgentCapabilityDispatchers(androidContext(), get<AgentCapabilityRegistryHolder>().registry, get()) }
+    // Termux bridge — wired so `agent_termux_run_command` and the
+    // Settings → Integrations → Termux screen can dispatch into the
+    // real Termux app via the official RUN_COMMAND plugin API. The
+    // result bus singleton is shared with the manifest-registered
+    // `TermuxResultReceiver` so broadcast results reach the
+    // awaiting `runCommand` future.
+    single { InMemoryResultBus() }
+    single { AndroidTermuxBridge(androidContext(), resultBus = get()) }
+    single<TermuxBridge> { get<AndroidTermuxBridge>() }
+    // The static `TermuxResultReceiver` (declared in
+    // AndroidManifest.xml with permission=com.termux.permission.RUN_COMMAND)
+    // forwards its broadcast into `TermuxReceiverRegistry.bus`.
+    // We wire that field from a separate factory so the bridge and
+    // the static receiver share the SAME bus instance.
+    single {
+        val bus = get<com.meshlit.network.termux.ResultBus>()
+        com.meshlit.network.termux.TermuxReceiverRegistry.bus = bus
+        bus
+    }
+    // The agent dispatcher writes every termux invocation to a
+    // JSONL ledger under filesDir/agent/termux-audit.jsonl. The
+    // approval sink denies any non-allowlisted command by default;
+    // an in-app approval sheet can replace it once Phase 5.5 ships.
+    single<AuditSink> { TermuxAuditSink(androidContext()) }
+    single<ApprovalSink> { DenyByDefaultApprovalSink() }
+    single {
+        AgentCapabilityDispatchers(
+            appContext = androidContext(),
+            registry = get<AgentCapabilityRegistryHolder>().registry,
+            settings = get(),
+            termuxBridge = get<TermuxBridge>(),
+            termuxApprovals = get<ApprovalSink>(),
+            termuxAudit = get<AuditSink>(),
+            hookEngine = get(),
+        )
+    }
     // The registrar pulls the cloud tool registry from the cloud
     // coordinator and the agent registry holder, so that capability
     // toggles push the matching `agent_*` tools into the merged
@@ -219,7 +295,6 @@ val coreModule = module {
     // Bundled model installer + volatile path ref
     // -----------------------------------------------------------------
     single { BundledModelInstaller() }
-    single { RefHolder<File?>(initial = null) } // bundledModelPath
 
     // -----------------------------------------------------------------
     // Script library
@@ -227,10 +302,59 @@ val coreModule = module {
     single { ScriptLibrary() }
 
     // -----------------------------------------------------------------
+    // Phase 8 — Hooks subsystem
+    //
+    // Three singletons:
+    //  - `HookAuditSink` — JSONL append-only under filesDir/agent/.
+    //  - `MutableStateFlow<List<HookDefinition>>` — hot mirror of the
+    //    persisted registry; `MeshlitApplication.onCreate` feeds it
+    //    from `settingsRepository.hooksRegistryFlow` so the engine
+    //    and the UI read from the same source.
+    //  - `HookEngine` — the dispatcher, takes both above plus the
+    //    `ConfigScriptRunner` it uses to execute each hook.
+    //
+    // The `ConfigScriptRunner` is a per-engine instance so its
+    //  `events: StateFlow<ScriptEvent?>` reflects the last hook
+    //  run and not the user's manual Scripts-screen runs.
+    // -----------------------------------------------------------------
+    single { HookAuditSink(androidContext().filesDir.absolutePath) }
+    single {
+        // Seeded empty; MeshlitApplication.onCreate replaces the value
+        // on every emission of `settingsRepository.hooksRegistryFlow`.
+        MutableStateFlow<List<HookDefinition>>(emptyList())
+    }
+    single {
+        HookEngine(
+            hooksFlow = get(),
+            masterEnabledFlow = get(named("hooksEnabled")),
+            scriptLibrary = get(),
+            runner = ConfigScriptRunner(get(), get()),
+            auditSink = get(),
+        )
+    }
+    // Master-toggle mirror — `MeshlitApplication.onCreate` feeds
+    // it from `settingsRepository.hooksEnabledFlow`. The engine
+    // short-circuits on every `fire` / `firePre` call when this is
+    // false.
+    single(named("hooksEnabled")) {
+        kotlinx.coroutines.flow.MutableStateFlow(true)
+    }
+
+    // -----------------------------------------------------------------
     // FGS-shared mutable refs
     // -----------------------------------------------------------------
-    single { RefHolder<PeerHealthCache?>(initial = null) } // activePeerHealthCache
-    single { RefHolder<String>(initial = "") } // stableNodeId
+    // `RefHolder<T>` is a generic class, but Koin's `single` keys
+    // are resolved at runtime where the type parameter is erased
+    // — three separate `single { RefHolder<...>(...) }` calls all
+    // register under the same raw `RefHolder` key, so the FGS-shared
+    // mutable refs collide. Without a `named(...)` qualifier the
+    // first registered instance wins and `set()` calls on one ref
+    // silently mutate the others — e.g. `stableNodeIdRef.set("…")`
+    // writes a String into the holder that `bundledModelPathRef.get()`
+    // casts back to File, crashing the FGS at startup.
+    single(named("bundledModelPath")) { RefHolder<File?>(initial = null) }
+    single(named("activePeerHealthCache")) { RefHolder<PeerHealthCache?>(initial = null) }
+    single(named("stableNodeId")) { RefHolder<String>(initial = "") }
 
     // -----------------------------------------------------------------
     // Probes — these take an `Application` rather than a generic
@@ -262,6 +386,20 @@ val coreModule = module {
     ) }
     single { McpServerStub(get()) }
     single { AgentRuntimeStub() }
+    // AgentSession factory — the v2 `AgentViewModel` resolves the
+    // session via `koinInject()`. Without this binding, tapping
+    // the Agent tab in the bottom bar crashes the app with
+    // `NoDefinitionFoundException` at ViewModel construction
+    // time. Each factory call returns a new session so concurrent
+    // ViewModels don't share state; `appScope` keeps the
+    // session's generation Job tied to the application lifetime.
+    factory {
+        com.meshlit.agent.AgentSession(
+            context = androidContext(),
+            app = get(),
+            scope = get(),
+        )
+    }
 
     // -----------------------------------------------------------------
     // Dynamic-foundation Phase 0.3 — probe + role
@@ -273,51 +411,86 @@ val coreModule = module {
     // dynamic-foundation stays JVM-testable.
     // -----------------------------------------------------------------
     single<List<HardwareProfiler>> {
+        // Delta-tracking holder. Reads that need a previous sample
+        // (CPU%, network throughput) keep their previous tick in
+        // this map so each poll produces a rate, not a counter.
+        // The lifetime is the singleton's lifetime — i.e. the
+        // process. Re-creating the holder on app restart simply
+        // resets the baselines.
+        val cpuBaseline = com.meshlit.core.probe.CpuUsageBaseline()
+        val netBaseline = com.meshlit.core.probe.NetworkThroughputBaseline()
         listOf(
-            CpuProfiler { com.meshlit.core.common.MeshlitResult.Success(
-                com.meshlit.core.probe.ProfileSample(
-                    score = 0.8f,
-                    rawValue = "arm64-v8a",
-                ),
-            ) },
-            MemoryProfiler {
-                val ramMb = try {
-                    val mi = android.os.Debug.MemoryInfo()
-                    android.os.Debug.getMemoryInfo(mi)
-                    mi.totalMem / (1024 * 1024)
-                } catch (t: Throwable) { 0L }
+            CpuProfiler {
+                // App-process CPU% sampled by reading /proc/self/stat
+                // twice (utime+stime vs starttime) and taking the
+                // delta. /proc/stat is SELinux-denied so we measure
+                // own-process CPU%, which is the more useful signal
+                // for an inference app anyway. Returns 0f on the
+                // first tick (no baseline yet) and a fresh
+                // percentage thereafter. The raw string already
+                // carries the percent + ABI on tick 1 and a clean
+                // "<pct>%" on every subsequent tick.
+                val (pct, raw) = cpuBaseline.sample()
                 com.meshlit.core.common.MeshlitResult.Success(
                     com.meshlit.core.probe.ProfileSample(
-                        score = (ramMb.toFloat() / (12f * 1024f)).coerceIn(0f, 1f),
-                        rawValue = ramMb.toString(),
+                        score = pct / 100f,
+                        rawValue = raw,
+                    ),
+                )
+            },
+            MemoryProfiler {
+                // Real-time RAM% from /proc/meminfo (MemTotal vs
+                // MemAvailable). Returns "live" deltas whenever the
+                // user backs out a tab or a foreground service
+                // frees a buffer.
+                val (pct, raw) = com.meshlit.core.probe.readMemoryUsage()
+                com.meshlit.core.common.MeshlitResult.Success(
+                    com.meshlit.core.probe.ProfileSample(
+                        score = pct / 100f,
+                        rawValue = raw,
                     ),
                 )
             },
             ThermalProfiler {
+                // Real device temperature from
+                // /sys/class/thermal/thermal_zone*/temp. Picks the
+                // first zone with a non-zero reading. The score is
+                // clamped to 1.0 at 80°C so the sparkline stays
+                // informative on a hot device.
+                val (pct, raw) = com.meshlit.core.probe.readThermal()
                 com.meshlit.core.common.MeshlitResult.Success(
-                    com.meshlit.core.probe.ProfileSample(score = 0.9f, rawValue = "0"),
+                    com.meshlit.core.probe.ProfileSample(
+                        score = (pct / 100f).coerceIn(0f, 1f),
+                        rawValue = raw,
+                    ),
                 )
             },
             BatteryProfiler {
+                // BatteryManager.BATTERY_PROPERTY_CAPACITY is the
+                // cheapest fresh read — the framework updates it
+                // whenever the broadcast fires (charging,
+                // discharging, low battery). Numeric percent
+                // directly maps to the sparkline.
                 val bm = androidContext().getSystemService(android.content.Context.BATTERY_SERVICE)
                     as android.os.BatteryManager?
                 val pct = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
                 com.meshlit.core.common.MeshlitResult.Success(
                     com.meshlit.core.probe.ProfileSample(
                         score = (pct.coerceAtLeast(0).toFloat() / 100f),
-                        rawValue = pct.toString(),
+                        rawValue = "${pct}%",
                     ),
                 )
             },
             NetworkProfiler {
-                val cm = androidContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
-                    as android.net.ConnectivityManager?
-                val active = cm?.activeNetworkInfo
-                val reachable = active?.isConnected ?: false
+                // Sums `rx_bytes + tx_bytes` deltas across wlan0
+                // and rmnet0 (radio) and divides by the elapsed
+                // seconds. Returns 0f when offline, the % of a
+                // ~10MB/s budget when active.
+                val (pct, raw) = netBaseline.sample()
                 com.meshlit.core.common.MeshlitResult.Success(
                     com.meshlit.core.probe.ProfileSample(
-                        score = if (reachable) 1.0f else 0.0f,
-                        rawValue = if (reachable) "reachable" else "offline",
+                        score = (pct / 100f).coerceIn(0f, 1f),
+                        rawValue = raw,
                     ),
                 )
             },
@@ -333,6 +506,7 @@ val coreModule = module {
         )
     }
     single { HardwareProfilerRegistry(profilers = get()) }
+    single { com.meshlit.core.probe.LiveHardwareMonitor(profiler = get()) }
     single { RoleManager(get()) }
 
     // BootstrapCoordinator needs the registry, lifecycle, the
