@@ -88,7 +88,19 @@ import androidx.compose.material3.FilterChipDefaults
  * intent so the FGS auto-loads the new GGUF.
  */
 @Composable
-fun CatalogScreen(onOpenDrawer: () -> Unit) {
+fun CatalogScreen(
+    onOpenDrawer: () -> Unit,
+    /**
+     * v2 chrome (MeshlitDeepLinkWrap) renders a lead bar
+     * with the same title. When the v1 [MeshlitHeader]
+     * also renders, the two headers stack vertically and
+     * eat ~70 dp of body real-estate. v2 callers pass
+     * `true` to skip the inner header. v1 callers keep the
+     * default `false` so standalone launch still shows the
+     * header.
+     */
+    omitHeader: Boolean = false,
+) {
     val context = LocalContext.current
     val engine = koinInject<RunAnywhereCatalogEngine>()
     val capabilityTier: com.meshlit.capability.CapabilityTier = koinInject()
@@ -139,14 +151,21 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
     }
 
     Scaffold(
-        topBar = {
-            MeshlitHeader(
-                title = stringResource(R.string.catalog_title),
-                subtitle = stringResource(R.string.catalog_subtitle),
-                tier = capabilityTier,
-                active = refreshInFlight,
-                onOpenDrawer = onOpenDrawer,
-            )
+        topBar = if (omitHeader) {
+            // v2 wrapper owns the lead bar; rendering the v1
+            // header here would produce two stacked titles
+            // (~70 dp of wasted vertical space).
+            { }
+        } else {
+            {
+                MeshlitHeader(
+                    title = stringResource(R.string.catalog_title),
+                    subtitle = stringResource(R.string.catalog_subtitle),
+                    tier = capabilityTier,
+                    active = refreshInFlight,
+                    onOpenDrawer = onOpenDrawer,
+                )
+            }
         },
     ) { innerPadding ->
         Surface(

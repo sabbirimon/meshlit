@@ -115,7 +115,13 @@ fun V2StructuredScreen() {
         headline = "Structured",
         subtitle = "JSON-mode + schema-constrained output",
     ) {
-        StructuredScreen(onOpenDrawer = {})
+        StructuredScreen(
+            onOpenDrawer = {},
+            // v2 lead bar already owns the headline; skip the
+            // v1 MeshlitHeader to avoid two stacked titles
+            // (~70 dp of wasted vertical space).
+            omitHeader = true,
+        )
     }
 }
 
@@ -125,7 +131,12 @@ fun V2VisionScreen() {
         headline = "Vision",
         subtitle = "Image + multimodal inference",
     ) {
-        VisionScreen(onOpenDrawer = {})
+        VisionScreen(
+            onOpenDrawer = {},
+            // v2 lead bar already owns the headline; skip the
+            // v1 MeshlitHeader to avoid two stacked titles.
+            omitHeader = true,
+        )
     }
 }
 
@@ -135,7 +146,12 @@ fun V2CatalogScreen() {
         headline = "Catalog",
         subtitle = "Multi-source model registry",
     ) {
-        CatalogScreen(onOpenDrawer = {})
+        CatalogScreen(
+            onOpenDrawer = {},
+            // v2 lead bar already owns the headline; skip the
+            // v1 MeshlitHeader to avoid two stacked titles.
+            omitHeader = true,
+        )
     }
 }
 

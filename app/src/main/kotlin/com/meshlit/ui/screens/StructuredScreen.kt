@@ -64,7 +64,18 @@ import kotlinx.coroutines.launch
  * runtime against the bundled GGUF.
  */
 @Composable
-fun StructuredScreen(onOpenDrawer: () -> Unit) {
+fun StructuredScreen(
+    onOpenDrawer: () -> Unit,
+    /**
+     * v2 chrome (MeshlitDeepLinkWrap) already renders a lead
+     * bar with the same title. When the v1 [MeshlitHeader]
+     * also renders, the two headers stack vertically and eat
+     * ~70 dp of body real-estate. v2 callers pass `true`
+     * to skip the inner header. v1 callers keep the default
+     * `false` so standalone launch still shows the header.
+     */
+    omitHeader: Boolean = false,
+) {
     val context = LocalContext.current
     val app = koinInject<MeshlitApplication>()
     val engine = app.structuredEngine
@@ -165,14 +176,21 @@ fun StructuredScreen(onOpenDrawer: () -> Unit) {
     }
 
     Scaffold(
-        topBar = {
-            MeshlitHeader(
-                title = stringResource(R.string.structured_title),
-                subtitle = stringResource(R.string.structured_subtitle),
-                tier = app.capabilityTier,
-                active = running,
-                onOpenDrawer = onOpenDrawer,
-            )
+        topBar = if (omitHeader) {
+            // v2 wrapper owns the lead bar; rendering the v1
+            // header here would produce two stacked titles
+            // (~70 dp of wasted vertical space).
+            { }
+        } else {
+            {
+                MeshlitHeader(
+                    title = stringResource(R.string.structured_title),
+                    subtitle = stringResource(R.string.structured_subtitle),
+                    tier = app.capabilityTier,
+                    active = running,
+                    onOpenDrawer = onOpenDrawer,
+                )
+            }
         },
     ) { innerPadding ->
         Surface(
