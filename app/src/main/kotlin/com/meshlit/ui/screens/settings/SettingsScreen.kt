@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Card
@@ -58,19 +59,22 @@ import com.meshlit.di.koinInject
 fun SettingsScreen(
     onOpenCategory: (SettingsCategory) -> Unit,
     onOpenDrawer: () -> Unit = {},
+    omitHeader: Boolean = false,
 ) {
     var query by remember { mutableStateOf("") }
     val tier: com.meshlit.capability.CapabilityTier = koinInject()
 
     Scaffold(
         topBar = {
-            com.meshlit.ui.components.MeshlitHeader(
-                title = stringResource(R.string.screen_settings),
-                subtitle = null,
-                tier = tier,
-                active = false,
-                onOpenDrawer = onOpenDrawer,
-            )
+            if (!omitHeader) {
+                com.meshlit.ui.components.MeshlitHeader(
+                    title = stringResource(R.string.screen_settings),
+                    subtitle = null,
+                    tier = tier,
+                    active = false,
+                    onOpenDrawer = onOpenDrawer,
+                )
+            }
         },
     ) { innerPadding ->
         Column(
@@ -182,5 +186,6 @@ enum class SettingsCategory(
     PERFORMANCE("Performance", "CPU threads, GPU layers, thermal", Icons.Default.Speed),
     PRIVACY("Privacy & Security", "Trust tiers, keys, audit", Icons.Default.Security),
     ABOUT("About", "Version, licenses, third-party", Icons.Default.Info),
-    DEVELOPER("Developer", "Logs, sample rate, debug", Icons.Default.Build);
+    DEVELOPER("Developer", "Logs, sample rate, debug", Icons.Default.Build),
+    HOOKS("Hooks", "User-authored scripts fired by the agent loop", Icons.Outlined.Code);
 }
