@@ -36,6 +36,16 @@ class MainActivity : ComponentActivity() {
      */
     private val mediaPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            // Phase 7 P0 fix — flip the SharedPreferences "asked once"
+            // flag regardless of grant/deny so the dialog doesn't
+            // re-fire on every cold start. If the user flips a
+            // permission back on in App Settings, the
+            // `shouldRequestMediaPermissions` predicate stays false
+            // (because we asked once) but the user can still use the
+            // app — `hasAllMediaPermissions` becomes true again, and
+            // any future surface that wants the perm can request it
+            // explicitly via `requestMediaPermissionsIfNeeded`.
+            PermissionHelper.markMediaAsked(this)
             val anyGranted = grants.values.any { it }
             log.info(
                 "perm.media.result",
@@ -55,14 +65,29 @@ class MainActivity : ComponentActivity() {
 
         // Trigger the POST_NOTIFICATIONS runtime permission on API 33+.
         // On older devices the manifest grant is sufficient; the helper
-        // is a no-op there. We call it eagerly here so the dialog
-        // appears the first time the user opens the app.
-        PermissionHelper.requestNotificationsIfNeeded(this)
+        // is a no-op there. The `wasNotificationsAsked` /
+        // `isNotificationsPermanentlyDenied` checks inside the helper
+        // ensure this fires at most once per install — without them
+        // the dialog re-pops on every cold start after the user has
+        // declined once.
+        if (PermissionHelper.requestNotificationsIfNeeded(this)) {
+            // Mark immediately so a config-change restart doesn't
+            // re-fire the dialog before the system result callback
+            // can flip the flag.
+            PermissionHelper.markNotificationsAsked(this)
+        }
 
         // One-shot media / storage permission request on first launch
         // so the App Info screen lists "Photos and videos", "Files and
         // media", and "Music and audio" rather than hiding them.
-        if (!PermissionHelper.hasAllMediaPermissions(this)) {
+        // The `shouldRequestMediaPermissions` predicate short-circuits
+        // when the batch is already granted, pre-API-29, or we have
+        // already shown the prompt once.
+        if (PermissionHelper.shouldRequestMediaPermissions(this)) {
+            // Mark before launch — if the user kills the app from
+            // the recents tray while the dialog is up, we still
+            // shouldn't re-ask on next cold start.
+            PermissionHelper.markMediaAsked(this)
             mediaPermissionLauncher.launch(PermissionHelper.mediaPermissions)
         }
 

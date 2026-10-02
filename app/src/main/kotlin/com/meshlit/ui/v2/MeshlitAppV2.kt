@@ -239,7 +239,7 @@ fun MeshlitAppV2(
                         onBack = { navController.popBackStack() },
                     )
                 }
-                composable("jobs") { com.meshlit.ui.v2.screens.ChatScreen() }
+                composable("jobs") { com.meshlit.ui.v2.screens.V2JobsScreen() }
                 composable("models") { com.meshlit.ui.v2.screens.V2ModelsScreen() }
                 composable("structured") { com.meshlit.ui.v2.screens.V2StructuredScreen() }
                 composable("vision") { com.meshlit.ui.v2.screens.V2VisionScreen() }

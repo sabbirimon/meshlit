@@ -9,6 +9,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -247,7 +249,13 @@ fun VoiceScreen(
     fun startListening() {
         if (!hasPermission) {
             (context as? Activity)?.let {
-                PermissionHelper.requestMicrophoneIfNeeded(it)
+                if (PermissionHelper.requestMicrophoneIfNeeded(it)) {
+                    // Phase 7 P0 fix — flag the prompt as "we already
+                    // asked once" so the system dialog doesn't loop
+                    // on every re-entry to the Voice screen after
+                    // the user has declined once.
+                    PermissionHelper.markMicrophoneAsked(context)
+                }
             }
             return
         }
@@ -506,9 +514,11 @@ fun VoiceScreen(
                     minLines = 4,
                 )
 
-                Row(
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
                         onClick = ::speak,
@@ -540,14 +550,23 @@ fun VoiceScreen(
                 // share the most recent recording. Wrapped in a
                 // separate row so the speak/clear controls above
                 // stay focused on the TTS state machine.
-                Row(
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     AssistChip(
                         onClick = ::saveRecording,
                         enabled = frameBuffer.bytesWritten() > 0L,
-                        label = { Text(stringResource(R.string.voice_save_recording)) },
+                        label = {
+                            Text(
+                                stringResource(R.string.voice_save_recording),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Filled.Save,
@@ -558,7 +577,14 @@ fun VoiceScreen(
                     )
                     AssistChip(
                         onClick = ::importAudio,
-                        label = { Text(stringResource(R.string.voice_import_audio)) },
+                        label = {
+                            Text(
+                                stringResource(R.string.voice_import_audio),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Filled.LibraryMusic,
@@ -570,7 +596,14 @@ fun VoiceScreen(
                     AssistChip(
                         onClick = ::shareLastRecording,
                         enabled = lastSavedPath != null,
-                        label = { Text(stringResource(R.string.voice_share_recording)) },
+                        label = {
+                            Text(
+                                stringResource(R.string.voice_share_recording),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Filled.IosShare,
@@ -582,7 +615,14 @@ fun VoiceScreen(
                     AssistChip(
                         onClick = ::shareTranscript,
                         enabled = transcript.isNotBlank() || partialText.isNotBlank(),
-                        label = { Text(stringResource(R.string.voice_share_transcript)) },
+                        label = {
+                            Text(
+                                stringResource(R.string.voice_share_transcript),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Filled.GraphicEq,

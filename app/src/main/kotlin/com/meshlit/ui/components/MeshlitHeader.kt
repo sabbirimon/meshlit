@@ -173,7 +173,8 @@ fun MeshlitHeader(
                         text = subtitle,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -226,6 +227,9 @@ private fun TierPill(
                 fontWeight = FontWeight.Bold,
             ),
             color = fg,
+            maxLines = 1,
+            softWrap = false,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
         )
     }
 }
