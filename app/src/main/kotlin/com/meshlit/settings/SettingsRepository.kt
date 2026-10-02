@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.meshlit.core.common.EndpointProtocol
+import com.meshlit.core.common.HookDefinition
 import com.meshlit.core.common.NetworkScope
 import com.meshlit.core.common.RemoteEndpoint
 import com.meshlit.core.cloudmcp.rag.RagMode
@@ -45,9 +46,9 @@ import kotlinx.serialization.json.Json
  * Settings panel. Other systems (theme, notifications, cluster
  * transports, etc.) read from this and write back through it.
  */
-class SettingsRepository(private val context: Context) {
+open class SettingsRepository(private val context: Context) {
 
-    private val store: DataStore<Preferences> = context.settingsDataStore
+    private val store: DataStore<Preferences> by lazy { context.settingsDataStore }
 
     val flow: Flow<MeshlitThemeConfig> = store.data.map { prefs ->
         MeshlitThemeConfig(
@@ -67,6 +68,35 @@ class SettingsRepository(private val context: Context) {
 
     /** Empty string == no override (bundled model is used). */
     val customModelPathFlow: Flow<String> = store.data.map { it[Keys.customModelPath] ?: "" }
+
+    /**
+     * User-overridable display name. Empty string == use the
+     * auto-derived default (`Meshlit/<Build.MODEL>`).
+     *
+     * The Device Info screen exposes this as an inline editor so
+     * the user can rename the node without going through a setup
+     * wizard. Falls back to the empty default on read so older
+     * installs keep showing the auto-derived name.
+     */
+    open val displayNameFlow: Flow<String> = store.data.map { it[Keys.displayName] ?: "" }
+
+    /**
+     * Sync accessor for first-frame rendering. Returns the
+     * persisted override (possibly empty) so callers can decide
+     * whether to fall back to `DeviceInfo.displayName`.
+     */
+    open fun displayNameFlowNow(): String = runCatching {
+        kotlinx.coroutines.runBlocking { displayNameFlow.first() }
+    }.getOrDefault("")
+
+    /** Persist a new display name. Empty/blank clears the override
+     *  and falls back to the auto-derived default. */
+    open suspend fun setDisplayName(value: String) {
+        store.edit { prefs ->
+            if (value.isBlank()) prefs.remove(Keys.displayName)
+            else prefs[Keys.displayName] = value.trim().take(40)
+        }
+    }
 
     /**
      * Phase 2.x — the version of the runtime registry the user has
@@ -536,6 +566,70 @@ class SettingsRepository(private val context: Context) {
         store.edit { it[Keys.feedbackRepoSlug] = sanitized }
     }
 
+    // --- Hugging Face token (user-supplied) ----------------------------
+    //
+    // Used by ModelCatalog.download to authenticate against HF for
+    // gated repos (Llama, Phi-3, etc). Persisted in plain DataStore;
+    // the Settings UI masks the value, and we never log it. Empty
+    // string means no token — public GGUF repos still work without
+    // one (they just need the right User-Agent).
+    val huggingFaceTokenFlow: Flow<String> = store.data.map {
+        it[Keys.huggingFaceToken] ?: ""
+    }
+
+    suspend fun setHuggingFaceToken(token: String) {
+        val trimmed = token.trim()
+        store.edit {
+            if (trimmed.isEmpty()) it.remove(Keys.huggingFaceToken)
+            else it[Keys.huggingFaceToken] = trimmed
+        }
+    }
+
+    /** Synchronous read used by ModelCatalog.download on the IO dispatcher.
+     *  Returns "" if the user hasn't set one. */
+    fun huggingFaceTokenNow(): String =
+        kotlinx.coroutines.runBlocking { huggingFaceTokenFlow.first() }
+
+    // --- Hugging Face Pro / Enterprise org token ------------------------
+    //
+    // Paid Hugging Face accounts and organization members paste their
+    // second token here plus the organization slug. ModelCatalog picks
+    // one or both at download time based on the repo URL.
+    val huggingFaceProTokenFlow: Flow<String> = store.data.map {
+        it[Keys.huggingFaceProToken] ?: ""
+    }
+    val huggingFaceOrgSlugFlow: Flow<String> = store.data.map {
+        it[Keys.huggingFaceOrgSlug] ?: ""
+    }
+
+    suspend fun setHuggingFaceProToken(token: String) {
+        val trimmed = token.trim()
+        store.edit {
+            if (trimmed.isEmpty()) it.remove(Keys.huggingFaceProToken)
+            else it[Keys.huggingFaceProToken] = trimmed
+        }
+    }
+
+    suspend fun setHuggingFaceOrgSlug(slug: String) {
+        val trimmed = slug.trim().lowercase()
+        store.edit {
+            if (trimmed.isEmpty()) it.remove(Keys.huggingFaceOrgSlug)
+            else it[Keys.huggingFaceOrgSlug] = trimmed
+        }
+    }
+
+    /** Synchronous read of the paid org token. Empty if not set. */
+    fun huggingFaceProTokenNow(): String =
+        kotlinx.coroutines.runBlocking { huggingFaceProTokenFlow.first() }
+
+    /** Synchronous read of the org slug. Empty if not set. */
+    fun huggingFaceOrgSlugNow(): String =
+        kotlinx.coroutines.runBlocking { huggingFaceOrgSlugFlow.first() }
+
+    /** Whether the user is on a paid HF plan (both fields populated). */
+    fun huggingFaceHasProCredentialsNow(): Boolean =
+        huggingFaceProTokenNow().isNotEmpty() && huggingFaceOrgSlugNow().isNotEmpty()
+
     // --- Network-scope feature ------------------------------------------
     //
     // The user can flip between five scopes (LOCAL, INTERNET, VPN,
@@ -661,6 +755,77 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    // --- Phase 8 — Hooks registry --------------------------------------
+    //
+    // The user-authored hook list. A hook is a [HookDefinition]
+    // (typed wrapper around the existing [com.meshlit.core.common.ConfigScript]
+    // DSL) subscribed to one [com.meshlit.core.common.HookTrigger].
+    // The runtime reads the live flow via [hooksRegistryFlow]; the
+    // master kill switch is [hooksEnabledFlow] (defaults to `true`
+    // so a fresh install surfaces the feature, but can be flipped
+    // off in Settings → Hooks to silence the whole subsystem).
+    //
+    // Storage shape: a single JSON list under
+    // [Keys.hooksRegistryJson]. We persist the full list on every
+    // upsert / delete — the list is bounded (low tens of entries
+    // for any real use) and the read path is one decode on the
+    // hot path, which is cheaper than maintaining a per-id key.
+
+    /** Master kill switch for the hooks subsystem. Default = true. */
+    val hooksEnabledFlow: Flow<Boolean> = store.data.map {
+        it[Keys.hooksEnabled] ?: true
+    }
+
+    /**
+     * Sync accessor — the [com.meshlit.agent.hooks.HookEngine]
+     * checks this on every [fire] / [firePre] call so a flip in
+     * Settings takes effect immediately, no restart.
+     */
+    fun hooksEnabledNow(): Boolean = runCatching {
+        kotlinx.coroutines.runBlocking { hooksEnabledFlow.first() }
+    }.getOrDefault(true)
+
+    suspend fun setHooksEnabled(enabled: Boolean) {
+        store.edit { it[Keys.hooksEnabled] = enabled }
+    }
+
+    /**
+     * Live registry. Decodes the persisted JSON on every emission;
+     * corrupt JSON falls back to an empty list rather than crashing
+     * the agent loop. The [com.meshlit.agent.hooks.HookEngine] binds
+     * its hot `hooksFlow` to this in [com.meshlit.MeshlitApplication].
+     */
+    val hooksRegistryFlow: Flow<List<HookDefinition>> = store.data.map { prefs ->
+        decodeHooks(prefs[Keys.hooksRegistryJson])
+    }
+
+    /** Sync snapshot used by the engine on cold start. */
+    fun hooksNow(): List<HookDefinition> = runCatching {
+        kotlinx.coroutines.runBlocking { hooksRegistryFlow.first() }
+    }.getOrDefault(emptyList())
+
+    /**
+     * Insert or replace a hook by [HookDefinition.id]. New hook =
+     * appended. Existing hook = replaced in place (preserving its
+     * position so the user sees the list order they expect).
+     */
+    suspend fun upsertHook(hook: HookDefinition) {
+        store.edit { prefs ->
+            val current = decodeHooks(prefs[Keys.hooksRegistryJson]).toMutableList()
+            val idx = current.indexOfFirst { it.id == hook.id }
+            if (idx >= 0) current[idx] = hook else current.add(hook)
+            prefs[Keys.hooksRegistryJson] = encodeHooks(current)
+        }
+    }
+
+    suspend fun deleteHook(id: String) {
+        store.edit { prefs ->
+            val current = decodeHooks(prefs[Keys.hooksRegistryJson])
+                .filter { it.id != id }
+            prefs[Keys.hooksRegistryJson] = encodeHooks(current)
+        }
+    }
+
     /**
      * Synchronous read of the user's custom model path. Used by the
      * foreground service's auto-load path so it doesn't have to
@@ -738,6 +903,25 @@ class SettingsRepository(private val context: Context) {
     private fun encodeEndpoints(endpoints: List<RemoteEndpoint>): String =
         json.encodeToString(ListSerializer(RemoteEndpoint.serializer()), endpoints)
 
+    /**
+     * Decode the persisted hooks registry. Empty / missing → empty
+     * list. Corrupt JSON (hand-edited, partial write) → empty list
+     * with the underlying error swallowed; the engine treats an
+     * empty list as "no hooks" and the user can re-add them. We
+     * never throw from this path because it runs inside every
+     * DataStore emission and the agent loop must not crash on a
+     * malformed preference.
+     */
+    private fun decodeHooks(raw: String?): List<HookDefinition> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return runCatching {
+            json.decodeFromString(ListSerializer(HookDefinition.serializer()), raw)
+        }.getOrDefault(emptyList())
+    }
+
+    private fun encodeHooks(hooks: List<HookDefinition>): String =
+        json.encodeToString(ListSerializer(HookDefinition.serializer()), hooks)
+
     private val stringListSerializer = ListSerializer(String.serializer())
 
     private fun decodeStringSet(raw: String?): Set<String> {
@@ -760,6 +944,7 @@ class SettingsRepository(private val context: Context) {
         val highContrast = booleanPreferencesKey("theme.high_contrast")
         val customPaletteJson = stringPreferencesKey("theme.custom_palette_json")
         val customModelPath = stringPreferencesKey("model.custom_path")
+        val displayName = stringPreferencesKey("device.display_name")
         val networkScope = stringPreferencesKey("network.scope")
         val remoteEndpoints = stringPreferencesKey("network.remote_endpoints")
         val activeEndpointId = stringPreferencesKey("network.active_endpoint_id")
@@ -790,6 +975,28 @@ class SettingsRepository(private val context: Context) {
         val netDeviceCaptureEnabled = booleanPreferencesKey("feature.net.device_capture")
         val feedbackRepoSlug = stringPreferencesKey("feedback.repo_slug")
 
+        // --- Phase Models — Hugging Face token (user-supplied) ----
+        // Hugging Face started 403-ing the default OkHttp User-Agent
+        // (`okhttp/x.y.z`) in late 2024 to deter anonymous scraping.
+        // We send `User-Agent: Meshlit/<version>` instead. Some
+        // gated models also need `Authorization: Bearer <hf_token>`;
+        // users paste their token in Settings → Models → HF token
+        // (stored in DataStore, never hard-coded, never logged).
+        val huggingFaceToken = stringPreferencesKey("models.hf_token")
+
+        // --- Phase Models — Hugging Face Pro / Enterprise org token -
+        // Paid Hugging Face accounts (or organization members) get a
+        // second token that is sent alongside the user token plus the
+        // `X-HuggingFace-Organization` header when downloading from
+        // gated repos belonging to that org (e.g. enterprise-only
+        // model mirrors). Most users leave this empty — only paid
+        // accounts need to fill it. Persisted separately so a user
+        // who upgrades from free to Pro doesn't lose their personal
+        // token, and a Pro user who downgrades doesn't leave the org
+        // token lingering in DataStore on the next launch.
+        val huggingFaceProToken = stringPreferencesKey("models.hf_pro_token")
+        val huggingFaceOrgSlug = stringPreferencesKey("models.hf_org_slug")
+
         // --- Phase Cloud 2 — on-device agent capabilities -----------
         // Each row in Settings → Cloud → Agent capabilities owns a
         // master toggle (`feature.cloud.agent.<tag>`) plus, for the
@@ -806,6 +1013,12 @@ class SettingsRepository(private val context: Context) {
         /** Per-target allowlist key (SMS recipients, storage URIs). */
         fun agentCapabilityAllowlistKey(tag: String) =
             stringPreferencesKey("feature.cloud.agent.$tag.allowlist")
+
+        // --- Phase 8 — Hooks registry --------------------------------
+        // Single JSON list under one key. See the docs on
+        // [hooksRegistryFlow] for why we don't per-id split.
+        val hooksRegistryJson = stringPreferencesKey("hooks.registry.json")
+        val hooksEnabled = booleanPreferencesKey("hooks.enabled")
     }
 
     /**
