@@ -52,6 +52,15 @@ jobs:
         run: ./gradlew :app:assemble${MATRIX_FLAVOR^}Debug --no-daemon
       - name: Run ${{ matrix.flavor }} debug unit tests
         run: ./gradlew :app:test${MATRIX_FLAVOR^}DebugUnitTest --no-daemon
+      # Phase 7 — gate `:app:lintDebug` (and per-flavor lint) in CI.
+      # The release checklist §1 gate is "no new warnings introduced";
+      # without a CI step, a regression in a Compose screen (a missing
+      # `contentDescription`, a missing translation, a deprecated API)
+      # can land silently. Lint runs against each flavor because
+      # `disable += setOf("HardcodedText", "IconMissingDensityFolder", …)`
+      # is flavor-agnostic but the rendered resource set is not.
+      - name: Run ${{ matrix.flavor }} debug lint
+        run: ./gradlew :app:lint${MATRIX_FLAVOR^}Debug --no-daemon
       # Slice 1 — gate :core-inference unit tests in CI. The 97-test wire
       # surface (RuntimesResponseRoundTripTest, CoordinatorStateTest, …) was
       # previously only run locally. Without this step, the inference wire

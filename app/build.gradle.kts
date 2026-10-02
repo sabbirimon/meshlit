@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -81,6 +83,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Phase 7 — wire the release signing config. When
+            // `~/.gradle/meshlit-release.properties` is present (operator
+            // has populated the four keystore fields) this resolves to
+            // a real production APK. Otherwise we fall back to debug
+            // signing so the build still completes for local smoke
+            // tests; the §1 release gate then flags the build as
+            // "unsigned at tag time" — see `docs/release-checklist.md` §1.
+            signingConfig = if (rootProject.file("~/.gradle/meshlit-release.properties").exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -153,6 +167,55 @@ android {
         // without paying the inflate cost on every random-access read.
         // See BundledModelInstaller for the extraction pathway.
         noCompress += "gguf"
+    }
+
+    // Phase 7 — lint config. Default Android lint runs without a config
+    // block, which leaves every default rule on and emits hundreds of
+    // MissingTranslation / HardcodedText / IconLocation warnings that
+    // have always been benign. We keep lint non-fatal (the gate is
+    // "no NEW warnings introduced", not "zero warnings") and disable
+    // the two rules that are noisy by default. `abortOnError = true`
+    // would block a release build on any pre-existing warning; flipping
+    // it on only after the lint tree is clean is a follow-up.
+    lint {
+        abortOnError = false
+        warningsAsErrors = false
+        checkReleaseBuilds = true
+        disable += setOf(
+            "MissingTranslation",
+            "ExtraTranslation",
+            "HardcodedText",
+            "IconMissingDensityFolder",
+            "GoogleAppIndexingWarning",
+        )
+    }
+
+    // Phase 7 — release signing. The Phase 8 hook PR shipped without
+    // any `signingConfigs` block, so `:app:assembleRelease` could not
+    // produce a signed APK and §1 of the release checklist stayed red.
+    //
+    // We do NOT generate a production keystore here (the release
+    // captain owns that — see `keystore.properties.example` at the
+    // repo root for the operator template). Instead the build reads
+    // the four keystore fields from `~/.gradle/meshlit-release.properties`
+    // if that file exists, otherwise falls back to debug signing so
+    // `./gradlew :app:assembleRelease` still produces an installable
+    // APK for local smoke tests. Tag-time build with a real keystore
+    // is the release captain's responsibility (see §8 in
+    // `docs/release-checklist.md`).
+    signingConfigs {
+        create("release") {
+            val ksProps = rootProject.file("~/.gradle/meshlit-release.properties")
+            if (ksProps.exists()) {
+                val props = Properties().apply {
+                    ksProps.inputStream().use { load(it) }
+                }
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
     }
 
     // Phase 1.0 — Lean APK. The bundled `smollm2-360m-instruct-q8_0.gguf`

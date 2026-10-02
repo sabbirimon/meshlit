@@ -38,6 +38,14 @@ out/
 release/
 javadoc/
 
+# Phase 7 — release signing material. Production keystores must never
+# land in the repo. The release captain populates
+# `~/.gradle/meshlit-release.properties` (template at
+# `keystore.properties.example` in the repo root) outside any clone.
+*.jks
+*.keystore
+meshlit-release.properties
+
 # Native
 *.o
 *.so
