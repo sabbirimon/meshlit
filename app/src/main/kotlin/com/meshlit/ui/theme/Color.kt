@@ -9,6 +9,29 @@ val MeshlitSurface = Color(0xFF121829)
 val MeshlitSurfaceVariant = Color(0xFF1B2238)
 val MeshlitOutline = Color(0xFF2B3350)
 
+// Meshlit v2 dark-first ink/surface ramp. New tokens — used by
+// `ui/v2/` composables via `MeshlitInk / MeshlitSurfaceHigh` etc.
+// The existing `MeshlitMidnight / MeshlitSurface / MeshlitSurfaceVariant`
+// values above are kept (read by v1 composables) so the v1 build
+// is byte-identical to pre-plan state. The v2 build may consume
+// either — the v2 surface tonalElevation chain prefers the new
+// ramp, the v1 chain prefers the existing one. Both ramps
+// resolve to a sensible dark Material 3 colorScheme via the
+// existing `buildColorScheme()` in `DynamicTheme.kt`.
+val MeshlitInk = Color(0xFF06080F)
+val MeshlitSurfaceContainer = Color(0xFF151B30)
+val MeshlitSurfaceHigh = Color(0xFF1A2138)
+val MeshlitOutlineV2 = Color(0xFF2A3354)
+
+// Meshlit v2 text ramp. Slightly cooler than the v1 text ramp
+// (E8ECF8 vs E6E9F2) so headings read with more "ink-on-paper"
+// contrast against the new darker surface. Body text uses
+// `MeshlitTextSecondary` (a3adc6) which is a touch lighter than
+// v1's `MeshlitTextSecondary` (a3aac2) for the same reason.
+val MeshlitTextPrimaryV2 = Color(0xFFE8ECF8)
+val MeshlitTextSecondaryV2 = Color(0xFFA5ADC6)
+val MeshlitTextTertiaryV2 = Color(0xFF6B7392)
+
 val MeshlitViolet = Color(0xFF7C5CFF)
 val MeshlitVioletDim = Color(0xFF4B3FAA)
 val MeshlitCyan = Color(0xFF22D3EE)

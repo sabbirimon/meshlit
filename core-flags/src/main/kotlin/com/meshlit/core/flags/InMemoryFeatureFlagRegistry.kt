@@ -29,7 +29,7 @@ import kotlinx.coroutines.sync.withLock
  * `Boolean`.
  */
 class InMemoryFeatureFlagRegistry(
-    private val persistence: Persistence = InMemoryFlagPersistence(),
+    private val persistence: FeatureFlagRegistry.Persistence = InMemoryFlagPersistence(),
     initial: List<FeatureFlag> = DefaultFlags.ALL,
 ) : FeatureFlagRegistry {
 
@@ -46,24 +46,34 @@ class InMemoryFeatureFlagRegistry(
     override fun flow(name: String): Flow<Boolean> =
         cache.map { it[name] ?: registered[name]?.default ?: false }
 
-    override suspend fun set(name: String, value: Boolean) = mutex.withLock {
-        // Persist (no-op for unknown flag names intentionally — see
-        // the contract). We touch the cache regardless so the in-
-        // memory view stays consistent.
-        cache.value = cache.value + (name to value)
-        // Best-effort persistence — failures are logged, not thrown.
-        runCatching { persistence.write(name, value) }.onFailure { t ->
-            log.error(
-                "feature_flag.persist_fail",
-                "failed to persist feature flag",
-                t,
-                mapOf("name" to name, "value" to value),
-            )
+    override suspend fun set(name: String, value: Boolean) {
+        mutex.withLock {
+            // Speculative set on an unregistered flag name is a no-op:
+            // we neither touch the cache nor write through to
+            // persistence. Otherwise a typo in a flag name would
+            // silently register a one-off override that `get` then
+            // surfaces as truthy, hiding the real default. The
+            // contract is "set is a no-op for unknown flag name"
+            // and tests rely on `get` still returning the
+            // registered default (or `false` when there's neither).
+            if (name !in registered) return@withLock
+            cache.value = cache.value + (name to value)
+            // Best-effort persistence — failures are logged, not thrown.
+            runCatching { persistence.write(name, value) }.onFailure { t ->
+                log.error(
+                    "feature_flag.persist_fail",
+                    "failed to persist feature flag",
+                    t,
+                    mapOf("name" to name, "value" to value),
+                )
+            }
         }
     }
 
     override fun snapshot(): Map<String, Boolean> {
-        val defaults = registered.associate { it.key to it.value.default }
+        val defaults: Map<String, Boolean> = registered.entries.associate { entry ->
+            entry.key to entry.value.default
+        }
         return defaults + cache.value
     }
 
@@ -77,14 +87,17 @@ class InMemoryFeatureFlagRegistry(
         // Persisted values override the defaults, but unknown
         // persisted names are kept (so re-adding a flag down the
         // line restores its previous value).
-        cache.value = (registered.associate { it.key to it.value.default } + persisted)
+        val withDefaults: Map<String, Boolean> = registered.entries.associate { entry ->
+            entry.key to entry.value.default
+        }
+        cache.value = withDefaults + persisted
         log.info(
             "feature_flag.loaded",
             "feature flags loaded",
             mapOf(
                 "registered" to registered.size,
                 "persisted" to persisted.size,
-                "overrides" to persisted.filter { (k, _) -> k in registered }.size,
+                "overrides" to persisted.entries.count { it.key in registered.keys },
             ),
         )
     }

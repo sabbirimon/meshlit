@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -124,7 +125,7 @@ fun FilesScreen(
     // collision-free within the controller's allowed roots.
     var menuForEntry by remember { mutableStateOf<String?>(null) }
     var pendingDelete by remember { mutableStateOf<FileBrowserEntry?>(null) }
-    var pendingMkdir by remember { mutableStateOf<Boolean>(false) }
+    var pendingMkdir by remember { mutableStateOf(false) }
     var pendingRename by remember { mutableStateOf<FileBrowserEntry?>(null) }
     var pendingCopy by remember { mutableStateOf<FileBrowserEntry?>(null) }
     var pendingMove by remember { mutableStateOf<FileBrowserEntry?>(null) }
@@ -280,15 +281,41 @@ fun FilesScreen(
     }
 
     // ── Dialogs ────────────────────────────────────────────────
-    pendingMkdir?.let {
+    if (pendingMkdir) {
         MkdirDialog(
             initialName = "",
             onDismiss = { pendingMkdir = false },
             onConfirm = { name ->
+                // Dismiss *before* launching the coroutine so the
+                // dialog starts closing even if `mkdir` is slow.
+                // Samsung OneUI's bottom-gesture zone can swallow
+                // a second tap on the confirm button if the dialog
+                // is still alive when the user re-taps — so we want
+                // the dialog gone before the suspending work runs.
                 pendingMkdir = false
                 scope.launch {
                     val result = controller.mkdir(state.currentDir, name)
-                    if (result.isFailure) {
+                    // Same pattern as delete — the controller's
+                    // mkdir doesn't auto-refresh, so we explicitly
+                    // pull a fresh listing so the new folder shows
+                    // up immediately. Without this refresh the
+                    // entry only appears next time the user opens
+                    // the screen, which makes the Create button
+                    // feel like a no-op.
+                    controller.refresh()
+                    if (result.isSuccess) {
+                        // Surface a confirmation toast so the user
+                        // gets explicit feedback that the folder
+                        // landed on disk (without it, the only
+                        // signal is the entry silently appearing in
+                        // the file list, which can look like the
+                        // Create button did nothing).
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.files_mkdir_created, name),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
                         val msg = result.exceptionOrNull()?.message ?: "unknown"
                         Toast.makeText(
                             context,
@@ -308,10 +335,18 @@ fun FilesScreen(
                 pendingDelete = null
                 scope.launch {
                     val result = controller.delete(entry.path)
+                    // [FileBrowserController.delete] leaves the
+                    // listing stale (the source isn't re-read
+                    // automatically), so we explicitly refresh
+                    // here to make the deleted row disappear
+                    // immediately. Without this refresh the user
+                    // sees the entry linger even though it has
+                    // already been wiped from disk.
+                    controller.refresh()
                     if (result.isSuccess) {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_deleted),
+                            context.getString(R.string.files_deleted, entry.name),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
@@ -612,32 +647,70 @@ private fun MkdirDialog(
     onConfirm: (String) -> Unit,
 ) {
     var name by remember { mutableStateOf(initialName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.files_mkdir)) },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.files_mkdir_hint)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(name.trim()) },
-                enabled = name.trim().isNotEmpty(),
+    // Material3 AlertDialog on this device has a known issue where
+    // the bottom button row falls inside the lower-gesture
+    // exclusion zone on Samsung OneUI — taps land on the
+    // underlying scrim View instead of the TextButton and the
+    // dialog stays open even though the user clearly tapped
+    // "Create" or "Cancel". Rolling our own modal layout via a
+    // full-screen Box sidesteps the dialog-window touch routing
+    // and gives the buttons their own unambiguous hit region.
+    //
+    // The scrim's `clickable` only fires on taps OUTSIDE the
+    // Surface — the Surface uses `.clickable(enabled = false)` so
+    // its own clicks don't bubble up to the scrim. Without that
+    // `enabled = false` the tap on Cancel/Create would both
+    // dismiss the dialog AND open it again immediately, leaving
+    // the dialog in its original state with the user convinced
+    // nothing happened.
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .fillMaxWidth(0.85f),
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text(stringResource(R.string.files_mkdir_button))
+                Text(
+                    text = stringResource(R.string.files_mkdir),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.files_mkdir_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.ra_cancel))
+                    }
+                    Spacer(Modifier.size(8.dp))
+                    TextButton(
+                        onClick = { onConfirm(name.trim()) },
+                        enabled = name.trim().isNotEmpty(),
+                    ) {
+                        Text(stringResource(R.string.files_mkdir_button))
+                    }
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.ra_cancel))
-            }
-        },
-    )
+        }
+    }
 }
 
 @Composable

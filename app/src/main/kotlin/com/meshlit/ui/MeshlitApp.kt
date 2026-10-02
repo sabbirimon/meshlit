@@ -59,11 +59,14 @@ import com.meshlit.ui.screens.help.HelpHubScreen
 import com.meshlit.ui.screens.help.UiTourScreen
 import com.meshlit.ui.screens.help.UserManualScreen
 import com.meshlit.ui.screens.network.NetworkMonitorScreen
+import com.meshlit.ui.screens.integrations.TermuxIntegrationScreen
 import com.meshlit.ui.screens.settings.ForwardingPeersScreen
 import com.meshlit.ui.screens.settings.RagSettingsScreen
 import com.meshlit.ui.screens.settings.SettingsCategory
 import com.meshlit.ui.screens.settings.ModelsScreen
 import com.meshlit.ui.screens.settings.SettingsScreen
+import com.meshlit.ui.screens.settings.HooksScreen
+import com.meshlit.ui.screens.settings.HookEditorScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -184,7 +187,16 @@ fun MeshlitApp() {
                             TopLevelDestination.Settings -> SettingsScreen(
                                 onOpenDrawer = openDrawer,
                                 onOpenCategory = { cat ->
-                                    navController.navigate("settings/category/${cat.name}")
+                                    // Phase 8 — Hooks has its own route
+                                    // (it owns a FAB + a per-row chip
+                                    // layout that doesn't fit the
+                                    // generic category list).
+                                    val route = if (cat == com.meshlit.ui.screens.settings.SettingsCategory.HOOKS) {
+                                        "settings/hooks"
+                                    } else {
+                                        "settings/category/${cat.name}"
+                                    }
+                                    navController.navigate(route)
                                 },
                             )
                             TopLevelDestination.Devices -> DevicesScreen(onOpenDrawer = openDrawer)
@@ -234,6 +246,7 @@ fun MeshlitApp() {
                             TopLevelDestination.Network -> NetworkMonitorScreen(
                                 onBack = { navController.popBackStack() },
                                 onOpenDrawer = openDrawer,
+                                onOpenTermuxIntegration = { navController.navigate("integrations/termux") },
                             )
                             TopLevelDestination.Help -> HelpHubScreen(
                                 onBack = { navController.popBackStack() },
@@ -263,6 +276,31 @@ fun MeshlitApp() {
                     }
                 }
 
+                // Phase 8 — Hooks registry + editor routes. The
+                // registry screen owns the master toggle + the hook
+                // cards; the editor is reached by tapping a card or
+                // the + FAB.
+                composable("settings/hooks") {
+                    HooksScreen(
+                        onBack = { navController.popBackStack() },
+                        onEdit = { id -> navController.navigate("settings/hooks/$id") },
+                    )
+                }
+                composable(
+                    route = "settings/hooks/{id}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("id") {
+                            type = androidx.navigation.NavType.StringType
+                        },
+                    ),
+                ) { entry ->
+                    val id = entry.arguments?.getString("id") ?: return@composable
+                    HookEditorScreen(
+                        hookId = id,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
                 // Phase 12.2 — custom color palette editor (custom-theme
                 // route removed; CustomThemeScreen.kt was deleted as part
                 // of the Phase 12.x design-system rollback. The route was
@@ -287,6 +325,39 @@ fun MeshlitApp() {
                 // Log viewer (Phase M.4).
                 composable("logs") {
                     LogScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                // Integrations → Termux. Wired to the real TermuxBridge
+                // bean from Koin. The screen drives the agent capability
+                // toggle (AgentCapability.Termux) and runs a real `df -h`
+                // test command against the installed Termux app. No fake
+                // success path; no bundled Termux.
+                composable("integrations/termux") {
+                    val app = koinInject<MeshlitApplication>()
+                    val bridge = koinInject<com.meshlit.network.termux.TermuxBridge>()
+                    val capability = com.meshlit.core.cloudmcp.agent.AgentCapability.Termux
+                    val termuxScope = rememberCoroutineScope()
+                    TermuxIntegrationScreen(
+                        bridge = bridge,
+                        enabled = app.agentCapabilities.registry.isAllowed(capability),
+                        onEnableChange = { newEnabled ->
+                            // Keep the live probe's permissionGranted in
+                            // sync — toggling on without RUN_COMMAND
+                            // would produce silent failures when the
+                            // agent later dispatches `termux.run_command`.
+                            termuxScope.launch {
+                                val setup = runCatching { bridge.probe() }.getOrNull()
+                                app.agentCapabilities.registry.update(
+                                    capability,
+                                    com.meshlit.core.cloudmcp.agent.AgentCapabilityRegistry.CapabilityState(
+                                        enabledByUser = newEnabled,
+                                        permissionGranted = setup?.runCommandPermissionGranted == true,
+                                    ),
+                                )
+                            }
+                        },
                         onBack = { navController.popBackStack() },
                     )
                 }

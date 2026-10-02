@@ -838,11 +838,12 @@
     <string name="files_delete_confirm_button">Files delete confirm button</string>
     <string name="files_delete_confirm_title">Files delete confirm title</string>
     <string name="files_delete_failed">Files delete failed</string>
-    <string name="files_deleted">Files deleted</string>
-    <string name="files_mkdir">Files mkdir</string>
-    <string name="files_mkdir_button">Files mkdir button</string>
-    <string name="files_mkdir_failed">Files mkdir failed</string>
-    <string name="files_mkdir_hint">Files mkdir hint</string>
+    <string name="files_deleted">Deleted \"%1$s\"</string>
+    <string name="files_mkdir">New folder</string>
+    <string name="files_mkdir_button">Create</string>
+    <string name="files_mkdir_failed">Couldn\'t create folder: %1$s</string>
+    <string name="files_mkdir_created">Created folder \"%1$s\"</string>
+    <string name="files_mkdir_hint">Folder name</string>
     <string name="files_more">Files more</string>
     <string name="files_move">Files move</string>
     <string name="files_move_failed">Files move failed</string>
@@ -864,6 +865,12 @@
     <string name="llm_output_save_failed">Llm output save failed</string>
     <string name="llm_output_saved">Llm output saved</string>
     <string name="llm_output_share">Llm output share</string>
+    <!-- v2 Device Info screen (Devices hub → Info card) -->
+    <string name="info_node_id_copied">Copied node ID</string>
+    <string name="info_copy_failed">Couldn\'t copy node ID</string>
+    <string name="info_display_name_saved">Display name saved</string>
+    <string name="info_reprobe_hardware">Re-probe hardware</string>
+    <string name="info_re_bootstrap">Force re-bootstrap</string>
     <!-- auto-added voice strings -->
     <string name="voice_import_audio">Voice import audio</string>
     <string name="voice_save_recording">Voice save recording</string>

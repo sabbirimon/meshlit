@@ -1,9 +1,6 @@
 package com.meshlit.core.mcp
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -11,109 +8,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests for the bundled-MCP permission gate. These cover the
- * three load-bearing paths:
+ * Tests for the bundled-MCP permission gate. The gate is consulted
+ * by per-tool handlers (see [InAppTools]); the registry itself does
+ * not enforce permissions in `invoke()`. These tests cover the
+ * gate's own state surface:
  *
- *  - Ungranted call → returns `PERMISSION_DENIED` without
- *    invoking the handler.
- *  - Granted call → handler runs.
- *  - Tool without `requiredResource` → gate is bypassed even
- *    when no resources are granted (the gate never blocks a
- *    tool that doesn't ask for permission).
+ *  - `snapshot()` returns an immutable view that doesn't mutate
+ *    when `grant()` / `revoke()` are applied.
+ *  - `isGranted()` returns a synchronous boolean for known /
+ *    unknown resources.
+ *  - `denyIfNotGranted()` returns a `PERMISSION_DENIED` error
+ *    envelope for ungranted resources and `null` for granted ones.
+ *  - `setGranted()` replaces the granted set atomically and is
+ *    idempotent.
+ *
+ * The previous version of this file exercised the gate via
+ * `McpToolRegistry(initialGate = gate)`, but the registry
+ * constructor no longer takes a gate — the matching registry-level
+ * tests were removed along with the constructor parameter.
  */
 class McpPermissionGateTest {
-
-    @Test
-    fun ungranted_call_returns_permission_denied() = runBlocking {
-        val gate = McpPermissionGate(initialGranted = emptySet())
-        val reg = McpToolRegistry(initialGate = gate)
-        reg.register(McpToolSpec(
-            name = "notes_list",
-            description = "List notes",
-            requiredResource = InAppResource.Notes.id,
-            handler = { McpToolResult.Text("should not run") },
-        ))
-        val result = reg.invoke(McpToolRequest(name = "notes_list", arguments = JsonNull))
-        assertTrue("expected Error, got $result", result is McpToolResult.Error)
-        assertEquals(
-            McpToolResult.ErrorCode.PERMISSION_DENIED,
-            (result as McpToolResult.Error).code,
-        )
-        assertTrue(result.message.contains("notes"))
-    }
-
-    @Test
-    fun granted_call_invokes_handler() = runBlocking {
-        val gate = McpPermissionGate(initialGranted = setOf(InAppResource.Notes.id))
-        val reg = McpToolRegistry(initialGate = gate)
-        reg.register(McpToolSpec(
-            name = "notes_list",
-            description = "List notes",
-            requiredResource = InAppResource.Notes.id,
-            handler = { McpToolResult.Text("invoked") },
-        ))
-        val result = reg.invoke(McpToolRequest(name = "notes_list", arguments = JsonNull))
-        assertTrue(result is McpToolResult.Text)
-        assertEquals("invoked", (result as McpToolResult.Text).text)
-    }
-
-    @Test
-    fun tool_without_required_resource_skips_gate() = runBlocking {
-        val gate = McpPermissionGate(initialGranted = emptySet())
-        val reg = McpToolRegistry(initialGate = gate)
-        reg.register(McpToolSpec(
-            name = "echo",
-            description = "Echo",
-            handler = { args -> McpToolResult.Text(args.toString()) },
-        ))
-        val result = reg.invoke(McpToolRequest(
-            name = "echo",
-            arguments = buildJsonObject { put("msg", "hi") },
-        ))
-        assertTrue(result is McpToolResult.Text)
-        assertTrue((result as McpToolResult.Text).text.contains("\"msg\":\"hi\""))
-    }
-
-    @Test
-    fun runtime_grant_unblocks_call() = runBlocking {
-        val gate = McpPermissionGate(initialGranted = emptySet())
-        val reg = McpToolRegistry(initialGate = gate)
-        reg.register(McpToolSpec(
-            name = "calendar_upcoming",
-            description = "Upcoming events",
-            requiredResource = InAppResource.Calendar.id,
-            handler = { McpToolResult.Text("cal") },
-        ))
-        // First call is denied.
-        val denied = reg.invoke(McpToolRequest(name = "calendar_upcoming"))
-        assertTrue(denied is McpToolResult.Error)
-        // After grant, the same call succeeds.
-        gate.grant(InAppResource.Calendar.id)
-        val ok = reg.invoke(McpToolRequest(name = "calendar_upcoming"))
-        assertTrue(ok is McpToolResult.Text)
-        assertEquals("cal", (ok as McpToolResult.Text).text)
-    }
-
-    @Test
-    fun runtime_revoke_blocks_call() = runBlocking {
-        val gate = McpPermissionGate(initialGranted = setOf(InAppResource.Contacts.id))
-        val reg = McpToolRegistry(initialGate = gate)
-        reg.register(McpToolSpec(
-            name = "contacts_search",
-            description = "Search contacts",
-            requiredResource = InAppResource.Contacts.id,
-            handler = { McpToolResult.Text("ok") },
-        ))
-        val ok = reg.invoke(McpToolRequest(name = "contacts_search"))
-        assertTrue(ok is McpToolResult.Text)
-        gate.revoke(InAppResource.Contacts.id)
-        val denied = reg.invoke(McpToolRequest(name = "contacts_search"))
-        assertTrue(denied is McpToolResult.Error)
-        assertEquals(
-            McpToolResult.ErrorCode.PERMISSION_DENIED,
-            (denied as McpToolResult.Error).code,
-        )
-    }
 
     @Test
     fun snapshot_returns_immutable_view() = runBlocking {

@@ -188,13 +188,39 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
                 // we don't keep a strong ref because we don't have a
                 // consumer yet.
             }
-            activation.start()
-            activationServer = activation
+            try {
+                activation.start()
+                activationServer = activation
+            } catch (t: Throwable) {
+                log.warn(
+                    "fgs.activation.bind.fail",
+                    "RawTcpActivationServer failed to bind",
+                    mapOf("err" to (t.message ?: t::class.simpleName ?: "")),
+                )
+            }
             // NanoHTTPD's start() blocks on the calling thread until
             // stop() is called. We launch it on the FGS scope so it
             // runs on its own daemon thread and shuts down cleanly
-            // when the service is destroyed.
-            scope.launch { server.start() }
+            // when the service is destroyed. We catch bind
+            // failures here — when v1 and v2 are both installed and
+            // the other process is already holding port 8080, an
+            // EADDRINUSE thrown inside the launched coroutine would
+            // otherwise escape the surrounding try/catch and crash
+            // the process. Wrap it locally so the failure is
+            // contained to the FGS — the UI keeps working, just
+            // without the local inference HTTP server until the
+            // other process releases the port.
+            scope.launch {
+                try {
+                    server.start()
+                } catch (t: Throwable) {
+                    log.warn(
+                        "fgs.http.bind.fail",
+                        "NanoHTTPD failed to bind (port in use by another build?)",
+                        mapOf("err" to (t.message ?: t::class.simpleName ?: "")),
+                    )
+                }
+            }
             scope.launch { cache.refreshLoop(this, reg) }
             log.info(
                 "fgs.router.start",

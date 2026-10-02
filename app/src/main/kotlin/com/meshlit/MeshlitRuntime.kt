@@ -4,6 +4,7 @@ import com.meshlit.core.cloudmcp.CloudMcpCoordinator
 import com.meshlit.core.cloudmcp.llm.LlmEndpointConfig
 import com.meshlit.core.cloudmcp.llm.NaraRouterClient
 import com.meshlit.core.cloudmcp.llm.OpenAIMessage
+import com.meshlit.core.common.HookTrigger
 import com.meshlit.core.inference.cluster.PeerCapabilities
 import com.meshlit.core.trust.CloudCredentialStore
 import com.meshlit.core.trust.LocalTrustPolicy
@@ -77,42 +78,61 @@ class AgentPromptRunner(
         val messages = listOf(OpenAIMessage(role = "user", content = prompt))
         val tools = cloudCoordinator.toolRegistry.ordered()
         appScope.launch {
-            val endpoint = resolveLlmEndpoint()
-            val client = endpoint.buildClient(httpClient = httpClient)
-            client.chatCompletions(
-                providerId = providerId ?: "user-llm",
-                messages = messages,
-                tools = tools,
-            ).collect { chunk ->
-                when (chunk) {
-                    is com.meshlit.core.cloudmcp.llm.LlmChunk.Text ->
-                        cloudCoordinator.tryEmit(
-                            com.meshlit.core.cloudmcp.McpEvent.Thought(
-                                providerId = chunk.providerId,
-                                text = chunk.delta,
-                            ),
-                        )
-                    is com.meshlit.core.cloudmcp.llm.LlmChunk.ToolCall ->
-                        cloudCoordinator.tryEmit(
-                            com.meshlit.core.cloudmcp.McpEvent.ToolCall(
-                                providerId = chunk.providerId,
-                                callId = chunk.callId,
-                                name = chunk.name,
-                                args = chunk.args,
-                            ),
-                        )
-                    is com.meshlit.core.cloudmcp.llm.LlmChunk.Error ->
-                        cloudCoordinator.tryEmit(
-                            com.meshlit.core.cloudmcp.McpEvent.Error(
-                                providerId = chunk.providerId,
-                                message = chunk.message,
-                            ),
-                        )
-                    is com.meshlit.core.cloudmcp.llm.LlmChunk.Done ->
-                        cloudCoordinator.tryEmit(
-                            com.meshlit.core.cloudmcp.McpEvent.Done(providerId = chunk.providerId),
-                        )
+            try {
+                val endpoint = resolveLlmEndpoint()
+                val client = endpoint.buildClient(httpClient = httpClient)
+                client.chatCompletions(
+                    providerId = providerId ?: "user-llm",
+                    messages = messages,
+                    tools = tools,
+                ).collect { chunk ->
+                    when (chunk) {
+                        is com.meshlit.core.cloudmcp.llm.LlmChunk.Text ->
+                            cloudCoordinator.tryEmit(
+                                com.meshlit.core.cloudmcp.McpEvent.Thought(
+                                    providerId = chunk.providerId,
+                                    text = chunk.delta,
+                                ),
+                            )
+                        is com.meshlit.core.cloudmcp.llm.LlmChunk.ToolCall ->
+                            cloudCoordinator.tryEmit(
+                                com.meshlit.core.cloudmcp.McpEvent.ToolCall(
+                                    providerId = chunk.providerId,
+                                    callId = chunk.callId,
+                                    name = chunk.name,
+                                    args = chunk.args,
+                                ),
+                            )
+                        is com.meshlit.core.cloudmcp.llm.LlmChunk.Error ->
+                            cloudCoordinator.tryEmit(
+                                com.meshlit.core.cloudmcp.McpEvent.Error(
+                                    providerId = chunk.providerId,
+                                    message = chunk.message,
+                                ),
+                            )
+                        is com.meshlit.core.cloudmcp.llm.LlmChunk.Done ->
+                            cloudCoordinator.tryEmit(
+                                com.meshlit.core.cloudmcp.McpEvent.Done(providerId = chunk.providerId),
+                            )
+                    }
                 }
+            } catch (t: Throwable) {
+                // Phase 8 — OnError hook (fire-and-forget). Lets
+                // users author a script that, e.g., posts to a Slack
+                // webhook whenever the LLM leg fails.
+                val hookEngine: com.meshlit.agent.hooks.HookEngine? =
+                    runCatching {
+                        org.koin.core.context.GlobalContext.get()
+                            .get<com.meshlit.agent.hooks.HookEngine>()
+                    }.getOrNull()
+                hookEngine?.fire(
+                    HookTrigger.OnError,
+                    mapOf(
+                        "phase" to "prompt_runner",
+                        "provider_id" to (providerId ?: "user-llm"),
+                        "error" to (t.message ?: t.javaClass.simpleName),
+                    ),
+                )
             }
         }
     }

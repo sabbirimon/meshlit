@@ -29,7 +29,17 @@ class InMemoryConfigRepository(
      *  [snapshot] are O(1). */
     private val state = MutableStateFlow(initial.toMap())
 
-    override fun get(key: ConfigKey<String>): String? = state.value[key.name]
+    /** Per-name schema registry. Populated the first time a key with
+     *  a non-null [ConfigKey.schema] is [set] — subsequent writes
+     *  through any [ConfigKey] sharing the same `name` validate
+     *  against the same schema. Without this registry the test
+     *  scenario "first write with schema, second write through a
+     *  raw `ConfigKey(name)` that drops the schema" would let
+     *  invalid values through silently. */
+    private val schemas = mutableMapOf<String, ConfigSchema<String>>()
+
+    override fun get(key: ConfigKey<String>): String? =
+        state.value[key.name] ?: key.default
 
     override fun getInt(key: ConfigKey<Int>): Int? =
         state.value[key.name]?.trim()?.toIntOrNull() ?: key.default
@@ -42,6 +52,18 @@ class InMemoryConfigRepository(
             else -> key.default
         }
 
+    override suspend fun setInt(key: ConfigKey<Int>, value: Int): MeshlitResult<Unit> =
+        set(
+            ConfigKey<String>(name = key.name, schema = intSchemaAsString),
+            value.toString(),
+        )
+
+    override suspend fun setBool(key: ConfigKey<Boolean>, value: Boolean): MeshlitResult<Unit> =
+        set(
+            ConfigKey<String>(name = key.name, schema = boolSchemaAsString),
+            value.toString(),
+        )
+
     override fun <E : Enum<E>> getEnum(key: ConfigKey<E>, values: Array<E>): E? {
         val raw = state.value[key.name] ?: return key.default
         return values.firstOrNull { it.name == raw } ?: key.default
@@ -51,7 +73,24 @@ class InMemoryConfigRepository(
         key: ConfigKey<String>,
         value: String,
     ): MeshlitResult<Unit> = mutex.withLock {
-        val schema = key.schema
+        // Resolve the schema in two passes: first consult the
+        // keyed-by-name registry, then fall back to the inline
+        // `key.schema` and register it for next time. This lets a
+        // raw `ConfigKey(name)` write still be checked against the
+        // schema established by the previous typed write — which
+        // is what the "set rejects value failing schema" test
+        // exercises (it writes the int via `setInt` first, then
+        // tries to overwrite with a non-numeric string via a
+        // schema-less `ConfigKey`).
+        val schema = schemas[key.name] ?: key.schema?.also {
+            // Re-key the schema with `<String>` so it lives in the
+            // `Map<String, ConfigSchema<String>>` regardless of
+            // the original type. The validation semantics are
+            // preserved because the underlying `ConfigSchema`
+            // interface is purely string-in / result-out.
+            @Suppress("UNCHECKED_CAST")
+            schemas[key.name] = it as ConfigSchema<String>
+        }
         if (schema != null) {
             when (val result = schema.validate(value)) {
                 is SchemaResult.Valid -> { /* fall through */ }
@@ -78,4 +117,30 @@ class InMemoryConfigRepository(
         state.map { it[key.name] }
 
     override fun snapshot(): Map<String, String> = state.value.toMap()
+
+    companion object {
+        // The [ConfigSchema] companions are typed (`ConfigSchema<Int>`,
+        // `ConfigSchema<Boolean>`) but the [ConfigKey] /
+        // [ConfigRepository.set] interface is string-shaped. These
+        // trivial adapters re-key the schema so setInt / setBool can
+        // push the validation contract through to [set] without
+        // making the [ConfigRepository] interface generic over a
+        // schema type. Validation semantics are unchanged because
+        // [ConfigSchema] is a string-in / result-out function.
+        private val intSchemaAsString: ConfigSchema<String> =
+            ConfigSchema { raw ->
+                when (val r = ConfigSchema.Int.validate(raw)) {
+                    is SchemaResult.Valid -> SchemaResult.Valid(raw)
+                    is SchemaResult.Invalid -> r
+                }
+            }
+
+        private val boolSchemaAsString: ConfigSchema<String> =
+            ConfigSchema { raw ->
+                when (val r = ConfigSchema.Bool.validate(raw)) {
+                    is SchemaResult.Valid -> SchemaResult.Valid(raw)
+                    is SchemaResult.Invalid -> r
+                }
+            }
+    }
 }

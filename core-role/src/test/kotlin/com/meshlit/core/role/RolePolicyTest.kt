@@ -25,7 +25,20 @@ class RolePolicyTest {
         memory = ProfileSample(memoryScore, ramMb.toString()),
         thermal = ProfileSample(if (throttling) 0.2f else thermalScore, if (throttling) "4" else "0"),
         battery = ProfileSample(0.8f, batteryPct.toString()),
-        network = ProfileSample(networkScore, if (networkReachable) "lan" else "offline"),
+        // The `network.score` is the single source of truth for
+        // `HardwareCapability.networkReachable` — keep the score
+        // and the raw value in sync so a test that sets
+        // `networkReachable = false` actually sees
+        // `networkReachable == false`. The previous helper
+        // hard-coded `networkScore = 1.0f` regardless, so the
+        // "Monitor requires battery and network" /
+        // "Relay requires network only" tests all passed
+        // `networkReachable = false` but still read the default
+        // network score of 1.0 — masking the actual gate logic.
+        network = ProfileSample(
+            if (networkReachable) networkScore else 0f,
+            if (networkReachable) "lan" else "offline",
+        ),
         npu = ProfileSample(if (npu) npuScore else 0f, if (npu) "yes" else "no"),
         timestampMs = 0L,
     )

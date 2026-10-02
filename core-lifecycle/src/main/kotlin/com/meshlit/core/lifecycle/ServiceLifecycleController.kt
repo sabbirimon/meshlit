@@ -73,25 +73,41 @@ class ServiceLifecycleController(
     }
 
     /** Start every eligible service in [services]. Already-running
-     *  services are skipped (idempotent). */
+     *  services are skipped (idempotent). Re-scans eligibility
+     *  after each successful start so a service whose
+     *  dependencies just became Running picks up on the next
+     *  pass — without this, dependents registered alongside
+     *  their prerequisites would never start in a single
+     *  `startAll()` call (a would start, b's eligibility check
+     *  would still see Idle). The loop terminates when a full
+     *  pass makes no progress, or when every service is
+     *  Running. */
     suspend fun startAll(): MeshlitResult<Unit> {
-        val toStart = mutex.withLock {
-            services.values.filter { isEligible(it) && state.value[it.id] != LifecycleState.Running }
-        }
         var anyFailure: MeshlitError? = null
-        for (service in toStart) {
-            when (val res = startInternal(service)) {
-                is MeshlitResult.Success -> { /* ok */ }
-                is MeshlitResult.Failure -> {
-                    log.error(
-                        "lifecycle.start.fail",
-                        "service start failed",
-                        res.error,
-                        mapOf("id" to service.id),
-                    )
-                    anyFailure = anyFailure ?: res.error
+        val maxPasses = services.size + 1
+        var pass = 0
+        while (pass < maxPasses) {
+            pass++
+            val toStart = mutex.withLock {
+                services.values.filter { isEligible(it) && state.value[it.id] != LifecycleState.Running }
+            }
+            if (toStart.isEmpty()) break
+            var progress = false
+            for (service in toStart) {
+                when (val res = startInternal(service)) {
+                    is MeshlitResult.Success -> progress = true
+                    is MeshlitResult.Failure -> {
+                        log.error(
+                            "lifecycle.start.fail",
+                            "service start failed",
+                            res.error,
+                            mapOf("id" to service.id),
+                        )
+                        anyFailure = anyFailure ?: res.error
+                    }
                 }
             }
+            if (!progress) break
         }
         return if (anyFailure != null) MeshlitResult.Failure(anyFailure)
         else MeshlitResult.Success(Unit)

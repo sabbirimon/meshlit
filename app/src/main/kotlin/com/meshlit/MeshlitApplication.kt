@@ -21,18 +21,24 @@ import com.meshlit.core.trust.TrustTier
 import com.meshlit.di.RefHolder
 import com.meshlit.di.appModule
 import com.meshlit.di.coreModule
+import com.meshlit.ui.v2.di.v2CoreModule
 import com.meshlit.inference.ClusterStorageInstaller
 import com.meshlit.inference.PeerHealthCache
 import com.meshlit.inference.RunAnywhereCatalog
 import com.meshlit.observability.AppLoggerFactory
 import com.meshlit.settings.SettingsRepository
 import com.meshlit.settings.parseOtelHeaders
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.core.qualifier.named
 import java.io.File
 
 /**
@@ -51,6 +57,22 @@ class MeshlitApplication : android.app.Application() {
 
     private val log = AppLoggerFactory.appLogger("MeshlitApplication")
 
+    // -----------------------------------------------------------------
+    // USB tether state
+    // -----------------------------------------------------------------
+    /**
+     * Mutable state-flow holding the current USB-NCM / RNDIS tether's
+     * identity, or `null` if no USB tether is up. Updated by the
+     * `ConnectivityManager` callback wired up in `onCreate()`.
+     *
+     * Why a `StateFlow` here and not a property in the network
+     * monitor screen: the Scan screen also reads it so the user
+     * sees a coral "USB tether" row at the top of the peer list
+     * while a wired peer is reachable.
+     */
+    val usbTetherActive: kotlinx.coroutines.flow.MutableStateFlow<com.meshlit.disco.UsbTetherInfo?> =
+        kotlinx.coroutines.flow.MutableStateFlow(null)
+
     // ---- explicit Koin-backed accessors that pre-date Phase 0.3 ----
     // These are short-hand getters around `koinInject<T>()` for
     // call sites that already hold a `MeshlitApplication` reference
@@ -58,7 +80,21 @@ class MeshlitApplication : android.app.Application() {
     val hostOSDetection: HostOSDetection get() = get()
     val hostOS: HostOS get() = get()
     val oemDetection: OemDetectionResult get() = get()
-    val displayName: String get() = get<DeviceInfo>().displayName
+    /**
+     * User-overridable display name. Reads the persisted override
+     * from `SettingsRepository` and falls back to the auto-derived
+     * `DeviceInfo.displayName` when no override is set. The Device
+     * Info screen writes back through `SettingsRepository.setDisplayName(...)`.
+     *
+     * The accessor is a plain (non-suspend) `get()` because the
+     * existing `displayName` field was sync; we read the current
+     * DataStore value synchronously via `runBlocking { first() }`.
+     * Callers that need a hot flow should bind to
+     * `settingsRepository.displayNameFlow` instead.
+     */
+    val displayName: String
+        get() = settingsRepository.displayNameFlowNow()
+            .ifBlank { get<DeviceInfo>().displayName }
     val localIpAddress: String get() = get<DeviceInfo>().localIpAddress
     val httpServerPort: Int get() = 8080
     val nodeIdHex: String get() = stableNodeIdRef.get()
@@ -98,14 +134,28 @@ class MeshlitApplication : android.app.Application() {
     val cloudCoordinator: com.meshlit.core.cloudmcp.CloudMcpCoordinator get() = get()
     val trustStore: com.meshlit.core.trust.TrustStore get() = get()
     val bundledModelInstaller: com.meshlit.core.inference.BundledModelInstaller get() = get()
+    val hookEngine: com.meshlit.agent.hooks.HookEngine get() = get()
+    val hookAuditSink: com.meshlit.agent.hooks.HookAuditSink get() = get()
+    private val hooksRegistryFlowRef: kotlinx.coroutines.flow.MutableStateFlow<List<com.meshlit.core.common.HookDefinition>>
+        get() = get()
+    private val hooksEnabledFlowRef: kotlinx.coroutines.flow.MutableStateFlow<Boolean>
+        get() = get(named("hooksEnabled"))
     val deviceInfo: DeviceInfo get() = get()
     val bootstrapCoordinator: com.meshlit.core.bootstrap.BootstrapCoordinator get() = get()
     val roleManager: com.meshlit.core.role.RoleManager get() = get()
 
     // ---- volatile refs (FGS-shared mutable state) ----
-    private val bundledModelPathRef: RefHolder<File?> get() = get()
-    private val activePeerHealthCacheRef: RefHolder<PeerHealthCache?> get() = get()
-    private val stableNodeIdRef: RefHolder<String> get() = get()
+    // Each RefHolder binding in [com.meshlit.di.CoreModule] is
+    // registered with a unique `named(...)` qualifier because the
+    // raw `RefHolder` type collides under JVM generic erasure
+    // — three separate `single { RefHolder<...>(...) }` calls
+    // would otherwise resolve to the same physical instance.
+    private val bundledModelPathRef: RefHolder<File?> get() =
+        get(named("bundledModelPath"))
+    private val activePeerHealthCacheRef: RefHolder<PeerHealthCache?> get() =
+        get(named("activePeerHealthCache"))
+    private val stableNodeIdRef: RefHolder<String> get() =
+        get(named("stableNodeId"))
 
     fun bundledModelPath(): File? = bundledModelPathRef.get()
     fun setBundledModelPath(file: File?) { bundledModelPathRef.set(file) }
@@ -140,7 +190,7 @@ class MeshlitApplication : android.app.Application() {
         AppLoggerFactory.install()
         startKoin {
             androidContext(this@MeshlitApplication)
-            modules(coreModule, appModule)
+            modules(coreModule, appModule, v2CoreModule)
         }
         log.info(
             "app.start", "Meshlit application starting",
@@ -154,54 +204,192 @@ class MeshlitApplication : android.app.Application() {
                 "oem" to "Android",
             ),
         )
-        val appScope: kotlinx.coroutines.CoroutineScope = get()
-        val inferenceCoordinator: InferenceCoordinator = get()
-        val notificationCenter: com.meshlit.notifications.NotificationCenter = get()
-        notificationCenter.toString()
-        inferenceCoordinator.markStarting()
-        appScope.launch {
-            try { inferenceCoordinator.runAnywhereEngine().initialize(this@MeshlitApplication) }
-            finally { inferenceCoordinator.markInitialized() }
-        }
-        get<com.meshlit.agent.AgentCapabilityRegistrar>().start()
+
+        // ------------------------------------------------------------------
+        // Phase 0.4 — move every synchronous install + every appScope.launch
+        // out of the main-thread critical path so MainActivity.onCreate
+        // runs immediately and Compose renders a first frame within the
+        // 16 ms budget. Previously Application.onCreate did 20+
+        // blocking steps inline (Koin resolution of every singleton, all
+        // four RunAnywhere engine installs, ClusterStorageInstaller,
+        // ContextProvider, etc.); under real launch this took >5 s on
+        // cold start, WindowManager gave up after ~3 s with
+        //   Choreographer: Skipped 210 frames
+        //   OpenGLRenderer: Davey! duration=3545ms
+        // and tore down the surface (mViewVisibility=0x8 / surface=0,0).
+        //
+        // We now do the bare minimum on the calling thread:
+        //   1. install the three RunAnywhere engine singletons (cheap,
+        //      required before any UI can resolve them through Koin),
+        //   2. install the RunAnywhereCatalogEngine with its offline
+        //      fallback,
+        //   3. install ClusterStorageInstaller,
+        //   4. install ContextProvider.
+        // Every other step — the RunAnywhere SDK initialize() call
+        // (which talks to the native side and can take seconds),
+        // AgentCapabilityRegistrar.start(), the system probe, the
+        // bundled model extraction, MCP boot, the bootstrap, the peer
+        // repository, USB tether callback, the tracing config flow —
+        // happens inside a single appScope.launch block below.
+        // ------------------------------------------------------------------
         ContextProvider.install(this)
         RunAnywhereVoiceEngine.install()
         RunAnywhereStructuredEngine.install()
         RunAnywhereVisionEngine.install()
         ClusterStorageInstaller.install(this)
         RunAnywhereCatalogEngine.install(offlineFallback = ::catalogFallback)
+
+        val appScope: kotlinx.coroutines.CoroutineScope = get()
+        val inferenceCoordinator: InferenceCoordinator = get()
+        val notificationCenter: com.meshlit.notifications.NotificationCenter = get()
+        notificationCenter.toString()
+        inferenceCoordinator.markStarting()
+
         val runAnywhereEngine = inferenceCoordinator.runAnywhereEngine()
         RunAnywhereCatalog.all.forEach { entry ->
             if (entry.url.isNotBlank()) runAnywhereEngine.setCatalogDownloadUrl(entry.id, entry.url)
         }
-        appScope.launch { runSystemProbe() }
-        appScope.launch { extractBundledModel() }
-        appScope.launch { bootMcp() }
-        // Phase 0.1 — resolve the stable node id + hot-load feature
-        // flags. Persists the node id immediately on first boot (Fix 4).
-        appScope.launch { runBootstrap() }
+
         val settingsRepository: SettingsRepository = get()
         val tracingController: TracingController = get()
         settingsRepository.startTracingCache(appScope)
+        startHooksFeed(appScope, settingsRepository)
+
+        // Single background launch owning every remaining bootstrap step.
+        // Order matters where there's a dependency; otherwise the steps
+        // are independent and the launch{} block runs them concurrently
+        // with `awaitAll` after the sequential prefix.
         appScope.launch {
-            combine(
-                settingsRepository.tracingModeFlow,
-                settingsRepository.tracingOtelEndpointFlow,
-                settingsRepository.tracingOtelHeadersFlow,
-            ) { mode, endpoint, headers -> Triple(mode, endpoint, headers) }
-                .collect { (mode, endpoint, headers) ->
-                    tracingController.reconfigure(
-                        mode = mode.toCoreTracingMode(),
-                        otlpEndpoint = endpoint,
-                        otlpHeaders = parseOtelHeaders(headers),
-                    )
-                }
+            try {
+                get<com.meshlit.agent.AgentCapabilityRegistrar>().start()
+            } catch (t: Throwable) {
+                log.error("app.agent_reg.fail", "AgentCapabilityRegistrar.start failed", t)
+            }
+            try {
+                inferenceCoordinator.runAnywhereEngine().initialize(this@MeshlitApplication)
+            } catch (t: Throwable) {
+                log.error("app.runanywhere.init.fail", "RunAnywhere initialize failed", t)
+            } finally {
+                inferenceCoordinator.markInitialized()
+            }
+
+            // Independent subsystems run concurrently after the prefix.
+            coroutineScope {
+                val jobs = listOf(
+                    async { runSystemProbe() },
+                    async { extractBundledModel() },
+                    async { bootMcp() },
+                    async { runBootstrap() },
+                    async { registerUsbTetherCallback() },
+                )
+                jobs.joinAll()
+            }
+
+            // PeerRepository needs the bootstrap-completed nodeId.
+            try {
+                val repo: com.meshlit.disco.PeerRepository = get()
+                while (nodeIdHex.isBlank()) kotlinx.coroutines.delay(50L)
+                val self = com.meshlit.core.discovery.LocalPeerDescriptor(
+                    nodeId = nodeIdHex,
+                    host = localIpAddress,
+                    port = httpServerPort,
+                    tierTag = capabilityTier.name,
+                    fingerprint = "",
+                )
+                repo.start(this, self)
+            } catch (t: Throwable) {
+                log.error("app.peer_repo.fail", "PeerRepository start failed", t)
+            }
+
+            // Tracing config flow — stays subscribed for the process lifetime.
+            try {
+                combine(
+                    settingsRepository.tracingModeFlow,
+                    settingsRepository.tracingOtelEndpointFlow,
+                    settingsRepository.tracingOtelHeadersFlow,
+                ) { mode, endpoint, headers -> Triple(mode, endpoint, headers) }
+                    .collect { (mode, endpoint, headers) ->
+                        tracingController.reconfigure(
+                            mode = mode.toCoreTracingMode(),
+                            otlpEndpoint = endpoint,
+                            otlpHeaders = parseOtelHeaders(headers),
+                        )
+                    }
+            } catch (t: Throwable) {
+                log.error("app.tracing.flow.fail", "Tracing reconfigure flow crashed", t)
+            }
         }
     }
 
     override fun onTerminate() {
         stopKoin()
         super.onTerminate()
+    }
+
+    /**
+     * Register a [android.net.ConnectivityManager.NetworkCallback] that
+     * watches for a USB-NCM / RNDIS interface. When one comes up we
+     * flip [usbTetherActive] to a populated [UsbTetherInfo]; when it
+     * goes away we flip it back to null.
+     *
+     * The callback is registered inline so we don't accidentally
+     * surface the wiring in the v2 Network monitor screen until
+     * the Network monitor milestone. The Scan screen reads
+     * [usbTetherActive] directly via [com.meshlit.disco.PeerRepository]'s
+     * `usbTetherProvider`.
+     */
+    private fun registerUsbTetherCallback() {
+        val connectivity = getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+            as? android.net.ConnectivityManager ?: return
+        // On older Android (pre-15) TRANSPORT_USB has the value 8
+        // but `addTransportType` rejects it as "Invalid
+        // TransportType 8" because the platform's
+        // `checkValidTransportType` predates the constant. We
+        // tolerate that by wrapping the whole register path in a
+        // broad catch so the USB-tether feature gracefully
+        // degrades on devices that don't support it instead of
+        // crashing the app on every launch.
+        try {
+            val request = android.net.NetworkRequest.Builder()
+                .addTransportType(android.net.NetworkCapabilities.TRANSPORT_USB)
+                .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                .build()
+            val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    val caps = connectivity.getNetworkCapabilities(network) ?: return
+                    val mtu = try {
+                        connectivity.getLinkProperties(network)?.mtu ?: 1500
+                    } catch (t: Throwable) {
+                        1500
+                    }
+                    val linkMbps = when {
+                        caps.linkUpstreamBandwidthKbps > 0 &&
+                            caps.linkDownstreamBandwidthKbps > 0 ->
+                            (caps.linkDownstreamBandwidthKbps + 999) / 1000
+                        else -> 480
+                    }
+                    usbTetherActive.value = com.meshlit.disco.UsbTetherInfo(
+                        host = "usb-net",
+                        mtu = mtu,
+                        linkMbps = linkMbps,
+                    )
+                }
+
+                override fun onLost(network: android.net.Network) {
+                    usbTetherActive.value = null
+                }
+
+                override fun onUnavailable() {
+                    usbTetherActive.value = null
+                }
+            }
+            connectivity.registerNetworkCallback(request, callback)
+        } catch (t: Throwable) {
+            log.warn(
+                "app.usb.callback.fail",
+                "registerNetworkCallback for TRANSPORT_USB failed: ${t.message}",
+            )
+        }
     }
 
     // ---- private helpers ----
@@ -311,6 +499,31 @@ class MeshlitApplication : android.app.Application() {
             }
         } catch (t: Throwable) {
             log.error("app.bootstrap.crash", "dynamic foundation bootstrap crashed", t)
+        }
+    }
+
+    /**
+     * Phase 8 — wire the persisted hooks registry + master kill
+     * switch into the in-process Koin singletons the [HookEngine]
+     * and the UI read from. Two collectors run for the process
+     * lifetime; the engine's `hooks` and master `enabled` flags are
+     * therefore always in sync with DataStore.
+     *
+     * Called once from `onCreate` on `appScope` so the very first
+     * `hookEngine.fire(...)` after process start reflects whatever
+     * the user previously saved — without making `onCreate` block
+     * on DataStore I/O.
+     */
+    private fun startHooksFeed(scope: CoroutineScope, settingsRepository: SettingsRepository) {
+        scope.launch {
+            settingsRepository.hooksRegistryFlow.collect { hooks ->
+                hooksRegistryFlowRef.value = hooks
+            }
+        }
+        scope.launch {
+            settingsRepository.hooksEnabledFlow.collect { enabled ->
+                hooksEnabledFlowRef.value = enabled
+            }
         }
     }
 }

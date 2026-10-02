@@ -1,7 +1,6 @@
 package com.meshlit.core.discovery
 
 import com.meshlit.core.common.logger
-import com.meshlit.core.common.NodeId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +26,7 @@ import kotlinx.coroutines.launch
  * advertisements into the coordinator's view.
  */
 class DiscoveryCoordinator(
-    private val transports: List<DiscoveryTransport>,
+    private val initialTransports: List<DiscoveryTransport>,
 ) {
 
     private val log = logger("DiscoveryCoordinator")
@@ -36,23 +35,30 @@ class DiscoveryCoordinator(
     /** Best-known peer per nodeId. Updated as advertisements arrive. */
     val peers: StateFlow<Map<String, PeerAdvertisement>> = _peers.asStateFlow()
 
-    private var startedJobs: List<Job> = emptyList()
+    private val activeTransports: MutableList<DiscoveryTransport> = initialTransports.toMutableList()
+    private val disabledTransports: MutableList<DiscoveryTransport> = mutableListOf()
+    private val transportJobs: MutableMap<String, List<Job>> = mutableMapOf()
+    private var currentScope: CoroutineScope? = null
+    private var currentSelf: LocalPeerDescriptor? = null
+
+    /** Snapshot of currently-active transports. Read-only. */
+    val transports: List<DiscoveryTransport> get() = activeTransports.toList()
 
     fun start(scope: CoroutineScope, self: LocalPeerDescriptor) {
-        if (startedJobs.isNotEmpty()) return
-        startedJobs = transports.flatMap { transport ->
-            val collectJob = scope.launch {
-                transport.advertisements.collect { adv -> ingest(adv) }
-            }
-            val transportJob = transport.start(scope, self)
-            listOf(collectJob, transportJob)
-        }
+        if (transportJobs.isNotEmpty()) return
+        currentScope = scope
+        currentSelf = self
+        activeTransports.forEach { transport -> startTransport(transport, scope, self) }
     }
 
     fun stop() {
-        transports.forEach { it.stop() }
-        startedJobs.forEach { it.cancel() }
-        startedJobs = emptyList()
+        activeTransports.forEach { it.stop() }
+        transportJobs.values.flatten().forEach { it.cancel() }
+        transportJobs.clear()
+        activeTransports.clear()
+        disabledTransports.clear()
+        currentScope = null
+        currentSelf = null
         _peers.value = emptyMap()
     }
 
@@ -75,6 +81,112 @@ class DiscoveryCoordinator(
                 current
             }
         }
+    }
+
+    /**
+     * Remove a peer by nodeId. Mirrors the internal `ttlSec <= 0`
+     * eviction path so a "Forget this peer" UI action and a
+     * transport-driven expiry produce the same observable effect on
+     * [peers]. Safe to call when the peer is absent.
+     */
+    fun evict(nodeId: String) {
+        _peers.update { it - nodeId }
+    }
+
+    /**
+     * Toggle a transport by [name] on or off at runtime. When
+     * enabled, the transport is started under the [CoroutineScope]
+     * passed to the most recent [start] call (and begins
+     * `advertisements` collect into [peers]); when disabled, the
+     * transport's [DiscoveryTransport.stop] is called and its
+     * subscription job is cancelled. Toggling a name that is not
+     * in [initialTransports] is a silent no-op — the
+     * `PeerRepository` injects the BLE transport at construction
+     * time so the toggle is meaningful.
+     *
+     * The seam exists for the v2 Scan screen's BLE toggle (see
+     * `V2ScanScreen`). Toggling BLE off is cheap and does not
+     * require a Bluetooth permission prompt; enabling BLE again
+     * resumes the existing transport.
+     */
+    fun setTransportEnabled(name: String, enabled: Boolean) {
+        val activeMatch = activeTransports.firstOrNull { it.name == name }
+        val disabledMatch = disabledTransports.firstOrNull { it.name == name }
+        val transport = activeMatch ?: disabledMatch ?: run {
+            log.warn(
+                "coordinator.transport.unknown",
+                "transport not present",
+                mapOf("name" to name),
+            )
+            return
+        }
+        val currentJobs = transportJobs[name]
+        when {
+            enabled && activeMatch != null -> {
+                log.info(
+                    "coordinator.transport.alreadyEnabled",
+                    "transport already enabled",
+                    mapOf("name" to name),
+                )
+                return
+            }
+            !enabled && activeMatch == null -> {
+                log.info(
+                    "coordinator.transport.alreadyDisabled",
+                    "transport already disabled",
+                    mapOf("name" to name),
+                )
+                return
+            }
+            !enabled -> {
+                transport.stop()
+                currentJobs!!.forEach { it.cancel() }
+                transportJobs.remove(name)
+                activeTransports.remove(transport)
+                disabledTransports.add(transport)
+                log.info(
+                    "coordinator.transport.disabled",
+                    "transport disabled",
+                    mapOf("name" to name),
+                )
+            }
+            else -> {
+                // Enable path: re-add and start under the
+                // remembered scope + descriptor. Defensive — if
+                // start() was never called we can't resume, so we
+                // log + bail.
+                val scope = currentScope
+                val self = currentSelf
+                if (scope == null || self == null) {
+                    log.warn(
+                        "coordinator.transport.enableBeforeStart",
+                        "cannot enable before start()",
+                        mapOf("name" to name),
+                    )
+                    return
+                }
+                disabledTransports.remove(transport)
+                activeTransports.add(transport)
+                startTransport(transport, scope, self)
+                log.info(
+                    "coordinator.transport.enabled",
+                    "transport enabled",
+                    mapOf("name" to name),
+                )
+            }
+        }
+    }
+
+    private fun startTransport(
+        transport: DiscoveryTransport,
+        scope: CoroutineScope,
+        self: LocalPeerDescriptor,
+    ) {
+        val collectJob = scope.launch {
+            transport.advertisements.collect { adv -> ingest(adv) }
+        }
+        val transportJob = transport.start(scope, self)
+        transportJobs[transport.name] = listOf(collectJob, transportJob)
     }
 
     companion object {

@@ -1,5 +1,6 @@
 package com.meshlit.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,7 +62,10 @@ import com.meshlit.ui.components.RaGetButton
 import com.meshlit.ui.components.RaListCard
 import com.meshlit.ui.components.RaPillChip
 import com.meshlit.ui.components.RaPillTone
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 
 /**
  * Phase 2.x — Catalog screen. Reads the live SDK model registry via
@@ -101,6 +105,21 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
     var detailsEntry by remember {
         mutableStateOf<RunAnywhereCatalogEngine.Entry?>(null)
     }
+    // Type / Source / Size filter chips. The screen was a flat list
+    // before the multi-source refactor — adding the three chip
+    // groups lets the user narrow by category (CHAT / CODE /
+    // VISION), by provenance (OFFICIAL / COMMUNITY_REQUANT /
+    // MIRROR), and (implicitly) by size which the row already
+    // renders via its size-class badge. Defaults keep the screen
+    // behaving like the unfiltered list.
+    var typeFilter by remember { mutableStateOf<RunAnywhereCatalogEngine.ModelType?>(null) }
+    var tierFilter by remember { mutableStateOf<RunAnywhereCatalogEngine.SourceTier?>(null) }
+    // Picker state — when set, the bottom sheet lists every source
+    // for this entry so the user can swap from the primary to a
+    // mirror or different quant without re-running the search.
+    var sourcePickerEntry by remember {
+        mutableStateOf<RunAnywhereCatalogEngine.Entry?>(null)
+    }
 
     // Initial fetch — fire once when the screen mounts. If the
     // user pulled-to-refresh we re-fire from the button.
@@ -108,11 +127,14 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
         engine.refresh()
     }
 
-    val filtered = remember(entries, query) {
-        if (query.isBlank()) entries
-        else entries.filter { entry ->
-            entry.displayName.contains(query, ignoreCase = true) ||
+    val filtered = remember(entries, query, typeFilter, tierFilter) {
+        entries.filter { entry ->
+            val typeOk = typeFilter == null || entry.modelType == typeFilter
+            val tierOk = tierFilter == null || entry.availableTiers.contains(tierFilter)
+            val searchOk = query.isBlank() ||
+                entry.displayName.contains(query, ignoreCase = true) ||
                 entry.family.contains(query, ignoreCase = true)
+            typeOk && tierOk && searchOk
         }
     }
 
@@ -182,6 +204,26 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
                     }
                 }
 
+                // --- Type filter chip group (multi-source refactor) ---
+                // Lets the user narrow the catalog by category
+                // (CHAT / CODE / VISION / MULTIMODAL / EMBEDDING).
+                // `null` = no filter (every row visible). Tapping a
+                // chip again clears the filter.
+                ModelTypeChipRow(
+                    selected = typeFilter,
+                    onSelect = { typeFilter = it },
+                )
+                // --- Source-tier filter chip group ---
+                // OFFICIAL / COMMUNITY_REQUANT / MIRROR / SDK_BUNDLED.
+                // Filtering by tier hides rows whose `availableTiers`
+                // don't include the chosen tier — e.g. tapping
+                // COMMUNITY_REQUANT shows rows that have at least one
+                // community requant source. `null` = no filter.
+                SourceTierChipRow(
+                    selected = tierFilter,
+                    onSelect = { tierFilter = it },
+                )
+
                 refreshError?.let { msg ->
                     Card(
                         colors = CardDefaults.cardColors(
@@ -213,41 +255,22 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
                                 entry = entry,
                                 status = downloads[entry.id] ?: DownloadStatus.Idle,
                                 onGet = {
-                                    downloads = downloads + (entry.id to DownloadStatus.Running(0))
-                                    scope.launch {
-                                        val llm = inferenceCoordinator.runAnywhereEngine()
-                                        runCatching {
-                                            llm.downloadModelById(entry.id).collect { progress ->
-                                                val pct = (progress.progress * 100f).toInt()
-                                                    .coerceIn(0, 100)
-                                                downloads = downloads + (
-                                                    entry.id to DownloadStatus.Running(pct)
-                                                    )
-                                                if (progress.error != null) {
-                                                    throw IllegalStateException(progress.error)
-                                                }
-                                            }
-                                        }.onSuccess {
-                                            downloads = downloads + (
-                                                entry.id to DownloadStatus.Loaded
-                                                )
-                                            // Auto-load into the FGS so the user
-                                            // can hit Jobs → Run right after.
-                                            val intent = buildLoadModelIntent(
-                                                context,
-                                                "runanywhere:${entry.id}",
-                                            )
-                                            runCatching { context.startService(intent) }
-                                        }.onFailure { t ->
-                                            downloads = downloads + (
-                                                entry.id to DownloadStatus.Failed(
-                                                    t.message ?: t.javaClass.simpleName,
-                                                )
-                                                )
-                                        }
-                                    }
+                                    // Default download — the highest-priority
+                                    // source from the curated catalog or the
+                                    // synthesized SDK row. Source picker
+                                    // (long-press / "Source" chip) calls the
+                                    // same helper with a specific source.
+                                    scope.launchCatalogDownload(
+                                        entry = entry,
+                                        source = null,
+                                        inferenceCoordinator = inferenceCoordinator,
+                                        context = context,
+                                        setDownloads = { downloads = it },
+                                        getDownloads = { downloads },
+                                    )
                                 },
                                 onShowInfo = { detailsEntry = entry },
+                                onPickSource = { sourcePickerEntry = entry },
                             )
                         }
                     }
@@ -264,33 +287,39 @@ fun CatalogScreen(onOpenDrawer: () -> Unit) {
             onDismiss = { detailsEntry = null },
             onRetry = {
                 detailsEntry = null
-                // Re-fire the same download path used by the row.
-                downloads = downloads + (entry.id to DownloadStatus.Running(0))
-                scope.launch {
-                    val llm = inferenceCoordinator.runAnywhereEngine()
-                    runCatching {
-                        llm.downloadModelById(entry.id).collect { progress ->
-                            val pct = (progress.progress * 100f).toInt().coerceIn(0, 100)
-                            downloads = downloads + (entry.id to DownloadStatus.Running(pct))
-                            if (progress.error != null) {
-                                throw IllegalStateException(progress.error)
-                            }
-                        }
-                    }.onSuccess {
-                        downloads = downloads + (entry.id to DownloadStatus.Loaded)
-                        val intent = buildLoadModelIntent(
-                            context,
-                            "runanywhere:${entry.id}",
-                        )
-                        runCatching { context.startService(intent) }
-                    }.onFailure { t ->
-                        downloads = downloads + (
-                            entry.id to DownloadStatus.Failed(
-                                t.message ?: t.javaClass.simpleName,
-                            )
-                            )
-                    }
-                }
+                scope.launchCatalogDownload(
+                    entry = entry,
+                    source = null,
+                    inferenceCoordinator = inferenceCoordinator,
+                    context = context,
+                    setDownloads = { downloads = it },
+                    getDownloads = { downloads },
+                )
+            },
+        )
+    }
+
+    // Source picker sheet — shown when the row's "Source" chip
+    // is tapped. Lets the user pick between the entry's
+    // DownloadSource list (different orgs / quants) and start the
+    // download against the chosen URL. The picker is intentionally
+    // distinct from the details sheet: details = inspection,
+    // picker = action.
+    sourcePickerEntry?.let { entry ->
+        CatalogSourcePickerSheet(
+            entry = entry,
+            currentStatus = downloads[entry.id] ?: DownloadStatus.Idle,
+            onDismiss = { sourcePickerEntry = null },
+            onPick = { source ->
+                sourcePickerEntry = null
+                scope.launchCatalogDownload(
+                    entry = entry,
+                    source = source,
+                    inferenceCoordinator = inferenceCoordinator,
+                    context = context,
+                    setDownloads = { downloads = it },
+                    getDownloads = { downloads },
+                )
             },
         )
     }
@@ -302,9 +331,22 @@ private fun CatalogRow(
     status: DownloadStatus,
     onGet: () -> Unit,
     onShowInfo: () -> Unit,
+    onPickSource: () -> Unit,
 ) {
     val subtitle = "${formatSizeMb(entry.approxSizeMb)} · ${entry.family}"
     val isTopPick = entry.bundled || entry.sizeClass == RunAnywhereCatalogEngine.SizeClass.SMALL
+    // Multi-source refactor: surface the entry's primary source
+    // (org + size) inline. Tier grouping (OFFICIAL /
+    // COMMUNITY_REQUANT / MIRROR) is the fast read for the row —
+    // the user can scan "HuggingFaceTB / 386 MB" at a glance
+    // before tapping Get. The full source list is behind the
+    // "Sources (N)" pill chip which opens the picker sheet.
+    val primary = entry.primarySource
+    val sourcesLabel = when (entry.sources.size) {
+        0 -> "bundled"
+        1 -> primary?.let { "${it.org} · ${it.humanSize()}" } ?: "1 source"
+        else -> "Sources (${entry.sources.size})"
+    }
     @OptIn(ExperimentalLayoutApi::class)
     RaListCard(
         leadingIcon = Icons.Filled.CloudDownload,
@@ -331,6 +373,34 @@ private fun CatalogRow(
                     text = badge.label,
                     tone = badge.tone.toPillTone(),
                 )
+            }
+            // Source count / primary source pill — tapping
+            // opens the picker sheet. The chips slot is a plain
+            // composable slot, so we render a clickable
+            // Surface here (RaPillChip itself is not
+            // clickable). Only rendered when the entry has
+            // selectable sources.
+            if (entry.sources.isNotEmpty()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                        .copy(alpha = 0.6f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .clickable { onPickSource() }
+                        .padding(0.dp),
+                ) {
+                    Text(
+                        text = sourcesLabel,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(
+                            horizontal = 8.dp,
+                            vertical = 4.dp,
+                        ),
+                    )
+                }
             }
         },
         trailing = {
@@ -427,6 +497,285 @@ private fun CatalogDetailsSheet(
                     ) { Text("Retry") }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Filter chip group filtered by [RunAnywhereCatalogEngine.ModelType].
+ * Tap a chip to enable that filter; tap the selected chip again
+ * to clear it (back to `null`). Renders only the four common
+ * categories (`CHAT`, `CODE`, `VISION`, `MULTIMODAL`,
+ * `EMBEDDING`); `UNKNOWN` is intentionally skipped because it's
+ * just a "no signal" sentinel.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ModelTypeChipRow(
+    selected: RunAnywhereCatalogEngine.ModelType?,
+    onSelect: (RunAnywhereCatalogEngine.ModelType?) -> Unit,
+) {
+    val types = listOf(
+        RunAnywhereCatalogEngine.ModelType.CHAT,
+        RunAnywhereCatalogEngine.ModelType.CODE,
+        RunAnywhereCatalogEngine.ModelType.VISION,
+        RunAnywhereCatalogEngine.ModelType.MULTIMODAL,
+        RunAnywhereCatalogEngine.ModelType.EMBEDDING,
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        types.forEach { t ->
+            FilterChip(
+                selected = selected == t,
+                onClick = { onSelect(if (selected == t) null else t) },
+                label = {
+                    Text(
+                        text = t.name,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(),
+            )
+        }
+    }
+}
+
+/**
+ * Filter chip group filtered by [RunAnywhereCatalogEngine.SourceTier].
+ * Same UX as [ModelTypeChipRow] — tap to enable, tap again to
+ * clear. OFFICIAL / COMMUNITY_REQUANT / MIRROR / SDK_BUNDLED are
+ * the displayed tiers; `UNKNOWN` is omitted.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SourceTierChipRow(
+    selected: RunAnywhereCatalogEngine.SourceTier?,
+    onSelect: (RunAnywhereCatalogEngine.SourceTier?) -> Unit,
+) {
+    val tiers = listOf(
+        RunAnywhereCatalogEngine.SourceTier.OFFICIAL,
+        RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT,
+        RunAnywhereCatalogEngine.SourceTier.MIRROR,
+        RunAnywhereCatalogEngine.SourceTier.SDK_BUNDLED,
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        tiers.forEach { t ->
+            FilterChip(
+                selected = selected == t,
+                onClick = { onSelect(if (selected == t) null else t) },
+                label = {
+                    Text(
+                        text = t.name.replace('_', ' '),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(),
+            )
+        }
+    }
+}
+
+/**
+ * Slide-up sheet that lists every [RunAnywhereCatalogEngine.DownloadSource]
+ * for [entry]. Each row shows the org, quant, human size, and
+ * tier. Tapping a row fires [onPick] with the chosen source and
+ * closes the sheet. The picker is intentionally distinct from the
+ * details sheet — details = inspection, picker = action.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CatalogSourcePickerSheet(
+    entry: RunAnywhereCatalogEngine.Entry,
+    currentStatus: DownloadStatus,
+    onDismiss: () -> Unit,
+    onPick: (RunAnywhereCatalogEngine.DownloadSource) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = entry.displayName,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = "Choose a source (${entry.sources.size})",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            HorizontalDivider()
+            // If a download is already running, surface its
+            // status so the user can confirm before re-picking.
+            when (currentStatus) {
+                is DownloadStatus.Running -> Text(
+                    "Download in progress · ${currentStatus.percent}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+                is DownloadStatus.Loaded -> Text(
+                    "Already downloaded",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+                else -> Unit
+            }
+            entry.sources
+                .sortedBy { it.priority }
+                .forEach { source ->
+                    SourceRow(
+                        entry = entry,
+                        source = source,
+                        onClick = { onPick(source) },
+                    )
+                }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+            ) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                ) { Text("Close") }
+            }
+        }
+    }
+}
+
+/**
+ * Single source row inside the picker sheet. Surfaces the source
+ * org (heading), the quant tag + size (subtitle), and a tier chip
+ * + optional SHA-256 hint. Tapping the row fires [onClick].
+ */
+@Composable
+private fun SourceRow(
+    entry: RunAnywhereCatalogEngine.Entry,
+    source: RunAnywhereCatalogEngine.DownloadSource,
+    onClick: () -> Unit,
+) {
+    val isPrimary = source.priority == entry.primarySource?.priority
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = source.org,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = source.humanSize(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RaPillChip(
+                    text = source.quant.name.replace('_', '-'),
+                    tone = RaPillTone.NEUTRAL,
+                )
+                RaPillChip(
+                    text = source.tier.name.replace('_', ' '),
+                    tone = when (source.tier) {
+                        RunAnywhereCatalogEngine.SourceTier.OFFICIAL -> RaPillTone.ACTIVE
+                        RunAnywhereCatalogEngine.SourceTier.COMMUNITY_REQUANT -> RaPillTone.TOP_PICK
+                        RunAnywhereCatalogEngine.SourceTier.MIRROR -> RaPillTone.TOP_PICK
+                        RunAnywhereCatalogEngine.SourceTier.SDK_BUNDLED -> RaPillTone.BUNDLED
+                        RunAnywhereCatalogEngine.SourceTier.UNKNOWN -> RaPillTone.NEUTRAL
+                    },
+                )
+                if (isPrimary) {
+                    RaPillChip(
+                        text = "default",
+                        tone = RaPillTone.ACTIVE,
+                    )
+                }
+            }
+            if (source.url.isNotBlank()) {
+                Text(
+                    text = source.url,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Launch a download for a chosen [entry] + optional [source]. When
+ * [source] is null the engine's primary (lowest-priority) source
+ * is used. The download state is published into the [downloads]
+ * MutableState via the passed [setDownloads] callback so the row
+ * UI re-renders. Used by the row's primary `Get` button, the
+ * source-picker sheet, and the details sheet's retry path.
+ */
+private fun CoroutineScope.launchCatalogDownload(
+    entry: RunAnywhereCatalogEngine.Entry,
+    source: RunAnywhereCatalogEngine.DownloadSource?,
+    inferenceCoordinator: com.meshlit.core.inference.InferenceCoordinator,
+    context: android.content.Context,
+    setDownloads: (Map<String, DownloadStatus>) -> Unit,
+    getDownloads: () -> Map<String, DownloadStatus>,
+) {
+    setDownloads(getDownloads() + (entry.id to DownloadStatus.Running(0)))
+    launch {
+        val llm = inferenceCoordinator.runAnywhereEngine()
+        val url = source?.url.takeUnless { it.isNullOrBlank() } ?: entry.primaryUrl
+        val displayName = buildString {
+            append(entry.displayName)
+            if (source != null) append(" · ${source.org}/${source.quant.name}")
+        }
+        runCatching {
+            llm.downloadModelById(entry.id, url, displayName).collect { progress ->
+                val pct = (progress.progress * 100f).toInt().coerceIn(0, 100)
+                setDownloads(getDownloads() + (entry.id to DownloadStatus.Running(pct)))
+                if (progress.error != null) {
+                    throw IllegalStateException(progress.error)
+                }
+            }
+        }.onSuccess {
+            setDownloads(getDownloads() + (entry.id to DownloadStatus.Loaded))
+            val intent = buildLoadModelIntent(context, "runanywhere:${entry.id}")
+            runCatching { context.startService(intent) }
+        }.onFailure { t ->
+            setDownloads(
+                getDownloads() + (
+                    entry.id to DownloadStatus.Failed(
+                        t.message ?: t.javaClass.simpleName,
+                    )
+                    ),
+            )
         }
     }
 }

@@ -21,6 +21,18 @@ class ScriptLibrary {
         _scripts.value = _scripts.value.filter { it.name != script.name } + script
     }
 
+    /**
+     * Insert or replace by [ConfigScript.name]. Identical to
+     * [save] but named for callers that conceptually want a
+     * "register if absent" semantic — e.g. the [HookEngine] registers
+     * each hook's script on every fire so the runner's `Step`
+     * lookup can find it without the user manually listing it in
+     * the Scripts tab.
+     */
+    fun upsert(script: ConfigScript) {
+        save(script)
+    }
+
     fun remove(name: String) {
         _scripts.value = _scripts.value.filter { it.name != name }
     }

@@ -23,6 +23,7 @@ import com.meshlit.ui.MeshlitApp
 import com.meshlit.ui.screens.setup.SetupWizardScreen
 import com.meshlit.ui.theme.LocalMeshlitThemeConfig
 import com.meshlit.ui.theme.MeshlitTheme
+import com.meshlit.ui.v2.V2Root
 
 class MainActivity : ComponentActivity() {
     private val log = logger("MainActivity")
@@ -46,7 +47,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        log.info("activity.create", "MainActivity onCreate")
+        log.info(
+            "activity.create",
+            "MainActivity onCreate",
+            mapOf("ui_version" to if (BuildConfig.USE_NEW_UI) "v2" else "v1"),
+        )
 
         // Trigger the POST_NOTIFICATIONS runtime permission on API 33+.
         // On older devices the manifest grant is sufficient; the helper
@@ -80,46 +85,59 @@ class MainActivity : ComponentActivity() {
             )
             CompositionLocalProvider(LocalMeshlitThemeConfig provides config) {
                 MeshlitTheme {
-                    val navController = rememberNavController()
-                    val profile = oemDetection.profile
-                    val coordinator = remember {
-                        SetupCoordinator(
-                            context = appContext,
-                            repository = firstRunSetupRepository,
-                            notificationCenter = notificationCenter,
-                        )
-                    }
-                    val firstRunDone by firstRunSetupRepository.hasFinishedFirstRunFlow
-                        .collectAsState(initial = false)
-                    var showWizard by remember { mutableStateOf(false) }
-
-                    LaunchedEffect(profile, firstRunDone) {
-                        // Show the wizard when:
-                        //  - user has not yet finished first run, AND
-                        //  - the OEM profile has at least one unfinished step
-                        showWizard = !firstRunDone && coordinator.shouldShowWizard(profile)
-                    }
-
-                    NavHost(
-                        navController = navController,
-                        startDestination = if (showWizard) "setup" else "main",
-                    ) {
-                        composable("setup") {
-                            SetupWizardScreen(
-                                onFinish = {
-                                    showWizard = false
-                                    navController.navigate("main") {
-                                        popUpTo("setup") { inclusive = true }
-                                    }
-                                },
-                                onOpenSettings = {
-                                    showWizard = false
-                                    navController.navigate("main")
-                                },
+                    // V1 vs V2 UI switch — `BuildConfig.USE_NEW_UI` is
+                    // set by the `meshlitV1` (false) and `meshlitV2`
+                    // (true) Gradle product flavors. Both branches
+                    // reuse the same theme wrapper, Koin singletons,
+                    // and shared :core-* modules; only the Compose
+                    // surface is different. The v1 path preserves the
+                    // existing first-run wizard + NavHost structure;
+                    // the v2 path delegates to `V2Root` which owns its
+                    // own nav graph + adaptive drawer chrome.
+                    if (BuildConfig.USE_NEW_UI) {
+                        V2Root()
+                    } else {
+                        val navController = rememberNavController()
+                        val profile = oemDetection.profile
+                        val coordinator = remember {
+                            SetupCoordinator(
+                                context = appContext,
+                                repository = firstRunSetupRepository,
+                                notificationCenter = notificationCenter,
                             )
                         }
-                        composable("main") {
-                            MeshlitApp()
+                        val firstRunDone by firstRunSetupRepository.hasFinishedFirstRunFlow
+                            .collectAsState(initial = false)
+                        var showWizard by remember { mutableStateOf(false) }
+
+                        LaunchedEffect(profile, firstRunDone) {
+                            // Show the wizard when:
+                            //  - user has not yet finished first run, AND
+                            //  - the OEM profile has at least one unfinished step
+                            showWizard = !firstRunDone && coordinator.shouldShowWizard(profile)
+                        }
+
+                        NavHost(
+                            navController = navController,
+                            startDestination = if (showWizard) "setup" else "main",
+                        ) {
+                            composable("setup") {
+                                SetupWizardScreen(
+                                    onFinish = {
+                                        showWizard = false
+                                        navController.navigate("main") {
+                                            popUpTo("setup") { inclusive = true }
+                                        }
+                                    },
+                                    onOpenSettings = {
+                                        showWizard = false
+                                        navController.navigate("main")
+                                    },
+                                )
+                            }
+                            composable("main") {
+                                MeshlitApp()
+                            }
                         }
                     }
                 }
