@@ -40,6 +40,7 @@ object AgentCapabilityRouter {
             "agent_storage_read",
             "agent_storage_write",
         ),
+        AgentCapability.Termux to listOf("agent_termux_run_command"),
     )
 
     /**
@@ -71,6 +72,7 @@ object AgentCapabilityRouter {
         "agent_storage_list" -> facade.storageList(args)
         "agent_storage_read" -> facade.storageRead(args)
         "agent_storage_write" -> facade.storageWrite(args)
+        "agent_termux_run_command" -> facade.termuxRunCommand(args)
         else -> null
     }
 
@@ -91,5 +93,6 @@ object AgentCapabilityRouter {
         suspend fun storageList(args: JsonObject): McpEvent.ToolResult
         suspend fun storageRead(args: JsonObject): McpEvent.ToolResult
         suspend fun storageWrite(args: JsonObject): McpEvent.ToolResult
+        suspend fun termuxRunCommand(args: JsonObject): McpEvent.ToolResult
     }
 }

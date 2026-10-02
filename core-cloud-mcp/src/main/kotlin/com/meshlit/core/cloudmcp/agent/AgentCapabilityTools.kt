@@ -37,6 +37,7 @@ object AgentCapabilityTools {
         AgentCapability.Storage -> listOf(
             storageListTool(), storageReadTool(), storageWriteTool(),
         )
+        AgentCapability.Termux -> listOf(termuxRunCommandTool())
     }
 
     // ---- Camera ---------------------------------------------------
@@ -272,6 +273,62 @@ object AgentCapabilityTools {
                 JsonPrimitive("path"),
                 JsonPrimitive("contentBase64"),
             )))
+        },
+        providerId = PROVIDER_ID,
+    )
+
+    // ---- Termux ----------------------------------------------------
+
+    private fun termuxRunCommandTool() = McpTool(
+        name = "agent_termux_run_command",
+        description = "Run a command inside the Termux app's userland via the "
+            + "official RUN_COMMAND plugin API. Risk: HIGH. Executable path MUST "
+            + "start with /data/data/com.termux/files/usr/. A small allowlist "
+            + "(echo, id, uptime, df, pwd, date, etc.) runs without further "
+            + "approval; everything else requires explicit user consent via "
+            + "the in-app approval sheet. Destructive binaries (rm, dd, kill, "
+            + "iptables, …) are refused outright. Each invocation is appended "
+            + "to the Activity audit log with the command line, exit code, "
+            + "duration, and redacted stdout/stderr.",
+        inputSchema = buildJsonObject {
+            put("type", "object")
+            put("properties", buildJsonObject {
+                put("executable", buildJsonObject {
+                    put("type", "string")
+                    put("description", JsonPrimitive(
+                        "Absolute path inside Termux's userland. Must start with /data/data/com.termux/files/usr/.",
+                    ))
+                })
+                put("arguments", buildJsonObject {
+                    put("type", "array")
+                    put("items", buildJsonObject { put("type", "string") })
+                    put("description", JsonPrimitive("argv-style arguments (no shell parsing)."))
+                })
+                put("working_directory", buildJsonObject {
+                    put("type", "string")
+                    put("description", JsonPrimitive(
+                        "Absolute path inside Termux's userland; defaults to Termux's HOME.",
+                    ))
+                })
+                put("stdin", buildJsonObject {
+                    put("type", "string")
+                    put("description", JsonPrimitive("Optional stdin fed to the command."))
+                })
+                put("timeout_ms", buildJsonObject {
+                    put("type", "integer")
+                    put("minimum", JsonPrimitive(1_000))
+                    put("maximum", JsonPrimitive(300_000))
+                    put("default", JsonPrimitive(30_000))
+                })
+                put("approved", buildJsonObject {
+                    put("type", "boolean")
+                    put("default", JsonPrimitive(false))
+                    put("description", JsonPrimitive(
+                        "True if the user already approved this call via the in-app approval sheet.",
+                    ))
+                })
+            })
+            put("required", JsonArray(listOf(JsonPrimitive("executable"))))
         },
         providerId = PROVIDER_ID,
     )

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Mic
@@ -220,7 +221,8 @@ private fun CapabilityCard(
                     AgentCapability.Camera,
                     AgentCapability.Microphone,
                     AgentCapability.Location,
-                    AgentCapability.Sms -> {
+                    AgentCapability.Sms,
+                    AgentCapability.Termux -> {
                         // Permission required row.
                         if (capability.permission != null && !permissionGranted) {
                             Row(
@@ -295,6 +297,20 @@ private fun CapabilityCard(
                                 entry = number,
                             )
                         },
+                    )
+                }
+                // The Termux capability uses a custom Android
+                // permission (`com.termux.permission.RUN_COMMAND`) which
+                // the standard permissionLauncher cannot grant — the
+                // user must flip "Allow external apps" inside Termux's
+                // own settings activity. We deep-link to the dedicated
+                // Termux integration screen where the probe + the
+                // allow-external-apps action live.
+                if (capability == AgentCapability.Termux) {
+                    Text(
+                        text = "Termux uses a custom permission. Open the Termux integration screen to grant it and run a test command.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -415,4 +431,5 @@ private fun AgentCapability.icon(): ImageVector = when (this) {
     AgentCapability.Call -> Icons.Filled.Phone
     AgentCapability.Sms -> Icons.Filled.Sms
     AgentCapability.Storage -> Icons.Filled.Storage
+    AgentCapability.Termux -> Icons.Filled.Code
 }

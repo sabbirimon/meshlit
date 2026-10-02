@@ -49,6 +49,20 @@ class DataStoreFeatureFlagRegistry(
         }
 
     override suspend fun set(name: String, value: Boolean) {
+        // Mirror the in-memory registry: unknown flag names are a
+        // no-op. Writing through to DataStore would silently
+        // register a one-off override that `get` then surfaces as
+        // truthy, hiding the real default. The contract is
+        // "speculative set on an unknown flag must not throw AND
+        // must not persist" — both hold.
+        if (name !in registered) {
+            log.warn(
+                "feature_flag.set.unknown",
+                "set on unknown flag name — no-op",
+                mapOf("name" to name),
+            )
+            return
+        }
         try {
             context.featureFlagDataStore.edit { it[booleanKey(name)] = value }
             log.info("feature_flag.set", "feature flag written", mapOf("name" to name, "value" to value))
@@ -58,7 +72,7 @@ class DataStoreFeatureFlagRegistry(
     }
 
     override fun snapshot(): Map<String, Boolean> {
-        val defaults = registered.associate { it.key to it.value.default }
+        val defaults = registered.entries.associate { (key, flag) -> key to flag.default }
         val persisted = runCatching {
             runBlocking {
                 context.featureFlagDataStore.data.first().asMap()

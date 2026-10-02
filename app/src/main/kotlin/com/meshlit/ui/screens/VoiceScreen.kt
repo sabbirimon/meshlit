@@ -95,7 +95,27 @@ import java.util.Locale
  * the SDK does that internally if `suppress_blank` is on.
  */
 @Composable
-fun VoiceScreen(onOpenDrawer: () -> Unit) {
+fun VoiceScreen(
+    onOpenDrawer: () -> Unit,
+    /**
+     * Hot stream of PCM frames captured while the mic is open.
+     * The v2 wrapper plugs a 32-bar spectrum analyzer into this
+     * so the user can see audio activity in real time. The flow is
+     * paused (no new emissions) when the mic is closed.
+     */
+    spectrumFlow: kotlinx.coroutines.flow.MutableSharedFlow<ByteArray>? = null,
+    /**
+     * Drop the v1 `MeshlitHeader` top bar. The v2 chrome already
+     * owns the lead bar + hamburger + bottom-bar, so the legacy
+     * top bar would just duplicate the headline. Without this flag
+     * the v1 Scaffold renders two stacked headers and the body
+     * (mic card, transcript, Save/Import chips) is squeezed off
+     * the visible area. The v2 wrapper passes `omitHeader = true`
+     * via [MeshlitDeepLinkWrap] so the body fills the rest of the
+     * screen below the v2 lead bar.
+     */
+    omitHeader: Boolean = false,
+) {
     val context = LocalContext.current
     val app = koinInject<MeshlitApplication>()
     val engine = app.voiceEngine
@@ -111,9 +131,31 @@ fun VoiceScreen(onOpenDrawer: () -> Unit) {
     var activityLevel by remember { mutableStateOf(0f) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
 
+    // Recording elapsed time. Updated at 1 Hz by the timerJob
+    // LaunchedEffect while the mic is open so the user can see
+    // how long the current listening session has been running.
+    // Resets to 0 when listening stops (so the next session
+    // starts fresh). Displayed inside MicCard next to the mic
+    // button as HH:MM:SS.
+    var elapsedMs by remember { mutableStateOf(0L) }
+
     var captureJob by remember { mutableStateOf<Job?>(null) }
     var vadJob by remember { mutableStateOf<Job?>(null) }
     var sttJob by remember { mutableStateOf<Job?>(null) }
+
+    // Live PCM feed that the v2 VoiceScreen wraps with a
+    // 32-bar spectrum analyzer. The flow is hot only while
+    // [isListening] is true so the v2 wrapper can plug
+    // `MeshlitAudioSpectrum(pcmFlow = …)` straight into it.
+    // We keep the last 1 frame in a MutableSharedFlow so the
+    // spectrum can render even if it subscribes just after a
+    // frame has already been emitted (replay = 1).
+    val pcmFrames = remember {
+        kotlinx.coroutines.flow.MutableSharedFlow<ByteArray>(
+            replay = 1,
+            extraBufferCapacity = 32,
+        )
+    }
 
     // PCM frame buffer for the most recent recording. Filled while
     // the mic is open; consumed by the Save action to write a WAV
@@ -170,12 +212,34 @@ fun VoiceScreen(onOpenDrawer: () -> Unit) {
         }
     }
 
+    // 1 Hz elapsed-time tick while listening. Cheap (a single
+    // monotonic clock read + state write per second); recomposed
+    // every second. Cancelled on stop / dispose.
+    var elapsedTimerJob by remember { mutableStateOf<Job?>(null) }
+    LaunchedEffect(isListening) {
+        elapsedTimerJob?.cancel()
+        if (isListening) {
+            val startNs = System.nanoTime()
+            elapsedMs = 0L
+            elapsedTimerJob = scope.launch {
+                while (isListening) {
+                    kotlinx.coroutines.delay(1_000L)
+                    elapsedMs = (System.nanoTime() - startNs) / 1_000_000L
+                }
+            }
+        } else {
+            elapsedTimerJob = null
+            elapsedMs = 0L
+        }
+    }
+
     // Tear down active flows + reset VAD when the screen leaves.
     DisposableEffect(Unit) {
         onDispose {
             captureJob?.cancel()
             vadJob?.cancel()
             sttJob?.cancel()
+            elapsedTimerJob?.cancel()
             scope.launch { engine.resetVad() }
         }
     }
@@ -209,7 +273,17 @@ fun VoiceScreen(onOpenDrawer: () -> Unit) {
         // Local recorder — copies every frame into the in-memory
         // buffer so the user can hit Save and get a WAV file.
         captureJob = scope.launch {
-            shared.collect { frame -> frameBuffer.append(frame) }
+            shared.collect { frame ->
+                frameBuffer.append(frame)
+                // Mirror each frame onto the v2 spectrum flow so
+                // the audio analyzer can render alongside the VAD
+                // bar. We tryEmit (not emit) so a slow / paused
+                // subscriber can't backpressure the recorder —
+                // the spectrum is purely cosmetic.
+                spectrumFlow?.let { flow ->
+                    flow.tryEmit(frame.pcmBytes)
+                }
+            }
         }
 
         // VAD drives the activity meter.
@@ -350,13 +424,21 @@ fun VoiceScreen(onOpenDrawer: () -> Unit) {
 
     Scaffold(
         topBar = {
-            MeshlitHeader(
-                title = stringResource(R.string.voice_title),
-                subtitle = stringResource(R.string.voice_subtitle),
-                tier = app.capabilityTier,
-                active = isListening || isSynthesizing,
-                onOpenDrawer = onOpenDrawer,
-            )
+            // The v2 wrapper passes `omitHeader = true` so the
+            // v1 MeshlitHeader doesn't double up with the v2 lead
+            // bar. When the flag is true, render an empty slot —
+            // the body still fills the full Scaffold height so
+            // scrolling reaches the Save / Import chips at the
+            // bottom.
+            if (!omitHeader) {
+                MeshlitHeader(
+                    title = stringResource(R.string.voice_title),
+                    subtitle = stringResource(R.string.voice_subtitle),
+                    tier = app.capabilityTier,
+                    active = isListening || isSynthesizing,
+                    onOpenDrawer = onOpenDrawer,
+                )
+            }
         },
     ) { innerPadding ->
         Surface(
@@ -367,7 +449,7 @@ fun VoiceScreen(onOpenDrawer: () -> Unit) {
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(24.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -393,6 +475,7 @@ fun VoiceScreen(onOpenDrawer: () -> Unit) {
                         isSynthesizing = isSynthesizing,
                         activityLevel = activityLevel,
                         partialText = partialText,
+                        elapsedMs = elapsedMs,
                         onMicTap = {
                             if (isListening) stopListening() else startListening()
                         },
@@ -552,6 +635,7 @@ private fun MicCard(
     isSynthesizing: Boolean,
     activityLevel: Float,
     partialText: String,
+    elapsedMs: Long,
     onMicTap: () -> Unit,
     listeningHint: String,
     idleHint: String,
@@ -589,6 +673,20 @@ private fun MicCard(
                     )
                 }
             }
+            // Elapsed-time row. Visible only while the mic is open;
+            // shows HH:MM:SS so the user can see exactly how long
+            // they've been recording. Sits between the mic button
+            // and the listening hint so the eye picks it up first
+            // after pressing the mic.
+            if (isListening) {
+                Text(
+                    text = formatElapsed(elapsedMs),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    ),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
             Text(
                 text = if (isListening) listeningHint else idleHint,
                 style = MaterialTheme.typography.bodyMedium,
@@ -608,6 +706,20 @@ private fun MicCard(
             }
         }
     }
+}
+
+/**
+ * Format elapsed milliseconds as HH:MM:SS. Reads 00:00:00 for
+ * elapsed=0, 00:00:01 for elapsed=1000, 00:01:00 for 60 000,
+ * 01:00:00 for 3 600 000. Hours roll past 99 — a recording that
+ * long is already a follow-up concern, not a UX concern.
+ */
+private fun formatElapsed(ms: Long): String {
+    val totalSec = (ms / 1000L).coerceAtLeast(0L)
+    val h = totalSec / 3600L
+    val m = (totalSec % 3600L) / 60L
+    val s = totalSec % 60L
+    return "%02d:%02d:%02d".format(h, m, s)
 }
 
 /**

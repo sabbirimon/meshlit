@@ -39,9 +39,16 @@ object RolePolicy {
         if (battery < 30) return 0f
         if (cap.isThrottling) return 0f
         var score = 0f
-        score += 0.40f // npu + ram gate passed
-        score += 0.30f * batteryScore(battery)
-        score += 0.30f * (1f - (cap.thermal.score ?: 1f)) // lower thermal stress = higher score
+        // NPU + RAM gate is the load-bearing differentiator vs
+        // Monitor (which only requires battery + network) and
+        // Tool (which only requires RAM). The 0.85 baseline
+        // guarantees Brain wins on a mid-spec device with NPU +
+        // 8 GB RAM + 80% battery (Brain ≈ 0.95, Monitor =
+        // 0.92). Without this margin, the policy would flip-flop
+        // based on minor battery fluctuations.
+        score += 0.85f // npu + ram gate passed
+        score += 0.10f * batteryScore(battery)
+        score += 0.05f * (1f - (cap.thermal.score ?: 1f)) // lower thermal stress = higher score
         return score.coerceIn(0f, 1f)
     }
 

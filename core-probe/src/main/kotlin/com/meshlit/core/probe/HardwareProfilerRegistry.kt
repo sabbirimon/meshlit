@@ -6,6 +6,9 @@ import com.meshlit.core.common.logger
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Runs every registered [HardwareProfiler] in parallel and folds the
@@ -17,12 +20,19 @@ import kotlinx.coroutines.coroutineScope
  * "Monitor" when an axis is missing). The error is logged at warn
  * level so a flapping profiler is visible in logs.
  */
-class HardwareProfilerRegistry(
+open class HardwareProfilerRegistry(
     private val profilers: List<HardwareProfiler>,
     private val clock: () -> Long = { System.currentTimeMillis() },
 ) {
 
     private val log = logger("HardwareProfilerRegistry")
+
+    // Cached most-recent snapshot. UiState-bearing view models
+    // read this synchronously so the first frame renders real
+    // values instead of a stale "Loading" state. Updated on every
+    // profileAll() call.
+    private val _latest = MutableStateFlow<HardwareCapability?>(null)
+    val latest: StateFlow<HardwareCapability?> = _latest.asStateFlow()
 
     suspend fun profileAll(): MeshlitResult<HardwareCapability> = coroutineScope {
         val deferred = profilers.map { p ->
@@ -52,16 +62,27 @@ class HardwareProfilerRegistry(
         val network = results["network"] ?: ProfileSample(null, "")
         val npu = results["npu"] ?: ProfileSample(null, "")
 
-        MeshlitResult.Success(
-            HardwareCapability(
-                cpu = cpu,
-                memory = memory,
-                thermal = thermal,
-                battery = battery,
-                network = network,
-                npu = npu,
-                timestampMs = clock(),
-            ),
+        val cap = HardwareCapability(
+            cpu = cpu,
+            memory = memory,
+            thermal = thermal,
+            battery = battery,
+            network = network,
+            npu = npu,
+            timestampMs = clock(),
         )
+        _latest.value = cap
+        MeshlitResult.Success(cap)
     }
+
+    /**
+     * Re-run the profiler suite and return the new snapshot. A
+     * convenience wrapper around [profileAll] that propagates the
+     * failure mode for the caller. Used by the v2 Device Info
+     * screen's "Re-probe hardware" button — the result is ignored
+     * if the underlying `MeshlitApplication.hostOS` can't read
+     * certain axes (the OS-level call fails; the registry still
+     * returns a partial snapshot).
+     */
+    suspend fun reprobe(): MeshlitResult<HardwareCapability> = profileAll()
 }

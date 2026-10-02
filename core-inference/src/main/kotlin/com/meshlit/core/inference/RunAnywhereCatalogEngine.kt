@@ -124,6 +124,95 @@ class RunAnywhereCatalogEngine(
      */
     enum class SizeClass { SMALL, MEDIUM, LARGE, HUGE }
 
+    /**
+     * Model type — orthogonal to architecture. Drives the second
+     * filter chip group on the Catalog screen (CHAT, CODE,
+     * VISION, MULTIMODAL, EMBEDDING). The default [CHAT] covers
+     * every instruct-tuned text-only model; [CODE] is for code-
+     * specialized fine-tunes (CodeLlama, DeepSeek-Coder, …);
+     * [VISION] is for image-in models (LLaVA, Qwen-VL); and
+     * [MULTIMODAL] / [EMBEDDING] are reserved for the few SDK
+     * rows that aren't text-only chat.
+     */
+    enum class ModelType { CHAT, CODE, VISION, MULTIMODAL, EMBEDDING, UNKNOWN }
+
+    /**
+     * Source provenance tier. Drives the third filter chip group
+     * (Official, Community requant, Mirror). The SDK fetches
+     * Hugging Face directly when `org` is the upstream owner;
+     * community requants (bartowski, unsloth) typically ship
+     * smaller or better-tuned variants for the same architecture.
+     *  - OFFICIAL — upstream publisher's repo (Qwen/, mistralai/, …)
+     *  - COMMUNITY_REQUANT — third-party requant (bartowski, unsloth)
+     *  - MIRROR — same artefact, hosted elsewhere (HF CDN mirror)
+     *  - SDK_BUNDLED — ships inside the APK assets/models/
+     */
+    enum class SourceTier { OFFICIAL, COMMUNITY_REQUANT, MIRROR, SDK_BUNDLED, UNKNOWN }
+
+    /**
+     * A single downloadable artefact for an [Entry]. The
+     * catalog engine surfaces a list of these so the Catalog
+     * screen can render multiple sources per row (e.g. "Qwen2.5
+     * 1.5B · Q4_K_M from Qwen/ + Q5_K_M from bartowski/"). The
+     * user picks the source they want; the SDK's
+     * `downloadModelById` plans against the URL in [url].
+     *
+     * @property id Stable SDK-friendly id for this source row —
+     *   the SDK's `registerModel(...)` requires a unique id per
+     *   (model, source) pair when the same architecture ships
+     *   multiple quant variants. The convention is `<entry-id>@
+     *   <org>:<quant>` so the id is collision-free across orgs.
+     * @property org Hugging Face org (or mirror domain) hosting
+     *   the file. Rendered as a small "from" tag.
+     * @property quant quantization tag for this specific source —
+     *   the same architecture can ship Q4_K_M from one org and
+     *   Q8_0 from another.
+     * @property approxSizeBytes precise size in bytes — preferred
+     *   over the [Entry.approxSizeMb] when present so the row UI
+     *   can render "1.07 GB" instead of rounding to "1100 MB".
+     * @property url HTTPS URL the SDK's `registerModel(...)` +
+     *   `downloadModel(...)` flow plans against. Required for
+     *   OFFICIAL / COMMUNITY_REQUANT / MIRROR; absent for
+     *   SDK_BUNDLED (the file is local to the APK).
+     * @property tier provenance tier — see [SourceTier].
+     * @property priority smaller = preferred. The Catalog screen
+     *   shows the lowest-numbered source first; the download
+     *   flow defaults to the highest-priority reachable source.
+     * @property sha256 Optional SHA-256 of the file. When
+     *   present, the downloader should verify the digest after
+     *   the fetch completes (defence against a compromised CDN
+     *   mirror). The Hugging Face LFS API exposes the digest
+     *   alongside the URL.
+     */
+    data class DownloadSource(
+        val id: String,
+        val org: String,
+        val quant: Quant,
+        val approxSizeBytes: Long,
+        val url: String = "",
+        val tier: SourceTier = SourceTier.UNKNOWN,
+        val priority: Int = 100,
+        val sha256: String? = null,
+    ) {
+        /** Approximate size in MB (rounded up). Convenience for the
+         *  row UI — bytes are preferred when precise. */
+        val approxSizeMb: Long
+            get() = (approxSizeBytes + 999_999L) / 1_000_000L
+
+        /** Human-readable size, e.g. "1.07 GB", "368 MB". */
+        fun humanSize(): String = when {
+            approxSizeBytes <= 0L -> "?"
+            approxSizeBytes < 1_000_000L -> "$approxSizeBytes B"
+            approxSizeBytes < 1_000_000_000L -> "${approxSizeBytes / 1_000_000L} MB"
+            else -> {
+                val gb = approxSizeBytes.toDouble() / 1_000_000_000.0
+                // 2 dp without trailing zeros (1.07 GB, 18.4 GB, 26 GB).
+                val formatted = "%.2f".format(gb).trimEnd('0').trimEnd('.')
+                "$formatted GB"
+            }
+        }
+    }
+
     /** Lightweight badge descriptor returned by [Entry.badges]. Each
      *  UI badge has a short text label and a Material color hint so
      *  the row can render it consistently without re-decoding the
@@ -145,7 +234,61 @@ class RunAnywhereCatalogEngine(
         val quant: Quant = Quant.UNKNOWN,
         val sizeClass: SizeClass = SizeClass.MEDIUM,
         val bundled: Boolean = false,
+        /**
+         * Model type — orthogonal to architecture. Drives the
+         * second filter chip group on the Catalog screen.
+         * Defaults to [ModelType.CHAT] for instruct-tuned models
+         * and [ModelType.UNKNOWN] when the SDK doesn't hint.
+         */
+        val modelType: ModelType = ModelType.CHAT,
+        /**
+         * Per-row downloadable sources. The catalog engine
+         * surfaces a list (not a single URL) so the user can pick
+         * between official, community requant, and mirror
+         * variants of the same architecture. Defaults to empty
+         * for SDK-only rows where the bundle path is the only
+         * download option.
+         *
+         * When non-empty, the row UI renders a "Sources (N)"
+         * expandable section with one chip per source. The
+         * download button picks the lowest-numbered [priority]
+         * source by default.
+         */
+        val sources: List<DownloadSource> = emptyList(),
     ) {
+        /** Primary URL — convenience accessor for the highest-
+         *  priority source's URL. Returns the bundled-row
+         *  sentinel (`"asset://bundled"`) when [sources] is
+         *  empty so callers don't have to null-check. */
+        val primaryUrl: String
+            get() = sources.minByOrNull { it.priority }?.url ?: "asset://bundled"
+
+        /** Primary source — convenience accessor for the highest-
+         *  priority [DownloadSource]. Returns `null` when no
+         *  sources are available. */
+        val primarySource: DownloadSource?
+            get() = sources.minByOrNull { it.priority }
+
+        /** Distinct quant tags across all sources — drives the
+         *  "Quants" badge group on the row. */
+        val availableQuants: List<Quant>
+            get() = sources.map { it.quant }.distinct().sortedBy { it.ordinal }
+
+        /** Distinct source tiers across all sources — drives the
+         *  "From" badge group on the row. */
+        val availableTiers: List<SourceTier>
+            get() = sources.map { it.tier }.distinct()
+
+        /** Smallest source size in bytes — used to render the
+         *  size chip when sources disagree (e.g. Q4_K_M from
+         *  one org and Q8_0 from another). */
+        val minSizeBytes: Long
+            get() = sources.minOfOrNull { it.approxSizeBytes } ?: 0L
+
+        /** Largest source size in bytes — useful for the size
+         *  range chip ("1.07–1.5 GB"). */
+        val maxSizeBytes: Long
+            get() = sources.maxOfOrNull { it.approxSizeBytes } ?: 0L
         /** Computed list of badges for this row. UI calls this once
          *  per compose and renders the returned list as a small
          *  `Row` of colored chips. Order is stable so the UI doesn't
@@ -292,8 +435,31 @@ class RunAnywhereCatalogEngine(
     private fun adaptModelInfo(info: ModelInfo): Entry? {
         val id = info.id.takeIf { it.isNotBlank() } ?: return null
         val name = info.name.takeIf { it.isNotBlank() } ?: id
-        val approxMb = info.download_size_bytes.takeIf { it > 0 }?.div(1_048_576L) ?: 0L
+        val approxBytes = info.download_size_bytes.takeIf { it > 0 } ?: 0L
+        val approxMb = if (approxBytes > 0L) approxBytes / 1_048_576L else 0L
         val family = inferFamily(name)
+        val modelType = inferModelType(name, family)
+        val org = inferOrg(id, name)
+        val quant = inferQuant(name)
+        val sources = if (approxBytes > 0L && org.isNotBlank()) {
+            // Synthesize a single OFFICIAL source from the SDK's
+            // registry row so the UI always renders at least one
+            // source chip. The curated catalog extends this list
+            // with community requants + mirrors.
+            listOf(
+                DownloadSource(
+                    id = "$id@$org:${quant.name}",
+                    org = org,
+                    quant = quant,
+                    approxSizeBytes = approxBytes,
+                    url = info.download_url.orEmpty(),
+                    tier = if (id in BUNDLED_IDS) SourceTier.SDK_BUNDLED
+                    else SourceTier.OFFICIAL,
+                    priority = 10,
+                    sha256 = info.checksum_sha256,
+                ),
+            )
+        } else emptyList()
         return Entry(
             id = id,
             displayName = name,
@@ -304,10 +470,55 @@ class RunAnywhereCatalogEngine(
             language = inferLanguage(family),
             strengths = inferStrengths(family, approxMb),
             architecture = inferArchitecture(name, family),
-            quant = inferQuant(name),
+            quant = quant,
             sizeClass = inferSizeClass(approxMb),
             bundled = id in BUNDLED_IDS,
+            modelType = modelType,
+            sources = sources,
         )
+    }
+
+    /** Best-guess Hugging Face org from the SDK id. The SDK
+     *  carries the original id verbatim so the org usually lives
+     *  in the `org/repo` prefix. Falls back to "Unknown" when
+     *  the id shape doesn't match. */
+    private fun inferOrg(id: String, name: String): String {
+        if ("/" in id) return id.substringBefore("/")
+        // Fallback: infer from the family. Not authoritative but
+        // gives the user a stable "From" tag across releases.
+        return when (inferFamily(name)) {
+            "Qwen" -> "Qwen"
+            "Llama" -> "meta-llama"
+            "SmolLM" -> "HuggingFaceTB"
+            "Phi" -> "microsoft"
+            "Gemma" -> "google"
+            "Mistral" -> "mistralai"
+            "DeepSeek" -> "deepseek-ai"
+            else -> "Unknown"
+        }
+    }
+
+    /** Model type inference — conservative. Defaults to CHAT
+     *  for instruct/chat tuned families; flips to CODE/ VISION /
+     *  MULTIMODAL for the well-known code/vision variants.
+     *  Falls back to UNKNOWN for ambiguous names. */
+    private fun inferModelType(name: String, family: String): ModelType {
+        val lower = name.lowercase()
+        return when {
+            "vl" in lower || "vision" in lower || "llava" in lower -> ModelType.VISION
+            "coder" in lower || "code-" in lower || "-code" in lower -> ModelType.CODE
+            "embed" in lower -> ModelType.EMBEDDING
+            "instruct" in lower || "chat" in lower || family in setOf(
+                "Qwen",
+                "Llama",
+                "Mistral",
+                "Phi",
+                "SmolLM",
+                "Gemma",
+                "DeepSeek",
+            ) -> ModelType.CHAT
+            else -> ModelType.UNKNOWN
+        }
     }
 
     /** Architecture inference — most families default to DENSE; only

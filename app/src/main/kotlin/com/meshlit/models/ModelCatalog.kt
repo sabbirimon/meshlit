@@ -68,6 +68,19 @@ object ModelCatalog {
          * correct runtime before the .so / .aar is linked.
          */
         val fileFormat: FileFormat = FileFormat.Gguf,
+        /** High-level classification shown in the picker. Lets the user
+         *  filter by *what the model is good at* instead of reading the
+         *  size + strengths list. */
+        val category: ModelCategory = ModelCategory.General,
+        /** Lowest device tier the model is expected to run on. Tier
+         *  definitions live on [DeviceTier]. The picker hides models
+         *  above the user's device tier with a "needs more RAM" hint. */
+        val minDeviceTier: DeviceTier = DeviceTier.Mid,
+        /** Effort level for first-time users — Easy / Medium / Hard.
+         *  Easy models load in one tap on a Pixel 6, fit in 4 GB of
+         *  RAM, and chat in English. Hard models expect a Pro device,
+         *  an HF token, or both. */
+        val ease: Ease = Ease.Medium,
     ) {
         /** The runtime that would carry this model. Resolved via the
          *  [RuntimeRegistry] so the source of truth stays in one place. */
@@ -78,6 +91,34 @@ object ModelCatalog {
                 is com.meshlit.core.inference.RuntimeResolution.Unsupported -> "Unsupported format"
                 is com.meshlit.core.inference.RuntimeResolution.UnknownFormat -> "Unknown format"
             }
+    }
+
+    /** What a model is good at — what the picker shows as the chip colour. */
+    enum class ModelCategory(val displayName: String, val tag: String) {
+        General("General", "general"),
+        Multilingual("Multilingual", "multilingual"),
+        Coding("Coding", "coding"),
+        Reasoning("Reasoning", "reasoning"),
+        Chat("Chat", "chat"),
+        Small("Tiny / edge", "small"),
+        Enterprise("Enterprise / Pro", "enterprise"),
+    }
+
+    /** Lowest device tier on which the model runs acceptably. Aligns
+     *  with [com.meshlit.core.common.CapabilityTier] in core-common. */
+    enum class DeviceTier(val displayName: String, val minRamGb: Int) {
+        Low("Low-end (≤ 4 GB)", 3),
+        Mid("Mid (4–6 GB)", 4),
+        High("High (≥ 8 GB)", 8),
+        Pro("Pro (≥ 12 GB)", 12),
+    }
+
+    /** Effort signal for new users. Picker uses this to gate the
+     *  download button (Easy = one-tap; Hard = confirm dialog + token). */
+    enum class Ease(val displayName: String, val tag: String) {
+        Easy("Easy", "easy"),
+        Medium("Medium", "medium"),
+        Hard("Hard", "hard"),
     }
 
     val all: List<Entry> = listOf(
@@ -92,6 +133,9 @@ object ModelCatalog {
             strengths = listOf("multilingual", "general"),
             language = "EN/ZH/ES/FR/DE/…",
             fileFormat = FileFormat.Gguf,
+            category = ModelCategory.Multilingual,
+            minDeviceTier = DeviceTier.Mid,
+            ease = Ease.Easy,
         ),
         Entry(
             id = "smollm2-1.7b-instruct-q4_k_m",
@@ -104,6 +148,9 @@ object ModelCatalog {
             strengths = listOf("small", "chat"),
             language = "English-first",
             fileFormat = FileFormat.Gguf,
+            category = ModelCategory.Chat,
+            minDeviceTier = DeviceTier.Low,
+            ease = Ease.Easy,
         ),
         Entry(
             id = "llama-3.2-1b-instruct-q4_k_m",
@@ -116,6 +163,9 @@ object ModelCatalog {
             strengths = listOf("multilingual", "fast"),
             language = "EN/ES/FR/DE/IT/PT/…",
             fileFormat = FileFormat.Gguf,
+            category = ModelCategory.Multilingual,
+            minDeviceTier = DeviceTier.Low,
+            ease = Ease.Easy,
         ),
         Entry(
             id = "deepseek-r1-distill-qwen-1.5b-q4_k_m",
@@ -128,6 +178,9 @@ object ModelCatalog {
             strengths = listOf("reasoning", "chain-of-thought"),
             language = "EN/ZH",
             fileFormat = FileFormat.Gguf,
+            category = ModelCategory.Reasoning,
+            minDeviceTier = DeviceTier.Mid,
+            ease = Ease.Medium,
         ),
         // Phase 2 candidate — ONNX-distributed Phi-3.5-mini. Listed so
         // the user sees what an ONNX row looks like and what runtime
@@ -145,6 +198,9 @@ object ModelCatalog {
             strengths = listOf("reasoning", "general"),
             language = "EN",
             fileFormat = FileFormat.Onnx,
+            category = ModelCategory.Reasoning,
+            minDeviceTier = DeviceTier.High,
+            ease = Ease.Hard,
         ),
     )
 
@@ -233,11 +289,86 @@ object ModelCatalog {
             .readTimeout(5, TimeUnit.MINUTES)
             .followRedirects(true)
             .followSslRedirects(true)
+            // OkHttp 4.x doesn't set a User-Agent by default; some
+            // CDNs (Hugging Face, GitHub LFS) return 403 for the
+            // `okhttp/x.y.z` UA. We send Meshlit/<version> instead
+            // so anonymous downloads keep working.
+            .addInterceptor { chain ->
+                val req = chain.request().newBuilder()
+                    .header(
+                        "User-Agent",
+                        "Meshlit/${com.meshlit.BuildConfig.VERSION_NAME} (Android)",
+                    )
+                    .build()
+                chain.proceed(req)
+            }
             .build()
-        log.info("model.download.url.start", id, mapOf("url" to url))
+        // Read the user-supplied Hugging Face tokens (if any) once
+        // per call. Tokens are never logged — only the *presence*
+        // of each credential kind is recorded in the request log line.
+        val hfToken: String = runCatching {
+            com.meshlit.settings.SettingsRepository(context).huggingFaceTokenNow()
+        }.getOrDefault("")
+        val hfProToken: String = runCatching {
+            com.meshlit.settings.SettingsRepository(context).huggingFaceProTokenNow()
+        }.getOrDefault("")
+        val hfOrgSlug: String = runCatching {
+            com.meshlit.settings.SettingsRepository(context).huggingFaceOrgSlugNow()
+        }.getOrDefault("")
+        val isHfUrl = url.contains("huggingface.co", ignoreCase = true)
+        log.info(
+            "model.download.url.start",
+            id,
+            mapOf(
+                "url" to url,
+                "hasHfToken" to (hfToken.isNotEmpty()).toString(),
+                "hasHfProToken" to (hfProToken.isNotEmpty()).toString(),
+                "urlHost" to runCatching { java.net.URI(url).host ?: "?" }.getOrDefault("?"),
+            ),
+        )
         try {
-            val request = Request.Builder().url(url).build()
-            val response = client.newCall(request).execute()
+            val requestBuilder = Request.Builder()
+                .url(url)
+                .header(
+                    "User-Agent",
+                    "Meshlit/${com.meshlit.BuildConfig.VERSION_NAME} (Android)",
+                )
+                .header("Accept", "application/octet-stream,*/*")
+            // Hugging Face gates gated repos behind `Authorization:
+            // Bearer <hf_token>`. We pass the user token only when
+            // the URL points at the HF domain — passing it elsewhere
+            // is harmless but unnecessary.
+            //
+            // Paid / Enterprise accounts: HF also honours the
+            // `X-HuggingFace-Organization` header. We send the
+            // user's personal token (free-tier) AND the org token
+            // (paid-tier) when both are present. If only the org
+            // token is set, we still send `Authorization: Bearer
+            // <org_token>` so an Enterprise-only user can
+            // authenticate. Empty values are skipped.
+            if (isHfUrl) {
+                when {
+                    hfToken.isNotEmpty() && hfProToken.isNotEmpty() -> {
+                        // Both set — prefer the personal token for the
+                        // Authorization header (HF treats org token as
+                        // org-scope identifier, not a substitute for
+                        // user auth).
+                        requestBuilder.header("Authorization", "Bearer $hfToken")
+                        requestBuilder.header("X-HuggingFace-Organization", hfOrgSlug)
+                        requestBuilder.header("X-HuggingFace-Pro-Token", hfProToken)
+                    }
+                    hfToken.isNotEmpty() -> {
+                        requestBuilder.header("Authorization", "Bearer $hfToken")
+                    }
+                    hfProToken.isNotEmpty() -> {
+                        requestBuilder.header("Authorization", "Bearer $hfProToken")
+                        if (hfOrgSlug.isNotEmpty()) {
+                            requestBuilder.header("X-HuggingFace-Organization", hfOrgSlug)
+                        }
+                    }
+                }
+            }
+            val response = client.newCall(requestBuilder.build()).execute()
             if (!response.isSuccessful) {
                 val tag = "http_${response.code}"
                 val msg = "HTTP ${response.code} from server"

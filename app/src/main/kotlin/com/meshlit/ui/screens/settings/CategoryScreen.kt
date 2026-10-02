@@ -59,6 +59,7 @@ fun CategoryScreen(
     category: SettingsCategory,
     onBack: () -> Unit,
     onOpenCustomPalette: (() -> Unit)? = null,
+    omitHeader: Boolean = false,
 ) {
     // rememberSaveable keeps the toggle state across config changes
     // and process death. Per-category via the route key so toggling
@@ -67,54 +68,56 @@ fun CategoryScreen(
     var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(category.displayName) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.settings_search_clear),
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = null,
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuOpen,
-                        onDismissRequest = { menuOpen = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings_simple_toggle)) },
-                            onClick = {
-                                advanced = false
-                                menuOpen = false
-                            },
-                            trailingIcon = {
-                                if (!advanced) {
-                                    Text("✓", style = MaterialTheme.typography.bodyMedium)
-                                }
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings_advanced_toggle)) },
-                            onClick = {
-                                advanced = true
-                                menuOpen = false
-                            },
-                            trailingIcon = {
-                                if (advanced) {
-                                    Text("✓", style = MaterialTheme.typography.bodyMedium)
-                                }
-                            },
-                        )
-                    }
-                },
-            )
+            if (!omitHeader) {
+                TopAppBar(
+                    title = { Text(category.displayName) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.settings_search_clear),
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = null,
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings_simple_toggle)) },
+                                onClick = {
+                                    advanced = false
+                                    menuOpen = false
+                                },
+                                trailingIcon = {
+                                    if (!advanced) {
+                                        Text("✓", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings_advanced_toggle)) },
+                                onClick = {
+                                    advanced = true
+                                    menuOpen = false
+                                },
+                                trailingIcon = {
+                                    if (advanced) {
+                                        Text("✓", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         Column(
@@ -139,7 +142,13 @@ fun CategoryScreen(
             }
 
             val sections = categorySections(category, advanced = advanced)
-            if (sections.isEmpty()) {
+            // Special case: Models category always renders the HF
+            // token card at the top, *then* the regular sections list
+            // (or a placeholder if the catalog surface isn't shipped
+            // for this build). Free users ignore the Pro card; paid
+            // users get both fields wired in one place.
+            val prependHfTokenCard = category == SettingsCategory.MODELS
+            if (sections.isEmpty() && !prependHfTokenCard) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
@@ -157,6 +166,19 @@ fun CategoryScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(16.dp),
             ) {
+                if (prependHfTokenCard) {
+                    item(key = "section-hf-tokens") {
+                        Text(
+                            text = "Hugging Face credentials",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                        )
+                    }
+                    item(key = "hf-token-card") {
+                        com.meshlit.ui.v2.screens.HuggingFaceTokenCard()
+                    }
+                }
                 sections.forEach { section ->
                     item(key = "section-${section.title}") {
                         Text(

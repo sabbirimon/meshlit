@@ -27,13 +27,27 @@
 
     <!-- Bluetooth peripheral probe (Phase 0.5 device profile).
          BLUETOOTH_CONNECT is required from API 31+; the scan/admin
-         pair is for legacy Bluetooth Classic discovery. -->
+         pair is for legacy Bluetooth Classic discovery.
+         BLUETOOTH_ADVERTISE is the new permission Meshlit needs to
+         broadcast its 128-bit Meshlit service UUID over BLE so other
+         Meshlit devices can find us without mDNS. The
+         <uses-feature ... required="false" /> line keeps the APK
+         installable on devices without BLE radios. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="31" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"
+        tools:targetApi="31" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
+    <!-- BLE is opt-in: the app must install on phones that lack
+         the radio. Required="false" so Play Store filtering does
+         not exclude these devices. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
 
     <!-- ADB for development flow only. The product keeps the ADB-debug flow
          out of the user-facing build. -->
@@ -95,7 +109,17 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!-- Termux integration: we need to know whether com.termux is
+             installed (Android 11+ package visibility) and to launch
+             its RunCommandService via explicit ComponentName. -->
+        <package android:name="com.termux" />
     </queries>
+
+    <!-- Custom permission Termux exposes to gate callers of its
+         RunCommandService. Declaring <uses-permission> lets our APK
+         hold it once the user grants it from inside Termux's
+         settings ("Allow external apps"). -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
     <application
         android:name=".MeshlitApplication"
@@ -183,6 +207,20 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Termux RUN_COMMAND result receiver. Termux's
+             RunCommandService fires a PendingIntent at this
+             receiver when each command finishes. The
+             permission="com.termux.permission.RUN_COMMAND"
+             ensures only Termux can deliver to us. -->
+        <receiver
+            android:name="com.meshlit.network.termux.TermuxResultReceiver"
+            android:exported="true"
+            android:permission="com.termux.permission.RUN_COMMAND">
+            <intent-filter>
+                <action android:name="com.meshlit.action.TERMUX_RUN_RESULT" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

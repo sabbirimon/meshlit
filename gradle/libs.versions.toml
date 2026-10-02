@@ -48,7 +48,11 @@ kotlinxCoroutines = "1.10.0"
 
 # Logging
 slf4j = "2.0.16"
-logback = "1.5.18"
+# logback-android — only available up to 3.0.0 on Maven Central
+# (the tony19 mirror hasn't published newer lines). 3.0.0 is the
+# last binary-compatible with SLF4J 2.x and supports Android API
+# 24+ — sufficient for our minSdk floor.
+logback = "3.0.0"
 
 # Phase 2.x — multi-runtime inference backends
 onnxruntime = "1.18.0"
@@ -190,6 +194,12 @@ androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graph
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+# V2 UI — `PermanentNavigationDrawer` / `ModalNavigationDrawer`
+# branch on `currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass`,
+# which lives in `material3-adaptive`. Pairs with `androidx-window-core`
+# which supplies the actual `WindowSizeClass` enum.
+androidx-compose-material3-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive" }
+androidx-window-core = { group = "androidx.window", name = "window-core" }
 androidx-compose-material-icons = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 

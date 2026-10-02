@@ -74,6 +74,7 @@ import java.io.File
 fun NetworkMonitorScreen(
     onBack: () -> Unit,
     onOpenDrawer: () -> Unit = {},
+    onOpenTermuxIntegration: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -177,7 +178,7 @@ fun NetworkMonitorScreen(
                         }
                     },
                 )
-                3 -> ExternalTools(context)
+                3 -> ExternalTools(context = context, onOpenTermuxIntegration = onOpenTermuxIntegration)
             }
         }
     }
@@ -300,9 +301,11 @@ private fun ExternalCapture(
 }
 
 @Composable
-private fun ExternalTools(context: Context) {
+private fun ExternalTools(
+    context: Context,
+    onOpenTermuxIntegration: () -> Unit,
+) {
     val pcapInstalled = remember { PcapdroidBridge.isInstalled(context) }
-    val termuxInstalled = remember { TermuxBridge.isInstalled(context) }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("External capture tools", style = MaterialTheme.typography.titleLarge)
         Text(
@@ -315,11 +318,17 @@ private fun ExternalTools(context: Context) {
             installed = pcapInstalled,
             onClick = { if (pcapInstalled) PcapdroidBridge.startCapture(context) else PcapdroidBridge.openInstall(context) },
         )
+        // The legacy Termux tile here used to call `TermuxBridge.startCapture`,
+        // which is gone — Termux support now lives behind a full
+        // Settings → Integrations → Termux screen (with probe, allowlist,
+        // audit, and approval). We deep-link into that screen instead
+        // so users land on the real, working flow rather than a fake
+        // one-button shortcut.
         ToolCard(
-            title = "Termux tcpdump",
-            body = if (termuxInstalled) "Installed — run tcpdump and save to Downloads." else "Install Termux if you prefer command-line capture.",
-            installed = termuxInstalled,
-            onClick = { if (termuxInstalled) TermuxBridge.startCapture(context) else TermuxBridge.openInstall(context) },
+            title = "Termux",
+            body = "Optional external shell integration. Open Settings → Integrations → Termux for setup, the agent tool, and the audit trail.",
+            installed = false,
+            onClick = onOpenTermuxIntegration,
         )
     }
 }

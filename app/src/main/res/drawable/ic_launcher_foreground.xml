@@ -4,8 +4,19 @@
     Layer: 108 x 108 dp. Safe zone is the central 72 x 72 dp; all content
     is placed inside that region (and shifted inward by 18 dp on each side).
     Design: a Brain node (violet) at the center with 3 satellite nodes
-    (cyan = tool, emerald = monitor) connected by light beams. Reads as
-    "cluster" at any launcher mask shape.
+    connected by light beams. Reads as "cluster" at any launcher mask shape.
+
+    Phase v2 — retinted to the Pulse palette:
+      - top satellite:         aqua   #4DD9C0
+      - bottom-left satellite: coral  #E8735F
+      - bottom-right satellite: violet #7C6FF2
+      - Brain node fill: violet radial gradient (unchanged — Brain
+        stays the brand anchor)
+    The cyan/emerald colors used by the v1 build are preserved as
+    `ic_launcher_foreground_v1.xml` for the v1 flavor's monochrome
+    themed-icon path. The new launcher icon (this file) ships in
+    both flavors so QA can install v1 and v2 side-by-side and see
+    distinct icons.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -15,23 +26,23 @@
     android:viewportHeight="108">
 
     <!-- Light beams: Brain -> satellites. Drawn first so nodes overlay them. -->
-    <!-- Brain(54,54) -> Tool(54,30) -->
+    <!-- Brain(54,54) -> Satellite top (54,30) -->
     <path
-        android:strokeColor="#FF22D3EE"
+        android:strokeColor="#FF4DD9C0"
         android:strokeWidth="1.6"
         android:strokeAlpha="0.85"
         android:fillColor="#00000000"
         android:pathData="M54,54 L54,30" />
-    <!-- Brain(54,54) -> Monitor(30,66) -->
+    <!-- Brain(54,54) -> Satellite bottom-left (30,66) -->
     <path
-        android:strokeColor="#FF34D399"
+        android:strokeColor="#FFE8735F"
         android:strokeWidth="1.6"
         android:strokeAlpha="0.85"
         android:fillColor="#00000000"
         android:pathData="M54,54 L30,66" />
-    <!-- Brain(54,54) -> Tool(78,66) -->
+    <!-- Brain(54,54) -> Satellite bottom-right (78,66) -->
     <path
-        android:strokeColor="#FF22D3EE"
+        android:strokeColor="#FF7C6FF2"
         android:strokeWidth="1.6"
         android:strokeAlpha="0.85"
         android:fillColor="#00000000"
@@ -39,33 +50,33 @@
 
     <!-- Faint orbital ring around the Brain, reinforcing the "central mind" -->
     <path
-        android:strokeColor="#447C5CFF"
+        android:strokeColor="#447C6FF2"
         android:strokeWidth="1.0"
         android:fillColor="#00000000"
         android:pathData="M54,54 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0" />
 
-    <!-- Satellite: Tool (cyan) at top -->
+    <!-- Satellite: aqua (top) -->
     <path
-        android:fillColor="#FF22D3EE"
+        android:fillColor="#FF4DD9C0"
         android:pathData="M54,30 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
-    <!-- Tool inner highlight -->
+    <!-- Satellite inner highlight -->
     <path
         android:fillColor="#FFFFFFFF"
         android:fillAlpha="0.55"
         android:pathData="M52.5,28.5 m-1.6,0 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0" />
 
-    <!-- Satellite: Monitor (emerald) at bottom-left -->
+    <!-- Satellite: coral (bottom-left) -->
     <path
-        android:fillColor="#FF34D399"
+        android:fillColor="#FFE8735F"
         android:pathData="M30,66 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
     <path
         android:fillColor="#FFFFFFFF"
         android:fillAlpha="0.55"
         android:pathData="M28.5,64.5 m-1.6,0 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0" />
 
-    <!-- Satellite: Tool (cyan) at bottom-right -->
+    <!-- Satellite: violet (bottom-right) -->
     <path
-        android:fillColor="#FF22D3EE"
+        android:fillColor="#FF7C6FF2"
         android:pathData="M78,66 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
     <path
         android:fillColor="#FFFFFFFF"
