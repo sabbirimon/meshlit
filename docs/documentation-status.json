@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-10",
+  "updated": "2026-10-12",
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 120,
+    "active": 123,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -128,14 +128,14 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit implementation and qualification plan",
-      "contentSha256WithoutTrackingBlock": "bb2a1a0d5ba7054414a17e02dc536e403fc92a735d72775a00474d5c435ab9dc"
+      "contentSha256WithoutTrackingBlock": "0a7d66677193a9c69a7c7fc173bdeb63de11c91a57d076d1ba54f2354a41953e"
     },
     {
       "path": "PROGRESS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "b1edb9696be93d1e0ed2410c05c6bf0420f496e2001fe2afe1f612fc719a2325"
+      "contentSha256WithoutTrackingBlock": "f65a6913a1301d9fdf22c16665916ff081e36a1c1feb13114293f0d6ccb50c44"
     },
     {
       "path": "README.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "5e8f1c304fd1031da48a9ffc9c4703fee74578c65f4810c91b9d5f98f4a6ba5d"
+      "contentSha256WithoutTrackingBlock": "56c95c03605f3d1fc0b2d5fd118c0602578b13793023c2d90d686bde90f83f59"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -495,6 +495,20 @@
       "contentSha256WithoutTrackingBlock": "3c41b2fa4cb71148ff2027cd0e5f12cfba346533f507d5c6c66a28c8982b940b"
     },
     {
+      "path": "docs/PEERING_UI_BUILD_PLAN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Future build plan \u2014 Android and desktop peering, UI and rewards",
+      "contentSha256WithoutTrackingBlock": "f33bcef819abf92ad96593d8f80e7226f67c6305f0410e6032beae60e39c5cf5"
+    },
+    {
+      "path": "docs/PEERING_UI_HANDOFF_2026-10-12.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Android and desktop peering/UI handoff \u2014 2026-10-12",
+      "contentSha256WithoutTrackingBlock": "8e38a7f800774aa13b468c27f58212cfce5181c6c95a1dce4d0045d1df6103ef"
+    },
+    {
       "path": "docs/PHASE1_VALIDATION.md",
       "class": "historical",
       "scope": "dated design/evidence snapshot",
@@ -731,6 +745,13 @@
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Stabilization build and acceptance guide",
       "contentSha256WithoutTrackingBlock": "a0f0259bbbbb59db29b8835143e41b2ce2c9b0477f929fcee704d1b2b3a93e01"
+    },
+    {
+      "path": "docs/desktop/STABILIZATION_NEXT.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop-only stabilization \u2014 next implementation slices",
+      "contentSha256WithoutTrackingBlock": "69f0cb9dbd54f3a07cc5528a39e9ce017a2548e9b3d765421c6a9b0eb68ba8de"
     },
     {
       "path": "docs/desktop/STABILIZATION_PLAN.md",

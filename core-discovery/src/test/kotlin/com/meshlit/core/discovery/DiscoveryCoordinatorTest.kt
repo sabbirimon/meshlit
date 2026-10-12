@@ -46,6 +46,43 @@ class DiscoveryCoordinatorTest {
     }
 
     @Test
+    fun ingest_prefers_higher_priority_transport_when_conflict() {
+        // A peer arrives first over BLE (priority 2) and then over
+        // NSD (priority 1) — the NSD entry should win because it
+        // has lower latency / a richer TXT record. The previous
+        // "first-wins" rule silently dropped the NSD sighting.
+        val coord = DiscoveryCoordinator(listOf(NoopTransport("nsd")))
+        coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "ble"))
+        coord.ingest(adv("node-A", "10.0.0.5", 9090, "local_trusted", transport = "nsd"))
+        assertEquals("10.0.0.5", coord.peers.value["node-A"]!!.host)
+        assertEquals("nsd", coord.peers.value["node-A"]!!.transport)
+    }
+
+    @Test
+    fun ingest_qr_beats_nsd_when_conflict() {
+        // QR (user-driven, explicit) should win over a stale NSD
+        // entry. This is the path the new "show my QR" sheet
+        // relies on — the receiving phone's NSD may have an old
+        // record that the user is overwriting by scanning.
+        val coord = DiscoveryCoordinator(listOf(NoopTransport("nsd")))
+        coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "nsd"))
+        coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "qr"))
+        assertEquals("qr", coord.peers.value["node-A"]!!.transport)
+    }
+
+    @Test
+    fun ingest_manual_is_lowest_priority() {
+        // A stale manual entry should not be allowed to overwrite a
+        // fresh LAN sighting. Phase 1 pairing-bug-fix pinned manual
+        // at the bottom of the priority order.
+        val coord = DiscoveryCoordinator(listOf(NoopTransport("nsd")))
+        coord.ingest(adv("node-A", "10.0.0.5", 8080, "local_trusted", transport = "manual"))
+        coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "nsd"))
+        assertEquals("192.168.1.20", coord.peers.value["node-A"]!!.host)
+        assertEquals("nsd", coord.peers.value["node-A"]!!.transport)
+    }
+
+    @Test
     fun ingest_with_ttl_zero_evicts() {
         val coord = DiscoveryCoordinator(listOf(NoopTransport("nsd")))
         coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted"))

@@ -44,6 +44,8 @@ object SettingsDestinations {
         SettingsDestination("monitor","Monitoring and layer pipeline","Memory, thermal status and approved model workers",keywords="shard cluster battery CPU"),
         SettingsDestination("audit","Audit and telemetry","Encrypted audit history, device metrics, OTLP collector and exports",keywords="OpenTelemetry Grafana Tempo Prometheus Loki observability tracing monitoring CSV JSONL retention actor event"),
         SettingsDestination("logs","Logs and export","Search logs; filter severity and source; export TXT or JSONL",keywords="debug diagnostics error trace download"),
+        SettingsDestination("identity-recovery","Device identity and recovery","Encrypted signing identity backup and restore",keywords="key fingerprint passphrase phrase pairing"),
+        SettingsDestination("rewards","Mesh rewards wallet","Signed local compute receipts and verified backup",keywords="crypto contributions credits ledger MCC"),
         SettingsDestination("network","Network and pairing","Enroll devices, choose transports and approve layer workers",keywords="QR SSH Bluetooth web NAS hive pairing discovery"),
         SettingsDestination("peers","Forwarding peers","Manage peers for the existing inference router",true,"network IP routing"),
         SettingsDestination("runtime","Linux runtime and sandbox","VM configuration and agent activation consent",true,"root rootless terminal VNC desktop QEMU"),

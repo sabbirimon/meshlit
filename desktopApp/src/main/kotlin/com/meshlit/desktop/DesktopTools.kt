@@ -52,7 +52,7 @@ internal fun desktopGroup(id: String) = when (id) {
     "files", "ide", "tasks", "configuration", "search", "cloud", "crawler" -> "Workspace & services"
     else -> "Preferences & help"
 }
-internal val BASIC_DESKTOP_SECTIONS = setOf("management", "terminal", "models", "discover", "providers", "appearance", "tokens", "nodes", "health", "search", "help", "legal", "about")
+internal val BASIC_DESKTOP_SECTIONS = setOf("crypto", "management", "terminal", "models", "discover", "providers", "appearance", "tokens", "nodes", "health", "search", "help", "legal", "about")
 
 internal fun hostReadings(): List<Pair<String, String>> {
     fun bytes(value: Long?) = value?.takeIf { it >= 0 }?.let { "%.2f GiB".format(it / 1073741824.0) } ?: "Unavailable"

@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -75,8 +76,8 @@ fun QrPairingSheet(
 ) {
     val sheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
-    val contextResources=androidx.compose.ui.platform.LocalResources.current
-    val payloadJson = remember { ownPayload.encode() }
+    val resources = LocalResources.current
+    val payloadJson = remember(ownPayload) { ownPayload.encode() }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var pasteField by remember { mutableStateOf("") }
     var scanError by remember { mutableStateOf<String?>(null) }
@@ -88,26 +89,27 @@ fun QrPairingSheet(
 
     val launchScanner = {
         scope.launch {
+            scanError = null
             when (val r = QrScanner.scan(context)) {
                 is QrScanner.ScanResult.Success -> {
-                    val parsed = runCatching { PairingPayload.decode(r.rawValue) }.getOrNull()
+                    val parsed = runCatching { PairingPayload.decode(r.rawValue) }.onFailure { scanError = "pairing.invalid_payload: ${it.message}" }.getOrNull()
                     if (parsed != null) {
                         onAddFromString(parsed)
                     } else {
-                        scanError = contextResources.getString(R.string.devices_qr_scan_invalid)
+                        if (scanError == null) scanError = "pairing.invalid_payload: Invalid QR"
                     }
                 }
                 is QrScanner.ScanResult.Cancelled -> {
                     // user backed out — silent
                 }
                 is QrScanner.ScanResult.PlayServicesMissing -> {
-                    scanError = contextResources.getString(R.string.devices_qr_scan_play_services)
+                    scanError = resources.getString(R.string.devices_qr_scan_play_services)
                 }
                 is QrScanner.ScanResult.MissingActivity -> {
-                    scanError = contextResources.getString(R.string.devices_qr_scan_failed)
+                    scanError = resources.getString(R.string.devices_qr_scan_failed)
                 }
                 is QrScanner.ScanResult.Failed -> {
-                    scanError = contextResources.getString(
+                    scanError = resources.getString(
                         R.string.devices_qr_scan_failed_code,
                         r.code.toString(),
                     )
@@ -170,8 +172,10 @@ fun QrPairingSheet(
                 )
                 Button(
                     onClick = {
-                        val parsed = runCatching { PairingPayload.decode(pasteField) }.getOrNull()
+                        scanError = null
+                        val parsed = runCatching { PairingPayload.decode(pasteField) }.onFailure { scanError = "pairing.invalid_payload: ${it.message}" }.getOrNull()
                         if (parsed != null) onAddFromString(parsed)
+                        else if (scanError == null) scanError = "pairing.invalid_payload: Check the endpoint and pairing link"
                     },
                     enabled = pasteField.isNotBlank(),
                 ) {
@@ -199,7 +203,8 @@ fun QrPairingSheet(
  * `transport = "qr"` is propagated so the row's chip reads "QR"
  * instead of "mDNS".
  */
-fun PairingPayload.toPeerAdvertisement(): com.meshlit.core.discovery.PeerAdvertisement {
+@Suppress("UNUSED_PARAMETER")
+fun PairingPayload.toPeerAdvertisement(localFingerprint: String? = null): com.meshlit.core.discovery.PeerAdvertisement {
     val url = java.net.URI(baseUrl.trim())
     val host = url.host ?: baseUrl
     val port = if (url.port != -1) url.port else when (url.scheme?.lowercase()) {
@@ -211,13 +216,9 @@ fun PairingPayload.toPeerAdvertisement(): com.meshlit.core.discovery.PeerAdverti
         nodeId = nodeId.ifBlank { java.util.UUID.randomUUID().toString() },
         host = host,
         port = port,
-        tier = capabilityTier,
-        // PairingPayload has no fingerprint field today; we leave
-        // a stable short hash derived from the baseUrl so the row
-        // can render a fingerprint chip even on freshly-paired
-        // peers. A real trust store replaces this with a
-        // `DeviceTrustPolicy.publicKeyFingerprint` post-TOFU.
-        fingerprint = Integer.toHexString(baseUrl.hashCode()).padStart(12, '0'),
+        tier = "local_sandboxed",
+        // Only the scanned public key supplies a peer fingerprint.
+        fingerprint = if (publicKey.isBlank()) "" else com.meshlit.core.trust.PeerCrypto.fingerprint(publicKey),
         ttlSec = 60,
         transport = "qr",
     )

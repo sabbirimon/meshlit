@@ -44,6 +44,17 @@ object QrScanner {
      */
     suspend fun scan(context: Context): ScanResult {
         val activity = context.findActivity() ?: return ScanResult.MissingActivity
+        return scan(activity)
+    }
+
+    /**
+     * Activity-overload for callers that already have an [Activity]
+     * in hand (e.g. a `LaunchedEffect` inside a `ComponentActivity`).
+     * Avoids the [MissingActivity] path entirely, which previously
+     * bit callers that passed an `applicationContext` from a
+     * `ViewModel` or non-Activity scope.
+     */
+    suspend fun scan(activity: Activity): ScanResult {
         return try {
             val options = GmsBarcodeScannerOptions.Builder()
                 .setBarcodeFormats(Barcode.FORMAT_QR_CODE)

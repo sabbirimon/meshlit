@@ -261,6 +261,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.security.crypto)
     implementation(project(":shared-workspace"))
     // Project modules (app consumes the orchestration facade)
     implementation(project(":core-orchestration"))

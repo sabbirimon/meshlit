@@ -42,6 +42,7 @@ class NsdDiscoveryTransport(
     }
 
     private var registeredName: String? = null
+    private val resolvedServices = java.util.concurrent.ConcurrentHashMap<String, PeerAdvertisement>()
     private var listener: NsdManager.DiscoveryListener? = null
     private var isRunning: Boolean = false
     private var callbackScope: CoroutineScope? = null
@@ -64,6 +65,7 @@ class NsdDiscoveryTransport(
     }
 
     override fun stop() {
+        setStatus(TransportStatus.Stopped)
         if (!isRunning) return
         isRunning = false
         callbackScope = null
@@ -75,6 +77,7 @@ class NsdDiscoveryTransport(
             runCatching { nsdManager.unregisterService(registrationListener) }
         }
         registeredName = null
+        resolvedServices.clear()
     }
 
     private fun registerService(self: LocalPeerDescriptor) {
@@ -115,19 +118,24 @@ class NsdDiscoveryTransport(
     private fun startDiscovery() {
         val l = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(regType: String) {
+                setStatus(TransportStatus.Active)
                 log.info("nsd.discover.start", "discovery started", mapOf("type" to regType))
             }
             override fun onServiceFound(service: NsdServiceInfo) {
-                if (service.serviceType != serviceType) return
+                if (service.serviceType.trimEnd('.') != serviceType.trimEnd('.')) return
                 resolve(service)
             }
             override fun onServiceLost(service: NsdServiceInfo) {
+                resolvedServices.remove(service.serviceName)?.let { adv ->
+                    callbackScope?.launch { emit(adv.copy(ttlSec = 0)) }
+                }
                 log.info("nsd.lost", "service lost", mapOf("name" to service.serviceName))
             }
             override fun onDiscoveryStopped(serviceType: String) {
                 log.info("nsd.discover.stop", "discovery stopped", mapOf("type" to serviceType))
             }
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+                setStatus(TransportStatus.Error(errorCode, "NSD discovery failed"))
                 log.warn("nsd.discover.fail", "startDiscovery failed", mapOf("type" to serviceType, "code" to errorCode))
             }
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
@@ -138,6 +146,7 @@ class NsdDiscoveryTransport(
         runCatching {
             nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, l)
         }.onFailure { t ->
+            setStatus(TransportStatus.Unavailable("NSD discovery failed: ${t.message}"))
             log.warn("nsd.discover.throw", "discoverServices threw", mapOf("err" to (t.message ?: "")))
         }
     }
@@ -154,6 +163,7 @@ class NsdDiscoveryTransport(
                 val adv = parseAdvertisement(txt, serviceInfo)
                 val scope = callbackScope
                 if (adv != null && scope != null) {
+                    resolvedServices[serviceInfo.serviceName] = adv
                     scope.launch(Dispatchers.IO) { emit(adv) }
                 }
             }
@@ -178,7 +188,8 @@ class NsdDiscoveryTransport(
             )
         }
         return runCatching {
-            Json.decodeFromString(PeerAdvertisement.serializer(), json)
+            Json { ignoreUnknownKeys = true }.decodeFromString(PeerAdvertisement.serializer(), json)
+                .copy(host = info.host?.hostAddress.orEmpty(), port = info.port, transport = "nsd")
         }.getOrNull()
     }
 

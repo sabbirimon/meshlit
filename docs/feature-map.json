@@ -1149,6 +1149,7 @@
     "core-net",
     "core-observability",
     "core-orchestration",
+    "core-peer-security",
     "core-probe",
     "core-registry",
     "core-role",

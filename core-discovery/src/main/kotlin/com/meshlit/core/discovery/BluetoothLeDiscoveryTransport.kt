@@ -23,40 +23,26 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.nio.charset.StandardCharsets
 
-/**
- * Bluetooth Low Energy transport for Meshlit peer discovery. Uses a
- * fixed 128-bit service UUID so Meshlit-only devices can filter
- * background-noise advertisements out before the OS even hands them
- * to us.
- *
- * Service UUID: `0000MESHLIT-0000-1000-8000-00805F9B34FB`. The
- * `_MSHLIT_` literal in the second-half is the Bluetooth-SIG
- * reserved-range "vendor" marker; the actual UUID is well-known
- * enough that Meshlit devices from any version can find each other.
- *
- * The advertise payload is a 24-byte max service-data field carrying
- * the JSON-serialised [PeerAdvertisement]. Receivers parse it on
- * the IO dispatcher and re-emit via the abstract [advertisements]
- * flow. When the JSON is too long for a single service-data frame
- * the receiver builds a stub advertisement from the BLE-only
- * metadata (rssi, host side of the GATT connection) — this is the
- * path most BLE-only peers will take since the standard service-data
- * field is limited to ~26 bytes.
- *
- * Pure Android Bluetooth API — no `androidx.bluetooth` dependency.
- * Requires `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `BLUETOOTH_ADVERTISE`
- * on API 31+; the manifest declares all three.
- *
- * Lifecycle: [start] begins both the BLE scan and the GATT-server
- * advertiser. [stop] cancels both. The transport is idempotent
- * across stop/start cycles.
- */
+/** BLE discovery with a 24-byte manufacturer frame that fits legacy advertisements. */
 class BluetoothLeDiscoveryTransport(
     private val context: Context,
     private val serviceUuid: ParcelUuid = ParcelUuid.fromString(MESHLIT_SERVICE_UUID),
 ) : DiscoveryTransport(name = "ble") {
 
     private val log = logger("BluetoothLeDiscoveryTransport")
+    fun refreshAvailability() {
+        val unavailable: TransportStatus? = when {
+            !hasScanPermission() -> TransportStatus.MissingPermission(if (Build.VERSION.SDK_INT >= 31) Manifest.permission.BLUETOOTH_SCAN else Manifest.permission.ACCESS_FINE_LOCATION)
+            !hasConnectPermission() -> TransportStatus.MissingPermission(Manifest.permission.BLUETOOTH_CONNECT)
+            adapter == null -> TransportStatus.Unavailable("Bluetooth hardware unavailable")
+            runCatching { adapter?.isEnabled }.getOrDefault(false) != true -> TransportStatus.Unavailable("Bluetooth is off")
+            else -> null
+        }
+        if (unavailable != null) {
+            stop()
+            setStatus(unavailable)
+        } else if (status.value is TransportStatus.Unavailable || status.value is TransportStatus.MissingPermission) setStatus(TransportStatus.Stopped)
+    }
 
     private val bluetoothManager: BluetoothManager? by lazy {
         context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -77,6 +63,9 @@ class BluetoothLeDiscoveryTransport(
             log.warn("ble.start.duplicate", "start() called twice without stop()")
             return scope.launch { /* no-op */ }
         }
+        refreshAvailability()
+        if (status.value is TransportStatus.Unavailable || status.value is TransportStatus.MissingPermission) return scope.launch { }
+        setStatus(TransportStatus.Starting)
         isRunning = true
         this.self = self
         this.callbackScope = scope
@@ -87,10 +76,11 @@ class BluetoothLeDiscoveryTransport(
     }
 
     override fun stop() {
+        setStatus(TransportStatus.Stopped)
         if (!isRunning) return
         isRunning = false
         callbackScope = null
-        val a = adapter
+        val a = if (hasConnectPermission()) adapter else null
         if (a != null) {
             scanCallback?.let { cb ->
                 runCatching { a.bluetoothLeScanner?.stopScan(cb) }
@@ -101,6 +91,7 @@ class BluetoothLeDiscoveryTransport(
         }
         scanCallback = null
         advertiseCallback = null
+        setStatus(TransportStatus.Stopped)
     }
 
     private fun startScanning() {
@@ -117,7 +108,7 @@ class BluetoothLeDiscoveryTransport(
             return
         }
         val filter = ScanFilter.Builder()
-            .setServiceUuid(serviceUuid)
+            .setManufacturerData(BlePeerPacket.MANUFACTURER_ID, byteArrayOf(0x4D, 1))
             .build()
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
@@ -130,52 +121,25 @@ class BluetoothLeDiscoveryTransport(
                 results.forEach { handleScanResult(it) }
             }
             override fun onScanFailed(errorCode: Int) {
+                setStatus(TransportStatus.Error(errorCode, "BLE scan failed"))
                 log.warn("ble.scan.fail", "scan failed", mapOf("code" to errorCode))
             }
         }
         scanCallback = cb
         runCatching {
             scanner.startScan(listOf(filter), settings, cb)
+            setStatus(TransportStatus.Active)
         }.onFailure { t ->
+            setStatus(TransportStatus.Error(-1, "BLE scan failed: ${t.message}"))
             log.warn("ble.scan.throw", "startScan threw", mapOf("err" to (t.message ?: "")))
         }
     }
 
     private fun handleScanResult(result: ScanResult) {
-        val payload = result.scanRecord?.getServiceData(serviceUuid) ?: return
-        val self = this.self ?: return
+        val payload = result.scanRecord?.getManufacturerSpecificData(BlePeerPacket.MANUFACTURER_ID) ?: return
         val scope = callbackScope ?: return
-        val parsed = runCatching {
-            Json.decodeFromString(PeerAdvertisement.serializer(), String(payload, StandardCharsets.UTF_8))
-        }.getOrNull()
-        val adv = parsed ?: synthesiseAdvertisement(result)
-        if (adv != null) {
-            scope.launch(Dispatchers.IO) { emit(adv) }
-        }
-    }
-
-    /**
-     * Fallback when the service-data payload is too short to carry
-     * our full JSON. We synthesise a minimal advertisement from the
-     * BLE-level metadata so the rest of the pipeline (classifier,
-     * peer list) still sees the peer.
-     */
-    private fun synthesiseAdvertisement(result: ScanResult): PeerAdvertisement? {
-        val device = result.device ?: return null
-        val name = runCatching { device.name }.getOrNull().orEmpty()
-        val address = device.address ?: return null
-        return PeerAdvertisement(
-            nodeId = name.ifBlank { address.replace(":", "") },
-            host = address,
-            // BLE peers don't expose a real L3 port — we use the
-            // peer's HTTP server port if we heard it (encoded in
-            // service-data) otherwise default to 8080.
-            port = 8080,
-            tier = "local_sandboxed",
-            fingerprint = address.replace(":", "").padStart(12, '0'),
-            ttlSec = 60,
-            transport = "ble",
-        )
+        val adv = BlePeerPacket.decode(payload) ?: return
+        if (adv.nodeId != self?.nodeId) scope.launch(Dispatchers.IO) { emit(adv) }
     }
 
     private fun startAdvertising(self: LocalPeerDescriptor) {
@@ -188,10 +152,13 @@ class BluetoothLeDiscoveryTransport(
             log.warn("ble.noAdvertiser", "BluetoothLeAdvertiser unavailable")
             return
         }
-        val json = Json.encodeToString(PeerAdvertisement.serializer(), toAdvertisement(self))
+        val payload = runCatching { BlePeerPacket.encode(self) }.getOrElse {
+            setStatus(TransportStatus.Unavailable("Local IPv4 address required for BLE advertisement"))
+            return
+        }
         val data = AdvertiseData.Builder()
             .setIncludeDeviceName(false)
-            .addServiceData(serviceUuid, json.toByteArray(StandardCharsets.UTF_8))
+            .addManufacturerData(BlePeerPacket.MANUFACTURER_ID, payload)
             .build()
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
@@ -203,6 +170,7 @@ class BluetoothLeDiscoveryTransport(
                 log.info("ble.adv.start", "advertiser started")
             }
             override fun onStartFailure(errorCode: Int) {
+                setStatus(TransportStatus.Error(errorCode, "BLE advertisement failed"))
                 log.warn("ble.adv.fail", "advertiser failed", mapOf("code" to errorCode))
             }
         }
@@ -221,9 +189,12 @@ class BluetoothLeDiscoveryTransport(
                 Manifest.permission.BLUETOOTH_SCAN,
             ) == PackageManager.PERMISSION_GRANTED
         } else {
-            true
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         }
     }
+
+    private fun hasConnectPermission(): Boolean = Build.VERSION.SDK_INT < 31 ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
     private fun hasAdvertisePermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

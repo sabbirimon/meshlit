@@ -303,7 +303,7 @@ class MeshlitApplication : android.app.Application() {
                     host = localIpAddress,
                     port = httpServerPort,
                     tierTag = capabilityTier.name,
-                    fingerprint = "",
+                    fingerprint = com.meshlit.core.trust.PeerCrypto.fingerprint(get<com.meshlit.peering.DeviceIdentity>().get(nodeIdHex).publicKey),
                 )
                 repo.start(this, self)
             } catch (t: Throwable) {
@@ -474,7 +474,7 @@ class MeshlitApplication : android.app.Application() {
                 is MeshlitResult.Success -> {
                     val snap = res.value
                     snapshotHolder.publish(snap)
-                    setStableNodeId(snap.nodeId)
+                    setStableNodeId(get<com.meshlit.peering.DeviceIdentity>().restoredNodeId() ?: snap.nodeId)
                     log.info(
                         "app.bootstrap.ok",
                         "dynamic foundation bootstrap complete",

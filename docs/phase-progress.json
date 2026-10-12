@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-10",
+  "updated": "2026-10-12",
   "applicationSourceCommit": "12bd20a",
   "sourceEvidenceCheckpoint": "630cba2",
   "review": "https://github.com/sabbirimon/meshlit-v2/pull/2",
@@ -25,7 +25,7 @@
     },
     {
       "name": "Android reliability",
-      "state": "Current build/lint gate passes; older device proof dated",
+      "state": "Historical baseline build/lint passed; new 2026-10-12 integration not yet qualified",
       "nextGate": "Current Samsung/Xiaomi/Windows category device qualification"
     },
     {
@@ -37,6 +37,13 @@
       "name": "Platform and distribution",
       "state": "Intel Experimental release published; recovered payloads/hash verification pass",
       "nextGate": "Clean-target signing/privacy and independent OS/device gates; CI remains separately observed"
+    },
+    {
+      "name": "Android/desktop peering, identity, wallet and UI",
+      "state": "Partial uncommitted source; paused at owner request",
+      "nextGate": "Desktop and Android compile/integration review, strict lint and qualified peer/recovery tests",
+      "plan": "docs/PEERING_UI_BUILD_PLAN.md",
+      "handoff": "docs/PEERING_UI_HANDOFF_2026-10-12.md"
     }
   ],
   "releaseUrl": "https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-macos-intel-build40.1",

@@ -1,6 +1,6 @@
 # Meshlit progress and evidence
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -16,6 +16,12 @@ Historical upstream records in `docs/history/` are not current test evidence.
 38 durable command operations and 39 registered Gradle modules**. Feature counts do not establish
 an overall completion percentage. Source implementation, automated contracts,
 emulator observations, host runtime proof and physical-phone proof are separate.
+
+## Peering, wallet and UI continuation — 2026-10-12 (paused)
+
+Owner clarified the target as `/Users/code/Documents/Codex/meshlit-v2-dev`, for both Android and desktop; Android Studio `mllm` remains another agent's reference checkout. Portable security, discovery/settings fixes, Android peering routes and desktop wallet/connection/UI source are in progress and uncommitted. Owner requested a pause and future build plan. See [handoff](docs/PEERING_UI_HANDOFF_2026-10-12.md) and [future acceptance gates](docs/PEERING_UI_BUILD_PLAN.md).
+
+Current Documents-checkout evidence: core-trust 12 tests and core-discovery 20 tests report zero failures/errors. The combined run was interrupted during desktop Kotlin compilation (exit 130); no current desktop/app/full-lint qualification is claimed. The earlier 154-test Android Studio repair is separate evidence. No push/release or scheduled continuation.
 
 ## Stabilization planning refinement — 2026-10-10
 
@@ -734,3 +740,7 @@ SSH/VM/lifecycle/thermal/privacy, multi-phone recovery and Internet client tests
 remain gates. Final universal installers/test APK are kept outside the checkout;
 0.963 GiB of duplicate generated ABI installers was reclaimed. No source, owner
 keys, model assets or earlier retained fallback installers were deleted.
+
+## Paused source backup — 2026-10-12
+
+Owner authorized a GitHub checkpoint on `codex/paused-peering-ui-2026-10-12`, separate from main. This saves the incomplete Android/desktop continuation and future build plan; it does not qualify or release the current changes. See docs/PEERING_UI_HANDOFF_2026-10-12.md.

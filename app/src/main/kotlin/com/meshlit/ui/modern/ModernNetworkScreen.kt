@@ -21,15 +21,25 @@ import com.meshlit.ui.theme.ChatTokens as T
     var query by rememberSaveable{mutableStateOf("")}
     val context=LocalContext.current
     BackHandler(page!=null){page=null}
+    if(page=="relay"){com.meshlit.ui.v2.screens.RelaySettingsScreen();return}
+    if(page=="join"){com.meshlit.ui.v2.screens.RelayJoinScreen();return}
+    if(page=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
+    if(page=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen();return}
+    if(page=="device_info"){com.meshlit.ui.v2.screens.DeviceInfoScreen{page=null};return}
     if(page=="ssh"){SshConnectionsScreen{page=null};return}
     if(page=="firewall"){FirewallSettingsScreen{page=null};return}
-    if(page=="app"){com.meshlit.ui.screens.DevicesScreen(onOpenDrawer={page=null});return}
+    if(page=="app"){com.meshlit.ui.v2.screens.DeviceWorkspaceScreen{page=it};return}
     if(page=="scan"){com.meshlit.ui.v2.screens.V2ScanScreen(onOpenQrPairing={page="app"},onBack={page=null});return}
     if(page=="forward"){com.meshlit.ui.screens.settings.ForwardingPeersScreen({page=null});return}
     Scaffold(topBar={TopAppBar(title={Text("Network and pairing")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
             item{Text("Connect your hive",style=MaterialTheme.typography.headlineSmall)
                 Text("Enroll devices, approve access, then verify the capabilities each node can offer.")}
+            item { Row(horizontalArrangement=Arrangement.spacedBy(T.small)) {
+                Button({page="app"}) { Text("Devices") }
+                OutlinedButton({page="join"}) { Text("Join cluster") }
+                OutlinedButton({page="relay"}) { Text("Host relay") }
+            } }
             item{OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),label={Text("Filter connection methods")},singleLine=true)}
             if("Meshlit QR LAN VPN app".contains(query,true) || query.isBlank()) item{NetworkMethod("Meshlit devices","QR/manual endpoint enrollment and network scope settings. Legacy routing endpoints have a separate trust model from native layer workers."){
                 Button(onClick={page="app"}){Text("Pair or manage endpoints")}

@@ -1,6 +1,6 @@
 # Markdown documentation status and workstream tracking
 
-Reconciled 2026-10-10. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
+Reconciled 2026-10-12. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
 
 [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Milestone gates](../BUILD_MILESTONES.md) · [Desktop feature tracker](DESKTOP_FEATURE_TRACKER.md) · [Release evidence](RELEASE_EVIDENCE.md)
 
@@ -13,13 +13,14 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 | Local core engine | Host/payload verified; Experimental | Clean-machine, lifecycle/stress, wider quality and hardware |
 | Shared sharding | Contract-tested planner; desktop executor pending | Live paired-worker controller and independent-device oversized-model/peer-loss proof |
 | Desktop management | Partial source and scoped host qualification | Remaining real category controllers and operational acceptance |
-| Android reliability | Current build/lint gate passes; older device proof dated | Current Samsung/Xiaomi/Windows category device qualification |
+| Android reliability | Historical baseline build/lint passed; new 2026-10-12 integration not yet qualified | Current Samsung/Xiaomi/Windows category device qualification |
 | Governed agents and fleet | Android reference; desktop authority/audit port pending | Common permission/controller/audit bridge before autonomous MCP/A2A/hooks |
 | Platform and distribution | Intel Experimental release published; recovered payloads/hash verification pass | Clean-target signing/privacy and independent OS/device gates; CI remains separately observed |
+| Android/desktop peering, identity, wallet and UI | Partial uncommitted source; paused at owner request | Desktop and Android compile/integration review, strict lint and qualified peer/recovery tests |
 
 ## Coverage and maintenance
 
-120 active, 19 historical, 8 protected, 1 template, 6 third-party; 155 Markdown documents including this index.
+123 active, 19 historical, 8 protected, 1 template, 6 third-party; 158 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -89,6 +90,8 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/MEMORY_AND_VOICE.md](MEMORY_AND_VOICE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MULTIPLATFORM_NEXT.md](MULTIPLATFORM_NEXT.md) | platform preview; NEXT device/build acceptance remains open |
 | [docs/P2P_AND_CRYPTO.md](P2P_AND_CRYPTO.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/PEERING_UI_BUILD_PLAN.md](PEERING_UI_BUILD_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/PEERING_UI_HANDOFF_2026-10-12.md](PEERING_UI_HANDOFF_2026-10-12.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PLATFORM_ADAPTER_PLAN.md](PLATFORM_ADAPTER_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PLAY_DISTRIBUTION.md](PLAY_DISTRIBUTION.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) | cross-platform tracking; feature and device gates remain separate |
@@ -115,6 +118,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/desktop/SEARCH_AND_MANAGEMENT.md](desktop/SEARCH_AND_MANAGEMENT.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/SECURITY_AND_RUNTIME.md](desktop/SECURITY_AND_RUNTIME.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/STABILIZATION_BUILD_GUIDE.md](desktop/STABILIZATION_BUILD_GUIDE.md) | desktop/server; individual acceptance gates apply |
+| [docs/desktop/STABILIZATION_NEXT.md](desktop/STABILIZATION_NEXT.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/STABILIZATION_PLAN.md](desktop/STABILIZATION_PLAN.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/TERMINAL.md](desktop/TERMINAL.md) | desktop/server; individual acceptance gates apply |
 | [docs/device-aware-model-runtime.md](device-aware-model-runtime.md) | Android/shared reference; desktop ports have separate acceptance |

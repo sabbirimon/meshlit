@@ -44,6 +44,7 @@ import okhttp3.Response
 class RemoteInferenceClient internal constructor(
     private val baseUrl: String,
     private val client: OkHttpClient,
+    private val token: String? = null,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
@@ -107,6 +108,7 @@ class RemoteInferenceClient internal constructor(
             val reqBuilder = Request.Builder()
                 .url("$baseUrl/v1/infer")
                 .post(body)
+            .apply { token?.let { header("Authorization", "Bearer $it") } }
             hints?.let { reqBuilder.header(InferenceHttpServer.HEADER_HINTS, it.toHeaderValue()) }
             client.newCall(reqBuilder.build()).execute().use { resp ->
                 if (!resp.isSuccessful) {

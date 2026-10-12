@@ -1,5 +1,6 @@
 package com.meshlit.inference
 
+import kotlinx.coroutines.flow.asStateFlow
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -104,6 +105,7 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
 
     override fun onCreate() {
         super.onCreate()
+        mutableHosting.value = HostingStatus.Starting
         val koin = getKoin()
         // Use the app-scoped coordinator so every screen (Agent, Jobs,
         // Terminal) talks to the same engine instance. Previously this
@@ -139,7 +141,7 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
                 metrics = metrics,
                 loadedShardsProvider = { coordinator.loadedShards.value },
             )
-            val jobLifecycle = AppJobLifecycle(metrics)
+            val jobLifecycle = AppJobLifecycle(metrics, koin.get())
             // Wire the cluster-shard surface on the same port. ShardServer
             // answers /v1/capabilities, /v1/shards/{modelId}/{shardId},
             // /v1/manifest/{modelId}; peer's InferenceHttpServer.serve()
@@ -163,6 +165,11 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
                 // user has explicitly opened the port they're
                 // trying to hit.
                 meshFirewall = meshFirewall,
+                pairingAuthority = koin.get<com.meshlit.core.trust.PairingAuthority>(),
+                identityProof = { nonce ->
+                    val identity = koin.get<com.meshlit.peering.DeviceIdentity>().get(koin.get<MeshlitApplication>().nodeIdHex)
+                    com.meshlit.core.trust.PeerCrypto.json.encodeToString(com.meshlit.core.trust.IdentityProof.serializer(), com.meshlit.core.trust.PeerCrypto.prove(identity, nonce))
+                },
             )
             peerRegistry = reg
             clientFactory = factory
@@ -213,7 +220,9 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
             scope.launch {
                 try {
                     server.start()
+                    mutableHosting.value = HostingStatus.Active
                 } catch (t: Throwable) {
+                    mutableHosting.value = HostingStatus.Failed(t.message ?: "Hosting failed")
                     log.warn(
                         "fgs.http.bind.fail",
                         "NanoHTTPD failed to bind (port in use by another build?)",
@@ -353,8 +362,8 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
         clientFactory = null
         peerRegistry = null
 
-        coordinator.shutdown()
-        scope.launch { coordinator.unloadModel() }
+        mutableHosting.value = HostingStatus.Stopped
+        // The application coordinator also serves local chat; stopping hosting leaves it usable.
         scope.cancel()
         super.onDestroy()
     }
@@ -411,6 +420,9 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
     }
 
     companion object {
+        private val mutableHosting = kotlinx.coroutines.flow.MutableStateFlow<HostingStatus>(HostingStatus.Stopped)
+        val hostingState = mutableHosting.asStateFlow()
+
         const val NOTIFICATION_ID = 1001
 
         /** Default port for the raw-TCP activation transport. Picked

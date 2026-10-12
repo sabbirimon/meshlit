@@ -160,6 +160,11 @@ val coreModule = module {
     // -----------------------------------------------------------------
     // Settings / device / first-run repositories
     // -----------------------------------------------------------------
+    single { com.meshlit.peering.DeviceIdentity(androidContext()) }
+    single { com.meshlit.peering.PeerSessionStore(androidContext()) }
+    single { com.meshlit.core.trust.PairingAuthority({ get<com.meshlit.peering.DeviceIdentity>().get(get<com.meshlit.MeshlitApplication>().nodeIdHex) }, get<TrustStore>()) }
+    single { com.meshlit.peering.ContributionStore(androidContext(), get()) { get<com.meshlit.MeshlitApplication>().nodeIdHex } }
+    single { com.meshlit.peering.RelayManager(get(), get(), get()) }
     single { SettingsRepository(androidContext()) }
     single { DeviceProfileRepository(androidContext()) }
     single { FirstRunSetupRepository(androidContext()) }
@@ -191,7 +196,7 @@ val coreModule = module {
         com.meshlit.disco.PeerRepository(
             coordinator = get(),
             localIPPrefixProvider = { com.meshlit.disco.collectLocalIPv4Prefixes() },
-            clusterFingerprintsProvider = { emptySet() },
+            clusterFingerprintsProvider = { get<com.meshlit.core.trust.TrustStore>().list().filter { !it.isTokenExpired() }.mapNotNull { it.publicKeyFingerprint }.toSet() },
             trustStore = get<com.meshlit.core.trust.TrustStore>(),
             usbTetherProvider = {
                 (androidContext() as com.meshlit.MeshlitApplication)

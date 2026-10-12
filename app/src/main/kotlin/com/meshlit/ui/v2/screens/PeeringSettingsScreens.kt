@@ -1,0 +1,224 @@
+package com.meshlit.ui.v2.screens
+
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.meshlit.MeshlitApplication
+import com.meshlit.core.trust.*
+import com.meshlit.di.koinInject
+import com.meshlit.peering.*
+import kotlinx.coroutines.*
+
+@Composable
+fun RelaySettingsScreen() {
+    val relay: RelayManager = koinInject(); val state by relay.state.collectAsStateWithLifecycle()
+    val app = LocalContext.current.applicationContext as MeshlitApplication
+    val scope = rememberCoroutineScope(); var error by remember { mutableStateOf<String?>(null) }
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item { Text("Host a cluster", style = MaterialTheme.typography.headlineLarge)
+            Text("This device manages enrollment and member presence. Keep it online and reachable.") }
+        item { Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Enable relay", Modifier.weight(1f))
+            Switch(state.enabled, { enabled -> scope.launch(Dispatchers.IO) {
+                try { if (enabled) relay.enable() else relay.disable() }
+                catch (e: Exception) { withContext(Dispatchers.Main) { error = e.message } }
+            } })
+        } }
+        if (state.enabled) {
+            item { Text("http://${app.localIpAddress}:${relay.port}", style = MaterialTheme.typography.titleMedium)
+                Text("Use HTTPS or a VPN for internet access. HTTP enrollment exposes traffic on the local network.") }
+            item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(24.dp)) {
+                Text("Join code", style = MaterialTheme.typography.labelLarge)
+                androidx.compose.foundation.text.selection.SelectionContainer { Text(state.code, style = MaterialTheme.typography.displayMedium) }
+                Text("Valid for 10 minutes after creation. Share the address and code with your devices.")
+                TextButton(onClick = { scope.launch(Dispatchers.IO) { relay.rotateCode() } }) { Text("Create new code") }
+                TextButton(onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        val link = relay.invite()
+                        withContext(Dispatchers.Main) {
+                            (app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                                .setPrimaryClip(android.content.ClipData.newPlainText("Cluster invite", link))
+                        }
+                    }
+                }) { Text("Copy identity-pinned invite link") }
+            } } }
+            item { Text("Connected members · ${state.members.size}", style = MaterialTheme.typography.titleLarge) }
+            items(state.members, key = { it.nodeId }) { member -> Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) { Text(member.name.ifBlank { member.nodeId.take(12) })
+                    Text("Identity ${PeerCrypto.fingerprint(member.publicKey).take(16)}", style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { scope.launch(Dispatchers.IO) { relay.revoke(member.nodeId) } }) { Text("Disconnect member") } }
+            } }
+        }
+        error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+    }
+}
+
+@Composable
+fun RelayJoinScreen() {
+    val relay: RelayManager = koinInject(); val state by relay.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var url by rememberSaveable { mutableStateOf("") }; var code by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Join your cluster", style = MaterialTheme.typography.headlineLarge)
+        Text("Enter the relay address and its current six-digit code.")
+        OutlinedTextField(url, { url = it }, label = { Text("Relay address or invite link") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, label = { Text("Join code") },
+            visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+        Button(onClick = { busy = true; error = null; scope.launch {
+            try { relay.join(url, code); code = "" }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { error = e.message }
+            finally { busy = false }
+        } }, enabled = !busy && (code.length == 6 || url.startsWith("meshlit://join")) && url.isNotBlank()) { Text(if (busy) "Joining…" else "Join cluster") }
+        if (state.joinedUrl != null) {
+            Text("Connected to ${state.joinedUrl}", color = MaterialTheme.colorScheme.primary)
+            Text("The relay appears in the Internet peer list. Model execution approval is managed in Devices.")
+            TextButton(onClick = relay::leave) { Text("Leave cluster") }
+        }
+        (error ?: state.error)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    }
+}
+
+@Composable
+fun RecoveryScreen() {
+    val context = LocalContext.current; val app = context.applicationContext as MeshlitApplication
+    val identity: DeviceIdentity = koinInject(); val scope = rememberCoroutineScope()
+    var phrase by remember { mutableStateOf("") }
+    var reveal by remember { mutableStateOf(false) }
+    DisposableEffect(context) {
+        var current: android.content.Context = context
+        while (current is android.content.ContextWrapper && current !is android.app.Activity) current = current.baseContext
+        val window = (current as? android.app.Activity)?.window
+        val wasSecure = window?.attributes?.flags?.and(android.view.WindowManager.LayoutParams.FLAG_SECURE) != 0
+        window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        onDispose { if (!wasSecure) window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE) }
+    }
+    var backup by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }
+    var restored by remember { mutableStateOf<RecoverableIdentity?>(null) }
+    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) scope.launch {
+            try { withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri)?.use { it.write(backup.toByteArray()) } ?: error("Cannot open backup file") }
+                message = "Backup saved. Keep it and your passphrase to restore after reinstalling."; backup = ""; phrase = ""
+            } catch (e: Exception) { message = "recovery.export_failed: ${e.message}" }
+        }
+    }
+    val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            try { backup = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)?.use {
+                val output = java.io.ByteArrayOutputStream(); val buffer = ByteArray(1024)
+                while (true) { val count = it.read(buffer); if (count < 0) break
+                    require(output.size() + count <= 16384) { "Backup too large" }; output.write(buffer, 0, count) }
+                output.toString("UTF-8")
+            } ?: error("Cannot read backup") }; message = "Backup imported. Enter its passphrase, then restore." }
+            catch (e: Exception) { message = "recovery.import_failed: ${e.message}" }
+        }
+    }
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item { Text("Keep your identity", style = MaterialTheme.typography.headlineLarge)
+            Text("Your encrypted backup contains the node ID and signing keys. Both the backup file and its passphrase are needed after uninstalling. Rewards and other settings are separate.") }
+        item { OutlinedTextField(phrase, { phrase = it }, label = { Text("Recovery passphrase (12+ characters)") },
+            visualTransformation = if (reveal) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth())
+            Row {
+                TextButton(onClick = { phrase = PeerCrypto.randomHex(20).chunked(5).joinToString("-") }) { Text("Generate phrase") }
+                TextButton(onClick = { reveal = !reveal }) { Text(if (reveal) "Hide phrase" else "Show phrase") }
+            }
+        }
+        item { Button(onClick = { busy = true; scope.launch {
+            val chars = phrase.toCharArray()
+            try { backup = withContext(Dispatchers.IO) { PeerCrypto.backup(identity.get(app.nodeIdHex), chars) }; export.launch("meshlit-identity-backup.txt") }
+            catch (e: Exception) { message = "recovery.export_failed: ${e.message}" }
+            finally { chars.fill('\u0000'); busy = false }
+        } }, enabled = phrase.length >= 12 && !busy) { Text("Save encrypted backup") } }
+        item { OutlinedButton(onClick = { import.launch(arrayOf("text/*", "application/octet-stream")) }, enabled = !busy) { Text("Import backup") } }
+        if (backup.isNotBlank()) item { OutlinedButton(onClick = { busy = true; scope.launch {
+            val chars = phrase.toCharArray()
+            try { restored = withContext(Dispatchers.IO) { PeerCrypto.restore(backup, chars) } }
+            catch (e: Exception) { message = "recovery.restore_failed: Wrong passphrase or invalid backup" }
+            finally { chars.fill('\u0000'); busy = false }
+        } }, enabled = phrase.length >= 12 && !busy) { Text("Restore identity") } }
+        message?.let { item { Text(it) } }
+        if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+    }
+    restored?.let { key -> AlertDialog(onDismissRequest = { restored = null }, title = { Text("Restore this identity?") },
+        text = { Text("Current: ${app.nodeIdHex}\nRecovered: ${key.nodeId}\nActive relay sessions will close.") },
+        confirmButton = { TextButton(onClick = { scope.launch {
+            try { withContext(Dispatchers.IO) {
+                val relay: RelayManager = koinInject(); relay.leave(); relay.disable()
+                identity.save(key)
+                val config: com.meshlit.core.config.ConfigRepository = koinInject()
+                require(config.set(com.meshlit.core.config.BuiltInConfigKeys.nodeId(), key.nodeId) is com.meshlit.core.common.MeshlitResult.Success)
+                app.setStableNodeId(key.nodeId)
+                val peers: com.meshlit.disco.PeerRepository = koinInject()
+                peers.stop(); peers.start(app.appScope, com.meshlit.core.discovery.LocalPeerDescriptor(key.nodeId,
+                    app.localIpAddress, app.httpServerPort, "local_sandboxed", PeerCrypto.fingerprint(key.publicKey)))
+            }; message = "Identity restored: ${key.nodeId}"; backup = ""; phrase = ""; restored = null }
+            catch (e: Exception) { message = "recovery.save_failed: ${e.message}" }
+        } }) { Text("Restore") } }, dismissButton = { TextButton(onClick = { restored = null }) { Text("Cancel") } }) }
+}
+
+@Composable
+fun RewardsScreen() {
+    val store: ContributionStore = koinInject(); val state by store.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var transferMessage by remember { mutableStateOf<String?>(null) }
+    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) scope.launch(Dispatchers.IO) {
+            try { val data = store.exportReceipts(); context.contentResolver.openOutputStream(uri)?.use { it.write(data.toByteArray()) } ?: error("Cannot open receipt backup")
+                withContext(Dispatchers.Main) { transferMessage = "Signed receipt backup saved" } }
+            catch (e: Exception) { withContext(Dispatchers.Main) { transferMessage = "rewards.export_failed: ${e.message}" } }
+        }
+    }
+    val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch(Dispatchers.IO) {
+            try {
+                val raw = context.contentResolver.openInputStream(uri)?.use { input ->
+                    val output = java.io.ByteArrayOutputStream(); val buffer = ByteArray(4096)
+                    while (true) { val n = input.read(buffer); if (n < 0) break
+                        require(output.size() + n <= 16 * 1024 * 1024) { "Backup too large" }; output.write(buffer, 0, n) }
+                    output.toString("UTF-8")
+                } ?: error("Cannot read backup")
+                store.importReceipts(raw)
+                withContext(Dispatchers.Main) { transferMessage = "Receipts restored and signatures verified" }
+            } catch (e: Exception) { withContext(Dispatchers.Main) { transferMessage = "rewards.import_failed: ${e.message}" } }
+        }
+    }
+    LaunchedEffect(store) { withContext(Dispatchers.IO) { store.refresh() } }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Mesh rewards", style = MaterialTheme.typography.headlineLarge)
+        Text("${state.credits}", style = MaterialTheme.typography.displayLarge)
+        Text("Local contribution credits · ${state.jobs} completed jobs")
+        Text("Wallet identity: ${state.walletId.take(24)}", style = MaterialTheme.typography.bodySmall)
+        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
+            Text("Signed by this device", style = MaterialTheme.typography.titleMedium)
+            Text("One credit per generated token from completed local HTTP inference jobs. Failed, empty, duplicate and forwarded jobs earn nothing. Credits are local and cannot be transferred or redeemed for money.")
+        } }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Record contributions", Modifier.weight(1f))
+            Switch(state.enabled, { enabled -> scope.launch(Dispatchers.IO) { store.setEnabled(enabled) } })
+        }
+        Text("Cryptocurrency settlement needs a separate token contract and a verifier service. Self-signed receipts are not proof of payment.", style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = { export.launch("meshlit-signed-receipts.json") }) { Text("Back up signed receipts") }
+        TextButton(onClick = { import.launch(arrayOf("application/json", "text/*")) }) { Text("Restore receipts for this identity") }
+        transferMessage?.let { Text(it) }
+        state.recent.forEach { receipt ->
+            Text("+${receipt.generatedTokens} credits · job ${receipt.jobId.take(8)} · signature verified", style = MaterialTheme.typography.bodySmall)
+        }
+        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+    }
+}

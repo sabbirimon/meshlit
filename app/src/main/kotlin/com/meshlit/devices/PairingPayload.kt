@@ -31,6 +31,7 @@ data class PairingPayload(
     val baseUrl: String,
     val nodeId: String,
     val capabilityTier: String,
+    val publicKey: String = "",
 ) {
     fun encode(): String = buildString {
         append("meshlit://pair")
@@ -38,9 +39,10 @@ data class PairingPayload(
         append("&url=").append(enc(baseUrl))
         append("&node=").append(enc(nodeId))
         append("&tier=").append(enc(capabilityTier))
+        if (publicKey.isNotBlank()) append("&key=").append(enc(publicKey))
     }
 
-    fun toRemoteEndpoint(): RemoteEndpoint = RemoteEndpoint(
+    fun toRemoteEndpoint(): RemoteEndpoint = validate().let { RemoteEndpoint(
         id = if (nodeId.isNotBlank()) "node-$nodeId" else UUID.randomUUID().toString(),
         name = nodeName.ifBlank { baseUrl },
         baseUrl = baseUrl.trimEnd('/'),
@@ -48,18 +50,40 @@ data class PairingPayload(
         allowInsecure = baseUrl.startsWith("http://"),
         trusted = false,
         addedAtMs = System.currentTimeMillis(),
-    )
+        notes = if (publicKey.isBlank()) "" else "identity.key=$publicKey",
+    ) }
+
+    fun validate(): PairingPayload {
+        require(nodeName.length <= 128 && nodeId.length <= 128 && capabilityTier.length <= 32) { "Pairing fields too long" }
+        require(baseUrl.isNotBlank()) { "missing endpoint URL" }
+        val uri = runCatching { java.net.URI(baseUrl.trim()) }.getOrElse { throw IllegalArgumentException("endpoint URL is not a valid URI", it) }
+        require(uri.scheme?.lowercase() in setOf("http", "https")) { "endpoint URL scheme must be http or https" }
+        require(!uri.host.isNullOrBlank()) { "endpoint URL is missing a host" }
+        require(nodeId.isBlank() || NODE_ID_REGEX.matches(nodeId)) { "nodeId must be a UUID or public fingerprint; recovery phrases are private" }
+        require(uri.userInfo == null && uri.fragment == null && uri.rawQuery == null) { "Endpoint must not contain credentials, query or fragment" }
+        require(uri.port == -1 || uri.port in 1..65535) { "Invalid endpoint port" }
+        require(uri.host !in setOf("0.0.0.0", "::", "[::]")) { "Use the device network address" }
+        require(publicKey.length <= 1024) { "Identity key too long" }
+        if (publicKey.isNotBlank()) {
+            require(nodeId.isNotBlank()) { "Identity key needs a device ID" }
+            com.meshlit.core.trust.PeerCrypto.fingerprint(publicKey)
+        }
+        return copy(baseUrl = baseUrl.trim().trimEnd('/'))
+    }
 
     companion object {
+        private val NODE_ID_REGEX = Regex("^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{64})$", RegexOption.IGNORE_CASE)
         private val json = Json { ignoreUnknownKeys = true }
 
         fun decode(raw: String): PairingPayload {
+            require(raw.length <= 8192) { "Pairing payload too large" }
             val trimmed = raw.trim()
             if (trimmed.startsWith("{")) {
-                return json.decodeFromString(serializer(), trimmed)
+                return json.decodeFromString(serializer(), trimmed).validate()
             }
-            val uri = java.net.URI(trimmed)
-            require(uri.scheme == "meshlit" && uri.host == "pair") {
+            val uri = runCatching { java.net.URI(trimmed) }.getOrElse { throw IllegalArgumentException("URI is malformed", it) }
+            if (uri.scheme.equals("meshlit", true) && uri.host.equals("join", true)) throw IllegalArgumentException("Use the Join Cluster screen for meshlit://join links")
+            require(uri.scheme.equals("meshlit", true) && uri.host.equals("pair", true)) {
                 "not a Meshlit pairing payload"
             }
             val q = parseQuery(uri.rawQuery ?: "")
@@ -68,16 +92,19 @@ data class PairingPayload(
                 baseUrl = q["url"].orEmpty(),
                 nodeId = q["node"].orEmpty(),
                 capabilityTier = q["tier"].orEmpty(),
-            ).also { require(it.baseUrl.isNotBlank()) { "missing endpoint URL" } }
+                publicKey = q["key"].orEmpty(),
+            ).validate()
         }
 
-        private fun parseQuery(raw: String): Map<String, String> = raw
-            .split('&')
-            .filter { it.contains('=') }
-            .associate { piece ->
-                val (key, value) = piece.split('=', limit = 2)
-                dec(key) to dec(value)
+        private fun parseQuery(raw: String): Map<String, String> {
+            val pairs = raw.split('&').filter { it.isNotBlank() }.map { piece ->
+                val parts = piece.split('=', limit = 2)
+                require(parts.size == 2) { "Invalid pairing query" }
+                dec(parts[0]) to dec(parts[1])
             }
+            require(pairs.map { it.first }.distinct().size == pairs.size) { "Duplicate pairing fields" }
+            return pairs.toMap()
+        }
 
         private fun enc(value: String): String =
             URLEncoder.encode(value, StandardCharsets.UTF_8.name())

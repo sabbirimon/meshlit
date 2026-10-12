@@ -54,7 +54,7 @@ class MiniRouter(
         if (localOk && peerList.isEmpty()) {
             return RouterDecision.local(reason = "local-only")
         }
-        if (localOk && hints?.needsGpu == false) {
+        if (localOk && hints?.needsGpu != true) {
             return RouterDecision.local(reason = "local-capable-and-no-gpu-required")
         }
 
@@ -70,7 +70,7 @@ class MiniRouter(
             .map { it.ip }
             .toSet()
         val orderedIps = peerList.sortedByDescending { if (it in trustedIps) 1 else 0 }
-        for (ip in orderedIps) {
+        for (ip in orderedIps.filter { it in trustedIps }) {
             val h = peerHealth[ip]
             if (h != null && h.ok && h.modelLoaded) {
                 return RouterDecision.forward(

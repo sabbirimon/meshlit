@@ -81,6 +81,9 @@ class InferenceHttpServer(
     private val meshFirewall: com.meshlit.core.firewall.MeshlitFirewall? = null,
     /** Per-IP token bucket. Null disables rate limiting for tests. */
     private val rateLimiter: RateLimiter? = null,
+    private val pairingAuthority: com.meshlit.core.trust.PairingAuthority? = null,
+    private val identityProof: ((String) -> String)? = null,
+    private val allowLoopbackWithoutPairing: Boolean = true,
 ) {
 
     private val log = logger("InferenceHttpServer")
@@ -135,17 +138,24 @@ class InferenceHttpServer(
         override fun serve(session: IHTTPSession): Response {
             val uri = session.uri.trimEnd('/').ifBlank { "/" }
             return try {
+                val peerPolicy = pairingAuthority?.authenticate(session.headers["authorization"]?.removePrefix("Bearer ").orEmpty())
+                val remoteAddress = session.remoteIpAddress.orEmpty()
+                if (pairingAuthority != null && session.method != Method.GET && uri != "/v1/handshake" &&
+                    (!allowLoopbackWithoutPairing || remoteAddress !in setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")) && peerPolicy == null) {
+                    return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"pairing.required"}""").apply { closeConnection(true) }
+                }
                 // Port-layer firewall — runs before the phase-3 gate so
                 // an unauthorized peer can't even probe `/v1/capabilities`
                 // until the user has opened the port they're trying to hit.
                 // The verdict is the same `Decision` enum so the rest of
                 // the gate stays a single switch.
-                if (meshFirewall != null) {
+                val internalLoopback = allowLoopbackWithoutPairing && remoteAddress in setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
+                if (meshFirewall != null && !internalLoopback) {
                     val remoteAddr = session.remoteIpAddress ?: ""
                     val portDecision = meshFirewall.decideLegacy(
                         remoteAddr = remoteAddr,
-                        remoteNodeId = null,
-                        remoteTier = null,
+                        remoteNodeId = peerPolicy?.nodeId,
+                        remoteTier = peerPolicy?.trustTier,
                         port = port,
                         protocol = com.meshlit.core.firewall.PortProtocol.TCP,
                         direction = com.meshlit.core.firewall.PortDirection.INBOUND,
@@ -160,7 +170,7 @@ class InferenceHttpServer(
                             Response.Status.FORBIDDEN,
                             MIME_PLAINTEXT,
                             "port-blocked",
-                        )
+                        ).apply { closeConnection(true) }
                     }
                 }
                 // Phase 3 — firewall + rate-limit gate. Both are
@@ -169,12 +179,12 @@ class InferenceHttpServer(
                 // FGS. The gate runs BEFORE the shard/capabilities
                 // route map so an unpaired peer can't even probe
                 // `/v1/capabilities` until they're paired.
-                if (portFilter != null) {
+                if (portFilter != null && !internalLoopback) {
                     val remoteAddr = session.remoteIpAddress ?: ""
                     val decision = portFilter.decide(
                         remoteAddr = remoteAddr,
-                        remoteNodeId = null, // TODO: forward tier via header once the handshake ships
-                        remoteTier = null,
+                        remoteNodeId = peerPolicy?.nodeId,
+                        remoteTier = peerPolicy?.trustTier,
                         endpointPath = uri,
                     )
                     when (decision) {
@@ -188,7 +198,7 @@ class InferenceHttpServer(
                                 Response.Status.FORBIDDEN,
                                 MIME_PLAINTEXT,
                                 "forbidden",
-                            )
+                            ).apply { closeConnection(true) }
                         }
                         Decision.QUARANTINE -> {
                             // Only let the request through to read-only
@@ -200,7 +210,7 @@ class InferenceHttpServer(
                                     Response.Status.SERVICE_UNAVAILABLE,
                                     MIME_PLAINTEXT,
                                     "rate-limited",
-                                )
+                                ).apply { closeConnection(true) }
                             }
                         }
                         Decision.ALLOW -> {
@@ -224,6 +234,21 @@ class InferenceHttpServer(
                 // coordinator mutex path. ShardServer.route() returns
                 // null when the URI isn't shard-related (e.g. /v1/infer
                 // for the local engine) so it acts as a pure pre-filter.
+                if (session.method == Method.POST && uri == "/v1/handshake" && pairingAuthority != null) {
+                    val length = session.headers["content-length"]?.toIntOrNull() ?: 0
+                    if (length !in 1..8192) return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "handshake.invalid_length").apply { closeConnection(true) }
+                    val request = json.decodeFromString(com.meshlit.core.trust.HandshakeRequest.serializer(), readBody(session))
+                    return when (val response = pairingAuthority.handshake(request)) {
+                        is MeshlitResult.Success -> newFixedLengthResponse(Response.Status.OK, "application/json",
+                            json.encodeToString(com.meshlit.core.trust.HandshakeResponse.serializer(), response.value))
+                        is MeshlitResult.Failure -> newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, response.error.tag)
+                    }
+                }
+                if (session.method == Method.GET && uri == "/v1/identity" && identityProof != null) {
+                    val nonce = session.parameters["nonce"]?.singleOrNull().orEmpty()
+                    if (!nonce.matches(Regex("[a-f0-9]{64}"))) return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "identity.invalid_challenge")
+                    return newFixedLengthResponse(Response.Status.OK, "application/json", identityProof.invoke(nonce))
+                }
                 val shardResp = shardServer?.route(session)
                 if (shardResp != null) return shardResp
                 when {
@@ -509,7 +534,7 @@ class InferenceHttpServer(
                 if (capturedTag != null) {
                     JobLifecycle.Outcome.Failure(capturedTag!!, capturedMsg ?: "")
                 } else {
-                    JobLifecycle.Outcome.Success(capturedTokens, lastTps)
+                    JobLifecycle.Outcome.Success(capturedTokens, lastTps, executedLocally = false)
                 }
             }
         }
