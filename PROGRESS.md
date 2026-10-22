@@ -4,13 +4,41 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-10. Historical 2026-10-07 validation ran 2026-10-06 UTC. Historical baseline `ff0cd771c12f3daa63cb8fe45e1476245ab7b01b`.
-Checkout: `/Users/code/Documents/Codex/2026-10-06/re/outputs/meshlit`.
-Current review branch: `codex/hyperl-production-library`; previous publication branch
+Updated 2026-10-23. Historical 2026-10-07 validation ran 2026-10-06 UTC. Historical baseline `ff0cd771c12f3daa63cb8fe45e1476245ab7b01b`.
+Current checkout: `/Users/code/Documents/Codex/meshlit-v2-dev`; branch `codex/paused-peering-ui-2026-10-12`.
+Earlier review branch: `codex/hyperl-production-library`; previous publication branch
 `codex/meshlit-ui-pipeline-openclaw`. Owner IMON authorized source publication
 to `sabbirimon/meshlit-v2` on 2026-10-07, followed by GitHub beta APK release assets
 and a separate Play review build. No force push or Play submission is authorized.
 Historical upstream records in `docs/history/` are not current test evidence.
+
+## Android build41 guide and release verification — 2026-10-23
+
+The V2 network page now exposes the previously unreachable Mesh rewards wallet. The repository user guide and bundled offline HTML guide include pairing, cluster, rewards and Studio instructions with original diagrams and three clearly labeled screenshots from an earlier Android preview. The Studio custom HyperL graph control is current source only, not part of the published build40.1 installer.
+
+The build41 V1 and V2 debug APK assemblies, both flavor lint tasks, app/core/security/desktop tests, feature-map validation and HyperL provenance check passed. V1 and V2 lint each report zero errors, 378 warnings and 18 hints. The ARM64 V2 APK identifies as `com.meshlit.v2.debug` versionCode 41, verifies under the Android debug signing certificate, contains both ARM64 native layer executables and the offline guide, and its packaged SmolLM2 model SHA-256 matches the pinned manifest (`2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d`).
+
+A Xiaomi M2101K7AI (Android 12, ARM64) is attached, but its first `adb install -r` rejected the APK with `INSTALL_FAILED_USER_RESTRICTED`. On-device launch, settings, native inference, pairing and screenshots of build41 remain unverified until the phone permits USB installation. The three guide screenshots are earlier preview captures, not build41 proof. No second device is available for physical layer sharding or recovery acceptance. GitHub publication state is recorded separately below once verified.
+
+## Rewards and UI performance review — 2026-10-23
+
+Reviewed the current Android and Intel Studio sources against `/Users/code/AndroidStudioProjects/mllm/app/BUILD_GUIDE.md` and its signed-receipt implementation. The old idle, referral and region bonuses remain plans without a measured and independently verified earning event. Current rewards remain local, self-signed credits for completed hosted inference jobs with actual output-token counts; desktop hosting is not connected to the ledger.
+
+The portable ledger now parses its P-256 public key once per chain verification and encodes hashes without per-byte string formatting. Android's successful receipt write updates its displayed state from the already verified chain, avoiding a second file read and full signature pass per job. Desktop duplicate jobs avoid a redundant write and a second verification pass. Studio coalesces redraws more aggressively as streamed replies grow; the complete text is still retained. These are source and contract improvements, not a measured device speedup. Physical Android and installed Studio latency/memory benchmarks remain open.
+
+The Android and Studio rewards panels now group the verified balance, recent jobs and backup actions, with explicit empty states and platform limitations. Android's modern Settings/Network routes provide a visible Back action. The Android DI relay constructor and device-info navigation call were repaired after the first compilation exposed mismatched arguments. UI rendering on hardware remains unqualified.
+
+Validation in this checkout: `:core-peer-security:test`, `:desktopApp:test`, both Android flavor Kotlin compiles and both debug APK assemblies passed after the final UI changes; documentation tracking and feature-map checks passed. `:app:lintMeshlitV2Debug` was started but interrupted during a long active source scan, so lint has no pass result. No Android device was attached; neither on-device performance nor installed Studio rendering was measured.
+
+## Pairing, groups and custom compute continuation — 2026-10-23
+
+Android pairing now probes a live worker over pinned TLS with its private token before either manual or QR approval is saved. The worker QR accepts a reachable LAN/VPN/DNS address, token rotation invalidates old QR credentials while stopped, and selected groups scope negotiation. Groups can mix locally and directly reachable remote workers. Worker assessment shows reported device class, ABI, CPU backend/threads, available memory, thermal state and measured capability-query RTT; the 0–100 risk score is a documented admission heuristic. Agent cluster tools can choose an existing group and read redacted assessments under the saved delegation gate. Native layer RPC through the built-in HTTP membership relay is **not implemented**; workers behind NAT require a configured VPN or reachable TCP endpoint today. Studio's HyperL panel now accepts validated custom bounded graph JSON and executes it with the verified native CPU library; reported milliseconds cover execution, not overall app or model throughput.
+
+After these edits, `:app:testMeshlitV2DebugUnitTest --tests com.meshlit.pipeline.PipelinePeerApprovalTest`, `:app:compileMeshlitV2DebugKotlin`, `:core-hyperl:testDebugUnitTest`, `:desktopApp:test` and `:desktopApp:compileKotlin` passed. The bundled starter GGUF was verified. The pinned ARM64 build produced stripped Android ELF coordinator/worker executables; both V1 and V2 debug APK assemblies passed and both ARM64 APKs plus the V2 universal APK contain both executables. The short identity code and offline-network instructions are synchronized in the repository and bundled guide. No current physical device is attached, and no two-phone sharding, remote Internet path, relay path, installed Studio UI, or hardware speedup is claimed.
+
+## Reward metering and fraud plan — 2026-10-23
+
+The owner requested monetary purchase/rental/exchange design and stronger fake-reward defenses. [The plan](docs/REWARD_METERING_AND_SETTLEMENT.md) separates local self-signed activity credits from verified metering and final settlement. It defines measurable units by service, reciprocal buyer/worker signatures, offline pending reconciliation, anti-replay and collusion checks, disputes and a staged payment/legal gate. This is design only; no spendable balance, exchange, purchase or payout was enabled.
 
 `FEATURE_MAP.md` and `docs/feature-map.json` current inventory **88 feature areas,
 38 durable command operations and 39 registered Gradle modules**. Feature counts do not establish

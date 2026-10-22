@@ -8,6 +8,31 @@ Scope: cross-platform tracking; feature and device gates remain separate. Phase 
 
 [Future build plan](docs/PEERING_UI_BUILD_PLAN.md) · [Exact handoff and validation](docs/PEERING_UI_HANDOFF_2026-10-12.md). Implementation is partial and paused at the owner's request; resume from the saved working tree. Both platforms are in scope. Android Studio is the reference, not the target.
 
+## Rewards and performance follow-up — 2026-10-23
+
+- [x] Review the older Android reward plan and keep the implemented ledger tied to completed, measured hosted inference.
+- [x] Remove redundant Android/Desktop receipt verification and reduce large Studio reply redraw frequency.
+- [x] Improve Android and Studio rewards screens with clearer balance, history, backup and empty states.
+- [ ] Benchmark Android hosted-job completion and Studio long-reply rendering on actual devices; profile further changes against those measurements.
+- [ ] Connect Studio hosting to rewards only after its real hosted-job lifecycle supplies measured native output tokens and failure/forwarding evidence.
+
+## Pairing, remote workers and custom compute — 2026-10-23
+
+- [x] Verify both QR and manual worker approval against live pinned TLS identity, token and capability revision; add token rotation.
+- [x] Select mixed LAN/VPN/direct Internet worker groups and expose live resource/admission risk assessment to users and delegated agents.
+- [x] Add bounded custom HyperL graph editing to Studio's actual native CPU executor.
+- [x] Build and package pinned ARM64 native layer executables in both debug APK flavors; verify both APK entries.
+- [ ] Run genuine two-phone model-layer execution, worker-loss and oversized-model cases on independent devices.
+- [ ] Implement an end-to-end authenticated reverse layer tunnel through the built-in relay for NAT traversal; measure relay behavior and worker loss.
+- [ ] Audit each missing Studio setting against its Android backend and implement/qualify the corresponding desktop operation; do not count menu entries as parity.
+
+## Reward metering and monetary design — 2026-10-23
+
+- [x] Define service-specific usage units, reciprocal receipt evidence, offline reconciliation, fraud controls, settlement stages and regulatory gates in [the metering plan](docs/REWARD_METERING_AND_SETTLEMENT.md).
+- [ ] Instrument authoritative native usage for each sellable service and prove cancellation/loss/forwarding cannot earn rewards.
+- [ ] Build reciprocal signed receipts, anti-replay/idempotent reconciliation and independent fraud checks before any spendable balance.
+- [ ] Complete jurisdiction-specific legal/payment review and processor integration before purchase, rental, payouts or exchange.
+
 
 Updated 2026-10-10. This list tracks current user requests; older task IDs and phase claims are preserved in docs/history/TODO-before-studio-2026-10-10.md. A checked item is qualified only within the scope named here.
 

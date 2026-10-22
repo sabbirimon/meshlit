@@ -35,9 +35,15 @@ import java.util.Date
 import javax.net.ssl.*
 import javax.security.auth.x500.X500Principal
 
-@Serializable data class PipelinePeer(val host:String,val port:Int,val fingerprint:String,val token:String,val weight:Int=1)
+@Serializable data class PipelinePeer(val host:String,val port:Int,val fingerprint:String,val token:String,val weight:Int=1,val group:String="default")
 data class PipelineStatus(val worker:Boolean=false,val coordinator:Boolean=false,val starting:Boolean=false,
     val error:String?=null,val log:List<String> = emptyList(),val coordinatorId:String?=null,val memoryBudgetBytes:Long=0,val local:Boolean=false,val estimatedKvBytes:Long=0,val estimatedWorkerBytes:List<Long> = emptyList())
+data class WorkerAssessment(val peer:PipelinePeer,val offer:NodeOffer?,val latencyMs:Long?,val riskScore:Int,val reason:String)
+
+internal fun requirePairableWorker(remote:NodeOffer,localNodeId:String) {
+    require(remote.nodeId.matches(Regex("[A-Za-z0-9_-]{1,80}")) && remote.nodeId!=localNodeId) { "Invalid or local worker identity" }
+    require(remote.runtimeRevision==ClusterNegotiation.REVISION && remote.workerAllowed) { "Worker runtime or permission is unavailable" }
+}
 
 /** Explicit opt-in layer offload. Native RPC is private to each app process;
  * only the certificate-pinned, authenticated TLS tunnel listens on the LAN. */
@@ -63,22 +69,73 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     private fun executable(name:String):File=File(context.applicationInfo.nativeLibraryDir,"libmeshlit_pipeline_$name.so").also {
         require(it.isFile && it.canExecute()) {"Pipeline native runtime is unavailable for this ABI; build and install it first"}
     }
-    fun available()=File(context.applicationInfo.nativeLibraryDir,"libmeshlit_pipeline_worker.so").canExecute()
+    fun available()=listOf("worker","server").all { name ->
+        File(context.applicationInfo.nativeLibraryDir,"libmeshlit_pipeline_$name.so").canExecute()
+    }
     fun agentControlAllowed()=context.getSharedPreferences("pipeline-policy",0).getBoolean("agent-control",false)
     fun setAgentControlAllowed(allowed:Boolean){context.getSharedPreferences("pipeline-policy",0).edit().putBoolean("agent-control",allowed).apply()}
     fun peers():List<PipelinePeer> = credentials.get("peers")?.let { runCatching{Json.decodeFromString<List<PipelinePeer>>(it)}.getOrNull() }.orEmpty()
+    fun activeGroup():String=credentials.get("active-group")?.takeIf(::validGroupName) ?: "default"
+    fun groups():List<String> = (peers().map{it.group}+activeGroup()+"default").distinct().sorted()
+    fun groupPeers():List<PipelinePeer> = peers().filter{it.group==activeGroup()}
+    fun setActiveGroup(name:String):List<PipelinePeer> {
+        val selected=name.trim();require(validGroupName(selected)) { "Group name must be 1–32 letters, numbers, spaces, underscores or hyphens" }
+        credentials.put("active-group",selected)
+        return groupPeers()
+    }
+    private fun validGroupName(name:String)=name.length in 1..32 && name.all{it.isLetterOrDigit() || it in " _-"}
     fun savePeers(peers:List<PipelinePeer>) {
-        require(peers.size<=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit)
+        val groupLimit=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit
+        require(peers.size<=64 && peers.groupBy{it.group}.values.all{it.size<=groupLimit}) { "A cluster group exceeds its worker limit" }
         peers.forEach {
-            require(it.host.isNotBlank() && it.host.length<=253 && it.host.none(Char::isWhitespace))
+            require(it.host.isNotBlank() && it.host.length<=253 && it.host.none{char->char.isWhitespace() || char in "/?#@"})
             require(it.port in 1024..65535 && it.weight in 1..100)
+            require(validGroupName(it.group)) { "Invalid cluster group" }
             require(it.fingerprint.matches(Regex("[a-fA-F0-9]{64}")))
             require(it.token.length in 32..128 && it.token.all { c -> c.code in 33..126 })
         }
         require(peers.map { "${it.host}:${it.port}" }.distinct().size==peers.size) {"Duplicate workers"}
         credentials.put("peers",Json.encodeToString(peers))
     }
+    /** Approve only a live worker that proves possession of the pinned TLS key and pairing token. */
+    suspend fun verifyAndSavePeer(peer:PipelinePeer):List<PipelinePeer> = withContext(Dispatchers.IO) {
+        require(peer.host.isNotBlank() && peer.host.length<=253 && peer.host.none{it.isWhitespace() || it in "/?#@"})
+        val response=RpcTunnel.queryCapabilities(peer.host,peer.port,peer.fingerprint,peer.token)
+        val remote=wireJson.decodeFromString<NodeOffer>(response)
+        requirePairableWorker(remote,offer().nodeId)
+        require(peers().none { existing ->
+            existing.host==peer.host && existing.port==peer.port
+        }) { "This worker is already paired" }
+        val updated=peers()+peer.copy(group=activeGroup())
+        savePeers(updated)
+        groupPeers()
+    }
+    /** Live, verified snapshots. A score is a conservative operational heuristic, not a security certification. */
+    suspend fun assessGroup():List<WorkerAssessment> = withContext(Dispatchers.IO) {
+        val localId=offer().nodeId
+        groupPeers().map { peer ->
+            val started=android.os.SystemClock.elapsedRealtime()
+            val result=runCatching {
+                wireJson.decodeFromString<NodeOffer>(RpcTunnel.queryCapabilities(peer.host,peer.port,peer.fingerprint,peer.token))
+                    .copy(observedAtMs=System.currentTimeMillis())
+            }
+            val latency=android.os.SystemClock.elapsedRealtime()-started
+            result.fold(
+                onSuccess={remote -> assessWorker(peer,remote,localId,latency)},
+                onFailure={WorkerAssessment(peer,null,null,100,"Unreachable or identity/token verification failed: ${it.javaClass.simpleName}")}
+            )
+        }
+    }
+    fun removePeer(peer:PipelinePeer):List<PipelinePeer> {
+        // A lowered capacity must never prevent removing old members until the group is compliant.
+        credentials.put("peers",Json.encodeToString(peers().filterNot{it.host==peer.host && it.port==peer.port}))
+        return groupPeers()
+    }
     fun pairingToken():String=credentials.get("token") ?: randomToken().also {credentials.put("token",it)}
+    fun rotatePairingToken() {
+        check(worker==null) { "Stop the worker before rotating its pairing token" }
+        credentials.put("token",randomToken())
+    }
     private fun randomToken():String=ByteArray(32).also{SecureRandom().nextBytes(it)}.joinToString(""){"%02x".format(it)}
     private fun certificate():Pair<SSLContext,X509Certificate> {
         val store=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
@@ -155,7 +212,9 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
         val id=credentials.get("node-id") ?: java.util.UUID.randomUUID().toString().also{credentials.put("node-id",it)}
         return NodeOffer(id,Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown",memory.availMem,context.filesDir.usableSpace,
             ClusterNegotiation.REVISION,workerAllowed=worker!=null,
-            thermalStatus=if(Build.VERSION.SDK_INT>=29) context.getSystemService(PowerManager::class.java).currentThermalStatus else 0)
+            thermalStatus=if(Build.VERSION.SDK_INT>=29) context.getSystemService(PowerManager::class.java).currentThermalStatus else 0,
+            deviceClass=if(context.resources.configuration.smallestScreenWidthDp>=600) "tablet" else "phone",
+            backend="CPU",cpuThreads=2)
     }
     /** Query only explicitly paired workers. Local model ownership limits current
      * activation to this coordinator; the election contract also supports remote owners. */
@@ -165,8 +224,8 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
         ModelRuntimeOptions(LocalModelBackend.NATIVE_LOCAL,contextSize,keyCacheType).validate(metadata.maxContext)
         val kv=metadata.kvBytes(contextSize,keyCacheType) ?: error("KV memory cannot be estimated for this architecture; cluster admission is unavailable")
         val hash=ModelFiles.sha256(file)
-        require(peers().size<=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit){"Lowered worker capacity; edit the paired workers first"}
-        val peerOffers=peers().map { peer -> peer to wireJson.decodeFromString<NodeOffer>(
+        require(groupPeers().size<=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit){"Lowered worker capacity; edit the paired workers first"}
+        val peerOffers=groupPeers().map { peer -> peer to wireJson.decodeFromString<NodeOffer>(
             RpcTunnel.queryCapabilities(peer.host,peer.port,peer.fingerprint,peer.token)).copy(observedAtMs=System.currentTimeMillis()) }
         val local=offer().copy(coordinatorAllowed=true,coordinatorModelSha256=hash,workerAllowed=false)
         val plan=ClusterNegotiation.plan(peerOffers.map{it.second}+local,hash,file.length(),kvBytes=kv,blocks=metadata.blocks)

@@ -79,7 +79,7 @@ import kotlinx.coroutines.*
     if(destination=="logs"){ModernLogsScreen(back);return}
     if(destination=="models"){ModernModelsScreen(back);return}
     if(destination=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
-    if(destination=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen();return}
+    if(destination=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen(back);return}
     if(destination=="network"){ModernNetworkScreen(back);return}
     if(destination=="peers"){com.meshlit.ui.screens.settings.ForwardingPeersScreen(back);return}
     if(destination=="automation"){com.meshlit.ui.screens.cloud.AndroidAutomationSettingsScreen(repository,back);return}

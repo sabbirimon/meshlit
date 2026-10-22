@@ -164,7 +164,7 @@ val coreModule = module {
     single { com.meshlit.peering.PeerSessionStore(androidContext()) }
     single { com.meshlit.core.trust.PairingAuthority({ get<com.meshlit.peering.DeviceIdentity>().get(get<com.meshlit.MeshlitApplication>().nodeIdHex) }, get<TrustStore>()) }
     single { com.meshlit.peering.ContributionStore(androidContext(), get()) { get<com.meshlit.MeshlitApplication>().nodeIdHex } }
-    single { com.meshlit.peering.RelayManager(get(), get(), get()) }
+    single { com.meshlit.peering.RelayManager(get(), get(), get(), get()) }
     single { SettingsRepository(androidContext()) }
     single { DeviceProfileRepository(androidContext()) }
     single { FirstRunSetupRepository(androidContext()) }

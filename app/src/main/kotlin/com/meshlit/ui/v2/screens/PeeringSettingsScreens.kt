@@ -172,7 +172,7 @@ fun RecoveryScreen() {
 }
 
 @Composable
-fun RewardsScreen() {
+fun RewardsScreen(onBack: (() -> Unit)? = null) {
     val store: ContributionStore = koinInject(); val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -199,26 +199,47 @@ fun RewardsScreen() {
         }
     }
     LaunchedEffect(store) { withContext(Dispatchers.IO) { store.refresh() } }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Mesh rewards", style = MaterialTheme.typography.headlineLarge)
-        Text("${state.credits}", style = MaterialTheme.typography.displayLarge)
-        Text("Local contribution credits · ${state.jobs} completed jobs")
-        Text("Wallet identity: ${state.walletId.take(24)}", style = MaterialTheme.typography.bodySmall)
-        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
-            Text("Signed by this device", style = MaterialTheme.typography.titleMedium)
-            Text("One credit per generated token from completed local HTTP inference jobs. Failed, empty, duplicate and forwarded jobs earn nothing. Credits are local and cannot be transferred or redeemed for money.")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Mesh rewards", style = MaterialTheme.typography.headlineMedium)
+                Text("Your local contribution record", style = MaterialTheme.typography.bodyMedium)
+            }
+            if (onBack != null) TextButton(onClick = onBack) { Text("Back") }
+        }
+        ElevatedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("LOCAL CREDITS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            Text("${state.credits}", style = MaterialTheme.typography.displayMedium)
+            Text("${state.jobs} completed hosted jobs", style = MaterialTheme.typography.bodyMedium)
+            Text(if (state.walletId.isBlank()) "Loading wallet identity…" else "Wallet ${state.walletId.take(24)}", style = MaterialTheme.typography.bodySmall)
         } }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Record contributions", Modifier.weight(1f))
+        Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Record contributions", style = MaterialTheme.typography.titleMedium)
+                Text("Save signed receipts for completed local hosting jobs", style = MaterialTheme.typography.bodySmall)
+            }
             Switch(state.enabled, { enabled -> scope.launch(Dispatchers.IO) { store.setEnabled(enabled) } })
+        } }
+        Text("Recent contributions", style = MaterialTheme.typography.titleLarge)
+        if (state.recent.isEmpty()) {
+            Text("No verified hosted jobs yet. Credits appear here after a completed local HTTP inference job reports output tokens.", style = MaterialTheme.typography.bodyMedium)
+        } else state.recent.forEach { receipt ->
+            Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Job ${receipt.jobId.take(8)}", style = MaterialTheme.typography.titleSmall)
+                    Text("Signature verified", style = MaterialTheme.typography.bodySmall)
+                }
+                Text("+${receipt.generatedTokens}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            } }
         }
-        Text("Cryptocurrency settlement needs a separate token contract and a verifier service. Self-signed receipts are not proof of payment.", style = MaterialTheme.typography.bodyMedium)
-        OutlinedButton(onClick = { export.launch("meshlit-signed-receipts.json") }) { Text("Back up signed receipts") }
-        TextButton(onClick = { import.launch(arrayOf("application/json", "text/*")) }) { Text("Restore receipts for this identity") }
-        transferMessage?.let { Text(it) }
-        state.recent.forEach { receipt ->
-            Text("+${receipt.generatedTokens} credits · job ${receipt.jobId.take(8)} · signature verified", style = MaterialTheme.typography.bodySmall)
-        }
+        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Backup & restore", style = MaterialTheme.typography.titleMedium)
+            Text("Receipts can be restored only with this wallet identity.", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = { export.launch("meshlit-signed-receipts.json") }) { Text("Back up receipts") }
+            TextButton(onClick = { import.launch(arrayOf("application/json", "text/*")) }) { Text("Restore receipts") }
+            transferMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        } }
+        Text("One local credit per measured output token. Failed, empty, duplicate and forwarded jobs earn none. These self-signed credits are not transferable or redeemable for money.", style = MaterialTheme.typography.bodySmall)
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
 }

@@ -55,7 +55,9 @@ class PeerWallet(private val directory: Path) {
     }
     /** Call only for completed hosted jobs with real backend token accounting. */
     @Synchronized fun recordHostedJob(jobId: String, generatedTokens: Int) {
-        val updated = ContributionLedger.append(verifiedReceipts(), identity, jobId, generatedTokens)
+        val current = receipts()
+        val updated = ContributionLedger.append(current, identity, jobId, generatedTokens)
+        if (updated.size == current.size) return
         require(updated.size <= 10000)
         write(receiptFile, PeerCrypto.json.encodeToString(serializer, updated))
     }

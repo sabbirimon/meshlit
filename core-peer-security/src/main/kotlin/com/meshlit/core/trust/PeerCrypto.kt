@@ -20,8 +20,12 @@ data class RecoverableIdentity(val nodeId: String, val publicKey: String, val pr
 
 object PeerCrypto {
     private val random = SecureRandom()
+    private val hexDigits = "0123456789abcdef".toCharArray()
     val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(it.toInt() and 255) }
+    fun hex(bytes: ByteArray): String = String(CharArray(bytes.size * 2) { index ->
+        val value = bytes[index / 2].toInt() and 0xff
+        hexDigits[if (index % 2 == 0) value ushr 4 else value and 0x0f]
+    })
     fun bytes(hex: String): ByteArray {
         require(hex.length % 2 == 0 && hex.length <= 32768 && hex.all { it in "0123456789abcdefABCDEF" }) { "Invalid encoded data" }
         return ByteArray(hex.length / 2) { hex.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
@@ -38,11 +42,17 @@ object PeerCrypto {
         val key = KeyFactory.getInstance("EC").generatePrivate(PKCS8EncodedKeySpec(bytes(identity.privateKey)))
         return hex(Signature.getInstance("SHA256withECDSA").apply { initSign(key); update(message) }.sign())
     }
-    fun verifySignature(key: String, message: ByteArray, signature: String): Boolean = runCatching {
+    internal fun verifiedPublicKey(key: String): PublicKey {
         val pub = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(bytes(key)))
         val params = (pub as java.security.interfaces.ECPublicKey).params
         require(params.curve.field.fieldSize == 256 && params.order == java.math.BigInteger("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", 16))
-        Signature.getInstance("SHA256withECDSA").apply { initVerify(pub); update(message) }.verify(bytes(signature))
+        return pub
+    }
+    internal fun verifySignature(key: PublicKey, message: ByteArray, signature: String): Boolean = runCatching {
+        Signature.getInstance("SHA256withECDSA").apply { initVerify(key); update(message) }.verify(bytes(signature))
+    }.getOrDefault(false)
+    fun verifySignature(key: String, message: ByteArray, signature: String): Boolean = runCatching {
+        verifySignature(verifiedPublicKey(key), message, signature)
     }.getOrDefault(false)
     fun prove(identity: RecoverableIdentity, nonce: String, now: Long = System.currentTimeMillis()): IdentityProof {
         require(nonce.matches(Regex("[a-f0-9]{64}"))) { "Invalid identity challenge" }

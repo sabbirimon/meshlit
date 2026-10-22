@@ -24,43 +24,52 @@ private fun verifyHyperLNative() {
 @Composable internal fun HyperLPanel() {
     var accepted by remember { mutableStateOf(false) }
     var recipeId by remember { mutableStateOf("affine_relu") }
+    var custom by remember { mutableStateOf(false) }
+    var programText by remember { mutableStateOf(HyperLCodec.json.encodeToString(HyperLProgram.serializer(), HyperLLibrary.recipe("affine_relu").program)) }
     var input by remember { mutableStateOf("{\"x\":[-1,2,3],\"w\":[2,3,4],\"bias\":[1,1,1]}") }
-    var result by remember { mutableStateOf("") }; var failure by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf("") }; var failure by remember { mutableStateOf<String?>(null) }
     var running by remember { mutableStateOf(false) }; var job by remember { mutableStateOf<Job?>(null) }
     var showTerms by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Text("Built-in HyperL · native CPU", style = MaterialTheme.typography.h6)
-    Text("Twelve bounded f32 preprocessing recipes, native C execution and precise sums. This is separate from the LLM engine; it does not turn desktops into a pooled transformer or qualify GPU/NPU drivers.")
+    Text("Twelve bounded f32 recipes or your own declarative graph, executed by the verified native CPU library. This is separate from the LLM engine; GPU/NPU drivers need separate qualification.")
     TextButton({ showTerms = !showTerms }) { Text("Read HyperL licence") }
     if (showTerms) Text(HyperLLibrary::class.java.getResourceAsStream("/hyperl/LICENSE")?.bufferedReader()?.use { it.readText() } ?: "Licence resource unavailable")
     Row { Checkbox(accepted, { accepted = it; if (!it) { job?.cancel(); running = false; result = "" } }); Text("Enable after reviewing HyperL's separate terms") }
+    Row { Checkbox(custom, { custom = it; result = "" }, enabled = !running); Text("Custom HyperL graph JSON") }
     HyperLLibrary.ids.chunked(3).forEach { group -> Row { group.forEach { id -> TextButton({
-        job?.cancel(); running = false; recipeId = id; result = ""
+        job?.cancel(); running = false; recipeId = id; custom = false; result = ""
         input = buildJsonObject { HyperLLibrary.recipe(id).example.forEach { (name, values) -> putJsonArray(name) { values.forEach { add(it) } } } }.toString()
+        programText = HyperLCodec.json.encodeToString(HyperLProgram.serializer(), HyperLLibrary.recipe(id).program)
     }, enabled = !running) { Text((if (recipeId == id) "✓ " else "") + id) } } } }
-    Text(HyperLLibrary.recipe(recipeId).purpose)
+    if (custom) OutlinedTextField(programText, { programText = it.take(HyperLCodec.MAX_PROGRAM_CHARS); result = "" },
+        label = { Text("HyperL program · JSON") }, modifier = Modifier.fillMaxWidth(), maxLines = 10, enabled = !running)
+    else Text(HyperLLibrary.recipe(recipeId).purpose)
     Text("Recipe examples are editable numerical inputs; Run computes the real result.", style = MaterialTheme.typography.caption)
     OutlinedTextField(input, { input = it.take(65536); result = "" }, label = { Text("Input vectors · JSON") }, modifier = Modifier.fillMaxWidth(), maxLines = 8, enabled = !running)
     Row {
         Button({
-            running = true; failure = false; result = ""
-            val selected = recipeId; val text = input
+            running = true; failure = null; result = ""
+            val selected = recipeId; val text = input; val graph = programText; val useCustom = custom
             job = scope.launch {
                 try {
                     val computed = withContext(Dispatchers.Default) {
                         verifyHyperLNative()
                         val values = HyperLCodec.inputs(text)
-                        NativeCpu.execute(HyperLLibrary.recipe(selected).program, values, 64L * 1024 * 1024)
+                        val program = if (useCustom) HyperLCodec.program(graph) else HyperLLibrary.recipe(selected).program
+                        val started = System.nanoTime()
+                        val output = NativeCpu.execute(program, values, 64L * 1024 * 1024)
+                        output to (System.nanoTime() - started) / 1_000_000
                     }
-                    result = computed.joinToString(prefix = "[", postfix = "]")
+                    result = "${computed.first.joinToString(prefix = "[", postfix = "]")} · native execution ${computed.second} ms"
                 } catch (e: CancellationException) { throw e }
-                catch (e: Throwable) { failure = true }
+                catch (e: Throwable) { failure = e.message?.take(240) ?: e.javaClass.simpleName }
                 finally { running = false }
             }
-        }, enabled = accepted && !running) { Text("Run native CPU recipe") }
+        }, enabled = accepted && !running) { Text(if (custom) "Run custom graph" else "Run native CPU recipe") }
         TextButton({ job?.cancel(); result = "" }, enabled = running) { Text("Stop") }
     }
-    if (failure) Text("Execution failed. Check input names, vector lengths, finite values, memory budget and native integrity.", color = MaterialTheme.colors.error)
+    failure?.let { Text("Execution failed: $it", color = MaterialTheme.colors.error) }
     if (result.isNotEmpty()) Text("Native output: $result")
 }
 

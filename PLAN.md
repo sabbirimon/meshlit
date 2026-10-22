@@ -8,6 +8,18 @@ Scope: cross-platform tracking; feature and device gates remain separate. Phase 
 
 [Future build plan](docs/PEERING_UI_BUILD_PLAN.md) · [Exact handoff and validation](docs/PEERING_UI_HANDOFF_2026-10-12.md). Implementation is partial and paused at the owner's request; resume from the saved working tree. Both platforms are in scope. Android Studio is the reference, not the target.
 
+## Rewards and responsiveness continuation — 2026-10-23
+
+The owner resumed Android and Studio review. Local signed receipts remain the only implemented reward path; historical idle/referral bonuses require trusted host evidence and abuse controls before implementation. The current source reduces repeated receipt verification and long-reply redraw work. Next gate: collect baseline and changed timings on a physical Android host and the installed Intel Studio build, then profile the remaining inference, startup and UI costs before claiming an end-to-end speedup. See [progress](PROGRESS.md).
+
+## Pairing and compute continuation — 2026-10-23
+
+Android worker QR and manual approval now query a live worker through certificate-pinned TLS before storing it. Cluster groups may contain LAN and directly reachable Internet/VPN workers; automatic admission checks live offers, memory, thermal state and model fit at load. The new assessment score is an operational heuristic, not a measured speed or security grade. The existing HTTP membership relay still cannot carry native layer RPC; a bounded, authenticated reverse tunnel is required before built-in relay mode can serve workers behind NAT. Native ARM64 binaries are packaged in both debug APK flavors; two-phone execution remains a separate device gate. Studio adds bounded custom HyperL graph JSON on its verified native CPU backend; GPU/NPU and broader Android feature parity require individual backends and qualification.
+
+## Reward metering and monetary boundary — 2026-10-23
+
+[Reward metering and settlement plan](docs/REWARD_METERING_AND_SETTLEMENT.md) defines native usage units for inference, layers, compute, storage, relay and availability, then reciprocal signed evidence, fraud checks, offline reconciliation and a balanced settlement journal. Existing self-signed local receipts remain nontransferable. Purchases, rental, payouts and exchange require independently verified service, jurisdiction-specific legal review and a qualified payment path; no conversion rate or spendable balance is implemented.
+
 
 Updated 2026-10-10. [Current progress](PROGRESS.md), [sequential gates](BUILD_MILESTONES.md), [requests](REQUESTS.md), [open work](TODO.md) and [documentation index](docs/DOCUMENTATION_STATUS.md) share the current tracking model. Older plans are retained under docs/history.
 

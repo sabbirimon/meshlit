@@ -23,11 +23,14 @@ object ContributionLedger {
         return existing + unsigned.copy(signature = PeerCrypto.sign(identity, unsigned.message()))
     }
     fun verify(receipts: List<ContributionReceipt>, nodeId: String, publicKey: String): Boolean {
+        if (receipts.isEmpty()) return true
+        val key = runCatching { PeerCrypto.verifiedPublicKey(publicKey) }.getOrNull() ?: return false
         var previous = ""; val ids = mutableSetOf<String>()
         for (r in receipts) {
             if (r.nodeId != nodeId || r.publicKey != publicKey || r.previousHash != previous ||
+                r.jobId.isBlank() || r.jobId.length > 128 ||
                 r.generatedTokens !in 1..MAX_TOKENS_PER_JOB || !ids.add(r.jobId) ||
-                !PeerCrypto.verifySignature(publicKey, r.message(), r.signature)) return false
+                !PeerCrypto.verifySignature(key, r.message(), r.signature)) return false
             previous = r.hash()
         }
         return true

@@ -15,12 +15,15 @@ class ContributionStore(context: Context, private val identity: DeviceIdentity, 
     private val serializer = ListSerializer(ContributionReceipt.serializer())
     private val mutable = MutableStateFlow(ContributionState(enabled = prefs.getBoolean("enabled", false)))
     val state = mutable.asStateFlow()
+    private fun snapshot(entries: List<ContributionReceipt>, key: RecoverableIdentity) = ContributionState(
+        entries.sumOf { it.generatedTokens.toLong() }, entries.size,
+        prefs.getBoolean("enabled", false), walletId = PeerCrypto.fingerprint(key.publicKey),
+        recent = entries.takeLast(8).reversed())
     @Synchronized fun refresh() {
         try {
             val key = identity.get(nodeId()); val entries = read()
             check(ContributionLedger.verify(entries, key.nodeId, key.publicKey)) { "Receipt verification failed" }
-            mutable.value = ContributionState(entries.sumOf { it.generatedTokens.toLong() }, entries.size,
-                prefs.getBoolean("enabled", false), walletId = PeerCrypto.fingerprint(key.publicKey), recent = entries.takeLast(8).reversed())
+            mutable.value = snapshot(entries, key)
         } catch (e: Exception) { mutable.value = ContributionState(enabled = prefs.getBoolean("enabled", false), error = e.message ?: "Could not read rewards") }
     }
     @Synchronized fun setEnabled(enabled: Boolean) {
@@ -38,7 +41,7 @@ class ContributionStore(context: Context, private val identity: DeviceIdentity, 
             val stream = file.startWrite()
             try { stream.write(PeerCrypto.json.encodeToString(serializer, updated).toByteArray()); file.finishWrite(stream) }
             catch (e: Exception) { file.failWrite(stream); throw e }
-            refresh()
+            mutable.value = snapshot(updated, key)
         } catch (e: Exception) { mutable.value = mutable.value.copy(error = e.message ?: "Could not save receipt") }
     }
     @Synchronized fun exportReceipts(): String {

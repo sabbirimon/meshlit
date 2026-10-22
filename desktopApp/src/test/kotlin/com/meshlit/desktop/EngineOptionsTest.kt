@@ -28,4 +28,18 @@ class EngineOptionsTest {
         assertEquals("hello 🌍 again"+"x".repeat(1000),buffer.snapshot())
         assertFailsWith<IllegalArgumentException> {buffer.append("x".repeat(131072))}
     }
+    @Test fun longRepliesLimitExpensiveRedrawsWithoutLosingText() {
+        var now = 0L
+        val buffer = ReplyBuffer { now }
+        assertEquals("a", buffer.append("a"))
+        now += 40_000_000L
+        assertNull(buffer.append("b".repeat(8_192)))
+        now += 61_000_000L
+        assertEquals("a" + "b".repeat(8_192) + "c", buffer.append("c"))
+        now += 120_000_000L
+        assertNull(buffer.append("d".repeat(24_576)))
+        now += 81_000_000L
+        val published = buffer.append("e")
+        assertEquals(buffer.snapshot(), published)
+    }
 }

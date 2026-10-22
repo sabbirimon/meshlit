@@ -4,7 +4,7 @@ Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-10. This guide is also packaged offline in Settings → Guide and tutorial. Reading progress is not execution evidence.
+Updated 2026-10-23 for the experimental build 41 source. The app packages an offline version under Settings → Guide and tutorial. Reading progress is not execution evidence.
 
 ## Start here: what Meshlit does
 
@@ -13,6 +13,33 @@ Meshlit is a phone-first private AI workspace. Run a supported local model on on
 Use the drawer to reach Models, Monitoring, Devices and clusters, Task manager, Code workspace, Cloud and credentials, Guide and tutorial, Settings and retained Tools. Settings has Basic/Advanced filters and a search field. Search matches every entered word across names, descriptions and keywords. Advanced exposes optional runtime, forwarding and automation controls.
 
 Implementation status matters. Desktop layer workers have real execution evidence. Oversized-model execution across physical phones, replicated task/session failover and portable distributed KV recovery remain acceptance/implementation gates. This guide explains actual controls and labels future work explicitly. It contains no simulated devices, costs or performance charts.
+
+## Visual map and installation
+
+These are real navigation captures from an earlier Android preview. Use them to find the main surfaces; button positions and theme details can vary in build 41. No screenshot here is presented as a physical-phone test of the new layer cluster.
+
+![Chat home with the model picker and composer](assets/screenshots/chat.png)
+
+**Chat:** the model name is at the top, and the composer is at the bottom. The **+** menu opens files and chat options.
+
+![Models library with bundled model and import options](assets/screenshots/models.png)
+
+**Models:** the library card, import action and bundled starter live here. The card's **Loaded** state means this capture's runtime accepted the model; your device must report its own state.
+
+![Settings with search and Basic and Advanced tabs](assets/screenshots/settings.png)
+
+**Settings:** search for a named control. Switch to **Advanced** for network, cluster, agent and runtime controls. A result marked unavailable needs its stated backend or permission; a menu entry alone does not activate it.
+
+For the GitHub experimental Android release, install the APK matching your device's ABI. The ARM64 split is intended for modern ARM64 phones and includes the native layer server and worker; the universal APK is larger and also contains those ARM64 executables. V1 and V2 debug flavors have separate app IDs and data. A newer build can update the same flavor only when its signing certificate matches. Keep the previous APK and a backup of identity/receipts before replacing an installation. Android may ask you to approve this file's install source. The GitHub beta is debug-signed; it is not a Google Play production release. The Play Review package is a separate restricted candidate.
+
+```mermaid
+flowchart LR
+    A[Install matching APK] --> B[Review terms and optional permissions]
+    B --> C[Models: load bundled starter]
+    C --> D[Chat: send a short prompt]
+    D --> E[Settings: enable only the services you need]
+    E --> F[Network and pairing: approve workers if clustering]
+```
 
 ## Language, appearance and platform previews
 
@@ -105,11 +132,45 @@ Phones are the primary compute target. Other nodes may contribute compute, stora
 
 Use Network and pairing for discovery, manual/QR enrollment, fingerprint/token verification and device groups. Independently verify identity before approval. Choose minimal scopes/roles. Enrolled web/API/SSH devices and native layer workers are distinct memberships; one approval does not automatically grant the other.
 
+For native layers, start the worker, enter its reachable LAN, hotspot or configured virtual-network address, and show its private QR. On the coordinator, select a group, scan or enter the full certificate hash and token, compare the short identity code shown on both devices, then verify and approve. The code is a visual check, not a password or discovery service. An offline local network needs no internet. Internet workers currently need a VPN or reachable TCP endpoint; the built-in membership relay does not transport model layers. Assess workers to view live offered resources and the heuristic operational risk score before loading. The score is not a measured speed or security guarantee.
+
+1. On **each worker**, open **Network and pairing → Layer pipeline**. Confirm the native runtime is packaged, permit inbound TCP **50551** in Network rules for the intended peers, then tap **Start worker**.
+2. In **Reachable host**, enter the address that the coordinator can actually reach. Use a LAN/hotspot IP for an air-gapped group, a preconfigured VPN/virtual-network IP, or a reachable DNS name. Tap **Show pairing QR**. The QR contains a private token; show it only to the coordinator owner.
+3. On the **coordinator**, open the same Layer pipeline panel, create or select a **Cluster group**, then use **Scan worker QR**. If scanning is unavailable, choose **Add approved worker** and enter the worker's address, full SHA-256 certificate fingerprint and token.
+4. Compare the **Identity check code** displayed on the worker and approval screen, then tap **Verify and approve**. Approval contacts the running worker and rejects an incorrect TLS pin, token, revision or permission. Repeat for at least two distinct workers in the group.
+5. Tap **Assess workers**. Read the device class, available memory/storage, thermal state, control RTT and admission warning. Select an installed GGUF, then **Negotiate and load cluster**. The coordinator keeps the whole model file and assigns layers by live memory headroom. Use **Stop pipeline** before changing groups.
+6. If a QR/token is exposed, stop the worker and tap **Rotate pairing token**, then reapprove it on coordinators. A worker behind NAT cannot use the built-in membership relay for layers yet. A virtual network must be configured outside Meshlit; this control does not create a VLAN or VPN.
+
+```mermaid
+flowchart LR
+    W[Worker: start TLS on 50551] --> Q[Show private QR and identity code]
+    Q --> V[Coordinator: compare code and verify full pin + token]
+    V --> G[Assign approved worker to group]
+    G --> A[Assess live resources]
+    A --> L[Negotiate model layers and load]
+```
+
 Native worker traffic uses authenticated pinned TLS, with private native sockets. The corrected Android TLS identity changes the fingerprint; previously paired workers/control endpoints need independent verification and explicit reapproval. The persisted listener firewall must permit the actual port; default denial is not a handshake success.
 
 Capability offers are freshness/compatibility/thermal/memory checked. Placement budgets include weights, context-dependent KV and workspace margins. Election/placement remain advisory until fenced consensus exists. Do not call the current planner automatic master failover.
 
 Physical acceptance requires at least two compatible phones, a model larger than one phone can hold, observed layer allocations, correct tokens, memory/latency/thermal readings and cancellation/loss/reconnect results. Desktop workers and a single emulator cannot replace that evidence.
+
+## Mesh identity, rewards and purchases
+
+In Android **Settings → Mesh rewards wallet** or **Network and pairing → Open rewards wallet**, enable **Record contributions** only if you want local signed receipts for qualifying completed hosted inference. The balance is the sum of reported native generated tokens from those receipts. A personal chat, an unknown token count, forwarded work, cancellation or failure does not earn one. **Back up receipts** exports that history; **Restore receipts** requires the same wallet identity and a matching, nonconflicting prefix. Keep the identity backup and its passphrase separately. The local balance is not cash, a transferable coin or proof that another party received service.
+
+Studio **Mesh identity & rewards** can create or unlock its encrypted local identity, export an encrypted backup and review signed receipts. Studio hosting is not connected to earning yet. Its personal chat earns nothing. The [reward metering and settlement plan](REWARD_METERING_AND_SETTLEMENT.md) separates future measured inference, compute, storage and relay services from purchases, rentals and payouts. No monetary exchange is enabled in this build.
+
+```mermaid
+flowchart LR
+    J[Buyer authorizes a bounded job] --> M[Native runtime meters completed work]
+    M --> R[Buyer and worker sign matching receipt]
+    R --> F[Fraud and replay checks]
+    F --> S[Pending offline or final settlement]
+```
+
+The last diagram is a **future settlement design**, not an implemented payment workflow. A worker's self-signed record alone cannot mint spendable value.
 
 ## Recovery and memory holders
 
@@ -381,6 +442,8 @@ Studio provides graphite surfaces, Ember accents, thin headers, compact spacing,
 settings icons and Models/Agents/Style hero cards. New installs use those defaults;
 saved custom colors/fonts remain. Desktop and NEXT source also offer Studio.
 Changing appearance does not rewrite the local model, prompt or conversation.
+
+For **Studio → HyperL libraries**, read the separate licence and enable the native CPU workbench. Choose one of twelve bounded recipes and edit its input-vector JSON. The current source also adds **Custom HyperL graph JSON**: edit a declarative program with `format`, `inputs`, `instructions` and `output`. **Run custom graph** validates the program and vectors, checks the native library, and reports its actual execution milliseconds; **Stop** cancels the current request. This source change is not included in the older build40.1 installer; wait for a newly qualified Studio installer or build the current source. It is bounded f32 preprocessing, not a faster LLM model or qualified GPU/NPU backend. An execution error names the validation failure; the built-in example is a good reset point.
 
 Settings → Colibri configures an optional separately operated host. Its key is
 stored encrypted on Android. Save a reviewed exact /v1 endpoint, separately enable

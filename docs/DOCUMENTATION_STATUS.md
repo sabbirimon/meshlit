@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-123 active, 19 historical, 8 protected, 1 template, 6 third-party; 158 Markdown documents including this index.
+124 active, 19 historical, 8 protected, 1 template, 6 third-party; 159 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -95,6 +95,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/PLATFORM_ADAPTER_PLAN.md](PLATFORM_ADAPTER_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PLAY_DISTRIBUTION.md](PLAY_DISTRIBUTION.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) | cross-platform tracking; feature and device gates remain separate |
+| [docs/REWARD_METERING_AND_SETTLEMENT.md](REWARD_METERING_AND_SETTLEMENT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SEARCH_AND_CLUSTER_OUTPUT.md](SEARCH_AND_CLUSTER_OUTPUT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SECURITY_LAB_AND_HARDWARE_ACCESS.md](SECURITY_LAB_AND_HARDWARE_ACCESS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SESSION_HANDOFF.md](SESSION_HANDOFF.md) | cross-platform tracking; feature and device gates remain separate |

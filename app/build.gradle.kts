@@ -49,8 +49,8 @@ android {
         // /v1/health `version` field distinguishes the cluster
         // build from the pre-cluster baseline, and the GitHub
         // dev release gets a fresh version tag.
-        versionCode = 40
-        versionName = "0.2.6-colibri-studio"
+        versionCode = 41
+        versionName = "0.2.7-cluster-studio"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -89,10 +89,10 @@ android {
         create("meshlitV2") {
             dimension = "ui"
             applicationIdSuffix = ".v2"
-            // Build no. 1 of the new UI. Bump versionCode by 1
+            // Keep this preview version in step with the release evidence.
             // so Play Store and F-Droid see a fresh artifact.
-            versionName = "2.0.0-v2build40"
-            versionCode = 40
+            versionName = "2.0.0-v2build41"
+            versionCode = 41
             buildConfigField("boolean", "USE_NEW_UI", "true")
             resValue("string", "app_name", "Meshlit v2")
         }

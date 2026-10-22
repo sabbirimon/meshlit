@@ -34,31 +34,50 @@ import javax.swing.JFileChooser
         val picker = JFileChooser().apply { dialogTitle = if (save) "Save encrypted identity or signed receipts" else "Choose a mesh backup" }
         return if ((if (save) picker.showSaveDialog(null) else picker.showOpenDialog(null)) == JFileChooser.APPROVE_OPTION) picker.selectedFile.toPath() else null
     }
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Your mesh identity", style = MaterialTheme.typography.h5)
-        Text("One encrypted identity. Verifiable local contribution receipts. Explicit host access remains separate.")
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Mesh identity & rewards", style = MaterialTheme.typography.h5)
+        Text("Encrypted identity and signed local contribution history.", style = MaterialTheme.typography.body2)
         if (identity == null) {
-            OutlinedTextField(passphrase, { passphrase = it }, label = { Text("Vault passphrase · at least 12 characters") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), enabled = !busy)
+            Surface(elevation = 1.dp) { Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(if (wallet.exists) "Unlock your wallet" else "Create a local wallet", style = MaterialTheme.typography.h6)
+            Text("Use a passphrase of at least 12 characters. Keep it with your encrypted backup.", style = MaterialTheme.typography.body2)
+            OutlinedTextField(passphrase, { passphrase = it }, label = { Text("Vault passphrase") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), enabled = !busy)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button({ val chars = passphrase.toCharArray(); run { try { if (wallet.exists) wallet.unlock(chars) else wallet.create(chars) } finally { chars.fill('\u0000') } } }, enabled = !busy && passphrase.length >= 12) { Text(if (wallet.exists) "Unlock identity" else "Create identity") }
                 OutlinedButton({ pick(false)?.let { path -> val chars = passphrase.toCharArray(); run { try { require(java.nio.file.Files.size(path) <= 32768); wallet.restore(java.nio.file.Files.readString(path), chars) } finally { chars.fill('\u0000') } } } }, enabled = !busy && !wallet.exists && passphrase.length >= 12) { Text("Restore identity") }
             }
+            } }
         } else {
             val key = identity!!
-            Surface(elevation = 1.dp) { Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("${receipts.sumOf { it.generatedTokens.toLong() }}", style = MaterialTheme.typography.h3)
-                Text("Local contribution credits · ${receipts.size} signed jobs")
-                SelectionContainer { Text("Node ${key.nodeId}\nFingerprint ${PeerCrypto.fingerprint(key.publicKey)}", style = MaterialTheme.typography.caption) }
+            val credits = remember(receipts) { receipts.sumOf { it.generatedTokens.toLong() } }
+            val fingerprint = remember(key.publicKey) { PeerCrypto.fingerprint(key.publicKey) }
+            Surface(elevation = 1.dp) { Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("LOCAL CREDITS", style = MaterialTheme.typography.overline, color = MaterialTheme.colors.primary)
+                Text("$credits", style = MaterialTheme.typography.h3)
+                Text("${receipts.size} verified hosted jobs", style = MaterialTheme.typography.body1)
+                SelectionContainer { Text("Node ${key.nodeId}\nFingerprint $fingerprint", style = MaterialTheme.typography.caption) }
             } }
-            Text("Credits are self-attestations, not spendable MCC or proof of payment. Desktop hosting is not yet connected to this ledger; personal chat does not mint hosting rewards.")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(elevation = 1.dp) { Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Recent contributions", style = MaterialTheme.typography.h6)
+                if (receipts.isEmpty()) Text("No verified hosting jobs yet. Studio hosting is not connected to this ledger.", style = MaterialTheme.typography.body2)
+                receipts.takeLast(5).asReversed().forEach { receipt ->
+                    Row(Modifier.fillMaxWidth()) {
+                        Text("Job ${receipt.jobId.take(8)} · verified", Modifier.weight(1f), style = MaterialTheme.typography.body2)
+                        Text("+${receipt.generatedTokens}", color = MaterialTheme.colors.primary)
+                    }
+                }
+            } }
+            Surface(elevation = 1.dp) { Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Backup & restore", style = MaterialTheme.typography.h6)
                 OutlinedButton({ pick(true)?.let { path -> run { java.nio.file.Files.writeString(path, wallet.exportIdentity()) } } }, enabled = !busy) { Text("Back up encrypted identity") }
-                OutlinedButton({ pick(true)?.let { path -> run { java.nio.file.Files.writeString(path, wallet.exportReceipts()) } } }, enabled = !busy) { Text("Export receipts") }
+                OutlinedButton({ pick(true)?.let { path -> run { java.nio.file.Files.writeString(path, wallet.exportReceipts()) } } }, enabled = !busy) { Text("Export verified receipts") }
                 TextButton({ pick(false)?.let { path -> run { require(java.nio.file.Files.size(path) <= 16 * 1024 * 1024); wallet.importReceipts(java.nio.file.Files.readString(path)) } } }, enabled = !busy) { Text("Import verified receipts") }
+            } }
+            Text("Desktop hosting is not yet connected to rewards; personal chat earns none. Credits are self-signed records, not spendable MCC or payment proof.", style = MaterialTheme.typography.body2)
+            Row {
+                TextButton({ wallet.lock(); identity = null; receipts = emptyList(); passphrase = "" }, enabled = !busy) { Text("Lock identity") }
             }
-            TextButton({ wallet.lock(); identity = null; receipts = emptyList(); passphrase = "" }, enabled = !busy) { Text("Lock identity") }
         }
-        Text("Keep the encrypted backup file and passphrase together in your recovery plan. They restore the same node ID and signing key on Android or desktop.", style = MaterialTheme.typography.caption)
         message?.let { Text(it, color = MaterialTheme.colors.error) }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     }

@@ -24,8 +24,8 @@ import com.meshlit.ui.theme.ChatTokens as T
     if(page=="relay"){com.meshlit.ui.v2.screens.RelaySettingsScreen();return}
     if(page=="join"){com.meshlit.ui.v2.screens.RelayJoinScreen();return}
     if(page=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
-    if(page=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen();return}
-    if(page=="device_info"){com.meshlit.ui.v2.screens.DeviceInfoScreen{page=null};return}
+    if(page=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen(onBack={page=null});return}
+    if(page=="device_info"){com.meshlit.ui.v2.screens.DeviceInfoScreen(onBack={page=null});return}
     if(page=="ssh"){SshConnectionsScreen{page=null};return}
     if(page=="firewall"){FirewallSettingsScreen{page=null};return}
     if(page=="app"){com.meshlit.ui.v2.screens.DeviceWorkspaceScreen{page=it};return}
@@ -60,6 +60,11 @@ import com.meshlit.ui.theme.ChatTokens as T
                 OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))}){Text("Open Bluetooth settings")}
             }}
             item{OutlinedButton(onClick={page="firewall"}){Text("Network status and firewall rules")}}
+            if("rewards wallet contribution credits".contains(query,true) || query.isBlank()) item {
+                NetworkMethod("Mesh rewards","Review local signed contribution receipts and back up this device's reward history. Credits are not spendable or transferable.") {
+                    OutlinedButton(onClick={page="rewards"}) { Text("Open rewards wallet") }
+                }
+            }
             item{NetworkMethod("Shared task memory","Planned phone-first design: replicate compact task/session journals across enrolled phones and serve large model files/checkpoints from selected storage holders. Today journals are local; durable replication, leases and recovery remain to be implemented."){
                 Text("Compute, storage, tool, routing and monitoring roles must be negotiated independently.",style=MaterialTheme.typography.bodySmall)
             }}

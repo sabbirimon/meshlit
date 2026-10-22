@@ -49,7 +49,7 @@ object DesktopDestinations {
         DesktopDestination("device", "Device", "Observed local hardware and process inventory", true),
         DesktopDestination("tasks", "Task manager", "Live local processes, CPU/RSS readings and scoped human Stop", true),
         DesktopDestination("ide", "Code workspace", "User-selected UTF-8 editor, search and Save As; IDE tooling pending", true),
-        DesktopDestination("hyperl", "HyperL libraries", "Built-in native CPU recipes and precise sums; separate licence", true),
+        DesktopDestination("hyperl", "HyperL libraries", "Native CPU recipes, bounded custom graphs and precise sums; separate licence", true),
         DesktopDestination("permissions", "App permissions", "Explicit session grants for selected desktop inference hosts", true),
         DesktopDestination("files", "Files and storage", "User-selected UTF-8 files and Save As; full file/archive management pending", true),
         DesktopDestination("termux", "Termux integration", "Probe an installed shell, manage delegation and view its audit", false),
