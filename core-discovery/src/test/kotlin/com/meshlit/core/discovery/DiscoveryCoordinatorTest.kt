@@ -59,15 +59,17 @@ class DiscoveryCoordinatorTest {
     }
 
     @Test
-    fun ingest_qr_beats_nsd_when_conflict() {
-        // QR (user-driven, explicit) should win over a stale NSD
-        // entry. This is the path the new "show my QR" sheet
-        // relies on — the receiving phone's NSD may have an old
-        // record that the user is overwriting by scanning.
+    fun ingest_live_nsd_beats_saved_qr_when_conflict() {
+        // A QR import stays in the saved inventory. Live discovery
+        // owns the radar entry and can be evicted when NSD disappears.
         val coord = DiscoveryCoordinator(listOf(NoopTransport("nsd")))
         coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "nsd"))
         coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "qr"))
-        assertEquals("qr", coord.peers.value["node-A"]!!.transport)
+        assertEquals("nsd", coord.peers.value["node-A"]!!.transport)
+        coord.evict("node-A")
+        coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "qr"))
+        coord.ingest(adv("node-A", "192.168.1.20", 8080, "local_trusted", transport = "nsd"))
+        assertEquals("nsd", coord.peers.value["node-A"]!!.transport)
     }
 
     @Test

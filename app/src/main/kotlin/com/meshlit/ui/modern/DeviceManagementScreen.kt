@@ -20,6 +20,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshlit.MeshlitApplication
+import com.meshlit.control.WebBridgeHost
+import com.meshlit.core.mcp.control.EnrollmentState
 import com.meshlit.core.common.RemoteEndpoint
 import com.meshlit.devices.PairingQrStore
 import com.meshlit.devices.QrCodec
@@ -48,6 +50,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.isActive
 import java.net.URI
 import java.io.File
 
@@ -71,6 +74,12 @@ import java.io.File
     val discoveryMode by discovery.mode.collectAsStateWithLifecycle()
     val repository=koinInject<PeerRepository>()
     val scan by repository.uiState.collectAsStateWithLifecycle()
+    val currentDiscovered=scan.grouped.values.flatten().count { it.advertisement.transport in setOf("nsd","ble","lan") }
+    val currentNodeIds=scan.grouped.values.flatten().map { it.advertisement.nodeId }.toSet()
+    val externalServices=remember(context) { readExternalServices(context).size }
+    val webHost=koinInject<WebBridgeHost>()
+    var webClients by remember { mutableStateOf(webHost.directory.read().devices) }
+    LaunchedEffect(webHost) { while(isActive) { webClients=withContext(Dispatchers.IO) { webHost.directory.read().devices };delay(2000) } }
     val registry=koinInject<PeerRegistry>()
     val sessions=koinInject<PeerSessionStore>()
     val authority=koinInject<PairingAuthority>()
@@ -176,7 +185,7 @@ import java.io.File
             error?.let{Text(it,color=MaterialTheme.colorScheme.error)};notice?.let{Text(it,color=MaterialTheme.colorScheme.primary)} }
         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Discovery · $discoveryMode",style=MaterialTheme.typography.titleMedium)
-            Text("${scan.total} observed entries · ${if(scan.scanning) "scanning" else "paused"}. Advertisements are unverified.")
+            Text("$currentDiscovered current network discoveries · ${if(scan.scanning) "scanning" else "paused"}. Advertisements are unverified.")
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick={onOpen("radar")}) { Text("Open radar") }
                 TextButton(onClick={discovery.saveHuman(if(discoveryMode==DiscoveryMode.OFF) DiscoveryMode.AUTO else DiscoveryMode.OFF);app.refreshDiscovery()}) {
@@ -184,12 +193,32 @@ import java.io.File
                 }
             }
         } } }
+        item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Text("Non-Meshlit services · $externalServices",style=MaterialTheme.typography.titleMedium)
+            Text("LAN, VPN or HTTPS endpoints are tracked separately from paired Meshlit devices. Task work needs a compatible MCP, model API or SSH adapter and its own approval.",style=MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick={onOpen("external-services")}) { Text("Manage external services") }
+        } } }
+        item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Text("Web/API clients · ${webClients.size}",style=MaterialTheme.typography.titleMedium)
+            Text("${webClients.count { it.state==EnrollmentState.PENDING }} waiting · ${webClients.count { it.state==EnrollmentState.APPROVED && it.expiresAtMs>System.currentTimeMillis() }} active · ${webClients.count { it.state==EnrollmentState.APPROVED && it.expiresAtMs<=System.currentTimeMillis() }} expired",
+                style=MaterialTheme.typography.bodySmall)
+            Text(webClients.groupingBy { it.kind }.eachCount().entries.joinToString { "${it.key.name.lowercase()} ${it.value}" }.ifBlank { "No enrolled browser or API clients" },
+                style=MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick={onOpen("web-bridge")}) { Text("Manage invitations and access") }
+        } } }
         item { Text("Saved endpoints · ${endpoints.size}",style=MaterialTheme.typography.titleMedium)
             Text("Only rows marked approved have this phone's compute approval. Remote reachability still needs a live check.")
             OutlinedButton(onClick={onOpen("network")}) { Text("Pair or verify a device") } }
         if(endpoints.isEmpty()) item { Text("No saved device endpoints.") }
         items(endpoints,key={it.id}) { ep -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
             Text(ep.name,style=MaterialTheme.typography.titleSmall);Text(ep.baseUrl)
+            Text("Device ID · ${savedDeviceId(ep)}",style=MaterialTheme.typography.bodySmall)
+            Text(savedDeviceAddedAt(ep),style=MaterialTheme.typography.bodySmall)
+            Text(if(ep.id.removePrefix("node-") in currentNodeIds) "Seen in current discovery · identity still requires verification"
+                else "Not seen in current discovery",style=MaterialTheme.typography.bodySmall)
+            TextButton(onClick={clipboard.setText(AnnotatedString(ep.id.removePrefix("node-")));notice="Full device ID copied"}) {
+                Text("Copy full device ID")
+            }
             Text(if(ep.trusted) "Compute approved on this phone" else "Saved, not compute approved",style=MaterialTheme.typography.bodySmall)
             Text(if(ep.lastSeenMs>0) "Last recorded contact ${age(ep.lastSeenMs)} ago; current online state unknown" else "No recorded contact; online duration unknown",style=MaterialTheme.typography.bodySmall)
             TextButton(onClick={selected=ep}) { Text("Revoke / remove") }

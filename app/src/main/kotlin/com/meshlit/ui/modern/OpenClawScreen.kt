@@ -33,10 +33,32 @@ import java.util.UUID
     LaunchedEffect(context){installedBrowsers=withContext(Dispatchers.IO){context.packageManager.queryIntentActivities(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://example.com")),android.content.pm.PackageManager.MATCH_DEFAULT_ONLY).map{it.activityInfo.packageName to it.loadLabel(context.packageManager).toString()}.distinctBy{it.first}.sortedBy{it.second}}}
     var packages by remember{mutableStateOf(control.packages().sorted().joinToString("\n"))}
     fun run(action:suspend()->Unit){scope.launch{try{action()}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}}}
-    Scaffold(topBar={TopAppBar(title={Text("OpenClaw and autonomy")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
+    Scaffold(topBar={TopAppBar(title={Text("Phone agent and autonomy")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
-            item{Text("Built-in OpenClaw client",style=MaterialTheme.typography.titleLarge)
-                Text("Connect to your optional gateway. Its agent runtime runs on the gateway host; Meshlit keeps local phone inference as its default.")}
+            item{Text("Built-in phone agent",style=MaterialTheme.typography.titleLarge)
+                Text("Runs with a model loaded on this device. In Chat → Conversation settings, choose the local model and turn on Allow phone tools. Enable delegation and save an app scope below. No gateway, cloud account or other host is required for phone actions.")
+                Text("The agent can inspect and operate approved apps while this task runs. It stops after eight actions or five minutes, and Chat Stop cancels it. A small starter model may fail to plan a complex task; the app reports that failure instead of pretending it succeeded.",style=MaterialTheme.typography.bodySmall)}
+            if(!com.meshlit.BuildConfig.PLAY_REVIEW){
+            item{HorizontalDivider();Text("Android app control",style=MaterialTheme.typography.titleLarge)
+                Text("Allow the local agent to snapshot, open, tap, type, go Back and Home within saved scope. Enable the Android accessibility service separately. Root, protected OS surfaces and password input are outside this permission.")
+                Row{Text("Autonomous delegation",Modifier.weight(1f));Switch(delegated,{on ->run{
+                    settings.setAndroidAutomationEnabled(on);control.setEnabled(on);delegated=on
+                    if(on) context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }})}
+                Row{Text("All supported apps",Modifier.weight(1f));Switch(allApps,{control.setAllApps(it);allApps=it},enabled=delegated)}}
+            item{Text("Phone web browsers",style=MaterialTheme.typography.titleMedium)
+                Text("The local agent can use android_control open/snapshot/click/type/back after saved app scope and Android Accessibility permission. Login and verification need human input.")
+                if(installedBrowsers.isEmpty())Text("No visible HTTPS browser found")
+                installedBrowsers.forEach{(packageId,label)->OutlinedButton(enabled=!allApps,onClick={packages=(packages.lines().filter{it.isNotBlank()}+packageId).distinct().joinToString("\n")}){Text("Add $label to app scope")}}
+                Text("Review package names and save the scope below. Selecting a browser does not grant Accessibility or autonomy.",style=MaterialTheme.typography.bodySmall)
+            }
+            item{OutlinedTextField(packages,{packages=it},Modifier.fillMaxWidth(),label={Text("Delegated package names, one per line")},minLines=3,enabled=!allApps)
+                Button(onClick={run{control.savePackages(packages.lines().map{it.trim()}.filter{it.isNotBlank()}.toSet())}}){Text("Save app scope")}
+                Button(onClick={control.setEnabled(false);delegated=false;node.disconnect();host.stopSharing();task?.cancel();run{settings.setAndroidAutomationEnabled(false)}}){Text("Emergency stop")}
+                Text("Revocation affects the next dispatched action. Android grants remain managed by the operating system.",style=MaterialTheme.typography.bodySmall)}
+            } else item{Text("Cross-app Android autonomy is unavailable in the Play review build.")}
+            item{HorizontalDivider();Text("Optional OpenClaw gateway",style=MaterialTheme.typography.titleLarge)
+                Text("Use this only when you choose an external gateway. Its agent runtime runs on that host; it is separate from the built-in phone agent.")}
             item{OutlinedTextField(url,{url=it},Modifier.fillMaxWidth(),label={Text("Gateway HTTPS URL")},singleLine=true)}
             item{OutlinedTextField(token,{token=it},Modifier.fillMaxWidth(),label={Text("Gateway operator token (encrypted)")},visualTransformation=PasswordVisualTransformation(),singleLine=true)
                 Text("This token grants gateway operator access. Use a private HTTPS gateway you own.",style=MaterialTheme.typography.bodySmall)}
@@ -58,25 +80,6 @@ import java.util.UUID
                 var allowed by remember{mutableStateOf(backend.delegated(permission))}
                 Row{Text(permission.name.lowercase(),Modifier.weight(1f));Switch(allowed,{backend.setDelegated(permission,it);allowed=it})}
             }}
-            if(!com.meshlit.BuildConfig.PLAY_REVIEW){
-            item{HorizontalDivider();Text("Autonomous Android actions",style=MaterialTheme.typography.titleLarge)
-                Text("Allow agents to snapshot, open, tap, type, go Back and Home within saved scope. Enable the Android accessibility service separately. Root, protected OS surfaces and password input are outside this permission.")
-                Row{Text("Autonomous delegation",Modifier.weight(1f));Switch(delegated,{on ->run{
-                    settings.setAndroidAutomationEnabled(on);control.setEnabled(on);delegated=on
-                    if(on) context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }})}
-                Row{Text("All supported apps",Modifier.weight(1f));Switch(allApps,{control.setAllApps(it);allApps=it},enabled=delegated)}}
-            item{Text("Phone web browsers",style=MaterialTheme.typography.titleMedium)
-                Text("Agents can operate an installed browser through android_control open/snapshot/click/type/back after saved app scope and Android Accessibility permission. This uses the external browser's UI, not Meshlit's DOM session. Login/verification needs human input; phone compatibility is not yet tested.")
-                if(installedBrowsers.isEmpty())Text("No visible HTTPS browser found")
-                installedBrowsers.forEach{(packageId,label)->OutlinedButton(enabled=!allApps,onClick={packages=(packages.lines().filter{it.isNotBlank()}+packageId).distinct().joinToString("\n")}){Text("Add $label to app scope")}}
-                Text("Review package names and save the scope below. Selecting a browser does not grant Accessibility or autonomy.",style=MaterialTheme.typography.bodySmall)
-            }
-            item{OutlinedTextField(packages,{packages=it},Modifier.fillMaxWidth(),label={Text("Delegated package names, one per line")},minLines=3,enabled=!allApps)
-                Button(onClick={run{control.savePackages(packages.lines().map{it.trim()}.filter{it.isNotBlank()}.toSet())}}){Text("Save app scope")}
-                Button(onClick={control.setEnabled(false);delegated=false;node.disconnect();host.stopSharing();task?.cancel();run{settings.setAndroidAutomationEnabled(false)}}){Text("Emergency stop")}
-                Text("Revocation affects the next dispatched action. Android grants remain managed by the operating system.",style=MaterialTheme.typography.bodySmall)}
-            } else item{Text("Cross-app Android autonomy is unavailable in the Play review build. Gateway chat and model sharing remain separate features.")}
             (error ?: status.error)?.let{message ->item{ErrorCard(message){error=null}}}
         }
     }

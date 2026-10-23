@@ -11,6 +11,7 @@ import com.meshlit.providers.OnlineProviders
 import com.meshlit.di.koinInject
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.semantics.semantics
@@ -29,6 +30,10 @@ import kotlinx.coroutines.launch
     val validBudget=budget.toIntOrNull()?.let{it in 1..maxOutput}==true
     LaunchedEffect(options.routeId){if((budget.toIntOrNull() ?: 0)>maxOutput) budget=maxOutput.toString()}
     val coordinator=koinInject<com.meshlit.core.inference.InferenceCoordinator>()
+    val context=LocalContext.current
+    val savedAgents=remember(context){runCatching{com.meshlit.agent.AgentProfileStore(context).load()}.getOrDefault(emptyList())}
+    val library=koinInject<com.meshlit.models.ModelLibrary>()
+    val installedModels by library.models.collectAsStateWithLifecycle()
     val pipeline=koinInject<com.meshlit.pipeline.PipelineHost>()
     val pipelineStatus by pipeline.status.collectAsStateWithLifecycle()
     var selectedGroup by remember { mutableStateOf(pipeline.activeGroup()) }
@@ -43,6 +48,18 @@ import kotlinx.coroutines.launch
     Text("Conversation settings",style=MaterialTheme.typography.titleLarge)
     Spacer(Modifier.height(12.dp))
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).testTag("chat-settings"),verticalArrangement=Arrangement.spacedBy(10.dp)){
+        Text("Access shown in Chat reflects this conversation's saved route and tool switches. A switch only permits a request: each tool also needs its separate app, agent and device grant. Online provider selection sends chat text to that endpoint when you press Send.",style=MaterialTheme.typography.bodySmall)
+        if(savedAgents.any{it.enabled && !it.modelId.startsWith("cloud:")}) {
+            Text("Local agent profiles",style=MaterialTheme.typography.titleMedium)
+            Text("Apply a saved agent's instructions to this conversation. Its tools stay off until you enable them below; the profile does not grant device access.",style=MaterialTheme.typography.bodySmall)
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                savedAgents.filter{it.enabled && !it.modelId.startsWith("cloud:")}.forEach{profile->
+                    val available=installedModels.any{it.id==profile.modelId && it.path==coordinator.loadedModel()?.modelPath}
+                    AssistChip(onClick={options=options.copy(systemPrompt=profile.instruction,onlineProfileId=null,routeId=null,colibriMode="OFF")},
+                        enabled=available,label={Text(if(available) profile.name else "${profile.name} · load its model")})
+                }
+            }
+        }
         Text("Companion personality",style=MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             CompanionStyle.entries.forEach { style ->
@@ -105,7 +122,7 @@ import kotlinx.coroutines.launch
             Text("The local model can request web_search using your configured Brave API key, Internet switch and agent grant. Queries go to Brave. crawl_url also requires the HTTPS Crawl4AI companion and approved domains; URLs and fetched content go to that host. Neither service is silently enabled.")
             TextButton(onClick=onSearchSettings){Text("Manage search access and articles")}
             Row{Text("Allow phone tools",Modifier.weight(1f));Switch(options.phoneTools,{options=options.copy(phoneTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
-            Text("Requires saved autonomy, app scope and Android Accessibility in Settings → OpenClaw and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant. Wireless ADB and root adapters are not connected to this chat.")
+            Text("Runs with the loaded on-device model and needs no external host. Requires saved autonomy, app scope and Android Accessibility in Settings → Phone agent and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant.")
             Row{Text("Allow VM and SSH node tools",Modifier.weight(1f));Switch(options.nodeTools,{options=options.copy(nodeTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
             Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. The combined chat tool list is limited to ten. VM/QEMU and remote nodes must actually be available.")
             Row{Text("Local cryptography tools",Modifier.weight(1f));Switch(options.cryptoTools,{options=options.copy(cryptoTools=it,colibriMode="OFF")})}
@@ -116,7 +133,7 @@ import kotlinx.coroutines.launch
             Text("Commands only saved fingerprint-pinned SSH nodes within per-node action grants. Configure Device and cluster commands plus SSH delegation.")
             Row{Text("P2P chat and command tools",Modifier.weight(1f));Switch(options.peerTools,{options=options.copy(peerTools=it,colibriMode="OFF")})}
             Text("Requires the foreground, manually paired peer and saved P2P/agent grants. Receiver approves command scopes independently; native layer inference over Internet is not implemented.")
-            Text("Experimental local tool protocol: three calls, 180-second deadline and Stop. A model trained for JSON/tool use is required; invalid output dispatches no action for that step. The starter model is not qualified for reliable autonomy.")
+            Text("Experimental local tool protocol: up to eight calls and five minutes with phone tools, otherwise three calls and 180 seconds. Stop cancels it. A model trained for JSON/tool use is required; invalid output dispatches no action for that step. The starter model is not qualified for reliable autonomy.")
         }
         HorizontalDivider()
         Text("Token management",style=MaterialTheme.typography.titleMedium)

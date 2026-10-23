@@ -25,6 +25,7 @@
         <service android:name="com.meshlit.core.cloudmcp.CloudMcpForegroundService" tools:node="remove" />
         <service android:name=".openclaw.OpenClawNodeService" tools:node="remove" />
         <service android:name=".openclaw.OpenClawService" tools:node="remove" />
+        <service android:name=".peering.NfcPairingService" tools:node="remove" />
         <service android:name=".pipeline.PipelineService" tools:node="remove" />
         <service android:name=".control.WebBridgeService" tools:node="remove" />
         <service android:name=".ssh.NodeSshService" tools:node="remove" tools:targetApi="26" />

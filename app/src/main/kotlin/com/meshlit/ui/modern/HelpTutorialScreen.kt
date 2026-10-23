@@ -19,7 +19,7 @@ import java.io.ByteArrayInputStream
 private data class TutorialStep(val id:String,val title:String,val instruction:String,val destination:String)
 private val tutorialSteps=listOf(
     TutorialStep("device","Know your device","Open Device, Power and Acceleration. Check actual RAM/storage/ABI and usable backends. Choose smaller models/context on constrained phones.","device"),
-    TutorialStep("models","Load your first local model","In Models, use the pinned bundled SmolLM2 135M starter. Load, generate, stop and unload. Set startup loading only after it works. A downloaded file is not proof of inference.","models"),
+    TutorialStep("models","Load your first local model","In Models, use the pinned bundled Qwen2.5 0.5B starter. Load, generate, stop and unload. Set startup loading only after it works. A downloaded file is not proof of inference.","models"),
     TutorialStep("style","Make it comfortable","Choose UI font, text size, light/dark palette and solid or tinted-glass surfaces. Readability and device constraints take priority over effects.","appearance"),
     TutorialStep("files","Manage AI assets","Use Files for granted storage, bounded text previews and streaming ZIP/unzip. Import validated GGUF through Models; keep datasets/adapters separate from executable models.","files"),
     TutorialStep("pairing","Add an owner-approved device","Review Network and pairing. Verify QR/fingerprint/token independently, choose roles/scopes and groups. Web/SSH enrollment does not automatically enroll a native model worker.","network"),

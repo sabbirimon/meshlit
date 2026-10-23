@@ -74,6 +74,12 @@ class HuggingFaceClient {
             data["gated"]?.jsonPrimitive?.content ?: "unknown",(data["cardData"] as? JsonObject)?.get("license")?.jsonPrimitive?.contentOrNull,files)
     }
     suspend fun hostedModels(token:String):JsonElement=fetch(builder("https://router.huggingface.co/v1/models",token).build())
+    suspend fun whoAmI(token:String):String {
+        require(token.startsWith("hf_") && token.length<=512 && token.none{it.isWhitespace()}) { "Enter a Hugging Face user access token" }
+        val identity=fetch(builder("https://huggingface.co/api/whoami-v2",token).build()).jsonObject
+        return identity["name"]?.jsonPrimitive?.contentOrNull?.takeIf{it.isNotBlank() && it.length<=128}
+            ?: error("Hugging Face did not return an account name")
+    }
     suspend fun generate(config:HostedModelConfig,token:String,prompt:String,maxTokens:Int=256):JsonElement {
         config.validate();require(config.enabled) { "Hosted requests are disabled" };require(token.isNotBlank()) { "Save an inference-enabled HF token" }
         require(config.model.isNotBlank() && prompt.isNotBlank() && prompt.length<=32000 && maxTokens in 1..2048)

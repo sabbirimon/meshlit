@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.UUID
 
-@Serializable data class ChatOptions(val onlineProfileId:String?=null,val systemPrompt:String="",val maxTokens:Int=1024,val temperature:Float=0.7f,val historyMessages:Int=10,val routeId:String?=null,val routeScenario:String="general",val webTools:Boolean=false,val phoneTools:Boolean=false,val memoryTools:Boolean=false,val showTokenStats:Boolean=true,val localSearchTools:Boolean=false,val outputBudgetMode:OutputBudgetMode=OutputBudgetMode.MANUAL,val outputTargetSeconds:Int=30,val nodeTools:Boolean=false,val colibriMode:String="OFF",val colibriAgentAllowed:Boolean=false,val cryptoTools:Boolean=false,val gibberlinkTools:Boolean=false,val remoteTools:Boolean=false,val peerTools:Boolean=false,val companionStyle:CompanionStyle=CompanionStyle.WARM,val companionWarmth:Int=1,val matureTopics:Boolean=false) {
+@Serializable data class ChatOptions(val onlineProfileId:String?=null,val systemPrompt:String="",val maxTokens:Int=1024,val temperature:Float=0.4f,val historyMessages:Int=10,val routeId:String?=null,val routeScenario:String="general",val webTools:Boolean=false,val phoneTools:Boolean=false,val memoryTools:Boolean=false,val showTokenStats:Boolean=true,val localSearchTools:Boolean=false,val outputBudgetMode:OutputBudgetMode=OutputBudgetMode.MANUAL,val outputTargetSeconds:Int=30,val nodeTools:Boolean=false,val colibriMode:String="OFF",val colibriAgentAllowed:Boolean=false,val cryptoTools:Boolean=false,val gibberlinkTools:Boolean=false,val remoteTools:Boolean=false,val peerTools:Boolean=false,val companionStyle:CompanionStyle=CompanionStyle.WARM,val companionWarmth:Int=1,val matureTopics:Boolean=false) {
     val usesLocalTools get()=webTools || phoneTools || memoryTools || localSearchTools || nodeTools || cryptoTools || gibberlinkTools || remoteTools || peerTools
     val toolCount get()=(if(nodeTools)8 else 0)+(if(remoteTools)3 else 0)+(if(peerTools)4 else 0)+(if(gibberlinkTools)2 else 0)+(if(cryptoTools)1 else 0)+(if(memoryTools)1 else 0)+(if(localSearchTools)1 else 0)+(if(webTools)3 else 0)+(if(phoneTools)4 else 0)
     fun validate(){require(companionWarmth in 0..2);require(toolCount<=10){"Select at most ten chat tools; deselect another group"};require(colibriMode in com.meshlit.workspace.ColibriMode.entries.map{it.name});require(outputTargetSeconds in 5..120);require(!usesLocalTools || (onlineProfileId==null && routeId==null)){"Chat tools currently require an on-device model"};require(routeId==null || routeId=="__auto__" || routeId.matches(Regex("[A-Za-z0-9_-]{1,64}")));require(routeScenario.matches(Regex("[a-z0-9_-]{1,40}")));require(routeId==null || (onlineProfileId==null && maxTokens<=1024));require(systemPrompt.length<=4000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f && historyMessages in 0..20)}
@@ -146,11 +146,13 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 val originalModel=library.models.value.firstOrNull{it.installed && it.path==originalInfo?.modelPath}
                 val usesChatMl=originalEngine=="runanywhere" && originalModel!=null &&
                     (originalModel.name.contains("SmolLM2",ignoreCase=true) || originalModel.name.contains("Qwen2.5",ignoreCase=true))
-                val localPrompt=if(usesChatMl) smolLmChatPrompt(memory.context(user.text)+instructions,history,user.text) else prompt
+                var localPrompt=if(usesChatMl) smolLmChatPrompt(memory.context(user.text)+instructions,history,user.text) else prompt
+                var localTemperature=options.temperature
+                var freshRetry=false
                 val buffer=StringBuilder()
-                suspend fun generate()=coordinator.infer(InferenceRequest(prompt=localPrompt,maxTokens=options.maxTokens,temperature=options.temperature,
+                suspend fun generate()=coordinator.infer(InferenceRequest(prompt=localPrompt,maxTokens=options.maxTokens,temperature=localTemperature,
                     stopSequences=if(usesChatMl) listOf("<|im_end|>") else emptyList(),
-                    reuseContext=coordinator.engineTag=="llama-native-local",expectedModelPath=originalInfo?.modelPath,onToken={ token ->
+                    reuseContext=coordinator.engineTag=="llama-native-local" && !freshRetry,expectedModelPath=originalInfo?.modelPath,onToken={ token ->
                     buffer.append(token)
                     _state.update { old -> old.copy(conversations=old.conversations.map { c ->
                         if(c.id==selected) c.copy(messages=c.messages.map { if(it.id==assistant.id) it.copy(text=buffer.toString()) else it }) else c }) }
@@ -162,13 +164,22 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                     buffer.clear()
                     result=generate()
                 }
+                if(result is MeshlitResult.Success && isUnrelatedRepeat(user.text,history,completedChatText(buffer.toString(),result.value.finalText))) {
+                    freshRetry=true
+                    localPrompt=if(usesChatMl) smolLmChatPrompt(memory.context(user.text)+instructions+"\nPast assistant replies may be mistaken. Answer only the latest user message; do not repeat a previous reply.",emptyList(),user.text)
+                        else "${memory.context(user.text)}$instructions\nAnswer only this latest user message, without repeating earlier replies.\nUser: ${user.text}"
+                    localTemperature=minOf(options.temperature,0.4f)
+                    buffer.clear()
+                    _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text="") else it}) else c})}
+                    result=generate()
+                }
                 val completed=result
                 if(completed is MeshlitResult.Failure) error(completed.error.tag)
                 if(completed is MeshlitResult.Success) {
                     val answer=completedChatText(buffer.toString(),completed.value.finalText)
                     _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=answer) else it}) else c})}
                 }
-                if(completed is MeshlitResult.Success) _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(usageNote="Input ${completed.value.promptTokens ?: "unknown"}, output ${completed.value.generatedTokens ?: "unknown"} tokens · cached ${completed.value.cachedPromptTokens ?: "unknown"}") else c})}
+                if(completed is MeshlitResult.Success) _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(usageNote="Input ${completed.value.promptTokens ?: "unknown"}, output ${completed.value.generatedTokens ?: "unknown"} tokens · cached ${completed.value.cachedPromptTokens ?: "unknown"}${if(freshRetry) " · fresh-context retry; first-run usage not included" else ""}") else c})}
                 if(completed is MeshlitResult.Success && originalEngine=="llama-rpc-layer" && coordinator.engineTag==originalEngine && originalInfo!=null && coordinator.loadedModel()===originalInfo && (completed.value.generatedTokens ?: 0)>=8) {
                     completed.value.tokensPerSecond?.takeIf{it.isFinite() && it>0}?.let{evidence.value=ClusterOutputEvidence(originalInfo,it.toDouble(),android.os.SystemClock.elapsedRealtime())}
                 }
@@ -203,5 +214,22 @@ internal fun completedChatText(streamed:String,completed:String):String {
     val answer=completed.ifBlank{streamed}
     check(answer.isNotBlank()){ "The model returned an empty answer. Try another prompt or check the selected model; no response was substituted." }
     return answer
+}
+
+/** Retry only when a new question receives a long near-copy of a prior assistant answer. */
+internal fun isUnrelatedRepeat(user:String,history:List<ChatMessage>,answer:String):Boolean {
+    fun normalized(text:String)=text.trim().lowercase().replace(Regex("\\s+")," ")
+    val currentQuestion=normalized(user)
+    if(history.any{it.role=="user" && normalized(it.text)==currentQuestion}) return false
+    val current=normalized(answer)
+    if(current.length<96) return false
+    return history.any { previous ->
+        if(previous.role!="assistant") false else {
+            val prior=normalized(previous.text)
+            prior.length>=96 && (current==prior ||
+                (current.startsWith(prior) && current.length-prior.length<=100) ||
+                (current.length>=160 && prior.length>=160 && current.take(160)==prior.take(160)))
+        }
+    }
 }
 internal fun restoredChatSelection(items:List<ChatConversation>,saved:String?)=items.firstOrNull{it.id==saved}?.id ?: items.firstOrNull()?.id

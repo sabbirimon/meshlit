@@ -751,7 +751,9 @@ open class SettingsRepository(private val context: Context?, private val storeOv
                 val prior = current[existingIdx]
                 current[existingIdx] = endpoint.copy(
                     trusted = prior.trusted && endpoint.trusted && prior.baseUrl == endpoint.baseUrl && prior.apiKey == endpoint.apiKey && prior.notes == endpoint.notes,
-                    addedAtMs = if (prior.addedAtMs == 0L) now else prior.addedAtMs,
+                    // A legacy row without a timestamp has an unknown add date.
+                    // Reconnecting must not present today's date as its original add date.
+                    addedAtMs = prior.addedAtMs,
                     lastSeenMs = if (endpoint.lastSeenMs == 0L) prior.lastSeenMs else endpoint.lastSeenMs,
                 )
             } else {

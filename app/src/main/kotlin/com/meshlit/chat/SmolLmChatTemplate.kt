@@ -1,6 +1,6 @@
 package com.meshlit.chat
 
-/** Pinned bundled SmolLM2-135M-Instruct uses the publisher's ChatML role markers.
+/** Qwen and SmolLM2 instruction models use ChatML role markers.
  * Keep user and generated text inside their own message; never let literal markers create roles. */
 internal fun smolLmChatPrompt(system: String, history: List<ChatMessage>, user: String): String {
     fun content(value: String) = value

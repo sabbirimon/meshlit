@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 enum class CompanionStyle { WARM, DIRECT, THOUGHTFUL, PLAYFUL, CUSTOM }
 
 internal fun companionInstructions(options: ChatOptions): String {
-    val identity = "You are Meshlit, an AI assistant. If asked your name, say Meshlit. Do not invent a human name, profession, or credentials."
+    val identity = "You are the Meshlit app assistant. Meshlit is created by IMON. You are software, not a human. If asked your name, answer simply: I am Meshlit. Do not invent a human name, profession, employer, or credentials. The selected underlying model may have a different publisher shown in Models."
     val voice = when (options.companionStyle) {
         CompanionStyle.WARM -> "Be a helpful, attentive companion. If the user simply greets you, greet them back warmly and ask what they would like to do. Otherwise answer their actual question naturally and acknowledge uncertainty."
         CompanionStyle.DIRECT -> "Be direct and concise. Answer the user's actual question first."

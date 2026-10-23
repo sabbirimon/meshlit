@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-128 active, 19 historical, 8 protected, 1 template, 6 third-party; 163 Markdown documents including this index.
+131 active, 19 historical, 8 protected, 1 template, 6 third-party; 166 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -75,6 +75,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/ANDROID_SECURITY_TOOL_INTEGRATIONS.md](ANDROID_SECURITY_TOOL_INTEGRATIONS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/AUDIT_TELEMETRY.md](AUDIT_TELEMETRY.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/BLUE_TEAM_AND_PACKET_ANALYSIS.md](BLUE_TEAM_AND_PACKET_ANALYSIS.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/BUILT_IN_AGENT_DESIGN.md](BUILT_IN_AGENT_DESIGN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CHAT_PRESENTATION.md](CHAT_PRESENTATION.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CLIENT_HUB.md](CLIENT_HUB.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/COLIBRI.md](COLIBRI.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -90,6 +91,8 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/MACOS_OFFLINE.md](MACOS_OFFLINE.md) | desktop/server; individual acceptance gates apply |
 | [docs/MEMORY_AND_VOICE.md](MEMORY_AND_VOICE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MULTIPLATFORM_NEXT.md](MULTIPLATFORM_NEXT.md) | platform preview; NEXT device/build acceptance remains open |
+| [docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md](NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/OLD_ANDROID_GAP_AUDIT_2026-10-23.md](OLD_ANDROID_GAP_AUDIT_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md](OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/P2P_AND_CRYPTO.md](P2P_AND_CRYPTO.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PEERING_UI_BUILD_PLAN.md](PEERING_UI_BUILD_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |

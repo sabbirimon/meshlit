@@ -40,9 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.FileProvider
@@ -93,6 +95,7 @@ fun QrPairingSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val resources = LocalResources.current
     var timeLimited by remember { mutableStateOf(false) }
     var refreshedAt by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -102,6 +105,7 @@ fun QrPairingSheet(
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var pasteField by remember { mutableStateOf("") }
     var scanError by remember { mutableStateOf<String?>(null) }
+    var scannedOther by remember { mutableStateOf<String?>(null) }
     var liveScanner by remember { mutableStateOf(false) }
     var scanAccepted by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -110,10 +114,16 @@ fun QrPairingSheet(
         if (image == null) { scanError = "No QR image was returned"; return }
         scope.launch {
             scanError = null
+            scannedOther = null
             try {
-                val payload = withContext(Dispatchers.Default) { PairingPayload.decode(QrCodec.decode(image)) }
-                onAddFromString(payload)
-            } catch (e: Exception) { scanError = "Could not read a Meshlit QR: ${e.message}" }
+                val raw = withContext(Dispatchers.Default) { QrCodec.decode(image) }
+                val payload = runCatching { PairingPayload.decode(raw) }.getOrNull()
+                if (payload != null) onAddFromString(payload)
+                else {
+                    scannedOther = raw.take(4096)
+                    scanError = "QR read successfully, but it is not a Meshlit pairing code."
+                }
+            } catch (e: Exception) { scanError = "Could not read a QR from this image: ${e.message}" }
         }
     }
     fun decodeImage(uri: Uri, cleanup: File? = null) {
@@ -183,10 +193,15 @@ fun QrPairingSheet(
                     modifier = Modifier.fillMaxWidth().height(360.dp),
                     onScanned = { raw ->
                         if (scanAccepted) true else {
-                            runCatching { PairingPayload.decode(raw) }
-                                .onSuccess { payload -> scanAccepted = true; liveScanner = false; onAddFromString(payload) }
-                                .onFailure { scanError = "Not a valid Meshlit pairing QR: ${it.message}" }
-                                .isSuccess
+                            scanAccepted = true
+                            liveScanner = false
+                            val payload = runCatching { PairingPayload.decode(raw) }.getOrNull()
+                            if (payload != null) onAddFromString(payload)
+                            else {
+                                scannedOther = raw.take(4096)
+                                scanError = "QR read successfully, but it is not a Meshlit pairing code."
+                            }
+                            true
                         }
                     },
                     types = listOf(CodeType.QR),
@@ -230,7 +245,7 @@ fun QrPairingSheet(
                 )
             }
             Spacer(Modifier.height(12.dp))
-            Button(onClick = { scanError = null; scanAccepted = false; liveScanner = true }) { Text("Scan peer with camera") }
+            Button(onClick = { scanError = null; scannedOther = null; scanAccepted = false; liveScanner = true }) { Text("Scan QR with camera") }
             TextButton(onClick = { scanError = null; takePhoto.launch(captureUri) }) { Text("Take QR photo") }
             OutlinedButton(onClick = { chooseImage.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Text("Choose QR image") }
             OutlinedTextField(
@@ -256,6 +271,19 @@ fun QrPairingSheet(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
+            }
+            scannedOther?.let { decoded ->
+                OutlinedTextField(
+                    value = decoded,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Scanned QR contents") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 4,
+                )
+                TextButton(onClick = { clipboard.setText(AnnotatedString(decoded)) }) {
+                    Text("Copy scanned contents")
+                }
             }
         }
     }

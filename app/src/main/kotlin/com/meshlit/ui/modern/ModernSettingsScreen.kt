@@ -33,10 +33,10 @@ import kotlinx.coroutines.*
     var destination by rememberSaveable{mutableStateOf(initialDestination?.takeIf { com.meshlit.BuildProfile.routeAllowed(it) })}
     var query by rememberSaveable{mutableStateOf("")}
     LaunchedEffect(destination){onDestinationChanged(destination)}
-    val sidebarStyle=LocalMeshlitThemeConfig.current.sidebarStyle
     val context=LocalContext.current
     val prefs=remember{context.getSharedPreferences("settings-navigation",0)}
     var advanced by rememberSaveable{mutableStateOf(prefs.getBoolean("advanced",false))}
+    var showAllBasic by rememberSaveable { mutableStateOf(false) }
     val repository=koinInject<SettingsRepository>()
     var history by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
     fun navigate(next:String) {
@@ -53,13 +53,30 @@ import kotlinx.coroutines.*
     BackHandler(destination!=null){back()}
     if(destination=="menu-layout"){MenuLayoutScreen(back);return}
     if(destination=="sharding"){ShardingSettingsScreen(back);return}
-    if(destination=="radar"){RadarScreen(back,{navigate("scan")},{navigate("meshchat")},{navigate("logs")},{navigate("host-map")});return}
+    if(destination=="radar"){RadarScreen(back,{navigate("scan")},{navigate("meshchat")},{navigate("logs")},{navigate("host-map")},
+        {navigate("device-peer:$it")});return}
+    if(destination?.startsWith("device-peer:")==true){ModernNetworkScreen(back,{navigate("device-dashboard")},initialPage="app",
+        focusPeerNodeId=destination!!.removePrefix("device-peer:"));return}
     if(destination=="host-map"){HostMapScreen(back,{navigate("securityprivacy")},{navigate("devices")});return}
+    if(destination=="external-services"){ExternalServiceScreen(back){navigate(it)};return}
+    if(destination=="web-bridge"){WebBridgeEnrollmentScreen(back);return}
     if(destination=="device-dashboard"){DeviceManagementScreen(back,{navigate(it)});return}
     if(destination=="scan"){com.meshlit.ui.v2.screens.V2ScanScreen(onOpenQrPairing={navigate("network")},onBack=back);return}
     if(destination=="meshchat"){PeerChatScreen(back);return}
     if(destination=="securityprivacy"){SecurityPrivacyScreen(back,{navigate(it)});return}
     if(destination=="tools-automation"){ToolsAutomationScreen(back,{navigate(it)});return}
+    if(destination=="mcp-catalog"){McpCatalogScreen(back,{navigate("gateway")});return}
+    if(destination=="huggingface"){HuggingFaceDashboardScreen(back);return}
+    if(destination=="rag"){
+        val scope=rememberCoroutineScope()
+        com.meshlit.ui.screens.settings.RagSettingsScreen(
+            initialRagMode=repository.ragModeFlowNow(),initialLoopMode=repository.loopModeFlowNow(),onBack=back,
+            onRagModeChange={mode->scope.launch{repository.setRagMode(mode)}},
+            onLoopModeChange={mode->scope.launch{repository.setLoopMode(mode)}})
+        return
+    }
+    if(destination=="agent-registry"){AgentRegistryScreen(back,{navigate("agents")},{navigate("mcp-catalog")});return}
+    if(destination=="agent-logs"){ModernLogsScreen(back,com.meshlit.core.observability.LogSource.AGENT,"Agent logs");return}
     if(destination=="guardrails"){GuardrailSettingsScreen(back,{navigate("behavior")},{navigate("gateway")});return}
     if(destination=="crypto"){CryptoScreen(back);return}
     if(destination=="gibberlink"){GibberLinkScreen(back);return}
@@ -71,7 +88,7 @@ import kotlinx.coroutines.*
     if(destination=="personalization"){PersonalizationScreen(back);return}
     if(destination=="behavior"){LocalBehaviorScreen(back,{navigate("models")});return}
     if(destination=="help"){HelpTutorialScreen(back);return}
-    if(destination=="cloud"){CloudManagementScreen(back);return}
+    if(destination=="cloud"){CloudManagementScreen(back,{navigate("huggingface")});return}
     if(destination=="recovery"){RecoveryScreen(back);return}
     if(destination=="training"){FineTuningScreen(back);return}
     if(destination=="router"){ModelRouterScreen(back);return}
@@ -83,13 +100,13 @@ import kotlinx.coroutines.*
     if(destination=="packages"){LabPackagesScreen(back);return}
     if(destination=="securitylab"){SecurityLabScreen(back,{navigate("runtime")},{navigate("packages")});return}
     if(destination=="providers"){OnlineProvidersScreen(back);return}
-    if(destination=="power"){PowerCostsScreen(back);return}
+    if(destination=="power"){PowerCostsScreen(back,{navigate("cloud")});return}
     if(destination=="external"){ExternalDevicesScreen(back);return}
-    if(destination=="agents"){AgentManagementScreen(back);return}
+    if(destination=="agents"){AgentManagementScreen(back,{navigate(it)});return}
     if(destination=="acceleration"){AccelerationScreen(back);return}
     if(destination=="ssh"){SshConnectionsScreen(back);return}
     if(destination=="firewall"){FirewallSettingsScreen(back);return}
-    if(destination=="tasks"){TaskManagerScreen(back);return}
+    if(destination=="tasks"){TaskManagerScreen(back,{navigate("operations")});return}
     if(destination=="files"){FileManagerScreen(back);return}
     if(destination=="termux"){ExistingTermuxSettings(back);return}
     if(destination=="ide"){com.meshlit.ide.CodeWorkspaceScreen(back);return}
@@ -128,23 +145,32 @@ import kotlinx.coroutines.*
                     }}}
                     "about" -> item{Card{Column(Modifier.padding(T.large),verticalArrangement=Arrangement.spacedBy(T.small)){
                         Text("Meshlit ${com.meshlit.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleLarge)
+                        Text("Created by IMON",style=MaterialTheme.typography.titleMedium)
                         Text("Channel: ${com.meshlit.BuildProfile.name}")
                         Text(if(com.meshlit.BuildProfile.coreCandidate) "Local chat, models and user-selected files. Separate package and storage from Experimental. Device endurance, SDK network privacy and release signing are still qualification gates." else "Local inference: RunAnywhere llama.cpp. Layer execution: optional experimental RPC workers. Linux and Crawl4AI require separately installed companions.")
                         Text("Legacy settings for account tiers, automatic model download, custom GPU layer counts and transport policy are not connected by this menu. They are not presented as functioning switches.")
                         Text("Project and third-party notices are maintained in the repository LICENSE and vendored source notices.")
                     }}}
                     else -> {
-                        if(query.isBlank() && sidebarStyle==SidebarStyle.CARDS && !advanced) item {SettingsHeroCards{navigate(it)}}
                         item {OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().testTag("settings-search"),singleLine=true,placeholder={Text("Search settings")},
                             leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear search")}},shape=RoundedCornerShape(28.dp))}
                         item {Row(horizontalArrangement=Arrangement.spacedBy(T.small)){
                             FilterChip(!advanced,{advanced=false;prefs.edit().putBoolean("advanced",false).apply()},label={Text("Basic")})
                             FilterChip(advanced,{advanced=true;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced")})
                         }}
-                        if(query.isBlank()) item { Text(if(advanced) "Advanced tools and integrations" else "Everyday setup and privacy",
-                            style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
-                        if(query.isBlank() && !advanced) item {SettingsQuickAccess{navigate(it)}}
-                        val results=SettingsDestinations.search(query,advanced)
+                        if(query.isBlank()) item {
+                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                                Text(if(advanced) "Advanced tools and integrations" else if(showAllBasic) "All everyday settings" else "Essentials",
+                                    Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                if(!advanced) TextButton(onClick={showAllBasic=!showAllBasic},modifier=Modifier.testTag("settings-toggle-all")) {
+                                    Text(if(showAllBasic) "Show essentials" else "Browse all")
+                                }
+                            }
+                        }
+                        val results=if(query.isBlank() && !advanced && !showAllBasic) {
+                            val essentials=setOf("models","device-dashboard","agents","securityprivacy","appearance","permissions")
+                            SettingsDestinations.all.filter { it.id in essentials }
+                        } else SettingsDestinations.search(query,advanced)
                         if(results.isEmpty()) item{Text("No matching settings. Search covers Basic and Advanced.")}
                         items(results,key={it.id}){entry -> Card(shape=RoundedCornerShape(20.dp),onClick={navigate(entry.id)},modifier=Modifier.fillMaxWidth(),
                             colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow)){

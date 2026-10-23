@@ -4,6 +4,95 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Device identification and heterogeneous compute research — 2026-10-23
+
+Saved device rows now display the local added date/time and a compact Meshlit ID,
+with a button to copy the full ID. This distinguishes multiple phones of the same
+model. Older records that never stored an add time say so; reconnecting them no
+longer invents a new original date. Settings Essentials links to the actual Device
+management destination. The standalone HyperL heterogeneous execution plan is in
+owner PR #3, and Meshlit's Nemotron and sharding compatibility research is in
+`docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md`. Cross-accelerator
+execution and physical heavy-model sharding remain planned, not verified runtime
+features.
+
+The SSH settings enrollment now offers a live in-app QR camera reader for an
+ECDSA P-256 or RSA 3072+ public key, with text entry retained as a fallback.
+Each phone now creates a persistent ECDSA P-256 SSH client identity in Android's
+encrypted credential store, displays its public key as a QR in **My SSH key**,
+and uses that private key for outbound SSH when no other credential was saved.
+The SSH key is generated once after the legal agreement at app startup.
+The public QR can be copied or saved. Both key text fields are hidden by default,
+and private-key reveal requires Android screen-lock verification. The scanner
+opens in a centered dialog; unsupported QR contents remain visible for diagnosis.
+The first Mac-displayed QR had no white quiet border, making phone scanning
+unreliable even though desktop Vision decoded it. The replacement has the
+standard four-module border. The Samsung-generated QR was decoded from an
+actual phone screenshot and validated by `ssh-keygen` as an ECDSA key. Both the V2 live
+pairing reader and photo/gallery reader now distinguish successful QR decoding
+from an unsupported Meshlit pairing payload, showing and allowing copy of the
+decoded content. The legacy Play Services scanner maps cancellation to a
+cancelled result instead of a read error. Xiaomi camera scanning still
+requires post-install physical acceptance.
+
+Samsung Android 11 now generated its SSH identity at startup and started a
+fingerprint-pinned listener after fixing Apache SSHD initialization for Android
+EC parameters and the missing desktop home directory. A disposable Mac key
+was enrolled with STATUS scope. macOS OpenSSH and the desktop Studio
+`SshClient` each received a real `status` reply through an ADB USB tunnel;
+`PhysicalPhoneSshTest` passed with zero skips. The temporary grant was revoked
+and the listener/tunnel stopped. The Mac could not reach Samsung over its Wi-Fi
+address despite Android reporting the listener bound there; direct Wi-Fi and
+phone-to-phone SSH are still unverified. The Studio SSH transport was tested,
+not the desktop panel UI.
+
+The chat mic now remembers speech choices and attempts a ready offline route
+directly. Samsung has verified Whisper tiny English and Piper Lessac medium
+packs installed. A physical mic tap selected both offline packs with network audio
+off, reached Listening, and Stop returned to Stopped. A transcript and spoken
+LLM answer still need physical confirmation. Offline
+camera image understanding remains unavailable with the bundled text model.
+The known app-owned 135M starter is retired only after the new bundled Qwen2.5
+0.5B asset passes its checksum, and an old implicit or explicit startup choice
+is cleared so upgraded installations load the new starter. Other user models
+and choices are retained. Samsung build 42 physically completed the migration:
+the old app-owned file disappeared, `last-loaded` changed to Qwen2.5 0.5B,
+Chat displayed that model, and one local “Hi, what is your name?” prompt returned
+“My name is Meshlit” with IMON attribution. Its 10.4-second response did not
+include a trustworthy token count, so token speed remained unavailable. This
+single prompt does not qualify general response accuracy.
+
+Final build 42 validation passed `:core-ssh:testDebugUnitTest`, both Android
+flavor unit-test suites, V1/V2 debug APK assembly, and both flavor lints with
+zero errors (395 warnings and 19 hints each). The ARM64 V2 APK reports
+`com.meshlit.v2.debug`, versionCode 42, versionName `2.0.0-v2build42`, and
+verifies with the Android debug certificate. Its packaged 491,400,032-byte
+Qwen asset matches the pinned SHA-256
+`74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`;
+the native layer server and worker are present. The exact final ARM64 APK
+installed successfully on Samsung. Xiaomi was offline for this final install.
+
+Samsung and Xiaomi both accepted the latest V2 debug APK and opened Chat. Their
+HTTP health and capability endpoints responded from each phone to the other on
+the same Wi-Fi; both reported LITE, CPU-only and zero hosted shards. Each phone
+shows the other as identity verified and compute approved. Samsung retained two
+saved Xiaomi identities with the same model/IP; the currently responding Xiaomi
+matches the newer ID. The device list now identifies records by ID and added time
+and marks only IDs seen in the current discovery. Radar puts unlocated dots in a
+labeled inset inside the circle rather than outside it; the inset is a list, not
+a distance or bearing measurement. A real worker lease, two-worker model load,
+bidirectional phone SSH and sustained inference still need physical acceptance.
+
+## Agent, cloud and cost dashboard continuation — 2026-10-23
+
+Latest Xiaomi Chat evidence showed the 135M starter inventing a "Dr Emily" identity and then repeating that answer for unrelated prompts because its earlier reply remained in conversation history. The next Android bundle is pinned to Qwen2.5 0.5B Instruct Q4_K_M (491,400,032 bytes, SHA-256 `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`); the old ignored 135M asset was removed from the packaging directory. A separate macOS Ollama preflight with a stronger Meshlit identity instruction answered its name correctly and gave a relevant goals reply, but does not prove Android behavior. A local chat reply that near-copies a prior long answer for a different question now receives one fresh-context model retry. Chat shows its saved route and requested web/phone tool switches above the composer; actual tools still require separate grants. About shows "Created by IMON". Samsung has Chrome installed, but its Meshlit Accessibility service is currently disabled, so Chrome autonomy has not been demonstrated.
+
+Current source adds separate Agent registry and filtered Agent logs destinations, a host-only MCP route catalog with exact HTTPS endpoint, encrypted token and explicit tool allowlist, and an Advanced RAG settings route whose existing in-memory/placeholder backend remains experimental. The Hugging Face dashboard verifies a personal Hub token before saving it in the existing encrypted model credential store and exposes the existing GGUF/hosted-inference controls. This is token authentication, not OAuth login, gated entitlement or live billing access.
+
+Cloud management now shows a cost metric coverage card for AWS, Azure, DigitalOcean, OpenRouter and GCP, with unknown spend identified for GCP, Hugging Face and custom providers. Extra provider native adapters and normalized cross-provider totals are pending. Power and costs states that whole-device readings are not per-job energy or reward evidence. The online speech picker now rejects missing provider, network consent or model IDs and truncates long names to fit; a recognition-only microphone test can show the actual transcript without sending it to the chat model. No paid-provider speech response has been observed. Chat's Add sheet accepts any chosen file for type checking, inserts supported small UTF-8 files, routes one selected or captured photo through explicit online vision consent and an editable draft, and rejects unsupported binaries. Original pixels are not persisted as inline chat messages. Task manager links to emergency stop and labels active-job pause unavailable. Android routes can select up to three installed/online models by scenario but run local models sequentially; a resident multi-model pool is pending. The Operations emergency stop now disables Android delegated automation, disconnects OpenClaw, stops the web bridge and model sharing, and closes the gateway; completed remote effects still require separate reconciliation. Boot and root exit have animated transitions tied to real UI state.
+
+Both Android flavor Kotlin compiles, documentation tracking, feature-map and HyperL checks passed during this edit. APK assemblies, lints, phone acceptance, GitHub CI and release assets for this new source are separate gates until recorded. [Old-project gap audit](docs/OLD_ANDROID_GAP_AUDIT_2026-10-23.md) names the remaining Android and Studio work.
+
 ## Android and Studio redesign plus security review — 2026-10-23
 
 Latest physical checks: Samsung rendered the bundled offline Natural Earth host map and the separately enabled OpenStreetMap tile layer; the new Locate action centered a local-only GPS marker. An optional HTTPS IMON public-IP estimate preview is implemented but has no configured server to exercise. Radar now has indexed, shorter labels, a live pulse and a matching device table; unknown CPU/load/battery remain unknown until an authenticated resource offer exists. The reward view separates self-signed receipt totals from current-process counters and marks monetary proof fields unavailable. Verified upstream Whisper and Piper voice packs were copied to both phones' Downloads. Samsung's DocumentsUI listed ZIPs but did not return a selection; switching to the one-time content picker and choosing Samsung My Files imported both verified packs. The Piper sample returned to Stopped without a reported adapter error, though audible output was not independently captured. A full Whisper recognition → chat → synthesis turn remains unverified.

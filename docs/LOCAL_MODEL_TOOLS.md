@@ -4,7 +4,7 @@ Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-08. Source implementation and acceptance evidence are separate.
+Updated 2026-10-23. Source implementation and acceptance evidence are separate.
 See [device qualification](DEVICE_TESTING_2026-10-08.md).
 
 ## Local does not mean disconnected
@@ -19,7 +19,7 @@ currently loaded local model, and independently enable **Allow web page tools**
 or **Allow phone tools**, then Save. Both options default off, including for old
 saved conversations. Routed and online conversations cannot use this local loop.
 
-The loop permits three tool calls and four model decisions within 180 seconds.
+The loop permits eight tool calls and nine model decisions within five minutes when phone tools are selected; otherwise it permits three calls and four decisions within 180 seconds.
 It checks cancellation and saved operation policy before/after each step, binds
 inference to the originally selected model, rejects remote inference, limits model
 output and tool evidence, and allows only selected built-in descriptors. Stop
@@ -29,17 +29,19 @@ without dispatch for that step; there is no shell or arbitrary MCP fallback.
 Any earlier completed actions are not rolled back by a later failure.
 
 This is not native function-calling compatibility. Use a model trained for JSON
-and tool use. The bundled 135M starter is an installation/generation check, not
-qualified for reliable autonomy. Tool contract tests do not establish model
+and tool use. The bundled Qwen2.5 0.5B starter improves ordinary chat but is not
+qualified for reliable autonomy. In a local task trial, it returned an answer
+instead of invoking the requested phone tool; a second prompt chose the wrong
+action. Those tests were on the Mac, not physical Android acceptance. Tool contract tests do not establish model
 planning quality, successful web retrieval or completed Android tasks.
 
 ## Web page retrieval
 
-The selected web tool is `crawl_url`. Configure **Settings → Advanced → Web
+Selected web tools include `web_search` and `crawl_url`. Configure **Settings → Advanced → Web
 crawler** with your own HTTPS Crawl4AI companion, credential and domain allowlist.
 The companion is separately installed; enabling a chat option does not enable it
-or create a search account. Search-provider APIs remain separate integrations;
-this chat currently exposes page retrieval, not `web_search`.
+or create a search account. The Brave search integration needs its own API key, Internet switch and agent
+grant. Neither path silently starts a companion or creates an account.
 
 The model may request an approved public HTTPS page. The existing crawler enforces
 host approval, public-address checks, robots/access restrictions, deadlines and
@@ -51,10 +53,12 @@ No live companion is configured for the Samsung acceptance run.
 
 ## Phone control and administration
 
-Enable the saved controls in **Settings → OpenClaw and autonomy** separately:
+Enable the saved controls in **Settings → Phone agent and autonomy** separately:
 Android automation, autonomous delegation, the Android Accessibility service,
 and exact allowed package names (or explicitly all supported apps). The chat
-option does not grant these permissions. Existing `android_control` can snapshot,
+option does not grant these permissions. The built-in phone agent uses only the
+loaded on-device model and Android service; the optional OpenClaw gateway is not
+needed for this path. Existing `android_control` can snapshot,
 open, click, type, Back and Home in the actual allowed foreground app. Protected
 system surfaces and password input retain their human controls.
 

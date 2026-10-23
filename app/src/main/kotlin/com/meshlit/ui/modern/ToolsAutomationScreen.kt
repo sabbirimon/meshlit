@@ -35,6 +35,11 @@ import com.meshlit.settings.SettingsRepository
                 OutlinedButton(onClick={onOpen("gateway")}) { Text("Gateway and remote routes") }
                 TextButton(onClick={onOpen("agents")}) { Text("Agent grants and jobs") }
             }
+            OutlinedButton(onClick={onOpen("mcp-catalog")}) { Text("Browse and connect MCP servers") }
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick={onOpen("agent-registry")}) { Text("Agent registry") }
+                TextButton(onClick={onOpen("agent-logs")}) { Text("Agent logs") }
+            }
             OutlinedTextField(query,{query=it.take(120)},Modifier.fillMaxWidth(),label={Text("Find a registered tool")})
             TextButton(onClick={revision++}) { Text("Refresh tool list") }
         } } }

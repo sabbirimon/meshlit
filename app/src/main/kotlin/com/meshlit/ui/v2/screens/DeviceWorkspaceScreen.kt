@@ -30,6 +30,8 @@ import com.meshlit.peering.PairingHistoryStore
 import com.meshlit.settings.SettingsRepository
 import com.meshlit.ui.modern.RadarMarker
 import com.meshlit.ui.modern.RadarTopology
+import com.meshlit.ui.modern.savedDeviceAddedAt
+import com.meshlit.ui.modern.savedDeviceId
 import com.meshlit.ui.theme.LocalMeshlitThemeConfig
 import kotlinx.coroutines.*
 import okhttp3.*
@@ -39,7 +41,7 @@ import java.net.URI
 import java.util.concurrent.TimeUnit
 
 @Composable
-fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
+fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: String? = null) {
     val app = LocalContext.current.applicationContext as MeshlitApplication
     val clipboard = LocalClipboardManager.current
     val qrStore = remember(app) { PairingQrStore(app) }
@@ -71,6 +73,8 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
     var own by remember { mutableStateOf<PairingPayload?>(null) }
     var remove by remember { mutableStateOf<RemoteEndpoint?>(null) }
     var pendingPairing by remember { mutableStateOf<PairingPayload?>(null) }
+    var reviewingId by remember { mutableStateOf<String?>(null) }
+    var handledInitialPeer by rememberSaveable { mutableStateOf<String?>(null) }
     var showNotifications by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(app) {
         app.refreshDiscovery()
@@ -112,7 +116,7 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
                 require(PeerCrypto.verify(proof, node, key, nonce)) { "Identity does not match the scanned key or challenge" }
                 pairingStages = pairingStages + (ep.id to "Identity matched. Requesting owner approval…")
                 val uri = URI(ep.baseUrl)
-                val local = isPrivateRFC1918(uri.host)
+                val local = isPrivatePairingHost(uri.host)
                 require(uri.scheme == "https" || local) { "Use HTTPS for internet compute" }
                 suspend fun attemptHandshake() = withContext(Dispatchers.IO) { runHandshake(
                     transport = object : HandshakeTransport {
@@ -180,26 +184,59 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
         }
     }
     fun save(payload: PairingPayload) { pendingPairing=payload.validate();qr=false;add=false }
+    fun reviewNearby(candidate: com.meshlit.core.discovery.PeerAdvertisement) {
+        if(reviewingId!=null) return
+        reviewingId=candidate.nodeId;error=null
+        scope.launch {
+            try {
+                val url=endpointUrl(candidate.host,candidate.port)
+                val uri=URI(url)
+                require(uri.scheme=="https" || isPrivatePairingHost(uri.host)) { "Use HTTPS for an Internet device" }
+                require(candidate.fingerprint.isNotBlank()) { "This advertisement has no identity fingerprint. Scan its QR instead." }
+                val nonce=PeerCrypto.randomHex()
+                val proof=withContext(Dispatchers.IO) {
+                    val client=OkHttpClient.Builder().connectTimeout(10,TimeUnit.SECONDS).readTimeout(15,TimeUnit.SECONDS)
+                        .followRedirects(false).followSslRedirects(false).build()
+                    client.newCall(Request.Builder().url("${url.trimEnd('/')}/v1/identity?nonce=$nonce").build()).execute().use { response ->
+                        require(response.isSuccessful) { "Peer returned HTTP ${response.code}" }
+                        val source=response.body?.source() ?: error("Empty identity response")
+                        require(!source.request(8193)) { "Identity response too large" }
+                        PeerCrypto.json.decodeFromString(IdentityProof.serializer(),source.readUtf8())
+                    }
+                }
+                require(PeerCrypto.verify(proof,candidate.nodeId,proof.publicKey,nonce)) { "Device identity proof failed" }
+                require(PeerCrypto.fingerprint(proof.publicKey)==candidate.fingerprint) { "Advertised fingerprint changed. Scan the owner's QR." }
+                pendingPairing=PairingPayload(candidate.displayName,url,candidate.nodeId,candidate.tier,proof.publicKey).validate()
+            } catch(e:CancellationException) { throw e }
+            catch(e:Exception) { error="pairing.review_failed: ${e.message}" }
+            finally { reviewingId=null }
+        }
+    }
     val unreadEvents = deviceEvents.count { it.atMs > lastReadAt }
     val nearby = nearbyState.grouped.values.flatten().map { it.advertisement }
-        .filter { it.nodeId != app.nodeIdHex && it.host.isNotBlank() && it.port in 1..65535 }
+        .filter { it.nodeId != app.nodeIdHex && it.host.isNotBlank() && it.port in 1..65535 &&
+            it.transport in setOf("nsd", "ble", "lan") }
         .groupBy { it.nodeId }.values.map { copies -> copies.maxBy { candidate ->
             (if (candidate.displayName.isNotBlank()) 4 else 0) +
                 (if (candidate.manufacturer.isNotBlank()) 2 else 0) +
                 (if (candidate.model.isNotBlank()) 2 else 0) +
                 (if (candidate.transport == "nsd") 1 else 0)
         } }
-    val liveIds = nearby.mapTo(mutableSetOf()) { it.nodeId }
+    LaunchedEffect(initialPeerNodeId,nearby) {
+        val candidate=nearby.firstOrNull { it.nodeId==initialPeerNodeId && initialPeerNodeId!=handledInitialPeer }
+        if(candidate!=null) {
+            handledInitialPeer=candidate.nodeId
+            if(endpoints.none { it.id=="node-${candidate.nodeId}" }) reviewNearby(candidate)
+            else notice="This device is already saved. Review it in the list below."
+        }
+    }
     val radarMarkers = nearby.map { candidate ->
         val saved = endpoints.firstOrNull { it.id == "node-${candidate.nodeId}" }
         val key = saved?.notes?.substringAfter("identity.key=", "")?.substringBefore('\n').orEmpty()
         RadarMarker(0, saved?.trusted == true && key.isNotBlank() &&
             PeerCrypto.fingerprint(key) == candidate.fingerprint, false, false)
-    } + endpoints.filter { it.id.removePrefix("node-") !in liveIds }.map {
-        RadarMarker(2, it.trusted, false, true)
     }
-    val radarNames=nearby.map { it.displayName.ifBlank { "Nearby Meshlit device" } } +
-        endpoints.filter { it.id.removePrefix("node-") !in liveIds }.map { it.name }
+    val radarNames=nearby.map { it.displayName.ifBlank { "Nearby Meshlit device" } }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
         contentPadding = PaddingValues(16.dp),
@@ -227,15 +264,18 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Pairing radar", style = MaterialTheme.typography.titleLarge)
-                    RadarTopology(radarMarkers, nearbyState.scanning, animateScan) { selectedRadarMarker=it }
+                    RadarTopology(radarMarkers, nearbyState.scanning, animateScan, radarNames) {
+                        selectedRadarMarker=it
+                        nearby.getOrNull(it)?.let(::reviewNearby)
+                    }
                     radarNames.getOrNull(selectedRadarMarker)?.let { name ->
                         Text("Selected: $name · review its row below to pair or manage it",style=MaterialTheme.typography.bodyMedium)
                     }
-                    Text("${nearby.size} nearby · ${radarMarkers.size - nearby.size} saved only · green approved · red unverified",
+                    Text("${nearby.size} discovered now · ${endpoints.size} saved separately · green approved · red unverified",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { app.refreshDiscovery(); peers.refreshAvailability() },
                         modifier = Modifier.fillMaxWidth(), enabled = mode != DiscoveryMode.OFF) { Text("Refresh nearby scan") }
-                    Text("Filled dots are nearby advertisements; hollow dots are saved devices not seen now. Select a device in the list below to review its identity.",
+                    Text("Only current network discoveries appear as dots. Saved devices remain in the list below until you remove them.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -249,6 +289,7 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(ep.name, style = MaterialTheme.typography.titleMedium)
                     Text(ep.baseUrl, style = MaterialTheme.typography.bodySmall)
+                    Text("ID ${savedDeviceId(ep)} · ${savedDeviceAddedAt(ep)}", style = MaterialTheme.typography.bodySmall)
                     Text(if (ep.trusted) "Identity verified · compute approved" else "Saved · needs identity verification",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (ep.trusted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -328,12 +369,9 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
                         "Nearby now · ${if (saved.trusted) "saved and locally approved" else "saved, identity unverified"}",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (saved == null) Button(onClick = {
-                    runCatching { PairingPayload(candidate.displayName, endpointUrl(candidate.host, candidate.port),
-                        candidate.nodeId, candidate.tier).validate() }
-                        .onSuccess(::save)
-                        .onFailure { error = "pairing.invalid_peer: ${it.message}" }
-                }) { Text("Add") }
+                if (saved == null) Button(onClick = { reviewNearby(candidate) },enabled=reviewingId==null) {
+                    Text(if(reviewingId==candidate.nodeId) "Checking…" else "Add")
+                }
                 else Text("Saved", style = MaterialTheme.typography.labelMedium)
             } }
         }
@@ -364,6 +402,11 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(ep.name, style = MaterialTheme.typography.titleLarge)
                     Text(ep.baseUrl, style = MaterialTheme.typography.bodyMedium)
+                    Text("Device ID · ${savedDeviceId(ep)}", style = MaterialTheme.typography.bodySmall)
+                    Text(savedDeviceAddedAt(ep), style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(ep.id.removePrefix("node-"))) }) {
+                        Text("Copy full device ID")
+                    }
                     Text(if (ep.trusted) "Identity verified · compute approved" else "Saved · awaiting identity verification",
                         color = if (ep.trusted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                     pairingStages[ep.id]?.let { stage -> Text(stage, style = MaterialTheme.typography.bodySmall,
@@ -444,6 +487,17 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit) {
             val uri = URI(ep.baseUrl); registry.remove(uri.host)
             peers.forget(ep.id.removePrefix("node-")); remove = null
         } }) { Text("Remove") } }, dismissButton = { TextButton({ remove = null }) { Text("Cancel") } }) }
+}
+
+private fun isPrivatePairingHost(host:String):Boolean {
+    if(isPrivateRFC1918(host) || isLinkLocal(host)) return true
+    if(':' !in host) return false
+    return runCatching {
+        val bytes=java.net.InetAddress.getByName(host.removePrefix("[").removeSuffix("]")).address
+        bytes.size==16 && (((bytes[0].toInt() and 0xfe)==0xfc) ||
+            ((bytes[0].toInt() and 0xff)==0xfe && (bytes[1].toInt() and 0xc0)==0x80) ||
+            (bytes.dropLast(1).all { it.toInt()==0 } && bytes.last().toInt()==1))
+    }.getOrDefault(false)
 }
 
 @Composable

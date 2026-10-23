@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,7 +47,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** A network topology view. Rings are connection classes, never metres or GPS positions. */
-@Composable internal fun RadarScreen(onBack:()->Unit,onScan:()->Unit,onChat:()->Unit,onLogs:()->Unit,onMap:()->Unit) {
+@Composable internal fun RadarScreen(onBack:()->Unit,onScan:()->Unit,onChat:()->Unit,onLogs:()->Unit,onMap:()->Unit,
+    onDiscovered:(String)->Unit) {
     val app=androidx.compose.ui.platform.LocalContext.current.applicationContext as MeshlitApplication
     val repo=koinInject<PeerRepository>()
     val discoveryMode=koinInject<DiscoveryModeStore>()
@@ -69,7 +71,7 @@ import kotlin.math.sin
         }
     }
     val visible=state.grouped.values.flatten().distinctBy { it.advertisement.nodeId }
-        .filter { it.advertisement.nodeId != app.nodeIdHex }
+        .filter { it.advertisement.nodeId != app.nodeIdHex && it.advertisement.transport in setOf("nsd","ble","lan") }
     val liveIds=visible.mapTo(mutableSetOf()) { it.advertisement.nodeId }
     val savedOnly=endpoints.filter { it.protocol==EndpointProtocol.MESHLIT_SSE && it.id.removePrefix("node-") !in liveIds }
     val workers=remember(state,pipelineStatus) { pipeline.peers() }
@@ -81,13 +83,11 @@ import kotlin.math.sin
             known=saved?.trusted==true && key.isNotBlank() && PeerCrypto.fingerprint(key)==peer.fingerprint,
             remote=discovered.category==PeerCategory.CLUSTER || discovered.category==PeerCategory.INTERNET,
             savedOnly=false)
-    } + savedOnly.map { RadarMarker(2,it.trusted,false,true) } +
-        workers.map { RadarMarker(1,true,true,true) }
-    val markerNames=visible.map { it.advertisement.displayName.ifBlank { "Nearby Meshlit device" } } +
-        savedOnly.map { it.name } + workers.map { "Worker · ${it.group}" }
+    }
+    val markerNames=visible.map { it.advertisement.displayName.ifBlank { "Nearby Meshlit device" } }
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("radar-screen"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item { TextButton(onClick=onBack) { Text("Back to settings") };Text("Device radar",style=MaterialTheme.typography.headlineSmall)
-            Text("Live and saved Meshlit devices by connection type. Rings do not measure physical distance.",style=MaterialTheme.typography.bodyMedium) }
+            Text("Live Meshlit discoveries only. Saved devices are listed separately below. Rings do not measure physical distance.",style=MaterialTheme.typography.bodyMedium) }
         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
             TextButton(onClick={showIdentifiers=!showIdentifiers},modifier=Modifier.fillMaxWidth()) {
                 Icon(if(showIdentifiers) Icons.Default.VisibilityOff else Icons.Default.Visibility,null)
@@ -101,11 +101,14 @@ import kotlin.math.sin
                 Text("Identifiers are local records, not proof of ownership. Verify the other device's fingerprint before approving it.",style=MaterialTheme.typography.bodySmall)
             }
         } } }
-        item { RadarTopology(markers,state.scanning,animateScan,markerNames) { selectedMarker=it }
+        item { RadarTopology(markers,state.scanning,animateScan,markerNames) {
+            selectedMarker=it
+            visible.getOrNull(it)?.advertisement?.nodeId?.let(onDiscovered)
+        }
             markerNames.getOrNull(selectedMarker)?.let { name -> Text("Selected: $name · review its entry below before connecting",style=MaterialTheme.typography.bodyMedium) }
             Text("${visible.size} discovered now · ${savedOnly.size} saved devices · ${workers.size} saved layer workers · ${if(mode==DiscoveryMode.OFF) "discovery off in Privacy" else if(state.scanning) "scanning" else "scan paused"}.",style=MaterialTheme.typography.bodySmall)
-            Text("Green: locally approved (live dots also match the saved key) · red: unverified · blue ring: cluster or Internet route · hollow: saved, not seen live.",style=MaterialTheme.typography.bodySmall)
-            Text("Saved entries do not prove a device is online.",style=MaterialTheme.typography.bodySmall) }
+            Text("Green: locally approved with a matching saved key · red: unverified · blue ring: cluster or Internet route.",style=MaterialTheme.typography.bodySmall)
+            Text("Saved entries do not prove a device is online and do not appear as radar dots.",style=MaterialTheme.typography.bodySmall) }
         if(markers.isNotEmpty()) item {
             Text("Radar device table",style=MaterialTheme.typography.titleSmall)
             markerNames.forEachIndexed { index,name ->
@@ -158,6 +161,9 @@ import kotlin.math.sin
                     Text("Claimed fingerprint: ${peer.fingerprint}",style=MaterialTheme.typography.bodySmall)
                 }
                 Text("Distance unknown · advertisement is not verified identity or live compute capacity",style=MaterialTheme.typography.bodySmall)
+                OutlinedButton(onClick={onDiscovered(peer.nodeId)},modifier=Modifier.fillMaxWidth()) {
+                    Text(if(saved==null) "Add and review identity" else "Open saved device")
+                }
             } }
         }
         item { Text("Saved devices",style=MaterialTheme.typography.titleMedium) }
@@ -189,7 +195,8 @@ import kotlin.math.sin
     }
 }
 
-internal data class RadarMarker(val category:Int,val known:Boolean,val remote:Boolean,val savedOnly:Boolean)
+internal data class RadarMarker(val category:Int,val known:Boolean,val remote:Boolean,val savedOnly:Boolean,
+    val bearingDegrees:Float?=null,val rangeFraction:Float?=null)
 private val knownGreen=Color(0xFF20B979)
 private val unknownRed=Color(0xFFE15B5B)
 private val remoteBlue=Color(0xFF4B9BFF)
@@ -215,19 +222,15 @@ private val remoteBlue=Color(0xFF4B9BFF)
         animationSpec=infiniteRepeatable(tween(1800,easing=LinearEasing),RepeatMode.Restart),label="radar-ping")
     Canvas(Modifier.fillMaxWidth().height(300.dp).testTag("radar-topology").pointerInput(markers) {
         detectTapGestures { tap ->
-            val center=Offset(size.width/2f,size.height/2f)
-            val radius=minOf(size.width,size.height)*0.47f
             val hit=markers.indices.map { index ->
-                val fraction=when(markers[index].category) { 0->0.3f;1->0.5f;2->0.7f;else->0.95f }
-                val angle=index*2.399963f
-                val point=Offset(center.x+cos(angle)*radius*fraction,center.y+sin(angle)*radius*fraction)
+                val point=radarMarkerPoint(markers,index,size.width.toFloat(),size.height.toFloat())
                 index to (tap-point).getDistance()
             }.minByOrNull { it.second }
             if(hit!=null && hit.second<=22.dp.toPx()) onMarkerTap(hit.first)
         }
     }) {
-        val center=Offset(size.width/2,size.height/2)
-        val radius=minOf(size.width,size.height)*0.47f
+        val center=Offset(size.width/2,size.height*0.46f)
+        val radius=minOf(size.width,size.height)*0.44f
         listOf(0.33f,0.65f,1f).forEach { fraction -> drawCircle(muted.copy(alpha=0.5f),radius*fraction,center,style=Stroke(2.dp.toPx())) }
         if(scanning && animateScan) {
             drawCircle(primary.copy(alpha=0.24f*(1f-ping)),radius*(0.08f+0.92f*ping),center,
@@ -244,10 +247,21 @@ private val remoteBlue=Color(0xFF4B9BFF)
         }
         drawCircle(primary.copy(alpha=0.22f),12.dp.toPx(),center)
         drawCircle(primary,6.dp.toPx(),center)
+        if(markers.any { it.bearingDegrees==null || it.rangeFraction==null }) {
+            // A labeled inset keeps unlocated devices within the radar while
+            // making clear that their grid coordinates are not bearings or ranges.
+            drawRoundRect(Color(0xFF172027).copy(alpha=0.95f),
+                topLeft=Offset(center.x-radius*0.5f,size.height*0.56f),
+                size=Size(radius,size.height*0.28f),cornerRadius=CornerRadius(10.dp.toPx()))
+            val insetLabel=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color=android.graphics.Color.LTGRAY;textSize=10.dp.toPx()
+                textAlign=android.graphics.Paint.Align.CENTER
+            }
+            drawContext.canvas.nativeCanvas.drawText("POSITION UNKNOWN",center.x,size.height*0.61f,insetLabel)
+        }
         markers.forEachIndexed { index,marker ->
-            val fraction=when(marker.category) { 0->0.3f;1->0.5f;2->0.7f;else->0.95f }
-            val angle=index*2.399963f
-            val point=androidx.compose.ui.geometry.Offset(center.x+cos(angle)*radius*fraction,center.y+sin(angle)*radius*fraction)
+            val point=radarMarkerPoint(markers,index,size.width,size.height)
+            if(point.x<0f) return@forEachIndexed
             val color=if(marker.known) knownGreen else unknownRed
             if(!marker.savedOnly && animateScan) {
                 drawCircle(color.copy(alpha=0.55f*(1f-ping)),(6f+17f*ping).dp.toPx(),point,
@@ -259,8 +273,9 @@ private val remoteBlue=Color(0xFF4B9BFF)
             if(marker.savedOnly) drawCircle(color,4.dp.toPx(),point,style=Stroke(1.5.dp.toPx()))
             else drawCircle(color,4.dp.toPx(),point)
             if(marker.remote) drawCircle(remoteBlue,7.dp.toPx(),point,style=Stroke(1.5.dp.toPx()))
-            val shortName=names.getOrNull(index)?.substringAfterLast('/')?.take(9).orEmpty()
-            val label="#${index+1} $shortName"
+            val located=marker.bearingDegrees!=null && marker.rangeFraction!=null
+            val shortName=if(located) names.getOrNull(index)?.substringAfterLast('/')?.take(9).orEmpty() else ""
+            val label="#${index+1} $shortName".trim()
             val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 this.color=android.graphics.Color.WHITE;textSize=11.dp.toPx()
             }
@@ -268,6 +283,24 @@ private val remoteBlue=Color(0xFF4B9BFF)
             drawContext.canvas.nativeCanvas.drawText(label,labelX,point.y-9.dp.toPx(),paint)
         }
     }
-    Text(if(scanning) "Center: this device · filled: discovered · hollow: saved · sweep: active scan"
+    Text(if(scanning) "Center: this device · numbered dots in the inset have no measured position"
         else "Scan paused · enable discovery to see the moving sweep",style=MaterialTheme.typography.labelSmall)
+}
+
+private fun radarMarkerPoint(markers:List<RadarMarker>,index:Int,width:Float,height:Float):Offset {
+    val marker=markers[index]
+    val bearing=marker.bearingDegrees
+    val range=marker.rangeFraction
+    if(bearing!=null && range!=null && bearing.isFinite() && range.isFinite()) {
+        val radius=minOf(width,height)*0.44f*range.coerceIn(0.08f,1f)
+        val angle=Math.toRadians((bearing-90f).toDouble())
+        return Offset(width/2f+cos(angle).toFloat()*radius,height*0.46f+sin(angle).toFloat()*radius)
+    }
+    fun unlocated(item:RadarMarker)=item.bearingDegrees?.isFinite()!=true || item.rangeFraction?.isFinite()!=true
+    val unknownIndex=markers.take(index).count(::unlocated)
+    if(unknownIndex>=16) return Offset(-1000f,-1000f)
+    val columns=minOf(4,markers.count(::unlocated)).coerceAtLeast(1)
+    val col=unknownIndex%columns
+    return Offset(width/2f+(col-(columns-1)/2f)*minOf(width,height)*0.12f,
+        height*(0.70f+(unknownIndex/columns)*0.04f))
 }

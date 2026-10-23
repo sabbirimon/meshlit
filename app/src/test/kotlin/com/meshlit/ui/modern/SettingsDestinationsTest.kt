@@ -7,7 +7,7 @@ class SettingsDestinationsTest {
         assertEquals(listOf("cloud"),SettingsDestinations.search("GCP costs",false).map{it.id})
     }
     @Test fun searchHonorsAllWordsAcrossBothTabs(){
-        assertEquals(listOf("logs"),SettingsDestinations.search("log export",false).map{it.id})
+        assertEquals(listOf("agent-logs", "logs"),SettingsDestinations.search("log export",false).map{it.id})
         assertEquals(listOf("runtime"),SettingsDestinations.search("rootless",false).map{it.id})
         assertEquals(listOf("runtime"),SettingsDestinations.search("rootless",true).map{it.id})
         assertEquals(listOf("appearance"),SettingsDestinations.search("wallpaper colors",false).map{it.id})

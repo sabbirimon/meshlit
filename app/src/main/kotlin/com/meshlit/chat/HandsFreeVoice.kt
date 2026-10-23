@@ -13,15 +13,18 @@ import com.meshlit.core.common.control.ManagedFeature
 import com.meshlit.operations.OperationsControl
 import com.meshlit.providers.OnlineProviders
 import java.util.Locale
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class VoiceStyle(val label:String,val pitch:Float,val speed:Float) {
     NATURAL("Natural",1f,1f),DEEP("Lower voice",0.8f,0.95f),BRIGHT("Higher voice",1.2f,1f),ROBOTIC("Robotic style",0.85f,0.8f),YOUTHFUL("Youthful style",1.35f,1.05f)
 }
-enum class SpeechInput(val label:String) { OFFLINE_MODEL("Offline speech model"),ANDROID("Android recognizer"),PROVIDER("Online speech model") }
-enum class SpeechOutput(val label:String) { ANDROID("Installed Android voice"),OFFLINE_MODEL("Offline voice model"),PROVIDER("Online voice model") }
+@Serializable enum class SpeechInput(val label:String) { OFFLINE_MODEL("Offline speech model"),ANDROID("Android recognizer"),PROVIDER("Online speech model") }
+@Serializable enum class SpeechOutput(val label:String) { ANDROID("Installed Android voice"),OFFLINE_MODEL("Offline voice model"),PROVIDER("Online voice model") }
+@Serializable
 data class VoiceOptions(val input:SpeechInput=SpeechInput.OFFLINE_MODEL,val output:SpeechOutput=SpeechOutput.ANDROID,
     val sttPack:String="",val ttsPack:String="",val providerId:String="",val sttModel:String="",val ttsModel:String="",val providerVoice:String="coral",val network:Boolean=false,val androidVoice:String?=null,val style:VoiceStyle=VoiceStyle.NATURAL)
-data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false)
+data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false,val testTranscript:String?=null)
 /** Foreground speech adapters feed the current chat controller. Model weights, routes,
  * remembered preferences and chat tool grants remain owned by that controller. */
 class HandsFreeVoice(private val context:Context,private val chat:ChatController,private val models:VoiceModels,private val providers:OnlineProviders) {
@@ -62,15 +65,15 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         check(engine.setPitch(options.style.pitch)==TextToSpeech.SUCCESS && engine.setSpeechRate(options.style.speed)==TextToSpeech.SUCCESS)
         return engine
     }
-    private suspend fun prepare(input:Boolean) {
-        if((input && options.input==SpeechInput.PROVIDER) || options.output==SpeechOutput.PROVIDER) {
+    private suspend fun prepare(input:Boolean,output:Boolean=true) {
+        if((input && options.input==SpeechInput.PROVIDER) || (output && options.output==SpeechOutput.PROVIDER)) {
             check(options.network) { "Allow network audio explicitly before using an online speech model" }
             check(providers.profiles.value.any{it.id==options.providerId && it.enabled}) { "Select an enabled speech provider" }
-            online.preflight(options.providerId,options.sttModel.takeIf{input && options.input==SpeechInput.PROVIDER},options.ttsModel.takeIf{options.output==SpeechOutput.PROVIDER},options.providerVoice)
+            online.preflight(options.providerId,options.sttModel.takeIf{input && options.input==SpeechInput.PROVIDER},options.ttsModel.takeIf{output && options.output==SpeechOutput.PROVIDER},options.providerVoice)
         }
         if(input && options.input==SpeechInput.OFFLINE_MODEL) withContext(Dispatchers.IO){offline.load(options.sttPack,SpeechKind.WHISPER_STT)}
-        if(options.output==SpeechOutput.OFFLINE_MODEL) withContext(Dispatchers.IO){offline.load(options.ttsPack,SpeechKind.PIPER_TTS)}
-        else if(options.output==SpeechOutput.ANDROID) configureAndroid()
+        if(output && options.output==SpeechOutput.OFFLINE_MODEL) withContext(Dispatchers.IO){offline.load(options.ttsPack,SpeechKind.PIPER_TTS)}
+        else if(output && options.output==SpeechOutput.ANDROID) configureAndroid()
         if(input && options.input==SpeechInput.ANDROID) {
             val local=Build.VERSION.SDK_INT>=31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
             check(local || options.network) { "This Android recognizer cannot guarantee offline recognition. Select an offline speech pack, or explicitly allow the recognition service." }
@@ -79,6 +82,15 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
     }
     fun preview(sample:String="Hi, I'm Meshlit. It's good to hear from you. What would you like to explore today?")=
         launchSession(false) { speak(sample.take(200)) }
+    fun testRecognition()=launchSession(false,needsInput=true,needsOutput=false) {
+        _state.value=state.value.copy(phase="Listening for a recognition test")
+        val text=withTimeout(90_000){when(options.input){
+            SpeechInput.ANDROID->androidTranscript()
+            SpeechInput.OFFLINE_MODEL->withContext(Dispatchers.IO){offline.transcribe(captureVoiceTurn())}
+            SpeechInput.PROVIDER->online.transcribe(options.providerId,options.sttModel,captureVoiceTurn())
+        }}
+        _state.value=state.value.copy(testTranscript=text.take(12000),phase="Recognition test complete")
+    }
     fun start()=launchSession(true) {
         check(!chat.state.value.running) { "Wait for the current reply" }
         if(chat.state.value.current==null) chat.newChat()
@@ -101,14 +113,14 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             check(reply.isNotBlank()) { "The model returned no reply" };speak(reply.take(4000));turns++
         }}
     }
-    private fun launchSession(conversation:Boolean,work:suspend()->Unit) {
+    private fun launchSession(conversation:Boolean,needsInput:Boolean=conversation,needsOutput:Boolean=true,work:suspend()->Unit) {
         check(Looper.myLooper()==Looper.getMainLooper());check(!state.value.busy)
-        val started=++epoch;_state.value=state.value.copy(active=conversation,busy=true,phase="Preparing speech adapters",error=null)
+        val started=++epoch;_state.value=state.value.copy(active=conversation,busy=true,phase="Preparing speech adapters",error=null,testTranscript=null)
         session=scope.launch {
             try {
                 gate.run(ManagedFeature.MEDIA) { speechLock.withLock {try{
-                    if(options.network) gate.run(ManagedFeature.CLOUD){withTimeout(180_000){prepare(conversation)};work()}
-                    else {withTimeout(180_000){prepare(conversation)};work()}
+                    if(options.network) gate.run(ManagedFeature.CLOUD){withTimeout(180_000){prepare(needsInput,needsOutput)};work()}
+                    else {withTimeout(180_000){prepare(needsInput,needsOutput)};work()}
                 }finally{offline.close()}} }
             }catch(e:CancellationException){if(started==epoch && e is TimeoutCancellationException) _state.value=state.value.copy(error="Voice session reached its time limit")}
             catch(e:Exception){if(started==epoch) _state.value=state.value.copy(error=e.message ?: "Voice adapter failed")}

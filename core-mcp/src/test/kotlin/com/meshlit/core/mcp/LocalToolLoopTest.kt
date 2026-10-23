@@ -28,6 +28,12 @@ class LocalToolLoopTest {
         assertTrue(runCatching{LocalToolLoop({call},{calls++;McpToolResult.Text("real contract output")},{}).run("test",listOf(descriptor()))}.isFailure)
         assertEquals(3,calls)
     }
+    @Test fun phoneAgentAllowsEightActionsButNeverNinth()=runBlocking {
+        var calls=0
+        assertTrue(runCatching{LocalToolLoop({call},{calls++;McpToolResult.Text("observed")},{},maxCalls=8)
+            .run("Open the browser and inspect the page",listOf(descriptor()))}.isFailure)
+        assertEquals(8,calls)
+    }
     @Test fun revocationAfterModelPlanningPreventsToolDispatch()=runBlocking {
         var allowed=true;var calls=0
         val loop=LocalToolLoop({allowed=false;call},{calls++;McpToolResult.Text("no")},{check(allowed)})

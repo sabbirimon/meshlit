@@ -276,6 +276,10 @@ class MeshlitApplication : android.app.Application() {
         appScope.launch {
             com.meshlit.legal.LegalAgreementStore(this@MeshlitApplication).awaitAccepted()
             if(!BuildProfile.coreCandidate) {
+            appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { get<com.meshlit.ssh.SshConnections>().devicePublicKey() }
+                    .onFailure { log.error("app.ssh.identity.fail", "Device SSH identity preparation failed", it) }
+            }
             appScope.launch(kotlinx.coroutines.Dispatchers.IO) { get<com.meshlit.observability.AuditTelemetry>().start() }
             startHooksFeed(appScope, settingsRepository)
             try {

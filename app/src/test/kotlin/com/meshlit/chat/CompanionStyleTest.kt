@@ -9,7 +9,7 @@ class CompanionStyleTest {
         val neutral = ChatOptions(companionStyle=CompanionStyle.DIRECT,companionWarmth=0)
         val warm = neutral.copy(companionStyle=CompanionStyle.WARM,companionWarmth=2,systemPrompt="Call me Alex")
         assertTrue(companionInstructions(neutral).contains("direct and concise"))
-        assertTrue(companionInstructions(neutral).contains("If asked your name, say Meshlit"))
+        assertTrue(companionInstructions(neutral).contains("I am Meshlit"))
         assertTrue(companionInstructions(warm).contains("Call me Alex"))
         assertFalse(warm.usesLocalTools)
     }

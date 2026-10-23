@@ -21,7 +21,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-@Composable fun PowerCostsScreen(onBack:()->Unit) {
+@Composable fun PowerCostsScreen(onBack:()->Unit,onCloud:(()->Unit)?=null) {
     val context=LocalContext.current;val repository=remember{PowerRepository(context)};val scope=rememberCoroutineScope()
     var reading by remember{mutableStateOf<PowerReading?>(null)}
     var policy by remember{mutableStateOf(repository.policy())};var energy by remember{mutableDoubleStateOf(0.0)};var observedSeconds by remember{mutableLongStateOf(0)}
@@ -44,6 +44,14 @@ import kotlinx.serialization.json.Json
             Text("Temperature: ${reading?.temperatureC?.let{"$it °C"} ?: "unknown"} · thermal status: ${reading?.thermalStatus ?: "unsupported"} · power saver: ${reading?.powerSave ?: "unknown"}")
             Text("Observed discharge: ${"%.6f".format(energy)} Wh over $observedSeconds valid seconds since opening this screen.")
             Text("Battery-side whole-device estimate. Charging, missing sensors and gaps over 15 seconds are excluded. Zero may mean no valid discharge samples. This does not isolate Meshlit or measure USB output / wall-plug input.",style=MaterialTheme.typography.bodySmall)
+        }}}
+        item{Card{Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+            Text("Meshlit-wide measurement coverage",style=MaterialTheme.typography.titleMedium)
+            Text("Whole phone: live battery readings while this page is open; not isolated to Meshlit.")
+            Text("Local models and agents: per-task energy unavailable. Runtime token counts appear only when the engine reports them.")
+            Text("Downloads and peer workers: bytes and workload events need a persistent collector before energy or rental cost can be assigned.")
+            Text("Cloud requests: per-response estimates need reported usage and your configured prices; provider invoices are authoritative.")
+            if(onCloud!=null) OutlinedButton(onClick=onCloud){Text("Open cloud costs and credentials")}
         }}}
         item{Text("Workload policy",style=MaterialTheme.typography.titleMedium)
             Text("Minimum battery: ${policy.minimumBattery}%");Slider(policy.minimumBattery.toFloat(),{savePolicy(policy.copy(minimumBattery=it.toInt()))},valueRange=5f..80f)
@@ -85,7 +93,7 @@ import kotlinx.serialization.json.Json
     }
 }
 
-@Composable fun AgentManagementScreen(onBack:()->Unit) {
+@Composable fun AgentManagementScreen(onBack:()->Unit,onOpen:(String)->Unit={}) {
     val context=LocalContext.current
     val agentStore=remember { com.meshlit.agent.AgentProfileStore(context) }
     val initialProfiles=remember { runCatching { agentStore.load() } }
@@ -114,7 +122,14 @@ import kotlinx.serialization.json.Json
     val selectedLabel=choices.firstOrNull{it.first==selectedModel}?.second ?: "Choose a model"
     val tools=remember(revision){registry.list()}
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item{TextButton(onClick=onBack){Text("Back to settings")};Text("Agent management",style=MaterialTheme.typography.headlineSmall);Text("Saved permissions govern typed commands. Online access also needs opt-in on the selected provider profile. OpenClaw and Android autonomy have their own explicit controls.")}
+        item{TextButton(onClick=onBack){Text("Back to settings")};Text("Agent management",style=MaterialTheme.typography.headlineSmall);Text("Saved permissions govern typed commands. Online access also needs opt-in on the selected provider profile. The built-in phone agent and optional OpenClaw gateway have separate controls.")
+            Column {
+                TextButton(onClick={onOpen("agent-registry")}){Text("Agent registry")}
+                TextButton(onClick={onOpen("agent-logs")}){Text("Agent logs")}
+            }
+            OutlinedButton(onClick={onOpen("mcp-catalog")}){Text("MCP connections and tools")}}
+        item{OutlinedButton(onClick={onOpen("openclaw")}){Text("Phone autonomy and background node")}
+            Button(onClick={onOpen("operations")},colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("Emergency stop all")}}
         item { Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Create an agent",style=MaterialTheme.typography.titleMedium)
             Text("A saved agent is a named task template. It starts disabled and has no tools, device access or network grant. Choose a loaded local model or a separately agent-approved online profile; enable MODELS delegation to run it.",style=MaterialTheme.typography.bodySmall)

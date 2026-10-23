@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 /** User-ordered navigation shortcuts shared by Settings and the drawer. */
 internal object MenuShortcutStore {
     private const val KEY = "ids"
-    private val defaults = listOf("models", "devices", "device-dashboard", "radar", "meshchat", "resources", "network", "sharding", "monitor", "commands", "recovery", "agents", "securityprivacy")
+    private val defaults = listOf("models", "devices", "agents", "device-dashboard")
     private val state = MutableStateFlow(defaults)
     private var initialized = false
 

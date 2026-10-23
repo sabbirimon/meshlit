@@ -67,9 +67,13 @@ object QrScanner {
                         if (cont.isActive) cont.resume(value.rawValue?.takeIf(String::isNotBlank)?.let { ScanResult.Success(it.trim()) } ?: ScanResult.Failed(-1, "Scanner returned no QR data"))
                     }
                     .addOnFailureListener { err ->
-                        if (cont.isActive) cont.resume(if (err is ApiException && err.statusCode == 17) ScanResult.PlayServicesMissing
-                            else ScanResult.Failed((err as? ApiException)?.statusCode ?: -1, err.message ?: err.javaClass.simpleName))
+                        if (cont.isActive) cont.resume(when ((err as? ApiException)?.statusCode) {
+                            17 -> ScanResult.PlayServicesMissing
+                            18 -> ScanResult.Cancelled
+                            else -> ScanResult.Failed((err as? ApiException)?.statusCode ?: -1, err.message ?: err.javaClass.simpleName)
+                        })
                     }
+                    .addOnCanceledListener { if (cont.isActive) cont.resume(ScanResult.Cancelled) }
                 cont.invokeOnCancellation { /* nothing — task has no cancel */ }
             }
         } catch (api: ApiException) {

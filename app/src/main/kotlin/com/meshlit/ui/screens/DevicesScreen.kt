@@ -796,6 +796,8 @@ private fun QrPairingSheet(
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var pasteField by remember { mutableStateOf("") }
     var scanError by remember { mutableStateOf<String?>(null) }
+    var otherQrContents by remember { mutableStateOf<String?>(null) }
+    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(payloadJson) {
@@ -813,10 +815,12 @@ private fun QrPairingSheet(
         scope.launch {
             when (val r = QrScanner.scan(context)) {
                 is QrScanner.ScanResult.Success -> {
+                    otherQrContents = null
                     val parsed = runCatching { PairingPayload.decode(r.rawValue) }.getOrNull()
                     if (parsed != null) {
                         onAddFromString(parsed)
                     } else {
+                        otherQrContents = r.rawValue.take(4096)
                         scanError = contextResources.getString(R.string.devices_qr_scan_invalid)
                     }
                 }
@@ -933,6 +937,20 @@ private fun QrPairingSheet(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+            otherQrContents?.let { decoded ->
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = decoded,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Scanned QR contents") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 4,
+                )
+                TextButton(onClick = { clipboard.setText(AnnotatedString(decoded)) }) {
+                    Text("Copy scanned contents")
+                }
             }
             Spacer(Modifier.height(8.dp))
         }

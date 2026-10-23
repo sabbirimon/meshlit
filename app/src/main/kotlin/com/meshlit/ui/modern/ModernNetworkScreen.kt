@@ -17,8 +17,10 @@ import com.meshlit.ui.theme.ChatTokens as T
 /** Pairing and discovery are distinct from readiness for model computation. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ModernNetworkScreen(onBack:()->Unit,onDashboard:()->Unit,initialPage:String?=null,
-    onDevices:(()->Unit)?=null) {
+    onDevices:(()->Unit)?=null,focusPeerNodeId:String?=null) {
     var page by rememberSaveable{mutableStateOf(initialPage)}
+    var focusedPeer by rememberSaveable { mutableStateOf(focusPeerNodeId) }
+    var fromExternalService by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable{mutableStateOf("")}
     val context=LocalContext.current
     BackHandler(page!=initialPage){page=initialPage}
@@ -27,17 +29,23 @@ import com.meshlit.ui.theme.ChatTokens as T
     if(page=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
     if(page=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen(onBack={page=null});return}
     if(page=="device_info"){com.meshlit.ui.v2.screens.DeviceInfoScreen(onBack={page=initialPage});return}
-    if(page=="ssh"){SshConnectionsScreen{page=null};return}
+    if(page=="ssh"){SshConnectionsScreen{page=if(fromExternalService) "external-services" else null};return}
     if(page=="firewall"){FirewallSettingsScreen{page=null};return}
-    if(page=="app"){com.meshlit.ui.v2.screens.DeviceWorkspaceScreen{page=it};return}
+    if(page=="app"){com.meshlit.ui.v2.screens.DeviceWorkspaceScreen({page=it},focusedPeer);return}
     if(page=="saved-qrs"){DeviceManagementScreen({page="app"},{page=it});return}
     if(page=="sharding"){ShardingSettingsScreen(onBack={page="app"});return}
     if(page=="scan"){com.meshlit.ui.v2.screens.V2ScanScreen(onOpenQrPairing={page="app"},onBack={page=initialPage});return}
-    if(page=="radar"){RadarScreen({page=initialPage},{page="scan"},{page="meshchat"},{page="logs"},{page="host-map"});return}
+    if(page=="external-services"){ExternalServiceScreen({page=initialPage}) { fromExternalService=true;page=it };return}
+    if(page=="web-bridge"){WebBridgeEnrollmentScreen{page="external-services"};return}
+    if(page=="mcp-catalog"){McpCatalogScreen({page="external-services"},{page="gateway"});return}
+    if(page=="providers"){OnlineProvidersScreen{page="external-services"};return}
+    if(page=="gateway"){GatewayScreen{page="mcp-catalog"};return}
+    if(page=="radar"){RadarScreen({page=initialPage},{page="scan"},{page="meshchat"},{page="logs"},{page="host-map"},
+        {focusedPeer=it;page="app"});return}
     if(page=="host-map"){HostMapScreen({page="radar"},{page="privacy"},{page="app"});return}
     if(page=="privacy"){SecurityPrivacyScreen({page="host-map"},{page=it});return}
     if(page=="meshchat"){PeerChatScreen{page="radar"};return}
-    if(page=="logs"){ModernLogsScreen{page="radar"};return}
+    if(page=="logs"){ModernLogsScreen(onBack={page="radar"});return}
     if(page=="forward"){com.meshlit.ui.screens.settings.ForwardingPeersScreen({page=null});return}
     Scaffold(topBar={TopAppBar(title={Text("Network and pairing")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
@@ -57,6 +65,9 @@ import com.meshlit.ui.theme.ChatTokens as T
             } }
             item { Text("For a browser or API client, use Web/API devices and groups below. That path enrolls a control client, not a compute worker.",
                 style=MaterialTheme.typography.bodySmall) }
+            item { NetworkMethod("Other LAN or VPN services","Check and save a manually entered local, VPN or HTTPS URL for a device without Meshlit. Reachability does not grant control or compute access.") {
+                OutlinedButton(onClick={page="external-services"},modifier=Modifier.fillMaxWidth()) { Text("Add external service") }
+            } }
             item { Column(verticalArrangement=Arrangement.spacedBy(T.small)) {
                 OutlinedButton({page="radar"},Modifier.fillMaxWidth()) { Text("Device radar") }
                 OutlinedButton({page="host-map"},Modifier.fillMaxWidth()) { Text("Global host map") }
@@ -75,7 +86,11 @@ import com.meshlit.ui.theme.ChatTokens as T
             if("SSH NAS server terminal".contains(query,true) || query.isBlank()) item{NetworkMethod("SSH hosts without the app","Execute bounded SSH commands using saved encrypted credentials and independently verified host-key pins. Remote worker deployment is a separate operation."){
                 Button(onClick={page="ssh"}){Text("SSH connections")}
             }}
-            if("web API browser groups companion no app".contains(query,true) || query.isBlank()) item{DeviceCompanionPanel()}
+            if("web API browser groups companion no app".contains(query,true) || query.isBlank()) item {
+                NetworkMethod("Web/API clients without Meshlit","Start the authenticated bridge, create an invitation and review browser or API client requests.") {
+                    OutlinedButton(onClick={page="web-bridge"},modifier=Modifier.fillMaxWidth()) { Text("Manage Web/API bridge") }
+                }
+            }
 
             if("Bluetooth nearby discovery".contains(query,true) || query.isBlank()) item{NetworkMethod("Bluetooth","Meshlit has BLE discovery and a transport scan surface. Discovery or Android bonding alone does not authorize a compute worker; layer traffic currently uses pinned TLS over IP."){
                 Button(onClick={if(onDevices!=null) onDevices() else page="scan"}){Text("Browse device list")}

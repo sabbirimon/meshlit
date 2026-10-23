@@ -81,7 +81,7 @@ Source references: [old/current menu source](../app/src/main/kotlin/com/meshlit/
 | `peers` — Forwarding peers | Present | Manage peers for the existing inference router | Port pending: Manage peers for the existing inference router |
 | `runtime` — Linux runtime and sandbox | Present | VM configuration and agent activation consent | Port pending: VM configuration and agent activation consent |
 | `crawler` — Web crawler | Present | Configure the optional Crawl4AI companion | Port pending: Configure the optional Crawl4AI companion |
-| `openclaw` — OpenClaw and autonomy | Present | Gateway agent, phone model sharing and Android delegation | Port pending: Gateway agent, phone model sharing and Android delegation |
+| `openclaw` — Phone agent and autonomy | Partial source | On-device Chat tool loop, approved Android app scope, optional gateway and phone model sharing; local model task quality unqualified | Port pending: common agent authority, task loop, app scope and optional gateway |
 | `automation` — Android automation | Present | Accessibility automation and app allowlists | Port pending: Accessibility automation and app allowlists |
 | `hooks` — Agent hooks | Present | Enable and edit user-authored lifecycle scripts | Port pending: Enable and edit user-authored lifecycle scripts |
 | `help` — Guide and tutorial | Present | Offline walkthrough, configuration recipes and illustrated feature guide | Partial/source: Desktop connection instructions and implementation boundaries |

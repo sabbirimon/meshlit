@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 128,
+    "active": 131,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "dbfc3a6a861baace9d458048a8aed40a65393abd0bc4cabc9d7713d81bf752d5"
+      "contentSha256WithoutTrackingBlock": "8d8c235ee46774935ced76e103b7cd9dd2576954c63bf4d74cd9a59528172f75"
     },
     {
       "path": "README.md",
@@ -233,7 +233,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Real bundled starter model",
-      "contentSha256WithoutTrackingBlock": "03d99d10eb9205115707d68b60702b568b8cccff4a553edce01fe4352c3ec0de"
+      "contentSha256WithoutTrackingBlock": "832e6ade05a62f662b013798f1d7076317ac563b6032882c124c764233f0b53b"
     },
     {
       "path": "companions/agentgateway/README.md",
@@ -352,7 +352,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Android old/new inventory and desktop parity",
-      "contentSha256WithoutTrackingBlock": "3c85ec0fef82d46c4362b505da31343b3ae66c271dbdab4889f679c0e012c91e"
+      "contentSha256WithoutTrackingBlock": "4b738e592489d6bc72b3ce675863a21d11a32e0d5a848496d9af8d26eaa99334"
     },
     {
       "path": "docs/ANDROID_SECURITY_TOOL_INTEGRATIONS.md",
@@ -374,6 +374,13 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Blue Team and mobile packet-analysis roadmap",
       "contentSha256WithoutTrackingBlock": "6f251bdab172ec16851ada9e476632ffc1c6d91d41a0e265892b9afc97738819"
+    },
+    {
+      "path": "docs/BUILT_IN_AGENT_DESIGN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Built-in Meshlit agent",
+      "contentSha256WithoutTrackingBlock": "d8c896ecc827f97ee33c776cb6564fceaaf09fe27f94f103819ee757ef258e83"
     },
     {
       "path": "docs/CHAT_PRESENTATION.md",
@@ -464,7 +471,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Local model internet tools and Android control",
-      "contentSha256WithoutTrackingBlock": "2758fc87b2ae2527b1f086dbfa9a0b6f2b0d8d4974c8c83c0019da95ff5075fb"
+      "contentSha256WithoutTrackingBlock": "592c124d9c3047dbf1a98688907b6c0884b901249ce57fb156cc39b6da0dc4b4"
     },
     {
       "path": "docs/MACOS_OFFLINE.md",
@@ -488,11 +495,25 @@
       "contentSha256WithoutTrackingBlock": "4a71f01215d7725d5bd5695e712a335b712ab1874c7a06c0f84c30be1df82b90"
     },
     {
+      "path": "docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Nemotron and mixed-hardware model placement \u2014 2026-10-23",
+      "contentSha256WithoutTrackingBlock": "fa592f0eae189ae35393a1aa0c6c33a799c7a84ecb8b323b73f885d08935bd52"
+    },
+    {
       "path": "docs/ODYSSEUS_REVIEW_2026_10_08.md",
       "class": "historical",
       "scope": "dated design/evidence snapshot",
       "title": "Odysseus workspace review \u2014 2026-10-08",
       "contentSha256WithoutTrackingBlock": "ed2439bd4bb393da9322ee39966d80490b720f125af16a89e7367e37d4f4bd85"
+    },
+    {
+      "path": "docs/OLD_ANDROID_GAP_AUDIT_2026-10-23.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Old Android Studio project to current Meshlit: gap audit",
+      "contentSha256WithoutTrackingBlock": "cd7adf9453bb470b74555c42b0356fb455653cd342525c80c2d27ec4551caaf8"
     },
     {
       "path": "docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md",
@@ -527,7 +548,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Pending and unfinished Meshlit work",
-      "contentSha256WithoutTrackingBlock": "93c6d76d03cb00859a921502d152cfb3be6426b8b89efd9680c72832f7450327"
+      "contentSha256WithoutTrackingBlock": "fa20a9a04978dc40c036ca8afa39d567463754f9808ea287992db7760c2534bd"
     },
     {
       "path": "docs/PHASE1_VALIDATION.md",
@@ -646,7 +667,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "2089b58da6adeff59a87e81e95b56fa23cd4c139675478ec1967d07b5a90d1cd"
+      "contentSha256WithoutTrackingBlock": "691a625da7ab5359ec9eff36fce5fcc3b26c6b0d584a596ec1368dbe455f3d87"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",

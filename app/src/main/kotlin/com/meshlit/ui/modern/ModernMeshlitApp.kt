@@ -3,14 +3,19 @@ package com.meshlit.ui.modern
 import com.meshlit.workspace.richtext.ReplyBlock
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -48,6 +53,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
 
 /** Shared modern navigation for both APK flavors; earlier sources are inventory references only. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,10 +98,14 @@ fun ModernMeshlitApp() {
     if(showCapabilities) ModelCapabilitiesDialog(if(state.current?.options?.onlineProfileId==null && state.current?.options?.routeId==null) entries.firstOrNull{it.path==coordinator.loadedModel()?.modelPath} else null,"Selected provider or route"){showCapabilities=false}
     val drawer=rememberDrawerState(DrawerValue.Closed)
     var tab by rememberSaveable { mutableStateOf("chat") }
+    var closing by remember { mutableStateOf(false) }
+    val closingAlpha by animateFloatAsState(if(closing) 1f else 0f,animationSpec=tween(260),label="close-overlay")
     var settingsDestination by remember { mutableStateOf<String?>(null) }
     if(!com.meshlit.BuildProfile.coreCandidate) com.meshlit.permissions.FirstLaunchPermissionSetup{tab="permissions"}
     LaunchedEffect(chats) { chats.ready.await() }
     BackHandler(tab!="chat"){tab="chat"}
+    BackHandler(tab=="chat" && !closing){closing=true}
+    LaunchedEffect(closing){if(closing){delay(360);(context as? android.app.Activity)?.finish()}}
     val config=com.meshlit.ui.theme.LocalMeshlitThemeConfig.current
     val glass=config.surfaceStyle==com.meshlit.ui.theme.SurfaceStyle.GLASS
     val colors=MaterialTheme.colorScheme
@@ -114,7 +124,7 @@ fun ModernMeshlitApp() {
         val sidebar:@Composable ()->Unit={
             WorkspaceSidebar(state,if(tab=="settings") settingsDestination ?: tab else tab,config.sidebarStyle,
                 onSelect={select(it)},onNew={chats.newChat();select("chat")},
-                onChat={chats.select(it);select("chat")},onDelete={deleteChatId=it},onGlobalSearch={showGlobalSearch=true})
+                onChat={chats.select(it);select("chat")},onDelete={deleteChatId=it})
         }
         val body:@Composable ()->Unit={
             val settingsPage=tab=="settings" || tab in WorkspaceDestinations.settingsIds
@@ -171,7 +181,7 @@ fun ModernMeshlitApp() {
                         else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onMenu=openMenu,onDestinationChanged={destination->
                             settingsDestination=destination
                             if(destination==null && tab!="settings") tab="settings"
-                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onOptions={showChatOptions=true})
+                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onOptions={showChatOptions=true})
                     }}
                 }
             }
@@ -190,15 +200,57 @@ fun ModernMeshlitApp() {
         text={Text("Delete “${selectedForDelete.title}” and its messages from this device?")},
         confirmButton={TextButton(onClick={chats.delete(selectedForDelete.id);deleteChatId=null}){Text("Delete")}},
         dismissButton={TextButton(onClick={deleteChatId=null}){Text("Cancel")}})
+    if(closing) Surface(Modifier.fillMaxSize().graphicsLayer(alpha=closingAlpha).testTag("closing-meshlit"),color=MaterialTheme.colorScheme.background) {
+        Box(contentAlignment=Alignment.Center) {Column(horizontalAlignment=Alignment.CenterHorizontally) {
+            CircularProgressIndicator(Modifier.size(52.dp),strokeWidth=2.dp)
+            Spacer(Modifier.height(18.dp))
+            Text("Closing Meshlit",style=MaterialTheme.typography.titleMedium)
+            Text("Active background sessions keep their own notification and Stop control.",style=MaterialTheme.typography.bodySmall,textAlign=TextAlign.Center,modifier=Modifier.padding(24.dp))
+        }}
+    }
 }
 
 @Composable
-private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onOptions:()->Unit) {
+private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onFiles:()->Unit,onOptions:()->Unit) {
     var draft by rememberSaveable(state.selectedId) { mutableStateOf("") }
     var showVoice by remember{mutableStateOf(false)}
+    val media=koinInject<com.meshlit.media.MediaGeneration>()
+    val providers=koinInject<com.meshlit.providers.OnlineProviders>()
+    val profiles by providers.profiles.collectAsStateWithLifecycle()
+    val visionProfiles=profiles.filter{it.enabled && it.protocol in setOf(com.meshlit.core.inference.models.OnlineProtocol.OPENAI,com.meshlit.core.inference.models.OnlineProtocol.OPENAI_COMPATIBLE)}
+    var photo by remember{mutableStateOf<android.net.Uri?>(null)}
+    var photoProvider by remember{mutableStateOf("")}
+    var photoPrompt by remember{mutableStateOf("Describe this photo accurately, including text you can read.")}
+    var photoBusy by remember{mutableStateOf(false)}
+    var photoError by remember{mutableStateOf<String?>(null)}
+    val context=LocalContext.current
+    var captureFile by remember{mutableStateOf<java.io.File?>(null)}
+    var captureUri by remember{mutableStateOf<android.net.Uri?>(null)}
+    fun clearPhoto(){photo=null;captureFile?.delete();captureFile=null;captureUri=null}
+    fun selectPhoto(uri:android.net.Uri){clearPhoto();photo=uri;photoError=null;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}
+    val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->if(uri!=null) selectPhoto(uri)}
+    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){saved->if(saved && captureUri!=null){photo=captureUri;photoError=null;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}else{clearPhoto();controller.attachmentError("Photo capture was cancelled or failed")}}
     if(showVoice && !com.meshlit.BuildProfile.coreCandidate) HandsFreeVoiceDialog(controller){showVoice=false}
     val list=rememberLazyListState()
     val scope=rememberCoroutineScope()
+    if(photo!=null) AlertDialog(onDismissRequest={if(!photoBusy) clearPhoto()},title={Text("Add photo to this chat")},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Text("Meshlit sends this selected photo and question only to the online vision provider you choose. Its description is added to your draft; the original photo is not stored in chat history. The loaded text-only model cannot see pixels.")
+        if(visionProfiles.isEmpty()) Text("Enable an OpenAI-format vision provider in Online providers first.",color=MaterialTheme.colorScheme.error)
+        visionProfiles.forEach{profile->FilterChip(selected=photoProvider==profile.id,onClick={photoProvider=profile.id},label={Text(profile.name,maxLines=1,overflow=TextOverflow.Ellipsis)})}
+        OutlinedTextField(photoPrompt,{photoPrompt=it.take(1000)},Modifier.fillMaxWidth(),label={Text("Question about the photo")},maxLines=3)
+        photoError?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+        if(photoBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+    }},confirmButton={Button(enabled=!photoBusy && photoProvider.isNotBlank() && photoPrompt.isNotBlank() && draft.length<9000,onClick={
+        val chosen=photo ?: return@Button
+        photoBusy=true;photoError=null
+        scope.launch {try {
+            val result=media.generate(photoProvider,"vision","",photoPrompt,"",chosen).text ?: error("Vision provider returned no description")
+            val addition="Photo analysis (from ${visionProfiles.firstOrNull{it.id==photoProvider}?.name ?: "selected provider"}; original photo not stored):\n$result"
+            require(draft.length+addition.length+2<=12000){"Draft plus image description is too long"}
+            draft=if(draft.isBlank()) addition else "$draft\n\n$addition"
+            clearPhoto()
+        }catch(e:Exception){photoError=e.message ?: "Photo analysis failed"}finally{photoBusy=false}}
+    }){Text("Analyze and add to draft")}},dismissButton={TextButton(enabled=!photoBusy,onClick={clearPhoto()}){Text("Cancel")}})
     val messages=state.current?.messages.orEmpty()
     val rows=mutableListOf<ReplyTimelineRow>()
     messages.forEach {message->
@@ -281,13 +333,31 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
             if(!nearBottom && rows.isNotEmpty()) SmallFloatingActionButton(onClick={followLatest=true;scope.launch{list.animateScrollToItem(rows.lastIndex)}},
                 modifier=Modifier.align(Alignment.BottomCenter).padding(T.small)) {Icon(Icons.Default.ArrowDownward,stringResource(R.string.modern_latest))}
         }
+        val access=state.current?.options ?: com.meshlit.chat.ChatOptions()
+        val accessLabel=when {
+            access.onlineProfileId!=null -> "Online provider selected · chat tools off"
+            access.routeId!=null -> "Model route selected · chat tools off"
+            access.colibriMode!="OFF" -> "Host policy ${access.colibriMode} · chat tools off"
+            access.usesLocalTools -> "Local chat · Web request ${if(access.webTools) "on" else "off"} · Phone request ${if(access.phoneTools) "on" else "off"} · ${access.toolCount} tool slots"
+            else -> "Local chat · Web and phone tools off"
+        }
+        TextButton(onClick=onOptions,modifier=Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("chat-access-indicator")) {
+            Text("Access: $accessLabel",maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.labelSmall)
+        }
         if(state.current?.options?.showTokenStats!=false) TokenSpeedIndicator(state,onOptions)
         state.error?.let { Box(Modifier.padding(horizontal=T.large)) {ErrorCard(it){controller.clearError()}} }
         if(runtime is CoordinatorState.Error) Box(Modifier.padding(horizontal=T.large)) {ErrorCard(runtime.message,onModels)}
         Column(Modifier.fillMaxWidth().padding(horizontal=T.large,vertical=if(keyboardVisible) T.small else T.medium)) {
             Surface(shape=RoundedCornerShape(32.dp),color=MaterialTheme.colorScheme.surface.copy(alpha=0.97f),shadowElevation=2.dp) {
                 Row(Modifier.fillMaxWidth().padding(horizontal=T.tiny,vertical=T.tiny),verticalAlignment=Alignment.CenterVertically) {
-                    ChatAttachmentActions(!state.running,onText={text->if(draft.length+text.length+2<=12000) draft=if(draft.isBlank()) text else "$draft\n\n$text" else controller.attachmentError("Attachment plus draft exceeds 12000 characters")},onMedia=onMedia,onVision=onVision,onOptions=onOptions)
+                    ChatAttachmentActions(!state.running,onText={text->if(draft.length+text.length+2<=12000) draft=if(draft.isBlank()) text else "$draft\n\n$text" else controller.attachmentError("Attachment plus draft exceeds 12000 characters")},onSelectedImage={selectPhoto(it)},onPhoto={photoPicker.launch("image/*")},onCamera={try{
+                        clearPhoto()
+                        val dir=java.io.File(context.cacheDir,"exports/captures").apply{mkdirs();listFiles().orEmpty().filter{it.name.startsWith("chat-") && System.currentTimeMillis()-it.lastModified()>86_400_000}.forEach{it.delete()}}
+                        val target=java.io.File(dir,"chat-${java.util.UUID.randomUUID()}.jpg")
+                        captureFile=target
+                        captureUri=androidx.core.content.FileProvider.getUriForFile(context,"${context.packageName}.fileprovider",target)
+                        camera.launch(checkNotNull(captureUri))
+                    }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions)
                     TextField(value=draft,onValueChange={draft=it},modifier=Modifier.weight(1f).testTag("chat-composer"),
                         placeholder={Text(stringResource(R.string.modern_message),style=MaterialTheme.typography.bodyLarge)},maxLines=6,
                         keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={send()}),

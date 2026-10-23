@@ -137,18 +137,17 @@ class DiscoveryCoordinator(
     /**
      * Static priority ordering for cross-transport dedup. Lower is
      * "better". LAN endpoints are surfaced over WAN-relayed ones
-     * because they're typically lower-latency. NFC and QR (both
-     * user-driven, explicit) get the highest priority; WAN-relayed
-     * peers sit in the middle; manual entries are pinned at the
-     * bottom so a typo in an address book row never overwrites a
-     * fresh LAN sighting.
+     * because they're typically lower-latency. A current NSD sighting
+     * must replace a QR import so removing the app removes its live
+     * radar dot. The QR remains in the saved device inventory. WAN-relayed
+     * peers sit in the middle; manual entries are pinned at the bottom.
      */
     private fun priority(transport: String): Int = when (transport) {
-        "nfc" -> 0
-        "qr" -> 0
         "lan" -> 0
         "nsd" -> 1
         "ble" -> 2
+        "nfc" -> 3
+        "qr" -> 3
         "invite" -> 3
         "relay" -> 3
         "wan" -> 4

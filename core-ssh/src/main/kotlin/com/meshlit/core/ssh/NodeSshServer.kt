@@ -41,6 +41,7 @@ class NodeSshServer(private val authorize:(NodeSshGrant)->Unit,
     val fingerprint get()=server?.keyPairProvider?.loadKeys(null)?.firstOrNull()?.public?.let(::fingerprint)
 
     @Synchronized fun start(bind:NodeSshBind,hostKey:KeyPair,grants:List<NodeSshGrant>) {
+        SshAndroidCrypto.ensureCurveRegistry()
         check(server==null) { "Stop SSH before restarting" };bind.validate()
         require(grants.size in 1..32 && grants.map { it.id }.distinct().size==grants.size)
         val keys=grants.map { it.validate();it to publicKey(it.publicKey) }
@@ -90,7 +91,11 @@ class NodeSshServer(private val authorize:(NodeSshGrant)->Unit,
         previous?.stop(true)
     }
     companion object {
+        fun setAndroidHome(path:java.nio.file.Path) {
+            org.apache.sshd.common.util.io.PathUtils.setUserHomeFolderResolver { path }
+        }
         fun publicKey(line:String):PublicKey {
+            SshAndroidCrypto.ensureCurveRegistry()
             require(line.length in 1..4096 && '\n' !in line && '\r' !in line)
             val entry=PublicKeyEntry.parsePublicKeyEntry(line)
             require(entry.keyType in setOf("ecdsa-sha2-nistp256","ssh-rsa")) { "Use an ECDSA P-256 or RSA 3072+ public key" }

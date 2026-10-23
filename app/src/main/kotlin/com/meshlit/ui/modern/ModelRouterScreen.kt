@@ -28,7 +28,7 @@ import java.util.UUID
     BackHandler{onBack()};DisposableEffect(Unit){onDispose{job?.cancel()}}
     Scaffold(topBar={TopAppBar(title={Text("Model router")},navigationIcon={TextButton(onClick=onBack){Text("Back")}})}){padding->
         Column(Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Text("Choose a model for each scenario, chain models, or compare their answers. Local models run sequentially. Cloud steps send data to their configured providers and may cost money.")
+            Text("Choose a model for each scenario, chain models, or compare their answers. A route can use up to three steps. This phone has one active local text-model session: local steps swap models sequentially, so they are not resident together. Cloud steps send data to configured providers and may cost money.")
             Button(enabled=!state.running,onClick={edit=ModelRoute(UUID.randomUUID().toString(),"New route",steps=listOf(ModelRouteStep("")))}){Text("Add route")}
             routes.forEach{route->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(12.dp)){
                 Text("${route.name} · ${route.scenario} · ${route.mode}");Text(route.steps.joinToString(" → "){it.modelId})

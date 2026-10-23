@@ -38,12 +38,12 @@ object WorkspaceDestinations {
         WorkspaceDestination("settings","Settings","All settings and preferences","Preferences")
     )
     private fun group(id:String)=when(id) {
-        "tasks","ide","files","agents" -> "Workspace"
+        "tasks","ide","files","agents","agent-registry","agent-logs" -> "Workspace"
         "media","training","router","behavior","guardrails","acceleration","hyperl" -> "Models and media"
         "network","sharding","radar","host-map","device-dashboard","resources","ssh","securitylab","runtime","packages","commands","operations","power","firewall","recovery","logs","audit" -> "Operations"
         "meshchat" -> "Connections"
         "securityprivacy","guardrails","permissions","legal","identity-recovery" -> "Security & privacy"
-        "cloud","providers","gateway","tools-automation","external","peers","openclaw","automation","termux","crawler","hooks" -> "Connections"
+        "cloud","huggingface","providers","gateway","tools-automation","mcp-catalog","rag","external","external-services","web-bridge","peers","openclaw","automation","termux","crawler","hooks" -> "Connections"
         else -> "Preferences"
     }
     val all:List<WorkspaceDestination> = primary.filter { com.meshlit.BuildProfile.routeAllowed(it.id) }+SettingsDestinations.all.filter{entry->primary.none{it.id==entry.id}}.map { entry ->
@@ -74,7 +74,7 @@ private fun workspaceIcon(id:String):ImageVector=when(id) {
 
 @Composable
 internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,onSelect:(String)->Unit,onNew:()->Unit,
-    onChat:(String)->Unit,onDelete:(String)->Unit,onGlobalSearch:()->Unit) {
+    onChat:(String)->Unit,onDelete:(String)->Unit) {
     val context = LocalContext.current
     val shortcutIds by MenuShortcutStore.ids(context).collectAsState()
     val shortcuts = shortcutIds.filter { id -> WorkspaceDestinations.all.any { it.id == id } }
@@ -91,9 +91,8 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
             }
             IconButton(onClick={onSelect("settings")}) {Icon(Icons.Default.Settings,"Settings")}
         }
-        TextButton(onClick=onGlobalSearch,modifier=Modifier.fillMaxWidth().heightIn(min=T.touch).testTag("workspace-global-search")){Icon(Icons.Default.Search,null);Spacer(Modifier.width(T.small));Text("Search all of Meshlit")}
         OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("workspace-search"),singleLine=true,
-            textStyle=MaterialTheme.typography.bodyMedium,placeholder={Text("Find a workspace")},leadingIcon={Icon(Icons.Default.Search,null)},
+            textStyle=MaterialTheme.typography.bodyMedium,placeholder={Text("Find a page or tool")},leadingIcon={Icon(Icons.Default.Search,null)},
             trailingIcon={if(query.isNotBlank()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear menu search")}},shape=RoundedCornerShape(16.dp))
         FilledTonalButton(onClick=onNew,enabled=!state.running,modifier=Modifier.fillMaxWidth().padding(T.medium)) {
             Icon(Icons.Default.Add,null,Modifier.size(18.dp));Spacer(Modifier.width(T.small));Text("New chat")
@@ -106,10 +105,8 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
                 items(matches,key={it.id}) {entry->WorkspaceNavigationCard(entry,current==entry.id,onSelect,Modifier.fillMaxWidth(),rows=true)}
             } else {
                 item{Text("Quick access",style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant)}
-                items(shortcuts.chunked(2),key={"quick:${it.first()}"}) {ids->
-                    Row(horizontalArrangement=Arrangement.spacedBy(T.small)) {
-                        ids.forEach{id->WorkspaceNavigationCard(WorkspaceDestinations.all.single{it.id==id},current==id,onSelect,Modifier.weight(1f))}
-                    }
+                items(shortcuts,key={"quick:$it"}) {id ->
+                    WorkspaceNavigationCard(WorkspaceDestinations.all.single{it.id==id},current==id,onSelect,Modifier.fillMaxWidth(),rows=true)
                 }
                 for(group in listOf("Workspace","Models and media","Operations","Connections","Preferences")) {
                     val entries=matches.filter{it.group==group && it.id !in shortcuts}
@@ -136,7 +133,7 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
 }
 
 @Composable private fun WorkspaceGroup(title:String,entries:List<WorkspaceDestination>,current:String,style:SidebarStyle,onSelect:(String)->Unit) {
-    var expanded by rememberSaveable(title) {mutableStateOf(title=="Workspace")}
+    var expanded by rememberSaveable(title) {mutableStateOf(false)}
     LaunchedEffect(current){if(entries.any{it.id==current}) expanded=true}
     Column(verticalArrangement=Arrangement.spacedBy(T.small)) {
         TextButton(onClick={expanded=!expanded},modifier=Modifier.fillMaxWidth()) {

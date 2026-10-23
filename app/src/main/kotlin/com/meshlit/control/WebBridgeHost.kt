@@ -19,7 +19,7 @@ class WebBridgeHost(private val context:Context,private val backend:AgentBackend
     val directory=DeviceDirectory(object:DeviceDirectoryStore{
         override fun load()=credentials.get("directory")?.let{Json.decodeFromString<DeviceDirectorySnapshot>(it)} ?: DeviceDirectorySnapshot()
         override fun save(snapshot:DeviceDirectorySnapshot){credentials.put("directory",Json.encodeToString(snapshot))}
-    }, {com.meshlit.operations.ClusterControls.get(context).state.value.deviceLimit})
+    }, deviceLimit={com.meshlit.operations.ClusterControls.get(context).state.value.deviceLimit})
     private var server:ControlBridgeServer?=null
     private var generation:String?=null
     private var invitation:String?=null;private var invitationUntil=0L
@@ -28,7 +28,8 @@ class WebBridgeHost(private val context:Context,private val backend:AgentBackend
     val port=18792
     init{backend.remoteAuthorizer={command ->if(command.requestId.startsWith("web_")){
         if(!active.value) throw AgentCommandFailure("permission_denied","Remote interface is off")
-        val device=directory.read().devices.firstOrNull{command.requestId.startsWith(prefix(it)) && it.state==EnrollmentState.APPROVED}
+        val device=directory.read().devices.firstOrNull{command.requestId.startsWith(prefix(it)) &&
+            it.state==EnrollmentState.APPROVED && it.expiresAtMs>System.currentTimeMillis()}
             ?: throw AgentCommandFailure("permission_denied","Remote device approval was revoked")
         authorize(device,command.operation)
     }}}
@@ -81,13 +82,15 @@ class WebBridgeHost(private val context:Context,private val backend:AgentBackend
             val device=directory.request(body["id"]!!.jsonPrimitive.content,body["name"]!!.jsonPrimitive.content,
                 DeviceKind.valueOf(body["kind"]!!.jsonPrimitive.content),body["token"]!!.jsonPrimitive.content,
                 (body["roles"] as? JsonArray)?.map{it.jsonPrimitive.content}?.toSet() ?: setOf("control"))
-            return@withContext buildJsonObject{put("id",device.id);put("state",device.state.name);put("requiresOwnerApproval",true)}
+            return@withContext buildJsonObject{put("id",device.id);put("state",device.state.name);put("requiresOwnerApproval",true)
+                put("expiresAtMs",device.expiresAtMs)}
         }
         val device=token?.let{directory.authenticate(it)} ?: throw BridgeHttpFailure(ResponseStatus.UNAUTHORIZED,"device_not_approved")
         directory.heartbeat(device.id)
         when{
             method=="GET" && path=="/api/v1/status"->buildJsonObject{put("deviceId",device.id);put("state",device.state.name)
                 put("access",Json.encodeToJsonElement(device.access));put("nativeComputeMembership",false);put("taskReplication",false)
+                put("expiresAtMs",device.expiresAtMs)
                 put("commandApi","/api/v1/commands");put("jobApi","/api/v1/jobs")}
             method=="GET" && path=="/api/v1/jobs"->{backend.controller.ready.await();buildJsonObject{put("jobs",buildJsonArray{
                 backend.controller.jobs.value.filter{it.command.requestId.startsWith(prefix(device))}.forEach{add(backend.publicJob(it))}})}}

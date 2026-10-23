@@ -2,6 +2,7 @@ package com.meshlit.ui.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,17 +34,19 @@ import com.meshlit.ui.screens.cloud.AgentLoopMode
  * repo — see `core-orchestration`). The mode flows into the
  * Cloud Hub, Agent Terminal, and the Settings hub search.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class,androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun RagSettingsScreen(
     initialRagMode: RagMode,
     initialLoopMode: AgentLoopMode,
     onRagModeChange: (RagMode) -> Unit,
     onLoopModeChange: (AgentLoopMode) -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var ragMode by remember { mutableStateOf(initialRagMode) }
     var loopMode by remember { mutableStateOf(initialLoopMode) }
 
-    Scaffold { innerPadding ->
+    Scaffold(topBar={if(onBack!=null) TopAppBar(title={Text("RAG settings")},navigationIcon={TextButton(onClick=onBack){Text("Back")}})}) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -55,7 +60,8 @@ fun RagSettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
+                Text("Experimental: the older local vector store is in memory and the remote endpoint is a placeholder. Choose a mode only for compatible connected flows; this is not durable source ingestion.",style=MaterialTheme.typography.bodySmall)
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -87,7 +93,7 @@ fun RagSettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {

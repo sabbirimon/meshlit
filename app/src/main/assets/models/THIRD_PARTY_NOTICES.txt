@@ -1,11 +1,10 @@
-Bundled model: SmolLM2-135M-Instruct Q4_K_M GGUF
-Base model authors: Hugging Face / HuggingFaceTB
-GGUF quantization publisher: bartowski
+Bundled model: Qwen2.5-0.5B-Instruct Q4_K_M GGUF
+Base model authors and GGUF publisher: Qwen
 License: Apache License 2.0 (LICENSE-Apache-2.0.txt)
 Sources:
-https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct
-https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF
-Pinned quantization revision: 09816acd5d99df7be770d85ea30822623dab342c
-SHA-256: 2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
+https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct
+https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF
+Pinned quantization revision: 9217f5db79a29953eb74d5343926648285ec7e67
+SHA-256: 74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db
 The application performs extraction and content-addressed runtime copying;
 model weights are otherwise unchanged.

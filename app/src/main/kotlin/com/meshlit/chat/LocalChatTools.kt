@@ -5,10 +5,13 @@ import com.meshlit.core.common.control.ManagedFeature
 import com.meshlit.core.common.control.OperationGate
 import com.meshlit.core.inference.*
 import com.meshlit.core.mcp.*
+import com.meshlit.core.observability.LogSource
+import com.meshlit.observability.LogBuffer
+import kotlinx.coroutines.CancellationException
 
 /** Chat grants expose a small tool list; each existing tool retains its own
  * saved delegation, OS permission and operation checks. No generic shell tool. */
-class LocalChatTools(private val inference:InferenceCoordinator,private val gate:OperationGate,private val registry:()->McpToolRegistry,private val search:()->com.meshlit.search.AppSearchService) {
+class LocalChatTools(private val inference:InferenceCoordinator,private val gate:OperationGate,private val registry:()->McpToolRegistry,private val search:()->com.meshlit.search.AppSearchService,private val logs:LogBuffer) {
     suspend fun run(prompt:String,options:ChatOptions,status:(String)->Unit):LocalToolAnswer=gate.run(ManagedFeature.AUTOMATION,true) {
         options.validate();com.meshlit.BuildProfile.requireChat(options)
         val model=inference.loadedModel() ?: error("Load a local model before enabling tools")
@@ -25,12 +28,21 @@ class LocalChatTools(private val inference:InferenceCoordinator,private val gate
         }
         val tools=registry().list().filter{it.name in names && it.origin==McpToolSpec.Origin.BuiltIn}
         check(tools.isNotEmpty()){"No selected built-in tools are available"}
-        LocalToolLoop(complete={planningPrompt->
+        logs.info(LogSource.AGENT,"LocalAgent","Task started",mapOf("tool_count" to tools.size,"phone_tools" to options.phoneTools))
+        try { LocalToolLoop(complete={planningPrompt->
             gate.run(ManagedFeature.INFERENCE,true) {
                 val result=inference.infer(InferenceRequest(planningPrompt,maxTokens=minOf(options.maxTokens,1024),temperature=0f,
                     expectedModelPath=model.modelPath,onDeviceOnly=true,publishEvents=false,onToken={}))
                 when(result){is MeshlitResult.Success->result.value.finalText;is MeshlitResult.Failure->error("Local tool planning failed: ${result.error.tag}")}
             }
-        },invoke={request->if(request.name=="crawl_url") search().access.web(true){registry().invoke(request)} else registry().invoke(request)},checkAllowed={gate.requireAllowed(ManagedFeature.AUTOMATION,true)}).run(prompt,tools,status)
+        },invoke={request->
+            logs.info(LogSource.AGENT,"LocalAgent","Tool requested",mapOf("tool" to request.name))
+            val result=if(request.name=="crawl_url") search().access.web(true){registry().invoke(request)} else registry().invoke(request)
+            logs.info(LogSource.AGENT,"LocalAgent","Tool finished",mapOf("tool" to request.name,"success" to (result !is McpToolResult.Error)))
+            result
+        },checkAllowed={gate.requireAllowed(ManagedFeature.AUTOMATION,true)},maxCalls=if(options.phoneTools) 8 else 3).run(prompt,tools,status).also{
+            logs.info(LogSource.AGENT,"LocalAgent","Task finished",mapOf("calls" to it.calls))
+        }} catch(cancelled:CancellationException){logs.warn(LogSource.AGENT,"LocalAgent","Task cancelled");throw cancelled}
+        catch(error:Exception){logs.error(LogSource.AGENT,"LocalAgent","Task failed");throw error}
     }
 }

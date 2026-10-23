@@ -4,7 +4,7 @@ Tracking reconciled 2026-10-12: [Plan](../../../../../PLAN.md) · [Progress](../
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-The APK includes **SmolLM2 135M Instruct Q4_K_M**, 105,454,432 bytes (~101 MiB).
+The APK includes **Qwen2.5 0.5B Instruct Q4_K_M**, 491,400,032 bytes (~469 MiB).
 `bundled-model.json` pins its Hugging Face revision, URL, SHA-256 and Apache-2.0
 license. The binary is ignored by Git; release builders must prepare it:
 
@@ -21,8 +21,10 @@ to load it through the real RunAnywhere llama.cpp engine. Startup loading is
 optional. Missing storage, native backend failures and memory limits are visible
 errors. No generated text or model readiness is simulated.
 
-This small model supports basic local interaction; it does not establish that
-complex autonomous tasks are reliable. Larger models remain optional downloads.
+This model replaces the former 135M starter after repeated fabricated replies on
+the Xiaomi. It needs a larger APK, extraction and runtime copy. It remains a
+small local model and does not establish reliable autonomous or consequential
+answers. Larger 1.5B and other models remain optional downloads subject to RAM.
 Models offers RunAnywhere's SDK downloader, resumable verified HTTPS with scoped
 Hugging Face tokens, and multiple Android document imports. The SDK path reports
 its real progress and requires an actual registry artifact; private repositories
@@ -32,6 +34,6 @@ A bundled model cannot be deleted from the APK through the UI. Unload it, disabl
 startup loading, or select another startup model. APK storage plus extraction plus
 RunAnywhere's content-addressed runtime copy require more space than model size.
 
-Source: https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF
-Base model: https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct
+Source: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF
+Base model: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct
 License: Apache-2.0, reproduced in THIRD_PARTY_NOTICES.txt and LICENSE-Apache-2.0.txt.
