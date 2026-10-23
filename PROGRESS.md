@@ -8,6 +8,8 @@ Scope: cross-platform tracking; feature and device gates remain separate. Phase 
 
 Samsung SM-A207F accepted build43 (`2.0.0-v2build43`, versionCode 43). Its Chat mic opens inline voice controls without starting capture. Tapping Start changed the button to Stop; with no speech, the offline Whisper capture ended with an explicit no-speech message. A physical spoken transcript and synthesized response remain unverified. Photo camera capture returned to an inline card that identifies the absent vision model and opens Online providers. After visiting that setup screen and returning to Chat, the photo card remained selected. This Samsung has no enabled vision profile, so an actual provider image response and the Send photo request are not yet qualified. The bundled Qwen text model cannot decode images. A new plain “Hi” chat replied “Hello! How can I assist you today?” in about 9.5 seconds; tool-granted greeting behavior has a unit regression test but needs a separate physical rerun with that grant enabled. Runtime token speed remains unavailable when the SDK reports no token counts.
 
+The same build43 Qwen 0.5B model refused the benign creative request “sing a song” with Web and Phone tools off. This remains a model quality issue beyond the tool routing fix; no blanket model reliability claim is made.
+
 ## Device identification and heterogeneous compute research — 2026-10-23
 
 Saved device rows now display the local added date/time and a compact Meshlit ID,

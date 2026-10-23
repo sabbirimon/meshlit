@@ -79,7 +79,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current regressions, limitations and verification",
-      "contentSha256WithoutTrackingBlock": "8944cf8495716fc468dfc7b08693fdbaaa33faa36c3ca7f799bc2de2dbe36b47"
+      "contentSha256WithoutTrackingBlock": "b13aad725a8d769fc05cb115f5a4abad0b0f3218c17345b35e280a47b719d663"
     },
     {
       "path": "BUILD.md",
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "0d70f227ca58874b138ecb92f898045d2ff0a93c9b4d5ee25cb096196bb8928e"
+      "contentSha256WithoutTrackingBlock": "da3ed0a9cbc2a9926178a81dcbdac4858388092f43deea264a09cef63f38aab5"
     },
     {
       "path": "README.md",
