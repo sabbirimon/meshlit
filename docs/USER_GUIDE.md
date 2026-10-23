@@ -412,6 +412,10 @@ Voice conversation uses separate recognition, chat LLM and synthesis adapters.
 Import verified Whisper English/Piper voice ZIPs for app-local speech, choose
 installed offline Android voices, or explicitly permit an enabled HTTPS speech
 provider. The recognition and output model IDs are independent of the chat model.
+On Samsung, choose **My Files → Downloads** in the import picker, select the ZIP,
+then tap **Done**. Import Whisper and Piper separately; each appears in the installed
+pack list after its checksum check. The same files can be selected manually from
+Xiaomi's file picker.
 Network audio defaults off; Android 11's system recognizer cannot guarantee offline
 input, so use an offline speech pack. Preview uses real synthesis. Android voice
 styles are pitch/rate presets, not person/age/gender cloning. Piper packs and

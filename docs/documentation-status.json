@@ -79,7 +79,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current regressions, limitations and verification",
-      "contentSha256WithoutTrackingBlock": "78b10612ff268deee710c2a175ef934a6eebef8efd6b7ffbe7d6b215173232da"
+      "contentSha256WithoutTrackingBlock": "23aee409acc9598c7a309d9bd602e3b17d511c715aa98b60214bddb05071112a"
     },
     {
       "path": "BUILD.md",
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "50465f30bb08b82752ab4a6a90fee5ed6470ec45ca56154fa03de288c613ba82"
+      "contentSha256WithoutTrackingBlock": "dbfc3a6a861baace9d458048a8aed40a65393abd0bc4cabc9d7713d81bf752d5"
     },
     {
       "path": "README.md",
@@ -646,7 +646,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "be8f50ac57c46a6f16f6ba241d7ccce2ce00de613fe75d8d56846c8e4fb01ffb"
+      "contentSha256WithoutTrackingBlock": "2089b58da6adeff59a87e81e95b56fa23cd4c139675478ec1967d07b5a90d1cd"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",

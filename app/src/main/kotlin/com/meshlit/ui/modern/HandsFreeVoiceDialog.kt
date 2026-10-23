@@ -40,7 +40,7 @@ import org.koin.compose.koinInject
     val owner=LocalLifecycleOwner.current
     fun start(){voice.configure(options);voice.start()}
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){allowed->if(allowed) start() else error="Microphone permission was not granted"}
-    val importer=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->if(uri!=null) scope.launch {
+    val importer=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->if(uri!=null) scope.launch {
         importing=true;error=null
         try {
             val pack=models.install(uri)
@@ -81,7 +81,7 @@ import org.koin.compose.koinInject
         Text("Import a verified Meshlit voice ZIP from local storage or another device. Whisper recognition and Piper synthesis packs are separate from GGUF chat models; no pack is silently downloaded. This build supports English Whisper and Piper. The ZIP needs a Meshlit manifest with checksums; an arbitrary model ZIP will fail verification.")
         // Documents providers assign different MIME types to ZIP files. Accept the
         // picker result and let VoiceModels validate the manifest and every entry.
-        OutlinedButton(enabled=enabled,onClick={importer.launch(arrayOf("*/*"))}){Text(if(importing) "Verifying voice pack…" else "Import offline voice pack")}
+        OutlinedButton(enabled=enabled,onClick={importer.launch("*/*")}){Text(if(importing) "Verifying voice pack…" else "Import offline voice pack")}
         packs.forEach{pack->Row{Text("${pack.name}\n${pack.kind} · ${pack.license}",Modifier.weight(1f));TextButton(enabled=enabled,onClick={scope.launch{importing=true;try{models.remove(pack.id)}catch(e:Exception){error=e.message}finally{importing=false}}}){Text("Remove")}}}
         Text(state.phase,modifier=Modifier.testTag("voice-phase"));(state.error ?: error)?.let{Text(it,color=MaterialTheme.colorScheme.error)}
         Text("Turn-taking conversation is implemented. Full-duplex interruptions through Gemini Live / OpenAI Realtime need separate adapters and live account tests. Claude text can use any configured speech adapter; no native Claude voice API is assumed.")
