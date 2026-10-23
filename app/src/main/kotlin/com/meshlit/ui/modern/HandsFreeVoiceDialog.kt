@@ -36,7 +36,6 @@ import org.koin.compose.koinInject
     val scope=rememberCoroutineScope()
     var options by remember(context){mutableStateOf(VoicePreferences.load(context,models.models.value))}
     var showSettings by remember { mutableStateOf(false) }
-    var autoStarted by remember { mutableStateOf(false) }
     var previewText by remember { mutableStateOf("Hi, I'm Meshlit. It's good to hear from you. What would you like to explore today?") }
     var importing by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
     var testPending by remember{mutableStateOf(false)}
@@ -66,18 +65,21 @@ import org.koin.compose.koinInject
         SpeechInput.PROVIDER -> false
     }
     LaunchedEffect(options) { VoicePreferences.save(context,options) }
-    LaunchedEffect(state.ready,recognitionReady,missingVoice,missingProvider,offlineInputReady) {
-        if(!autoStarted && (state.ready || options.output!=SpeechOutput.ANDROID) && recognitionReady && !missingVoice && !missingProvider && (options.network || offlineInputReady)) {
-            autoStarted=true
-            testPending=false
-            if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) start()
-            else permission.launch(Manifest.permission.RECORD_AUDIO)
-        }
-    }
     DisposableEffect(voice,owner){val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_PAUSE) voice.stop()}
         owner.lifecycle.addObserver(observer);onDispose{owner.lifecycle.removeObserver(observer);voice.close()}}
-    AlertDialog(onDismissRequest=onClose,title={Text("Live voice conversation")},text={Column(Modifier.verticalScroll(rememberScrollState()).testTag("voice-options"),verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Text("Speak to this chat. Your saved voice route starts when you tap the mic; closing or leaving the app stops it.")
+    Card(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=4.dp).testTag("voice-panel")) { Column(Modifier.fillMaxWidth().heightIn(max=340.dp).verticalScroll(rememberScrollState()).padding(12.dp).testTag("voice-options"),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) { Text("Voice conversation",style=MaterialTheme.typography.titleMedium);TextButton(onClick=onClose){Text("Close")} }
+        Text("Tap Start and speak. The meter shows microphone input; Stop ends the session.")
+        Text(state.phase,modifier=Modifier.testTag("voice-phase"),style=MaterialTheme.typography.titleSmall)
+        (state.error ?: error)?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+        if(state.phase.startsWith("Listening")) {
+            LinearProgressIndicator(progress={state.inputLevel.coerceIn(0f,1f)},modifier=Modifier.fillMaxWidth().testTag("voice-input-level"))
+            Text(if(state.speechDetected) "Speech heard · release your voice to send" else "Microphone listening · speak now",style=MaterialTheme.typography.bodySmall)
+        }
+        Button(enabled=!importing && (state.busy || (!missingRecognition && !missingVoice && !missingProvider && (options.network || offlineInputReady))),onClick={if(state.busy) voice.stop() else {
+            testPending=false
+            if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) start() else permission.launch(Manifest.permission.RECORD_AUDIO)
+        }},modifier=Modifier.fillMaxWidth().testTag("voice-start-stop")){Text(if(state.busy) "Stop" else "Start listening")}
         Text("${options.input.label} · ${options.output.label} · ${if(options.network) "network audio allowed" else "network audio off"}",style=MaterialTheme.typography.bodySmall)
         if(!offlineInputReady && !options.network) Text("No offline recognizer is ready on this device. Install a verified Whisper pack in Voice settings; Android's speech service here cannot guarantee offline use.",color=MaterialTheme.colorScheme.error)
         TextButton(onClick={showSettings=!showSettings}) { Text(if(showSettings) "Hide voice settings" else "Voice settings") }
@@ -116,10 +118,6 @@ import org.koin.compose.koinInject
         OutlinedButton(enabled=enabled,onClick={importer.launch("*/*")}){Text(if(importing) "Verifying voice pack…" else "Import offline voice pack")}
         packs.forEach{pack->Row{Text("${pack.name}\n${pack.kind} · ${pack.license}",Modifier.weight(1f));TextButton(enabled=enabled,onClick={scope.launch{importing=true;try{models.remove(pack.id)}catch(e:Exception){error=e.message}finally{importing=false}}}){Text("Remove")}}}
         }
-        Text(state.phase,modifier=Modifier.testTag("voice-phase"));(state.error ?: error)?.let{Text(it,color=MaterialTheme.colorScheme.error)}
         if(showSettings) Text("Turn-taking conversation is implemented. Full-duplex interruptions through Gemini Live / OpenAI Realtime need separate adapters and live account tests. Claude text can use any configured speech adapter; no native Claude voice API is assumed.")
-    }},confirmButton={Button(enabled=!importing && (state.busy || (!missingRecognition && !missingVoice && !missingProvider && (options.network || offlineInputReady))),onClick={if(state.busy) voice.stop() else {
-        testPending=false
-        if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) start() else permission.launch(Manifest.permission.RECORD_AUDIO)
-    }},modifier=Modifier.testTag("voice-start-stop")){Text(if(state.busy) "Stop" else "Start conversation")}},dismissButton={TextButton(onClick=onClose){Text("Close")}})
+    } }
 }

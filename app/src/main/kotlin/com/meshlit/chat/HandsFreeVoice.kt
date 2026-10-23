@@ -24,7 +24,7 @@ enum class VoiceStyle(val label:String,val pitch:Float,val speed:Float) {
 @Serializable
 data class VoiceOptions(val input:SpeechInput=SpeechInput.OFFLINE_MODEL,val output:SpeechOutput=SpeechOutput.ANDROID,
     val sttPack:String="",val ttsPack:String="",val providerId:String="",val sttModel:String="",val ttsModel:String="",val providerVoice:String="coral",val network:Boolean=false,val androidVoice:String?=null,val style:VoiceStyle=VoiceStyle.NATURAL)
-data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false,val testTranscript:String?=null)
+data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false,val testTranscript:String?=null,val inputLevel:Float=0f,val speechDetected:Boolean=false)
 /** Foreground speech adapters feed the current chat controller. Model weights, routes,
  * remembered preferences and chat tool grants remain owned by that controller. */
 class HandsFreeVoice(private val context:Context,private val chat:ChatController,private val models:VoiceModels,private val providers:OnlineProviders) {
@@ -86,8 +86,8 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         _state.value=state.value.copy(phase="Listening for a recognition test")
         val text=withTimeout(90_000){when(options.input){
             SpeechInput.ANDROID->androidTranscript()
-            SpeechInput.OFFLINE_MODEL->withContext(Dispatchers.IO){offline.transcribe(captureVoiceTurn())}
-            SpeechInput.PROVIDER->online.transcribe(options.providerId,options.sttModel,captureVoiceTurn())
+            SpeechInput.OFFLINE_MODEL->withContext(Dispatchers.IO){offline.transcribe(captureVoiceTurn(::onMicLevel))}
+            SpeechInput.PROVIDER->online.transcribe(options.providerId,options.sttModel,captureVoiceTurn(::onMicLevel))
         }}
         _state.value=state.value.copy(testTranscript=text.take(12000),phase="Recognition test complete")
     }
@@ -97,11 +97,11 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         val selected=chat.state.value.selectedId;val deadline=SystemClock.elapsedRealtime()+300_000;var turns=0
         withTimeout(300_000) {while(voiceTurnAllowed(turns,SystemClock.elapsedRealtime(),deadline)) {
             check(chat.state.value.selectedId==selected) { "Conversation changed; start a new voice session" }
-            _state.value=state.value.copy(phase="Listening")
+            _state.value=state.value.copy(phase="Listening",inputLevel=0f,speechDetected=false)
             val text=withTimeout(90_000){when(options.input){
                 SpeechInput.ANDROID->androidTranscript()
-                SpeechInput.OFFLINE_MODEL->withContext(Dispatchers.IO){offline.transcribe(captureVoiceTurn())}
-                SpeechInput.PROVIDER->online.transcribe(options.providerId,options.sttModel,captureVoiceTurn())
+                SpeechInput.OFFLINE_MODEL->withContext(Dispatchers.IO){offline.transcribe(captureVoiceTurn(::onMicLevel))}
+                SpeechInput.PROVIDER->online.transcribe(options.providerId,options.sttModel,captureVoiceTurn(::onMicLevel))
             }}
             currentCoroutineContext().ensureActive();check(text.isNotBlank() && text.length<=12000)
             _state.value=state.value.copy(phase="Thinking");ownedGeneration=chat.send(text)
@@ -112,6 +112,9 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             val reply=current.current?.messages?.lastOrNull()?.takeIf{it.role=="assistant"}?.text.orEmpty()
             check(reply.isNotBlank()) { "The model returned no reply" };speak(reply.take(4000));turns++
         }}
+    }
+    private fun onMicLevel(level:Double,detected:Boolean) {
+        _state.update { it.copy(inputLevel=(level*8).toFloat().coerceIn(0f,1f),speechDetected=detected) }
     }
     private fun launchSession(conversation:Boolean,needsInput:Boolean=conversation,needsOutput:Boolean=true,work:suspend()->Unit) {
         check(Looper.myLooper()==Looper.getMainLooper());check(!state.value.busy)
@@ -149,7 +152,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             override fun onError(error:Int){if(started==epoch) done.completeExceptionally(IllegalStateException("Android recognition failed (code $error)"))}
             override fun onReadyForSpeech(params:Bundle?)=Unit
             override fun onBeginningOfSpeech()=Unit
-            override fun onRmsChanged(value:Float)=Unit
+            override fun onRmsChanged(value:Float){onMicLevel((value.coerceAtLeast(0f)/40f).toDouble(),value>2f)}
             override fun onBufferReceived(buffer:ByteArray?)=Unit
             override fun onEndOfSpeech()=Unit
             override fun onPartialResults(results:Bundle?)=Unit

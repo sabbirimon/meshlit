@@ -18,6 +18,14 @@ import java.util.UUID
     val toolCount get()=(if(nodeTools)8 else 0)+(if(remoteTools)3 else 0)+(if(peerTools)4 else 0)+(if(gibberlinkTools)2 else 0)+(if(cryptoTools)1 else 0)+(if(memoryTools)1 else 0)+(if(localSearchTools)1 else 0)+(if(webTools)3 else 0)+(if(phoneTools)4 else 0)
     fun validate(){require(companionWarmth in 0..2);require(toolCount<=10){"Select at most ten chat tools; deselect another group"};require(colibriMode in com.meshlit.workspace.ColibriMode.entries.map{it.name});require(outputTargetSeconds in 5..120);require(!usesLocalTools || (onlineProfileId==null && routeId==null)){"Chat tools currently require an on-device model"};require(routeId==null || routeId=="__auto__" || routeId.matches(Regex("[A-Za-z0-9_-]{1,64}")));require(routeScenario.matches(Regex("[a-z0-9_-]{1,40}")));require(routeId==null || (onlineProfileId==null && maxTokens<=1024));require(systemPrompt.length<=4000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f && historyMessages in 0..20)}
 }
+/** A grant makes tools available; it does not turn every greeting into a tool-planning run. */
+internal fun shouldPlanToolCall(message:String,options:ChatOptions):Boolean {
+    if(!options.usesLocalTools) return false
+    val text=message.trim().lowercase()
+    if(text.length<5) return false
+    return Regex("\\b(search|browse|look up|google|open|navigate|visit|play|call|dial|send|text|message|read|find|locate|scan|run|execute|list|show|check|fetch|download|install|turn on|turn off|connect|pair|remember|save|forget)\\b").containsMatchIn(text) ||
+        options.webTools && Regex("\\b(latest|today|current news|right now|this week)\\b").containsMatchIn(text)
+}
 @Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null)
 @Serializable data class ChatConversation(val id:String=UUID.randomUUID().toString(),val title:String="New chat",
     val messages:List<ChatMessage> = emptyList(),val updatedAt:Long=System.currentTimeMillis(),val options:ChatOptions=ChatOptions(),val usageNote:String?=null)
@@ -134,7 +142,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                     history.forEach { append(it.role).append(": ").append(it.text.take(4000)).append('\n') }
                     append("user: ").append(user.text)
                 }
-                if(options.usesLocalTools) {
+                if(shouldPlanToolCall(user.text,options)) {
                     fun publish(value:String){_state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=value) else it}) else c})}}
                     val answer=localTools.run(prompt,options){publish(it)}
                     publish(answer.text+if(answer.sources.isEmpty()) "" else "\n\nSources:\n"+answer.sources.joinToString("\n"){"- $it"})

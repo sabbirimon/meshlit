@@ -52,20 +52,23 @@ internal fun readVoiceWav(bytes:ByteArray):PcmAudio {
 }
 /** Bounded microphone turn with a local energy/silence end detector. No audio is saved. */
 @android.annotation.SuppressLint("MissingPermission")
-internal suspend fun captureVoiceTurn():ByteArray=withContext(Dispatchers.IO) {
+internal suspend fun captureVoiceTurn(onLevel:(Double,Boolean)->Unit = { _,_ -> }):ByteArray=withContext(Dispatchers.IO) {
     val min=AudioRecord.getMinBufferSize(16000,android.media.AudioFormat.CHANNEL_IN_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT)
     require(min>0)
     val recorder=AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,16000,android.media.AudioFormat.CHANNEL_IN_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT,maxOf(min,8192))
     try {
         check(recorder.state==AudioRecord.STATE_INITIALIZED);recorder.startRecording()
         val result=ByteArrayOutputStream();val buffer=ByteArray(2048);var speechBytes=0;var silenceBytes=0
-        withTimeout(30_000){while(result.size()<960000){currentCoroutineContext().ensureActive()
+        val captured=withTimeoutOrNull(30_000){while(result.size()<960000){currentCoroutineContext().ensureActive()
             val n=recorder.read(buffer,0,buffer.size,AudioRecord.READ_NON_BLOCKING);check(n>=0) { "Microphone read failed" }
             if(n==0){delay(20);continue};require(n%2==0);result.write(buffer,0,n)
-            if(voiceEnergy(buffer,n)>0.02){speechBytes+=n;silenceBytes=0}else silenceBytes+=n
+            val level=voiceEnergy(buffer,n)
+            if(level>0.008){speechBytes+=n;silenceBytes=0}else silenceBytes+=n
+            onLevel(level,speechBytes>=3200)
             if(speechBytes>=9600 && silenceBytes>=22400) break
-        }}
-        check(speechBytes>=3200) { "No speech detected before the recording limit" };result.toByteArray()
+        };true}
+        check(captured!=null && speechBytes>=3200) { "No speech heard. Check microphone access and speak near the phone, then tap Start again." }
+        result.toByteArray()
     }finally{runCatching{recorder.stop()};recorder.release()}
 }
 internal fun voiceEnergy(bytes:ByteArray,count:Int):Double {

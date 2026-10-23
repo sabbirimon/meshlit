@@ -5,6 +5,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ChatOptionsTest {
+    @Test fun toolGrantsDoNotForceOrdinaryChatThroughPlanner() {
+        val tools=ChatOptions(webTools=true,phoneTools=true)
+        assertFalse(shouldPlanToolCall("Hi",tools))
+        assertFalse(shouldPlanToolCall("How are you?",tools))
+        assertTrue(shouldPlanToolCall("Search the web for the latest release",tools))
+        assertTrue(shouldPlanToolCall("Open Chrome and play a video",tools))
+        assertFalse(shouldPlanToolCall("Search the web",ChatOptions()))
+    }
     @Test fun oldChatsDoNotSilentlyGainWebOrPhoneTools() {
         val old=Json.decodeFromString<ChatOptions>("{\"maxTokens\":16}")
         assertFalse(old.webTools);assertFalse(old.phoneTools);old.validate()

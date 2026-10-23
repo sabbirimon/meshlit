@@ -98,6 +98,11 @@ fun ModernMeshlitApp() {
     if(showCapabilities) ModelCapabilitiesDialog(if(state.current?.options?.onlineProfileId==null && state.current?.options?.routeId==null) entries.firstOrNull{it.path==coordinator.loadedModel()?.modelPath} else null,"Selected provider or route"){showCapabilities=false}
     val drawer=rememberDrawerState(DrawerValue.Closed)
     var tab by rememberSaveable { mutableStateOf("chat") }
+    val chatPhotoState=remember{mutableStateOf<android.net.Uri?>(null)}
+    val chatPhotoProviderState=remember{mutableStateOf("")}
+    val chatPhotoPromptState=remember{mutableStateOf("Describe this photo accurately, including text you can read.")}
+    val chatCapturePathState=remember{mutableStateOf<String?>(null)}
+    val chatCaptureUriState=remember{mutableStateOf<android.net.Uri?>(null)}
     var closing by remember { mutableStateOf(false) }
     val closingAlpha by animateFloatAsState(if(closing) 1f else 0f,animationSpec=tween(260),label="close-overlay")
     var settingsDestination by remember { mutableStateOf<String?>(null) }
@@ -181,7 +186,7 @@ fun ModernMeshlitApp() {
                         else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onMenu=openMenu,onDestinationChanged={destination->
                             settingsDestination=destination
                             if(destination==null && tab!="settings") tab="settings"
-                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onOptions={showChatOptions=true})
+                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,chatPhotoState,chatPhotoProviderState,chatPhotoPromptState,chatCapturePathState,chatCaptureUriState,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onProviders={select("providers")},onOptions={showChatOptions=true})
                     }}
                 }
             }
@@ -211,46 +216,28 @@ fun ModernMeshlitApp() {
 }
 
 @Composable
-private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onFiles:()->Unit,onOptions:()->Unit) {
+private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,photoState:MutableState<android.net.Uri?>,photoProviderState:MutableState<String>,photoPromptState:MutableState<String>,capturePathState:MutableState<String?>,captureUriState:MutableState<android.net.Uri?>,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onFiles:()->Unit,onProviders:()->Unit,onOptions:()->Unit) {
     var draft by rememberSaveable(state.selectedId) { mutableStateOf("") }
     var showVoice by remember{mutableStateOf(false)}
     val media=koinInject<com.meshlit.media.MediaGeneration>()
     val providers=koinInject<com.meshlit.providers.OnlineProviders>()
     val profiles by providers.profiles.collectAsStateWithLifecycle()
     val visionProfiles=profiles.filter{it.enabled && it.protocol in setOf(com.meshlit.core.inference.models.OnlineProtocol.OPENAI,com.meshlit.core.inference.models.OnlineProtocol.OPENAI_COMPATIBLE)}
-    var photo by remember{mutableStateOf<android.net.Uri?>(null)}
-    var photoProvider by remember{mutableStateOf("")}
-    var photoPrompt by remember{mutableStateOf("Describe this photo accurately, including text you can read.")}
+    var photo by photoState
+    var photoProvider by photoProviderState
+    var photoPrompt by photoPromptState
+    LaunchedEffect(photo,visionProfiles) {if(photo!=null && visionProfiles.none{it.id==photoProvider}) photoProvider=visionProfiles.firstOrNull()?.id.orEmpty()}
     var photoBusy by remember{mutableStateOf(false)}
     var photoError by remember{mutableStateOf<String?>(null)}
     val context=LocalContext.current
-    var captureFile by remember{mutableStateOf<java.io.File?>(null)}
-    var captureUri by remember{mutableStateOf<android.net.Uri?>(null)}
-    fun clearPhoto(){photo=null;captureFile?.delete();captureFile=null;captureUri=null}
+    var captureFilePath by capturePathState
+    var captureUri by captureUriState
+    fun clearPhoto(){photo=null;captureFilePath?.let{java.io.File(it).delete()};captureFilePath=null;captureUri=null}
     fun selectPhoto(uri:android.net.Uri){clearPhoto();photo=uri;photoError=null;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}
     val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->if(uri!=null) selectPhoto(uri)}
     val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){saved->if(saved && captureUri!=null){photo=captureUri;photoError=null;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}else{clearPhoto();controller.attachmentError("Photo capture was cancelled or failed")}}
-    if(showVoice && !com.meshlit.BuildProfile.coreCandidate) HandsFreeVoiceDialog(controller){showVoice=false}
     val list=rememberLazyListState()
     val scope=rememberCoroutineScope()
-    if(photo!=null) AlertDialog(onDismissRequest={if(!photoBusy) clearPhoto()},title={Text("Add photo to this chat")},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Text("Meshlit sends this selected photo and question only to the online vision provider you choose. Its description is added to your draft; the original photo is not stored in chat history. The loaded text-only model cannot see pixels.")
-        if(visionProfiles.isEmpty()) Text("Enable an OpenAI-format vision provider in Online providers first.",color=MaterialTheme.colorScheme.error)
-        visionProfiles.forEach{profile->FilterChip(selected=photoProvider==profile.id,onClick={photoProvider=profile.id},label={Text(profile.name,maxLines=1,overflow=TextOverflow.Ellipsis)})}
-        OutlinedTextField(photoPrompt,{photoPrompt=it.take(1000)},Modifier.fillMaxWidth(),label={Text("Question about the photo")},maxLines=3)
-        photoError?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        if(photoBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
-    }},confirmButton={Button(enabled=!photoBusy && photoProvider.isNotBlank() && photoPrompt.isNotBlank() && draft.length<9000,onClick={
-        val chosen=photo ?: return@Button
-        photoBusy=true;photoError=null
-        scope.launch {try {
-            val result=media.generate(photoProvider,"vision","",photoPrompt,"",chosen).text ?: error("Vision provider returned no description")
-            val addition="Photo analysis (from ${visionProfiles.firstOrNull{it.id==photoProvider}?.name ?: "selected provider"}; original photo not stored):\n$result"
-            require(draft.length+addition.length+2<=12000){"Draft plus image description is too long"}
-            draft=if(draft.isBlank()) addition else "$draft\n\n$addition"
-            clearPhoto()
-        }catch(e:Exception){photoError=e.message ?: "Photo analysis failed"}finally{photoBusy=false}}
-    }){Text("Analyze and add to draft")}},dismissButton={TextButton(enabled=!photoBusy,onClick={clearPhoto()}){Text("Cancel")}})
     val messages=state.current?.messages.orEmpty()
     val rows=mutableListOf<ReplyTimelineRow>()
     messages.forEach {message->
@@ -333,6 +320,41 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
             if(!nearBottom && rows.isNotEmpty()) SmallFloatingActionButton(onClick={followLatest=true;scope.launch{list.animateScrollToItem(rows.lastIndex)}},
                 modifier=Modifier.align(Alignment.BottomCenter).padding(T.small)) {Icon(Icons.Default.ArrowDownward,stringResource(R.string.modern_latest))}
         }
+        if(showVoice && !com.meshlit.BuildProfile.coreCandidate) HandsFreeVoiceDialog(controller){showVoice=false}
+        if(photo!=null) Card(Modifier.fillMaxWidth().padding(horizontal=T.large,vertical=T.small).testTag("chat-photo-card")) {
+            Column(Modifier.fillMaxWidth().padding(T.medium),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Default.Image,null,Modifier.size(20.dp))
+                    Text("Photo selected",Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.titleSmall)
+                    TextButton(enabled=!photoBusy,onClick={clearPhoto()}){Text("Remove")}
+                }
+                if(visionProfiles.isEmpty()) {
+                    Text("Vision model: none connected",style=MaterialTheme.typography.labelMedium)
+                    Text("This chat model reads text only. Add a vision provider to analyze the photo.",style=MaterialTheme.typography.bodySmall)
+                    TextButton(onClick=onProviders){Text("Set up vision model")}
+                } else {
+                    Text("Vision model",style=MaterialTheme.typography.labelMedium)
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {visionProfiles.forEach { profile ->
+                        FilterChip(selected=photoProvider==profile.id,onClick={photoProvider=profile.id},label={Text("${profile.name} · ${profile.model}",maxLines=1,overflow=TextOverflow.Ellipsis)})
+                    }}
+                    OutlinedTextField(photoPrompt,{photoPrompt=it.take(1000)},Modifier.fillMaxWidth(),label={Text("Ask about photo")},maxLines=2)
+                    Text("The photo goes to this provider for analysis. The chat model receives its description, not the pixels.",style=MaterialTheme.typography.bodySmall)
+                    Button(enabled=!photoBusy && !state.running && photoProvider.isNotBlank() && photoPrompt.isNotBlank() && draft.length<9000,onClick={
+                        val chosen=photo ?: return@Button
+                        photoBusy=true;photoError=null
+                        scope.launch {try {
+                            val result=media.generate(photoProvider,"vision","",photoPrompt,"",chosen).text ?: error("Vision provider returned no description")
+                            val addition="${draft.ifBlank { photoPrompt }}\n\nPhoto analysis (from ${visionProfiles.firstOrNull{it.id==photoProvider}?.name ?: "selected provider"}; original photo not stored):\n$result"
+                            require(addition.length<=12000){"Photo question and description are too long"}
+                            check(controller.send(addition)!=null){"Load or select a chat model, then retry the photo"}
+                            draft=""
+                            clearPhoto()
+                        }catch(e:Exception){photoError=e.message ?: "Photo analysis failed"}finally{photoBusy=false}}
+                    },modifier=Modifier.fillMaxWidth().testTag("chat-analyze-photo")){Text(if(photoBusy) "Analyzing…" else "Send photo")}
+                }
+                photoError?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+            }
+        }
         val access=state.current?.options ?: com.meshlit.chat.ChatOptions()
         val accessLabel=when {
             access.onlineProfileId!=null -> "Online provider selected · chat tools off"
@@ -354,7 +376,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         clearPhoto()
                         val dir=java.io.File(context.cacheDir,"exports/captures").apply{mkdirs();listFiles().orEmpty().filter{it.name.startsWith("chat-") && System.currentTimeMillis()-it.lastModified()>86_400_000}.forEach{it.delete()}}
                         val target=java.io.File(dir,"chat-${java.util.UUID.randomUUID()}.jpg")
-                        captureFile=target
+                        captureFilePath=target.path
                         captureUri=androidx.core.content.FileProvider.getUriForFile(context,"${context.packageName}.fileprovider",target)
                         camera.launch(checkNotNull(captureUri))
                     }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions)
