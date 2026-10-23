@@ -105,6 +105,15 @@ open class SettingsRepository(private val context: Context?, private val storeOv
         }
     }
 
+    /** Hide the configured or hardware-derived name in peer-facing surfaces. Identity keys and IPs remain visible. */
+    open val privateContributorNameFlow: Flow<Boolean> = store.data.map { it[Keys.privateContributorName] ?: false }
+    open fun privateContributorNameNow(): Boolean = runCatching {
+        kotlinx.coroutines.runBlocking { privateContributorNameFlow.first() }
+    }.getOrDefault(false)
+    open suspend fun setPrivateContributorName(enabled: Boolean) {
+        store.edit { it[Keys.privateContributorName] = enabled }
+    }
+
     /**
      * Phase 2.x — the version of the runtime registry the user has
      * seen. We bump this every time a runtime is added or promoted
@@ -688,9 +697,9 @@ open class SettingsRepository(private val context: Context?, private val storeOv
      */
     val firewallFlow: Flow<PortLayerPolicy> = store.data.map { prefs ->
         val raw = prefs[Keys.firewallPolicy]
-        if (raw.isNullOrBlank()) return@map PortLayerPolicy()
+        if (raw.isNullOrBlank()) return@map MeshlitFirewall.Starter.portLayer
         runCatching { json.decodeFromString(PortLayerPolicy.serializer(), raw).also{it.validate()} }
-            .getOrDefault(PortLayerPolicy())
+            .getOrDefault(MeshlitFirewall.Starter.portLayer)
     }
 
     /**
@@ -1008,6 +1017,7 @@ open class SettingsRepository(private val context: Context?, private val storeOv
         val customPaletteJson = stringPreferencesKey("theme.custom_palette_json")
         val customModelPath = stringPreferencesKey("model.custom_path")
         val displayName = stringPreferencesKey("device.display_name")
+        val privateContributorName = booleanPreferencesKey("device.private_contributor_name")
         val networkScope = stringPreferencesKey("network.scope")
         val remoteEndpoints = stringPreferencesKey("network.remote_endpoints")
         val activeEndpointId = stringPreferencesKey("network.active_endpoint_id")

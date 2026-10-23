@@ -23,6 +23,7 @@ class PeerChatHost(context: Context, private val scope: CoroutineScope, private 
     private val _policy = MutableStateFlow(PeerPolicy(prefs.getBoolean("enabled", false), prefs.getBoolean("agents", false), prefs.getBoolean("receive", false), prefs.getBoolean("vm", false), prefs.getBoolean("cluster", false)))
     val policy = _policy.asStateFlow()
     private val _status = MutableStateFlow("Disconnected"); val status = _status.asStateFlow()
+    private val _connectedSinceMs=MutableStateFlow<Long?>(null);val connectedSinceMs=_connectedSinceMs.asStateFlow()
     private val _history = MutableStateFlow<List<PeerTranscript>>(emptyList()); val history = _history.asStateFlow()
     @Volatile private var visible = false
     @Volatile private var connected = false
@@ -53,7 +54,7 @@ class PeerChatHost(context: Context, private val scope: CoroutineScope, private 
     }
     @Synchronized fun unbind() { visible = false; disconnect(); transport = null; closer = null }
     @Synchronized fun disconnect() {
-        revision++; connected = false; lease?.cancel(); lease = null; pending.values.toList().forEach { it.cancel() }; pending.clear(); seen.clear()
+        revision++; connected = false; _connectedSinceMs.value=null;lease?.cancel(); lease = null; pending.values.toList().forEach { it.cancel() }; pending.clear(); seen.clear()
         jobs.toList().forEach { it.cancel() }; closer?.invoke(); _status.value = "Disconnected"
     }
     @Synchronized fun agentSwitch(on: Boolean) {
@@ -97,8 +98,8 @@ class PeerChatHost(context: Context, private val scope: CoroutineScope, private 
         val type = (obj["type"] as? JsonPrimitive)?.contentOrNull ?: return
         val value = (obj["value"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return
         when (type) {
-            "route" -> { if (value in setOf("direct", "relay")) { connected = true; _status.value = if (value == "direct") "Connected · direct P2P" else "Connected · encrypted TURN relay" } }
-            "closed", "error" -> { connected = false; revision++; pending.values.toList().forEach { it.cancel() }; pending.clear(); jobs.toList().forEach { it.cancel() }; _status.value = if (type == "error") "Pairing failed" else "Disconnected" }
+            "route" -> { if (value in setOf("direct", "relay")) { connected = true;_connectedSinceMs.value=System.currentTimeMillis(); _status.value = if (value == "direct") "Connected · direct P2P" else "Connected · encrypted TURN relay" } }
+            "closed", "error" -> { connected = false;_connectedSinceMs.value=null; revision++; pending.values.toList().forEach { it.cancel() }; pending.clear(); jobs.toList().forEach { it.cancel() }; _status.value = if (type == "error") "Pairing failed" else "Disconnected" }
             "status" -> if (!connected) _status.value = value.take(160)
             "packet" -> accept(value)
         }

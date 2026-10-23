@@ -26,7 +26,7 @@ import kotlinx.serialization.json.*
     var job by remember {mutableStateOf<Job?>(null)}
     var running by remember {mutableStateOf(false)}
     DisposableEffect(Unit) {onDispose {if(running) {job?.cancel();coordinator.cancel()}}}
-    Column(Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         Text("Structured output",style=MaterialTheme.typography.headlineSmall)
         Text("Generate JSON with the loaded on-device model, then validate its actual output. Model compliance and JSON syntax are separate; this does not claim schema-constrained decoding.")
         OutlinedTextField(prompt,{if(it.length<=6000) prompt=it},Modifier.fillMaxWidth(),label={Text("Describe the JSON result")},minLines=4,maxLines=8,enabled=!running)

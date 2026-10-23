@@ -12,7 +12,7 @@ import kotlinx.coroutines.*
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun SecurityLabScreen(back:()->Unit) {
+@Composable fun SecurityLabScreen(back:()->Unit,onRuntime:()->Unit,onPackages:()->Unit) {
     val lab=koinInject<com.meshlit.security.SecurityLab>();val runtime=koinInject<com.meshlit.sandbox.RuntimeHost>()
     val assessments by lab.assessments.collectAsState();val scope=rememberCoroutineScope()
     var owner by remember {mutableStateOf("")};var target by remember {mutableStateOf("")};var hash by remember {mutableStateOf("")};var hostId by remember {mutableStateOf("vm-ssh")}
@@ -22,6 +22,10 @@ import java.util.UUID
     Scaffold(topBar={TopAppBar(title={Text("Security Lab")},navigationIcon={TextButton(onClick=back){Text("Back")}})}) {padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {Text("Red team, blue team and forensic tool inventory. Only three read-only companion adapters are implemented here. Install companions/cyber inside your VM. Lab execution requires VM_SSH and SSH_READY; other runtimes are blocked. Root, exploitation and dynamic instrumentation adapters remain unavailable.")}
+            item {Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick=onRuntime,modifier=Modifier.fillMaxWidth()) {Text("Configure isolated Linux VM")}
+                OutlinedButton(onClick=onPackages,modifier=Modifier.fillMaxWidth()) {Text("VM artifacts and lab packages")}
+            }}
             CyberTools.all.forEach {tool->item {Text("${tool.name}: ${tool.role} · ${if(tool.implemented) "adapter implemented; host required" else "planned adapter"}")}}
             item {Text("Create a 24-hour assessment grant for an owned artifact")}
             item {OutlinedTextField(owner,{owner=it},label={Text("Owner / authority")},modifier=Modifier.fillMaxWidth())}

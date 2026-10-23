@@ -12,7 +12,7 @@ import com.meshlit.core.inference.models.LocalModelBehavior
 @Composable fun LocalBehaviorScreen(onBack:()->Unit,onModels:()->Unit) {
     val repository=koinInject<LocalBehaviorSettings>();val saved by repository.state.collectAsStateWithLifecycle()
     var instructions by remember(saved){mutableStateOf(saved.instructions)};var enabled by remember(saved){mutableStateOf(saved.enabled)};var error by remember{mutableStateOf<String?>(null)}
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         item{TextButton(onClick=onBack){Text("Back to settings")};Text("Custom local model behavior",style=MaterialTheme.typography.headlineSmall)}
         item{Text("Import compatible custom or uncensored GGUF weights in Models. A setting cannot remove a model’s learned refusals. These instructions apply to text generation through the local coordinator, including chat, model recipes and the phone provider. They do not modify hosted provider policies or grant tools, root or Android access.")}
         item{Row{Text("Apply custom local instructions",Modifier.weight(1f));Switch(enabled,{enabled=it})}}

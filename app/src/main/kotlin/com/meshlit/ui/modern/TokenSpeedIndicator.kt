@@ -16,7 +16,8 @@ import java.util.Locale
 
 internal fun tokenSpeedLabel(usage:ChatTokenUsage):String = usage.tokensPerSecond?.let {
     "${String.format(Locale.ROOT,"%.1f",it)} tokens/s · ${usage.output} output tokens"
-} ?: usage.output?.let{"Speed unavailable · $it output tokens"} ?: "Speed unavailable · token count unreported"
+} ?: usage.output?.let{"$it output tokens · speed unavailable"}
+    ?: "Response ${String.format(Locale.ROOT,"%.1f",usage.elapsedMs/1000.0)}s · token speed unavailable"
 
 @Composable internal fun TokenSpeedIndicator(state:ChatState,onSettings:()->Unit) {
     val usage=state.current?.messages?.lastOrNull{it.role=="assistant"}?.usage
@@ -42,7 +43,7 @@ internal fun tokenSpeedLabel(usage:ChatTokenUsage):String = usage.tokensPerSecon
             usage.rateBasis?.let{Text(it)}
             usage.budgetReason?.let{Text(it)}
             usage.finishReason?.let{Text("Finish: $it")}
-            Text("Requested limits are not actual usage. Elapsed time includes application overhead; text chunks and characters are never counted as tokens. Rates are available after completion, not a live decode-rate estimate.")
+            Text("Requested limits are not actual usage. This runtime did not provide a verified output-token count, so Meshlit cannot show a token speed. Elapsed time includes application overhead; text chunks and characters are never counted as tokens.")
         }
     }},confirmButton={TextButton(onClick=onClose){Text("Close")}})
 }

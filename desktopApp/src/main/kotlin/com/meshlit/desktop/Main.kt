@@ -339,6 +339,17 @@ fun main(args: Array<String>) {
                             stop(true); localMode = false; endpoint = node.endpoint; hostProtocol = node.protocol
                             token = ""; network = false; colibriHost = false; messages = emptyList(); section = "providers"
                         }
+                        "device-dashboard" -> DeviceDashboardPanel(onNodes = { section = "nodes" }, onMonitor = { section = "monitor" })
+                        "securityprivacy" -> {
+                            Text("Connection access is opt-in for each Studio session. Saved device addresses are not approved workers or authenticated identities.")
+                            Text("Current remote access: ${if (network && connected && !localMode) "connected" else if (network && !localMode) "allowed for this session" else "off"}")
+                            Text("Current request: ${if (busy) "running" else "idle"}. Session token: ${if (token.isBlank()) "none entered" else "entered, held in memory"}.")
+                            Button({ stop(true); network = false; token = ""; observedAt = null; connected = false }) { Text("Revoke session access and stop") }
+                            TextButton({ section = "providers" }) { Text("Review host connection") }
+                            TextButton({ section = "guardrails" }) { Text("Review response policy") }
+                            TextButton({ section = "nodes" }) { Text("Review saved addresses") }
+                            Text("Chat history, host keys and response policy are session-only. Device addresses and appearance persist locally. Remote hosts may retain prompts under their own policy.", style = MaterialTheme.typography.caption)
+                        }
                         "health", "memory", "device", "monitor", "power", "acceleration", "tasks" -> ResourceMonitor { stop(true) }
                         "crypto" -> { com.meshlit.desktop.peering.PeerWalletPanel(); Divider(); CryptoPanel() }
                         "hyperl" -> HyperLPanel()

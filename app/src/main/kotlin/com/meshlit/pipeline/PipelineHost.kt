@@ -60,6 +60,7 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     }
     private val checkpoints by lazy{NativeCheckpointStore(context)}
     private var worker:Process?=null
+    @Volatile private var workerStartedAtMs:Long?=null
     private var server:Process?=null
     private var workerTunnel:RpcTunnel?=null
     private val bridges=mutableListOf<RpcTunnel>()
@@ -195,17 +196,18 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
             worker=launch("worker",listOf("-H","127.0.0.1","-p","$nativePort","--device","CPU","-t","2"))
             delay(500);check(running(worker!!)){"Native worker exited"}
             workerTunnel=RpcTunnel.server(certificate().first,publicPort,nativePort,pairingToken(),::log,capabilities={Json.encodeToString(offer())},networkAllowed={remote->(context.applicationContext as com.meshlit.MeshlitApplication).meshlitFirewall.decide(remote,null,null,publicPort).allowed})
+            workerStartedAtMs=System.currentTimeMillis()
             _status.update{it.copy(worker=true)}
             val process=worker!!
             scope.launch(Dispatchers.IO) {
                 process.waitFor()
-                if(worker===process) {workerTunnel?.close();worker=null;_status.update{it.copy(worker=false,error="Native worker stopped")}}
+                if(worker===process) {workerTunnel?.close();worker=null;workerStartedAtMs=null;_status.update{it.copy(worker=false,error="Native worker stopped")}}
             }
         } catch(cancelled:CancellationException) {stopWorkerInternal();throw cancelled}
         catch(e:Exception) {stopWorkerInternal();_status.update{it.copy(error=e.message)};throw e}
         finally {_status.update{it.copy(starting=false)};stopServiceIfIdle()}
     } }
-    private fun stopWorkerInternal(){workerTunnel?.close();workerTunnel=null;val process=worker;worker=null;process?.destroy();_status.update{it.copy(worker=false)}}
+    private fun stopWorkerInternal(){workerTunnel?.close();workerTunnel=null;val process=worker;worker=null;workerStartedAtMs=null;process?.destroy();_status.update{it.copy(worker=false)}}
     suspend fun stopWorker()=lock.withLock {stopWorkerInternal();stopServiceIfIdle()}
     private fun offer():NodeOffer {
         val memory=ActivityManager.MemoryInfo().also{context.getSystemService(ActivityManager::class.java).getMemoryInfo(it)}
@@ -214,7 +216,7 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
             ClusterNegotiation.REVISION,workerAllowed=worker!=null,
             thermalStatus=if(Build.VERSION.SDK_INT>=29) context.getSystemService(PowerManager::class.java).currentThermalStatus else 0,
             deviceClass=if(context.resources.configuration.smallestScreenWidthDp>=600) "tablet" else "phone",
-            backend="CPU",cpuThreads=2)
+            backend="CPU",cpuThreads=2,workerStartedAtMs=workerStartedAtMs)
     }
     /** Query only explicitly paired workers. Local model ownership limits current
      * activation to this coordinator; the election contract also supports remote owners. */

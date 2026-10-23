@@ -4,6 +4,12 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current build41 device observations — 2026-10-23
+
+Samsung DocumentsUI lists the copied Whisper/Piper ZIPs, but ADB taps did not complete selection during the physical voice-import check. The app's original `OpenDocument` MIME list was broadened to `*/*` because providers classify ZIPs inconsistently; strict Meshlit manifest/path/checksum validation still runs after a URI is returned. A real import, synthesis preview and recognition turn have not yet passed on either phone. The files are in both phones' Downloads for owner/manual selection.
+
+Samsung SM-A207F and Xiaomi M2101K7AI both accepted the V2 debug APK through ADB after the earlier Xiaomi USB policy block was cleared. Samsung dashboard showed discovery AUTO and scanning; Pause changed to OFF and cleared observed entries. The OFF state now labels its control “Resume automatic discovery.” Xiaomi chat displayed an invented human identity from the small bundled model, prompting an explicit Meshlit identity instruction; a new reply still needs to be checked. The SDK did not supply trustworthy token counts or speed, so Chat reports them unavailable. A pairing path that previously persisted trust after a failed handshake is changed to fail closed in source; physical adversarial pairing remains an open acceptance gate. No remote cluster takeover resistance is claimed solely from unit tests.
+
 Updated 2026-10-10. Older bug IDs, hypotheses and screenshots are preserved in docs/history/BUGS-before-studio-2026-10-10.md. They are not automatically current open bugs. Feature backlog belongs in TODO.md and the desktop tracker.
 
 | Item | State | Evidence / next verification |
@@ -17,7 +23,9 @@ Updated 2026-10-10. Older bug IDs, hypotheses and screenshots are preserved in d
 | Combined Android lint/build stalled under concurrent load | Serial retry passes | One worker/in-process compiler; both flavors zero errors, 374 warnings each; core inference 7 warnings |
 | Windows Ghostty argument test assumed POSIX absolute paths | Fixture corrected; 30 local desktop cases and Windows host CI pass at c1f2d60 | Native temp-directory absolute paths retain pin/literal/relative-path rejection assertions; no Ghostty process launched or Windows port claimed |
 | Existing app warnings and historical cold-start/ANRs | Open acceptance/cleanup | Latest APK device tests required; prior build/start observations retain their dates |
-| Build41 Xiaomi install blocked by device policy | External test gate | `adb install -r` returned `INSTALL_FAILED_USER_RESTRICTED` on M2101K7AI (Android 12); owner must enable/approve USB installation before on-device UI or performance evidence can be claimed |
+| Build41 Xiaomi install blocked by device policy | Resolved for debug install | Earlier `INSTALL_FAILED_USER_RESTRICTED` on M2101K7AI was cleared; current V2 debug APK installs through ADB. MIUI still blocks ADB tap injection, limiting autonomous screen traversal. |
+| “Use as primary” did not route requests | Honest UI label applied; routing open | The saved active endpoint ID had no reader in the model router. Devices now says “Mark as preferred” and explains this is a device-list preference until routing is implemented. |
+| Radar sweep missing in visible device flow | Source fix; physical animation check pending | Device pairing now embeds radar and radar uses a bright 3-second rotating wedge only while discovery is active and animations are enabled. OFF disables the effect. |
 | Build41 Android lint warnings | Open cleanup; no lint errors | V1 and V2 lint tasks pass with 378 warnings and 18 hints each, mostly unused resources and KTX suggestions; no claim of warning-free UI |
 | Forced process loss/orphan recovery, memory/leak/long-run behavior | Unqualified | Shutdown hooks and explicit unload are implemented; stress/crash evidence still needed |
 | Physical multi-device oversized model, native placement and failover | Open implementation/acceptance | Planner/loopback evidence is insufficient for physical fleet qualification |

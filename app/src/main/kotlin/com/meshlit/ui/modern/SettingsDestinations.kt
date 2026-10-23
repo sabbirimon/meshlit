@@ -4,7 +4,20 @@ package com.meshlit.ui.modern
 data class SettingsDestination(val id:String,val title:String,val description:String,val advanced:Boolean=false,
     val keywords:String="")
 object SettingsDestinations {
+    private val advancedIds=setOf("crypto","gibberlink","remotecommands","p2p","colibri","behavior",
+        "configuration","recovery","training","router","operations","gateway","commands","packages",
+        "securitylab","power","external","acceleration","agents","ssh","firewall","ide","hyperl",
+        "audit","identity-recovery","openclaw","sharding","guardrails")
     val all=listOf(
+        SettingsDestination("menu-layout","Customize menu","Add, remove and reorder shortcuts in Settings and the main drawer",keywords="layout rearrange quick access shortcuts navigation"),
+        SettingsDestination("sharding","Sharding and workers","Pair approved model workers, assess resources and negotiate layers",keywords="cluster load balancer distributed model split QR group"),
+        SettingsDestination("radar","Device radar","Topology, live discovery, saved workers and local identity",keywords="map nearby far distance devices agents search logs identity user ID"),
+        SettingsDestination("host-map","Global host map","World projection of consenting relay members and saved hosts",keywords="geolocation location country online recently offline device type find hosts"),
+        SettingsDestination("device-dashboard","Device management","Review and revoke saved endpoints, groups, workers, relay members and peer chat",keywords="approved group local remote single multi cluster pause stop revoke"),
+        SettingsDestination("meshchat","Mesh chat","Foreground peer conversations over verified direct or relay connections",keywords="group device agent person message WhatsApp Telegram remote local chat"),
+        SettingsDestination("securityprivacy","Security and privacy","Permissions, identity, guardrails, network access, audit and policy",keywords="privacy safety fraud trust auto on off customize settings"),
+        SettingsDestination("tools-automation","Tools and automation","MCP registry, Gateway routes, agent jobs and reviewed hooks",keywords="MCP A2A agents tool registry hooks scripts"),
+        SettingsDestination("guardrails","Local behavior and guardrails","Control local instructions and optional gateway term rules",keywords="censored uncensored filter safety policy"),
         SettingsDestination("search","Search access and articles","Offline content search, Internet permission and agent search grants",keywords="global chat articles Brave API key web internet search"),
         SettingsDestination("appearance","Appearance","Dynamic colors, accents, light and dark mode",keywords="theme display wallpaper font motion palette glass typography readability contrast"),
         SettingsDestination("crypto","Local cryptography","Offline hashes, random keys, HMAC and authenticated encryption",keywords="AES GCM SHA256 SHA512 encrypt decrypt cryptography agent hash keys HMAC"),
@@ -34,6 +47,7 @@ object SettingsDestinations {
         SettingsDestination("ssh","SSH nodes and connections","Key-authenticated inbound node commands and pinned outbound connections",keywords="server LAN internet VM sandbox agent SSH NAS terminal external inter device"),
         SettingsDestination("firewall","Network rules","Persisted Meshlit listener firewall and network status",keywords="ports security IP allow deny"),
         SettingsDestination("device","Device","Device profile, name and hardware capabilities",keywords="role chipset gpu peripherals"),
+        SettingsDestination("resources","Resources and sensors","Live RAM, storage, battery, model activity and available sensors",keywords="usage CPU memory camera microphone hardware diagnostics"),
         SettingsDestination("tasks","Task manager","Plan tasks, track real jobs, bulk finish and stop operations",keywords="todo priorities tags due subtasks queue retry cancel agent"),
         SettingsDestination("ide","Code workspace","Offline source editor, files, syntax highlighting and search",keywords="IDE VS Code programming Kotlin Python JavaScript JSON develop"),
         SettingsDestination("hyperl","HyperL libraries","Native CPU recipes, precise sums, encrypted datasets and kernel source",keywords="hyperl compute library vector affine dot relu CPU native precision encrypted dataset key rotation Metal Vulkan programming"),
@@ -57,9 +71,13 @@ object SettingsDestinations {
         SettingsDestination("legal","Terms and privacy","Offline policies, accepted version and data controls",keywords="agreement consent privacy terms data delete IMON"),
         SettingsDestination("about","About and availability","Build information and feature implementation status",keywords="licenses version help")
     ).filter { com.meshlit.BuildProfile.routeAllowed(it.id) }.filterNot { com.meshlit.BuildConfig.PLAY_REVIEW && it.id in setOf("automation", "termux") }
-    fun search(query:String,advanced:Boolean)=all.filter{ (advanced || !it.advanced) &&
-        query.trim().split(Regex("\\s+")).filter{it.isNotBlank()}.all { word ->
-            "${it.title} ${it.description} ${it.keywords}".contains(word,true)
+    private fun isAdvanced(entry:SettingsDestination)=entry.advanced || entry.id in advancedIds
+    fun search(query:String,advanced:Boolean):List<SettingsDestination> {
+        val words=query.trim().split(Regex("\\s+")).filter(String::isNotBlank)
+        return all.filter { entry ->
+            (words.isNotEmpty() || isAdvanced(entry)==advanced) && words.all { word ->
+                "${entry.title} ${entry.description} ${entry.keywords}".contains(word,true)
+            }
         }
     }
 }

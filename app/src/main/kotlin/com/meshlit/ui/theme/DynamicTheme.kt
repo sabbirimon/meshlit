@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import kotlinx.serialization.Serializable
 
 /**
@@ -207,7 +208,15 @@ fun buildColorScheme(
         BasePalette.FOREST -> MeshlitForestShades
         BasePalette.RUNANYWHERE -> MeshlitRunAnywhereShades
     }
-    val isLight = base == BasePalette.PAPER
+    // Custom surfaces can be light even when the selected base palette is dark.
+    // Derive foreground colors from the surface the user will actually see.
+    val visibleSurface = customResolved?.surface ?: surface
+    val visibleSurfaceVariant = customResolved?.surfaceVariant ?: surfaceVariant
+    val isLight = customResolved?.let { visibleSurface.luminance() > 0.45f } ?: (base == BasePalette.PAPER)
+    val visibleTextPrimary = if (customResolved == null) textPrimary else
+        if (isLight) Color(0xFF17202B) else Color(0xFFF4F5F7)
+    val visibleTextSecondary = if (customResolved == null) textSecondary else
+        if (isLight) Color(0xFF405163) else Color(0xFFC5CCD5)
 
     // Phase 12.2 — when a custom palette is active, use those
     // values directly. Otherwise fall back to the curated
@@ -221,7 +230,7 @@ fun buildColorScheme(
     }
     val secondary = customResolved?.secondary ?: MeshlitCyan
     val tertiary = customResolved?.tertiary ?: MeshlitEmerald
-    val onPrimary = if (isLight) Color(0xFFFFFFFF) else Color(0xFF0A0E1A)
+    val onPrimary = if (primary.luminance() > 0.45f) Color(0xFF0A0E1A) else Color(0xFFFFFFFF)
 
     return if (isLight) {
         lightColorScheme(
@@ -233,20 +242,20 @@ fun buildColorScheme(
             secondary = secondary,
             onSecondary = Color(0xFF0A0E1A),
             secondaryContainer = primary.copy(alpha = 0.12f),
-            onSecondaryContainer = textPrimary,
+            onSecondaryContainer = visibleTextPrimary,
             tertiary = tertiary,
             onTertiary = Color(0xFF0A0E1A),
-            background = background,
-            onBackground = textPrimary,
-            surface = surface,
-            surfaceContainerLowest = surface,
-            surfaceContainerLow = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.025f),
-            surfaceContainer = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.04f),
-            surfaceContainerHigh = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.065f),
-            surfaceContainerHighest = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.09f),
-            onSurface = textPrimary,
-            surfaceVariant = surfaceVariant,
-            onSurfaceVariant = textSecondary,
+            background = if (customResolved == null) background else visibleSurface,
+            onBackground = visibleTextPrimary,
+            surface = visibleSurface,
+            surfaceContainerLowest = visibleSurface,
+            surfaceContainerLow = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.025f),
+            surfaceContainer = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.04f),
+            surfaceContainerHigh = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.065f),
+            surfaceContainerHighest = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.09f),
+            onSurface = visibleTextPrimary,
+            surfaceVariant = visibleSurfaceVariant,
+            onSurfaceVariant = visibleTextSecondary,
             outline = outline,
             outlineVariant = outline.copy(alpha = 0.5f),
             error = MeshlitError,
@@ -266,17 +275,17 @@ fun buildColorScheme(
             onTertiary = Color(0xFF0A0E1A),
             tertiaryContainer = tertiary.let { tint(it, 0.65f) },
             onTertiaryContainer = Color(0xFFFFFFFF),
-            background = background,
-            onBackground = textPrimary,
-            surface = surface,
-            surfaceContainerLowest = surface,
-            surfaceContainerLow = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.025f),
-            surfaceContainer = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.04f),
-            surfaceContainerHigh = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.065f),
-            surfaceContainerHighest = androidx.compose.ui.graphics.lerp(surface, textPrimary, 0.09f),
-            onSurface = textPrimary,
-            surfaceVariant = surfaceVariant,
-            onSurfaceVariant = textSecondary,
+            background = if (customResolved == null) background else visibleSurface,
+            onBackground = visibleTextPrimary,
+            surface = visibleSurface,
+            surfaceContainerLowest = visibleSurface,
+            surfaceContainerLow = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.025f),
+            surfaceContainer = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.04f),
+            surfaceContainerHigh = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.065f),
+            surfaceContainerHighest = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.09f),
+            onSurface = visibleTextPrimary,
+            surfaceVariant = visibleSurfaceVariant,
+            onSurfaceVariant = visibleTextSecondary,
             outline = outline,
             outlineVariant = outline.copy(alpha = 0.5f),
             error = MeshlitError,

@@ -70,6 +70,9 @@ data class LocalPeerDescriptor(
     val port: Int,
     val tierTag: String,
     val fingerprint: String,
+    val displayName: String = "",
+    val manufacturer: String = "",
+    val model: String = "",
 )
 
 /**

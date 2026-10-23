@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-124 active, 19 historical, 8 protected, 1 template, 6 third-party; 159 Markdown documents including this index.
+128 active, 19 historical, 8 protected, 1 template, 6 third-party; 163 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -68,6 +68,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [companions/training/README.md](../companions/training/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [configuration/README.md](../configuration/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [core-federation/src/main/kotlin/com/meshlit/core/federation/README.md](../core-federation/src/main/kotlin/com/meshlit/core/federation/README.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/AGENT_FEATURE_PORT_AUDIT.md](AGENT_FEATURE_PORT_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/AGENT_GATEWAY_AND_SECURITY_LAB.md](AGENT_GATEWAY_AND_SECURITY_LAB.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/AI_REPAIR_AND_EVOLUTION.md](AI_REPAIR_AND_EVOLUTION.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/ANDROID_DESKTOP_PARITY.md](ANDROID_DESKTOP_PARITY.md) | desktop/server; individual acceptance gates apply |
@@ -89,11 +90,14 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/MACOS_OFFLINE.md](MACOS_OFFLINE.md) | desktop/server; individual acceptance gates apply |
 | [docs/MEMORY_AND_VOICE.md](MEMORY_AND_VOICE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MULTIPLATFORM_NEXT.md](MULTIPLATFORM_NEXT.md) | platform preview; NEXT device/build acceptance remains open |
+| [docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md](OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/P2P_AND_CRYPTO.md](P2P_AND_CRYPTO.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PEERING_UI_BUILD_PLAN.md](PEERING_UI_BUILD_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PEERING_UI_HANDOFF_2026-10-12.md](PEERING_UI_HANDOFF_2026-10-12.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/PENDING_FEATURES.md](PENDING_FEATURES.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PLATFORM_ADAPTER_PLAN.md](PLATFORM_ADAPTER_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PLAY_DISTRIBUTION.md](PLAY_DISTRIBUTION.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/REDESIGN_PLAN_2026-10-23.md](REDESIGN_PLAN_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) | cross-platform tracking; feature and device gates remain separate |
 | [docs/REWARD_METERING_AND_SETTLEMENT.md](REWARD_METERING_AND_SETTLEMENT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SEARCH_AND_CLUSTER_OUTPUT.md](SEARCH_AND_CLUSTER_OUTPUT.md) | Android/shared reference; desktop ports have separate acceptance |

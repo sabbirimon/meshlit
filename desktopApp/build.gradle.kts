@@ -16,6 +16,7 @@ dependencies {
     implementation(compose.material)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.zxing.core)
     implementation("com.github.oshi:oshi-core:7.7.0")
     testImplementation(kotlin("test"))
     testImplementation(libs.junit)

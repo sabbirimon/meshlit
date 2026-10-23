@@ -2,7 +2,12 @@ package com.meshlit.devices
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Matrix
 import com.google.zxing.BarcodeFormat
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.qrcode.QRCodeWriter
 import com.meshlit.core.common.EndpointProtocol
 import com.meshlit.core.common.RemoteEndpoint
@@ -32,6 +37,7 @@ data class PairingPayload(
     val nodeId: String,
     val capabilityTier: String,
     val publicKey: String = "",
+    val expiresAtEpochMs: Long? = null,
 ) {
     fun encode(): String = buildString {
         append("meshlit://pair")
@@ -40,6 +46,7 @@ data class PairingPayload(
         append("&node=").append(enc(nodeId))
         append("&tier=").append(enc(capabilityTier))
         if (publicKey.isNotBlank()) append("&key=").append(enc(publicKey))
+        expiresAtEpochMs?.let { append("&exp=").append(it) }
     }
 
     fun toRemoteEndpoint(): RemoteEndpoint = validate().let { RemoteEndpoint(
@@ -68,6 +75,11 @@ data class PairingPayload(
             require(nodeId.isNotBlank()) { "Identity key needs a device ID" }
             com.meshlit.core.trust.PeerCrypto.fingerprint(publicKey)
         }
+        expiresAtEpochMs?.let { expiry ->
+            val now = System.currentTimeMillis()
+            require(expiry > now) { "Pairing QR expired. Ask the owner to refresh it." }
+            require(expiry - now <= 10 * 60 * 1000L) { "Pairing QR expiry is too far away" }
+        }
         return copy(baseUrl = baseUrl.trim().trimEnd('/'))
     }
 
@@ -93,6 +105,7 @@ data class PairingPayload(
                 nodeId = q["node"].orEmpty(),
                 capabilityTier = q["tier"].orEmpty(),
                 publicKey = q["key"].orEmpty(),
+                expiresAtEpochMs = q["exp"]?.let { it.toLongOrNull() ?: throw IllegalArgumentException("Invalid pairing expiry") },
             ).validate()
         }
 
@@ -127,5 +140,34 @@ object QrCodec {
             }
         }
         return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
+    }
+
+    fun decode(image: Bitmap): String {
+        require(image.width in 1..2048 && image.height in 1..2048) { "QR image must be at most 2048 pixels per side" }
+        val hints = mapOf(
+            com.google.zxing.DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
+            com.google.zxing.DecodeHintType.TRY_HARDER to true,
+            com.google.zxing.DecodeHintType.ALSO_INVERTED to true,
+        )
+        fun read(candidate: Bitmap): String? {
+            val pixels = IntArray(candidate.width * candidate.height)
+            candidate.getPixels(pixels, 0, candidate.width, 0, 0, candidate.width, candidate.height)
+            val binary = BinaryBitmap(HybridBinarizer(RGBLuminanceSource(candidate.width, candidate.height, pixels)))
+            return runCatching { MultiFormatReader().decode(binary, hints).text }.getOrNull()
+        }
+        for (angle in listOf(0f, 90f, 180f, 270f)) {
+            val oriented = if (angle == 0f) image else Bitmap.createBitmap(image, 0, 0, image.width, image.height,
+                Matrix().apply { postRotate(angle) }, true)
+            try {
+                read(oriented)?.let { return it }
+                for (scale in listOf(0.75f, 0.5f)) {
+                    val width = (oriented.width * scale).toInt()
+                    val height = (oriented.height * scale).toInt()
+                    val crop = Bitmap.createBitmap(oriented, (oriented.width - width) / 2, (oriented.height - height) / 2, width, height)
+                    try { read(crop)?.let { return it } } finally { crop.recycle() }
+                }
+            } finally { if (oriented !== image) oriented.recycle() }
+        }
+        throw IllegalArgumentException("No QR found. Fill the frame with the code, avoid glare, or choose a saved QR image.")
     }
 }

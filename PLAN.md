@@ -4,6 +4,12 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Android and Studio workspace continuation — 2026-10-23
+
+The [older Android Studio request audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) now preserves untransferred requests as explicit gates. This iteration adds an embedded pairing radar, relay join-code countdown with automatic rotation, clearer direct/VPN/relay/web connection choices, narrower phone typography, responsive Settings shortcuts and direct Security Lab → VM/packages navigation. Rebuild, physical UI inspection, pairing and release checks still govern delivery.
+
+[Detailed redesign and acceptance plan](docs/REDESIGN_PLAN_2026-10-23.md). Android source now has discovery Auto/On/Off, reviewed pairing, radar, device dashboard, menu ordering, Resources, Security & privacy, Chat target controls and bounded parallel agent prompt jobs. Studio source adds a saved-device dashboard, session revoke control and headless capability status. Current single-peer chat, Studio layer sharding and container/server daemon remain separate implementation gates. Validate the new Samsung APK, Xiaomi install, hostile enrollment/revocation and multi-device compute before a public release.
+
 ## Paused Android/desktop peering continuation — 2026-10-12
 
 [Future build plan](docs/PEERING_UI_BUILD_PLAN.md) · [Exact handoff and validation](docs/PEERING_UI_HANDOFF_2026-10-12.md). Implementation is partial and paused at the owner's request; resume from the saved working tree. Both platforms are in scope. Android Studio is the reference, not the target.

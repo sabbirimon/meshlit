@@ -15,9 +15,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun ChatOptionsDialog(state:ChatState,controller:ChatController,onSearchSettings:()->Unit,onClose:()->Unit) {
+@Composable fun ChatOptionsDialog(state:ChatState,controller:ChatController,onSearchSettings:()->Unit,onShardingSettings:()->Unit,onClose:()->Unit) {
     val providers=koinInject<OnlineProviders>();val profiles by providers.profiles.collectAsStateWithLifecycle()
     val router=koinInject<com.meshlit.routing.ModelRoutes>();val routes by router.routes.collectAsStateWithLifecycle()
     val colibri=koinInject<com.meshlit.colibri.ColibriBackend>()
@@ -28,6 +29,11 @@ import androidx.compose.ui.semantics.contentDescription
     val validBudget=budget.toIntOrNull()?.let{it in 1..maxOutput}==true
     LaunchedEffect(options.routeId){if((budget.toIntOrNull() ?: 0)>maxOutput) budget=maxOutput.toString()}
     val coordinator=koinInject<com.meshlit.core.inference.InferenceCoordinator>()
+    val pipeline=koinInject<com.meshlit.pipeline.PipelineHost>()
+    val pipelineStatus by pipeline.status.collectAsStateWithLifecycle()
+    var selectedGroup by remember { mutableStateOf(pipeline.activeGroup()) }
+    var groups by remember { mutableStateOf(pipeline.groups()) }
+    val scope=rememberCoroutineScope()
     val runtime by coordinator.state.collectAsStateWithLifecycle()
     val evidence by controller.clusterEvidence.collectAsStateWithLifecycle()
     val capacity=(runtime as? com.meshlit.core.inference.CoordinatorState.Ready)?.model?.contextSize?.takeIf{it>0}
@@ -37,8 +43,40 @@ import androidx.compose.ui.semantics.contentDescription
     Text("Conversation settings",style=MaterialTheme.typography.titleLarge)
     Spacer(Modifier.height(12.dp))
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).testTag("chat-settings"),verticalArrangement=Arrangement.spacedBy(10.dp)){
+        Text("Companion personality",style=MaterialTheme.typography.titleMedium)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+            CompanionStyle.entries.forEach { style ->
+                FilterChip(options.companionStyle==style,{options=options.copy(companionStyle=style)},label={Text(style.name.lowercase().replaceFirstChar{it.uppercase()})},modifier=Modifier.testTag("chat-style-${style.name}"))
+            }
+        }
+        Text("Warmth: ${when(options.companionWarmth){0->"Neutral";1->"Natural";else->"Warm"}}")
+        Slider(options.companionWarmth.toFloat(),{options=options.copy(companionWarmth=it.toInt())},valueRange=0f..2f,steps=1,modifier=Modifier.testTag("chat-warmth"))
+        Text("Style changes response tone. It cannot grant tools or make a small model more capable.",style=MaterialTheme.typography.bodySmall)
+        OutlinedTextField(options.systemPrompt,{options=options.copy(systemPrompt=it.take(4000))},Modifier.fillMaxWidth(),label={Text("Your custom instructions")},maxLines=4)
+        Row { Text("18+ topics preference",Modifier.weight(1f));Switch(options.matureTopics,{options=options.copy(matureTopics=it)},modifier=Modifier.testTag("chat-mature-topics")) }
+        Text("Off by default. On requests open discussion of mature topics; the selected model or provider may still limit replies. This switch does not verify age or change tool permissions.",style=MaterialTheme.typography.bodySmall)
+        HorizontalDivider()
         Text("Model and routing",style=MaterialTheme.typography.titleMedium)
-        FilterChip(options.onlineProfileId==null && options.routeId==null && options.colibriMode=="OFF",{options=options.copy(onlineProfileId=null,routeId=null,colibriMode="OFF")},label={Text("Local · currently loaded model")})
+        FilterChip(options.onlineProfileId==null && options.routeId==null && options.colibriMode=="OFF",{options=options.copy(onlineProfileId=null,routeId=null,colibriMode="OFF")},label={Text(if(pipelineStatus.coordinator) "Paired cluster · currently loaded model" else "Local · currently loaded model")})
+        if (!com.meshlit.BuildProfile.coreCandidate) {
+            Text(if (pipelineStatus.coordinator) "Cluster active: ${pipeline.activeGroup()} · ${pipeline.groupPeers().size} paired workers. Chat uses the cluster's loaded model when Local is selected."
+                else "No cluster active. Chat uses the loaded phone model when Local is selected. A paired group must be negotiated before cluster chat is available.")
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick=onShardingSettings) { Text("Manage cluster") }
+                if (pipelineStatus.coordinator) TextButton(enabled=!state.running,onClick={scope.launch {
+                    try { pipeline.stopPipeline(); error=null } catch(e:Exception) { error=e.message }
+                }}) { Text("Remove cluster from chat") }
+            }
+            Text("Approved worker group for the next cluster load",style=MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                groups.forEach { group -> FilterChip(selectedGroup==group,onClick={
+                    try { pipeline.setActiveGroup(group); selectedGroup=group; error=null } catch(e:Exception) { error=e.message }
+                },enabled=!pipelineStatus.coordinator && !pipelineStatus.starting,label={Text("$group · ${pipeline.peers().count{it.group==group}} workers")}) }
+            }
+            Text("Changing groups selects workers for the next cluster load. It does not move an active conversation; stop the current cluster first.")
+            if (pipelineStatus.coordinator) Text("Removing the cluster unloads its model. Load a phone model in Models before sending locally.")
+            Text("Agent tools below run through the selected local or cluster model only when their separate grants are enabled. Online profiles and model routes use their own controls.")
+        }
         profiles.filter{it.enabled && !com.meshlit.BuildProfile.coreCandidate}.forEach{profile->FilterChip(options.onlineProfileId==profile.id && options.routeId==null,{options=options.copy(onlineProfileId=profile.id,routeId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false)},label={Text("Online · ${profile.name} / ${profile.model}")})}
         if(!com.meshlit.BuildProfile.coreCandidate && routes.any{it.enabled}) {
             FilterChip(options.routeId=="__auto__",{options=options.copy(routeId="__auto__",onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,maxTokens=minOf(options.maxTokens,1024))},label={Text("Model router · automatic rules")})
@@ -58,24 +96,25 @@ import androidx.compose.ui.semantics.contentDescription
         if(!com.meshlit.BuildProfile.coreCandidate && options.onlineProfileId==null && options.routeId==null) {
             HorizontalDivider()
             Text("Permissions and tools",style=MaterialTheme.typography.titleMedium)
-            Row{Text("Personal memory tools",Modifier.weight(1f));Switch(options.memoryTools,{options=options.copy(memoryTools=it,gibberlinkTools=false,remoteTools=false,peerTools=false)},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
+            Text("Selected tools: ${options.toolCount}/10. Combine groups as needed; each action still requires its own saved grant.",style=MaterialTheme.typography.bodySmall,color=if(options.toolCount>10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            Row{Text("Personal memory tools",Modifier.weight(1f));Switch(options.memoryTools,{options=options.copy(memoryTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
             Text("Requires saved agent management in Memory and personality. Agents can manage switches and facts; recall is applied only to on-device chat.")
-            Row{Text("Local search tools",Modifier.weight(1f));Switch(options.localSearchTools,{options=options.copy(localSearchTools=it,gibberlinkTools=false,remoteTools=false,peerTools=false)},Modifier.testTag("chat-local-search-tools"))}
+            Row{Text("Local search tools",Modifier.weight(1f));Switch(options.localSearchTools,{options=options.copy(localSearchTools=it,colibriMode="OFF")},Modifier.testTag("chat-local-search-tools"))}
             Text("The on-device model can search saved app content only after your separate local-content agent grant. No Internet is needed.")
-            Row{Text("Allow web search and page tools",Modifier.weight(1f));Switch(options.webTools,{options=options.copy(webTools=it,gibberlinkTools=false,remoteTools=false,peerTools=false,nodeTools=if(it) false else options.nodeTools)})}
+            Row{Text("Allow web search and page tools",Modifier.weight(1f));Switch(options.webTools,{options=options.copy(webTools=it,colibriMode="OFF")})}
             Text("The local model can request web_search using your configured Brave API key, Internet switch and agent grant. Queries go to Brave. crawl_url also requires the HTTPS Crawl4AI companion and approved domains; URLs and fetched content go to that host. Neither service is silently enabled.")
             TextButton(onClick=onSearchSettings){Text("Manage search access and articles")}
-            Row{Text("Allow phone tools",Modifier.weight(1f));Switch(options.phoneTools,{options=options.copy(phoneTools=it,gibberlinkTools=false,remoteTools=false,peerTools=false,nodeTools=if(it) false else options.nodeTools)},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
+            Row{Text("Allow phone tools",Modifier.weight(1f));Switch(options.phoneTools,{options=options.copy(phoneTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
             Text("Requires saved autonomy, app scope and Android Accessibility in Settings → OpenClaw and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant. Wireless ADB and root adapters are not connected to this chat.")
-            Row{Text("Allow VM and SSH node tools",Modifier.weight(1f));Switch(options.nodeTools,{options=options.copy(nodeTools=it,gibberlinkTools=false,remoteTools=false,peerTools=false,webTools=if(it) false else options.webTools,phoneTools=if(it) false else options.phoneTools)},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
-            Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. Choose these separately from web/phone tools to keep the tool list bounded. VM/QEMU and remote nodes must actually be available.")
+            Row{Text("Allow VM and SSH node tools",Modifier.weight(1f));Switch(options.nodeTools,{options=options.copy(nodeTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
+            Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. The combined chat tool list is limited to ten. VM/QEMU and remote nodes must actually be available.")
             Row{Text("Local cryptography tools",Modifier.weight(1f));Switch(options.cryptoTools,{options=options.copy(cryptoTools=it,colibriMode="OFF")})}
             Text("Requires the saved cryptography agent grant. Keys/tool results are visible to the model and saved chat; keep real credentials in the vault.")
-            Row{Text("GibberLink audio tools",Modifier.weight(1f));Switch(options.gibberlinkTools,{options=options.copy(gibberlinkTools=it,colibriMode="OFF",remoteTools=false,peerTools=false,nodeTools=false,webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false)})}
+            Row{Text("GibberLink audio tools",Modifier.weight(1f));Switch(options.gibberlinkTools,{options=options.copy(gibberlinkTools=it,colibriMode="OFF")})}
             Text("Saved audio/agent and Media operation grants plus a visible GibberLink screen are required. Incoming English transcripts never auto-execute.")
-            Row{Text("Multi-node command tools",Modifier.weight(1f));Switch(options.remoteTools,{options=options.copy(remoteTools=it,colibriMode="OFF",gibberlinkTools=false,peerTools=false,nodeTools=false,webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false)})}
+            Row{Text("Multi-node command tools",Modifier.weight(1f));Switch(options.remoteTools,{options=options.copy(remoteTools=it,colibriMode="OFF")})}
             Text("Commands only saved fingerprint-pinned SSH nodes within per-node action grants. Configure Device and cluster commands plus SSH delegation.")
-            Row{Text("P2P chat and command tools",Modifier.weight(1f));Switch(options.peerTools,{options=options.copy(peerTools=it,colibriMode="OFF",gibberlinkTools=false,remoteTools=false,nodeTools=false,webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false)})}
+            Row{Text("P2P chat and command tools",Modifier.weight(1f));Switch(options.peerTools,{options=options.copy(peerTools=it,colibriMode="OFF")})}
             Text("Requires the foreground, manually paired peer and saved P2P/agent grants. Receiver approves command scopes independently; native layer inference over Internet is not implemented.")
             Text("Experimental local tool protocol: three calls, 180-second deadline and Stop. A model trained for JSON/tool use is required; invalid output dispatches no action for that step. The starter model is not qualified for reliable autonomy.")
         }
@@ -104,7 +143,6 @@ import androidx.compose.ui.semantics.contentDescription
         Text("Rates use authoritative runtime/provider counts after completion. Native runtime rate is preferred; otherwise end-to-end average is labelled. Unreported counts stay unavailable. Text callbacks and characters are not tokens.",style=MaterialTheme.typography.bodyMedium)
         HorizontalDivider()
         Text("Instructions and sampling",style=MaterialTheme.typography.titleMedium)
-        OutlinedTextField(options.systemPrompt,{options=options.copy(systemPrompt=it.take(4000))},Modifier.fillMaxWidth(),label={Text("Instructions")},maxLines=4)
         Text("Temperature: ${"%.2f".format(options.temperature)}");Slider(options.temperature,{options=options.copy(temperature=it)},valueRange=0f..2f)
         Text("Context capacity and weight quantization are configured per local model in Models. Online temperature is sent only when enabled for that profile.")
         error?.let{Text(it,color=MaterialTheme.colorScheme.error)}

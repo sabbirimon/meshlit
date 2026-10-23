@@ -26,7 +26,16 @@ fun RelaySettingsScreen() {
     val relay: RelayManager = koinInject(); val state by relay.state.collectAsStateWithLifecycle()
     val app = LocalContext.current.applicationContext as MeshlitApplication
     val scope = rememberCoroutineScope(); var error by remember { mutableStateOf<String?>(null) }
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(state.enabled, state.expiresAtMs) {
+        while (state.enabled) { now = System.currentTimeMillis(); delay(1000) }
+    }
+    val secondsLeft = ((state.expiresAtMs - now + 999) / 1000).coerceAtLeast(0)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         item { Text("Host a cluster", style = MaterialTheme.typography.headlineLarge)
             Text("This device manages enrollment and member presence. Keep it online and reachable.") }
         item { Row(verticalAlignment = Alignment.CenterVertically) {
@@ -41,18 +50,24 @@ fun RelaySettingsScreen() {
                 Text("Use HTTPS or a VPN for internet access. HTTP enrollment exposes traffic on the local network.") }
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(24.dp)) {
                 Text("Join code", style = MaterialTheme.typography.labelLarge)
-                androidx.compose.foundation.text.selection.SelectionContainer { Text(state.code, style = MaterialTheme.typography.displayMedium) }
-                Text("Valid for 10 minutes after creation. Share the address and code with your devices.")
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(if (secondsLeft > 0) state.code else "Refreshing…", style = MaterialTheme.typography.displayMedium)
+                }
+                Text("Refreshes automatically in %02d:%02d".format(java.util.Locale.ROOT, secondsLeft / 60, secondsLeft % 60),
+                    color = MaterialTheme.colorScheme.primary)
+                Text("Share the address and current code with your devices. An expired code cannot enroll new members.")
                 TextButton(onClick = { scope.launch(Dispatchers.IO) { relay.rotateCode() } }) { Text("Create new code") }
                 TextButton(onClick = {
                     scope.launch(Dispatchers.IO) {
-                        val link = relay.invite()
-                        withContext(Dispatchers.Main) {
-                            (app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
-                                .setPrimaryClip(android.content.ClipData.newPlainText("Cluster invite", link))
-                        }
+                        try {
+                            val link = relay.invite()
+                            withContext(Dispatchers.Main) {
+                                (app.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                                    .setPrimaryClip(android.content.ClipData.newPlainText("Cluster invite", link))
+                            }
+                        } catch (e: Exception) { withContext(Dispatchers.Main) { error = e.message } }
                     }
-                }) { Text("Copy identity-pinned invite link") }
+                }, enabled = secondsLeft > 0) { Text("Copy identity-pinned invite link") }
             } } }
             item { Text("Connected members · ${state.members.size}", style = MaterialTheme.typography.titleLarge) }
             items(state.members, key = { it.nodeId }) { member -> Card(Modifier.fillMaxWidth()) {
@@ -71,7 +86,10 @@ fun RelayJoinScreen() {
     val scope = rememberCoroutineScope()
     var url by rememberSaveable { mutableStateOf("") }; var code by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Text("Join your cluster", style = MaterialTheme.typography.headlineLarge)
         Text("Enter the relay address and its current six-digit code.")
         OutlinedTextField(url, { url = it }, label = { Text("Relay address or invite link") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -127,7 +145,11 @@ fun RecoveryScreen() {
             catch (e: Exception) { message = "recovery.import_failed: ${e.message}" }
         }
     }
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         item { Text("Keep your identity", style = MaterialTheme.typography.headlineLarge)
             Text("Your encrypted backup contains the node ID and signing keys. Both the backup file and its passphrase are needed after uninstalling. Rewards and other settings are separate.") }
         item { OutlinedTextField(phrase, { phrase = it }, label = { Text("Recovery passphrase (12+ characters)") },
@@ -165,7 +187,8 @@ fun RecoveryScreen() {
                 app.setStableNodeId(key.nodeId)
                 val peers: com.meshlit.disco.PeerRepository = koinInject()
                 peers.stop(); peers.start(app.appScope, com.meshlit.core.discovery.LocalPeerDescriptor(key.nodeId,
-                    app.localIpAddress, app.httpServerPort, "local_sandboxed", PeerCrypto.fingerprint(key.publicKey)))
+                    app.localIpAddress, app.httpServerPort, "local_sandboxed", PeerCrypto.fingerprint(key.publicKey),
+                    app.displayName, android.os.Build.MANUFACTURER.orEmpty(), android.os.Build.MODEL.orEmpty()))
             }; message = "Identity restored: ${key.nodeId}"; backup = ""; phrase = ""; restored = null }
             catch (e: Exception) { message = "recovery.save_failed: ${e.message}" }
         } }) { Text("Restore") } }, dismissButton = { TextButton(onClick = { restored = null }) { Text("Cancel") } }) }
@@ -174,8 +197,40 @@ fun RecoveryScreen() {
 @Composable
 fun RewardsScreen(onBack: (() -> Unit)? = null) {
     val store: ContributionStore = koinInject(); val state by store.state.collectAsStateWithLifecycle()
+    val metrics: com.meshlit.inference.MetricsRegistry = koinInject()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    var showMeasurements by rememberSaveable { mutableStateOf(false) }
+    var measureTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(showMeasurements) { while(showMeasurements) { delay(2_000);measureTick++ } }
+    if(showMeasurements) {
+        val live=remember(measureTick) { metrics.snapshot() }
+        Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement=Arrangement.spacedBy(14.dp)) {
+            TextButton(onClick={showMeasurements=false}) { Text("Back to rewards") }
+            Text("Contribution measurements",style=MaterialTheme.typography.headlineMedium)
+            Text("Durable receipts and live inference counters have different scopes. Counts reset on process restart; signed receipts remain on this device.",style=MaterialTheme.typography.bodySmall)
+            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                Text("Signed local receipt ledger",style=MaterialTheme.typography.titleMedium)
+                Text("${state.jobs} completed hosted jobs · ${state.credits} reported output tokens")
+                Text("One receipt per job ID. Signatures detect changes to this device's ledger, but the device owner can still control its own measurements. This is not independent proof of service.",style=MaterialTheme.typography.bodySmall)
+            } }
+            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                Text("Current process · live",style=MaterialTheme.typography.titleMedium)
+                Text("Accepted ${live.totalJobs} · succeeded ${live.successJobs} · failed ${live.failureTags.values.sum()} · queued ${live.queueDepth}")
+                Text("Runtime-reported output tokens ${live.totalTokensGenerated}")
+                Text("Average token rate: ${if(live.avgTokensPerSecond>0f) "%.1f tokens/s".format(java.util.Locale.ROOT,live.avgTokensPerSecond) else "unavailable"}")
+                Text("Process uptime ${live.uptimeSeconds}s · resets on restart",style=MaterialTheme.typography.bodySmall)
+            } }
+            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                Text("Reward proof and privacy",style=MaterialTheme.typography.titleMedium)
+                Text("Participation is off unless you enable local receipts on the wallet page. No measurement or log is automatically uploaded from this screen.")
+                Text("A future redeemable reward would require a requester-signed job receipt, independent verifier checks, bounded work and energy measurements, fraud review, and a dispute period. Participants would opt in to sharing redacted proof records with named verifiers; raw chats, secrets and full system logs must stay private.",style=MaterialTheme.typography.bodySmall)
+                Text("Energy, CPU time, bytes transferred, requester confirmation and monetary value: not measured here yet.",style=MaterialTheme.typography.bodySmall)
+            } }
+        }
+        return
+    }
     var transferMessage by remember { mutableStateOf<String?>(null) }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch(Dispatchers.IO) {
@@ -199,7 +254,7 @@ fun RewardsScreen(onBack: (() -> Unit)? = null) {
         }
     }
     LaunchedEffect(store) { withContext(Dispatchers.IO) { store.refresh() } }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Mesh rewards", style = MaterialTheme.typography.headlineMedium)
@@ -215,11 +270,12 @@ fun RewardsScreen(onBack: (() -> Unit)? = null) {
         } }
         Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Record contributions", style = MaterialTheme.typography.titleMedium)
-                Text("Save signed receipts for completed local hosting jobs", style = MaterialTheme.typography.bodySmall)
+                Text("Opt in to local receipts", style = MaterialTheme.typography.titleMedium)
+                Text("Save signed records for completed hosted jobs. Off stops new records; existing records remain until you delete app data.", style = MaterialTheme.typography.bodySmall)
             }
             Switch(state.enabled, { enabled -> scope.launch(Dispatchers.IO) { store.setEnabled(enabled) } })
         } }
+        OutlinedButton(onClick={showMeasurements=true},modifier=Modifier.fillMaxWidth()) { Text("Contribution measurements and proof") }
         Text("Recent contributions", style = MaterialTheme.typography.titleLarge)
         if (state.recent.isEmpty()) {
             Text("No verified hosted jobs yet. Credits appear here after a completed local HTTP inference job reports output tokens.", style = MaterialTheme.typography.bodyMedium)

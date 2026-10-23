@@ -30,7 +30,9 @@ class ChatOptionsTest {
         ChatOptions(peerTools=true,cryptoTools=true).validate()
         ChatOptions(remoteTools=true).validate()
         ChatOptions(gibberlinkTools=true).validate()
-        for (invalid in listOf(ChatOptions(peerTools=true,remoteTools=true), ChatOptions(peerTools=true,webTools=true), ChatOptions(gibberlinkTools=true,onlineProfileId="p"), ChatOptions(nodeTools=true,memoryTools=true,localSearchTools=true,cryptoTools=true))) {
+        ChatOptions(remoteTools=true,gibberlinkTools=true).validate()
+        ChatOptions(peerTools=true,remoteTools=true,webTools=true).validate()
+        for (invalid in listOf(ChatOptions(peerTools=true,remoteTools=true,webTools=true,cryptoTools=true), ChatOptions(gibberlinkTools=true,onlineProfileId="p"), ChatOptions(nodeTools=true,memoryTools=true,localSearchTools=true,cryptoTools=true))) {
             assertThrows(IllegalArgumentException::class.java) { invalid.validate() }
         }
     }

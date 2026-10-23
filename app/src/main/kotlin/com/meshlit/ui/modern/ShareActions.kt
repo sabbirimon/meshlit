@@ -3,6 +3,8 @@ package com.meshlit.ui.modern
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
@@ -17,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import java.io.File
 
@@ -48,19 +52,27 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     }}
     if(reader) ReplyReader(text){reader=false}
     if(details) TokenUsageDetails(usage){details=false}
-    Row {
-        IconButton(onClick={clipboard.setText(AnnotatedString(text))}){Icon(Icons.Default.ContentCopy,"Copy response")}
+    Surface(shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) { Row {
+        IconButton(onClick={clipboard.setText(AnnotatedString(text))}){
+            Icon(Icons.Default.ContentCopy,"Copy response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         IconButton(onClick={try {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
                 .putExtra(Intent.EXTRA_TEXT,text),"Share response"))
-        }catch(e:Exception){error="No sharing app is available"}}){Icon(Icons.Default.Share,"Share response")}
-        IconButton(onClick={reader=true}){Icon(Icons.Default.OpenInFull,"Read full response")}
-        IconButton(onClick={menu=true}){Icon(Icons.Default.MoreVert,"Response actions")}
+        }catch(e:Exception){error="No sharing app is available"}}){
+            Icon(Icons.Default.Share,"Share response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        IconButton(onClick={reader=true}){
+            Icon(Icons.Default.OpenInFull,"Read full response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        IconButton(onClick={menu=true}){
+            Icon(Icons.Default.MoreVert,"Response actions",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         DropdownMenu(menu,{menu=false}) {
             DropdownMenuItem(text={Text("Save response as Markdown")},enabled=!busy,onClick={menu=false;export.launch("meshlit-response.md")})
             DropdownMenuItem(text={Text("Response token details")},onClick={menu=false;details=true})
         }
-    }
+    } }
     error?.let{AlertDialog(onDismissRequest={error=null},title={Text("Cannot share")},text={Text(it)},
         confirmButton={TextButton(onClick={error=null}){Text("OK")}})}
 }

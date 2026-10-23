@@ -34,10 +34,24 @@ import java.util.Date
     val sample by audit.sample.collectAsStateWithLifecycle();val mode by settings.tracingModeFlow.collectAsStateWithLifecycle(SavedTracingMode.Off)
     val savedEndpoint by settings.tracingOtelEndpointFlow.collectAsStateWithLifecycle("")
     val context=LocalContext.current;val scope=rememberCoroutineScope()
+    var result by remember{mutableStateOf<String?>(null)}
+    val auditReader=koinInject<com.meshlit.resources.ResourceSnapshotReader>()
+    val auditRadar=koinInject<com.meshlit.disco.PeerRepository>()
+    val auditPipeline=koinInject<com.meshlit.pipeline.PipelineHost>()
+    val auditDiscovery=koinInject<com.meshlit.disco.DiscoveryModeStore>()
+    var deviceReport by remember { mutableStateOf<kotlinx.serialization.json.JsonObject?>(null) }
+    var reportToExport by remember { mutableStateOf<kotlinx.serialization.json.JsonObject?>(null) }
+    val reportPicker=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val report=reportToExport;reportToExport=null
+        if(uri!=null && report!=null) scope.launch(Dispatchers.IO) {
+            runCatching { context.contentResolver.openOutputStream(uri,"wt")?.bufferedWriter()?.use { it.write(report.toString()) } ?: error("Destination unavailable") }
+                .onFailure { withContext(Dispatchers.Main) { result="Device report export failed" } }
+        }
+    }
     var query by rememberSaveable{mutableStateOf("")};var source by remember{mutableStateOf<AuditSource?>(null)}
     var actor by remember{mutableStateOf<AuditActor?>(null)};var outcome by remember{mutableStateOf<AuditOutcome?>(null)}
     var range by rememberSaveable{mutableIntStateOf(0)};var endpoint by rememberSaveable{mutableStateOf("")}
-    var header by remember{mutableStateOf("")};var result by remember{mutableStateOf<String?>(null)}
+    var header by remember{mutableStateOf("")}
     var editing by rememberSaveable{mutableStateOf(false)};var clear by remember{mutableStateOf(false)};var filters by rememberSaveable{mutableStateOf(false)}
     var busy by remember{mutableStateOf(false)};var export by remember{mutableStateOf<Pair<Boolean,List<AuditRecord>>?>(null)}
     LaunchedEffect(savedEndpoint){if(!editing)endpoint=savedEndpoint}
@@ -56,6 +70,15 @@ import java.util.Date
     if(clear)AlertDialog(onDismissRequest={clear=false},title={Text("Delete retained audit records?")},text={Text("Local records will be removed. Existing exports and collector data remain under their own retention policies.")},confirmButton={TextButton(onClick={clear=false;work{audit.ready.await();audit.journal.clear();result="Local audit records deleted"}}){Text("Delete")}},dismissButton={TextButton(onClick={clear=false}){Text("Cancel")}})
     Scaffold(topBar={TopAppBar(title={Text("Audit and telemetry")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)) {
+            item { Card { Column(Modifier.padding(T.large),verticalArrangement=Arrangement.spacedBy(T.small)) {
+                Text("Device audit report",style=MaterialTheme.typography.titleMedium)
+                Text("One read-only snapshot of Android-exposed hardware, Meshlit resources, permissions and mesh state. Other apps, secrets, payments and passkeys are outside this report.",style=MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement=Arrangement.spacedBy(T.small)) {
+                    Button(onClick={deviceReport=com.meshlit.audit.DeviceAuditReport(context,auditReader,auditRadar,auditPipeline,auditDiscovery).collect()}) { Text("Run device audit") }
+                    OutlinedButton(enabled=deviceReport!=null,onClick={reportToExport=deviceReport;reportPicker.launch("meshlit-device-audit-${System.currentTimeMillis()}.json")}) { Text("Export JSON") }
+                }
+                deviceReport?.let { report -> SelectionContainer { Text(report.toString(),style=MaterialTheme.typography.bodySmall) } }
+            } } }
             item {Card{Column(Modifier.padding(T.large),verticalArrangement=Arrangement.spacedBy(T.small)){
                 Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Local audit collection",style=MaterialTheme.typography.titleMedium);Text("Encrypted metadata history",style=MaterialTheme.typography.bodySmall)}
                     Switch(policy.enabled,{v->work{audit.configure(policy.copy(enabled=v))}},enabled=!busy)}

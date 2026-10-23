@@ -67,6 +67,10 @@ class ContributionStore(context: Context, private val identity: DeviceIdentity, 
     private fun read(): List<ContributionReceipt> {
         if (!file.baseFile.exists()) return emptyList()
         require(file.baseFile.length() <= 16 * 1024 * 1024) { "Contribution ledger too large" }
-        return file.openRead().use { PeerCrypto.json.decodeFromString(serializer, it.readBytes().toString(Charsets.UTF_8)) }
+        return file.openRead().use { stream ->
+            val bytes = com.meshlit.util.readBounded(stream, 16777216)
+            require(bytes.size <= 16 * 1024 * 1024) { "Contribution ledger too large" }
+            PeerCrypto.json.decodeFromString(serializer, bytes.toString(Charsets.UTF_8))
+        }
     }
 }

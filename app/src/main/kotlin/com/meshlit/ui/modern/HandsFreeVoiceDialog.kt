@@ -34,6 +34,7 @@ import org.koin.compose.koinInject
     val state by voice.state.collectAsState();val packs by models.models.collectAsState();val profiles by providers.profiles.collectAsState()
     val scope=rememberCoroutineScope()
     var options by remember{mutableStateOf(VoiceOptions())}
+    var previewText by remember { mutableStateOf("Hi, I'm Meshlit. It's good to hear from you. What would you like to explore today?") }
     var importing by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
     val enabled=!state.busy && !importing
     val owner=LocalLifecycleOwner.current
@@ -41,8 +42,13 @@ import org.koin.compose.koinInject
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){allowed->if(allowed) start() else error="Microphone permission was not granted"}
     val importer=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->if(uri!=null) scope.launch {
         importing=true;error=null
-        try{models.install(uri)}catch(e:Exception){error=e.message ?: "Voice pack import failed"}finally{importing=false}
+        try {
+            val pack=models.install(uri)
+            options=if(pack.kind==SpeechKind.WHISPER_STT) options.copy(sttPack=pack.id) else options.copy(ttsPack=pack.id)
+        } catch(e:Exception){error=e.message ?: "Voice pack import failed"}finally{importing=false}
     }}
+    val missingRecognition=options.input==SpeechInput.OFFLINE_MODEL && packs.none { it.id==options.sttPack && it.kind==SpeechKind.WHISPER_STT }
+    val missingVoice=options.output==SpeechOutput.OFFLINE_MODEL && packs.none { it.id==options.ttsPack && it.kind==SpeechKind.PIPER_TTS }
     DisposableEffect(voice,owner){val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_PAUSE) voice.stop()}
         owner.lifecycle.addObserver(observer);onDispose{owner.lifecycle.removeObserver(observer);voice.close()}}
     AlertDialog(onDismissRequest=onClose,title={Text("Live voice conversation")},text={Column(Modifier.verticalScroll(rememberScrollState()).testTag("voice-options"),verticalArrangement=Arrangement.spacedBy(8.dp)){
@@ -53,6 +59,8 @@ import org.koin.compose.koinInject
         Text("Off means no online voice request or network Android voice. Android's guaranteed on-device recognizer needs supported Android 12+. On Android 11 or earlier, choose an installed offline recognition pack for offline input.")
         if(options.input==SpeechInput.OFFLINE_MODEL) VoiceChoice("Offline recognition pack",options.sttPack,packs.filter{it.kind==SpeechKind.WHISPER_STT}.map{it.id to "${it.name} · ${it.language}"},enabled){options=options.copy(sttPack=it)}
         if(options.output==SpeechOutput.OFFLINE_MODEL) VoiceChoice("Offline voice pack",options.ttsPack,packs.filter{it.kind==SpeechKind.PIPER_TTS}.map{it.id to "${it.name} · ${it.language}"},enabled){options=options.copy(ttsPack=it)}
+        if(missingRecognition) Text("No Whisper recognition pack selected. Import a compatible ZIP below, or choose Android recognizer / online speech.",color=MaterialTheme.colorScheme.error)
+        if(missingVoice) Text("No Piper voice pack selected. Import a compatible ZIP below, or choose an installed Android voice / online speech.",color=MaterialTheme.colorScheme.error)
         if(options.output==SpeechOutput.ANDROID) VoiceChoice("Installed voice",options.androidVoice.orEmpty(),state.voices.filter{options.network || !it.isNetworkConnectionRequired}.map{it.name to "${it.name} · ${it.locale.displayName} · ${if(it.isNetworkConnectionRequired) "network" else "offline"}"},enabled){options=options.copy(androidVoice=it)}
         if(options.input==SpeechInput.PROVIDER || options.output==SpeechOutput.PROVIDER) {
             VoiceChoice("Speech provider",options.providerId,profiles.filter{it.enabled && it.protocol in setOf(OnlineProtocol.OPENAI,OnlineProtocol.OPENAI_COMPATIBLE)}.map{it.id to it.name},enabled){options=options.copy(providerId=it)}
@@ -67,14 +75,17 @@ import org.koin.compose.koinInject
             Text("Android pitch/rate presets describe playback styles, not a person's identity, age or gender.")
             FlowRow{VoiceStyle.entries.forEach{value->FilterChip(options.style==value,{options=options.copy(style=value)},enabled=enabled,label={Text(value.label)})}}
         } else Text("Voice packs and provider voice IDs determine the speaker. Pitch presets are available for Android voices only; Piper and this provider adapter do not implement them.")
-        OutlinedButton(enabled=enabled,onClick={voice.configure(options);voice.preview()},modifier=Modifier.testTag("voice-preview")){Text("Preview voice")}
+        OutlinedTextField(previewText,{ if(it.length<=200) previewText=it },Modifier.fillMaxWidth(),label={Text("Voice sample text")},minLines=2,maxLines=3,enabled=enabled)
+        OutlinedButton(enabled=enabled && !missingVoice && previewText.isNotBlank(),onClick={voice.configure(options);voice.preview(previewText)},modifier=Modifier.testTag("voice-preview")){Text("Play real voice sample")}
         HorizontalDivider();Text("Offline speech models",style=MaterialTheme.typography.titleSmall)
-        Text("Import a verified Meshlit voice ZIP from local storage or another device. Whisper recognition and Piper synthesis packs are separate from GGUF chat models; no pack is silently downloaded. Current offline adapter supports English Whisper and Piper.")
-        OutlinedButton(enabled=enabled,onClick={importer.launch(arrayOf("application/zip","application/octet-stream"))}){Text(if(importing) "Verifying voice pack…" else "Import offline voice pack")}
+        Text("Import a verified Meshlit voice ZIP from local storage or another device. Whisper recognition and Piper synthesis packs are separate from GGUF chat models; no pack is silently downloaded. This build supports English Whisper and Piper. The ZIP needs a Meshlit manifest with checksums; an arbitrary model ZIP will fail verification.")
+        // Documents providers assign different MIME types to ZIP files. Accept the
+        // picker result and let VoiceModels validate the manifest and every entry.
+        OutlinedButton(enabled=enabled,onClick={importer.launch(arrayOf("*/*"))}){Text(if(importing) "Verifying voice pack…" else "Import offline voice pack")}
         packs.forEach{pack->Row{Text("${pack.name}\n${pack.kind} · ${pack.license}",Modifier.weight(1f));TextButton(enabled=enabled,onClick={scope.launch{importing=true;try{models.remove(pack.id)}catch(e:Exception){error=e.message}finally{importing=false}}}){Text("Remove")}}}
         Text(state.phase,modifier=Modifier.testTag("voice-phase"));(state.error ?: error)?.let{Text(it,color=MaterialTheme.colorScheme.error)}
         Text("Turn-taking conversation is implemented. Full-duplex interruptions through Gemini Live / OpenAI Realtime need separate adapters and live account tests. Claude text can use any configured speech adapter; no native Claude voice API is assumed.")
-    }},confirmButton={Button(enabled=!importing,onClick={if(state.busy) voice.stop() else {
+    }},confirmButton={Button(enabled=!importing && (state.busy || (!missingRecognition && !missingVoice)),onClick={if(state.busy) voice.stop() else {
         if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) start() else permission.launch(Manifest.permission.RECORD_AUDIO)
     }},modifier=Modifier.testTag("voice-start-stop")){Text(if(state.busy) "Stop" else "Start conversation")}},dismissButton={TextButton(onClick=onClose){Text("Close")}})
 }

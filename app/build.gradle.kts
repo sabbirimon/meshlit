@@ -346,13 +346,11 @@ dependencies {
     implementation(libs.nanohttpd.core)
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
 
-    // QR pairing code generation (we render our own Meshlit pairing
-    // QR on the Devices screen) + Google Play Services Code Scanner
-    // (we scan peers' QR codes via Play Services' bundled scanner
-    // UI). The scanner ships as a small stub that downloads the
-    // module from Play Services on first launch — no CAMERA
-    // permission needed in the manifest, no CameraX dep.
+    // Render identity QRs locally and scan live camera frames with
+    // EasyQRScan's in-app CameraX/ML Kit surface. The older Play
+    // Services scanner remains for legacy worker/Devices surfaces.
     implementation(libs.zxing.core)
+    implementation(libs.easyqrscan.scanner)
     implementation(libs.play.services.code.scanner)
 
     // CameraX — `agent_camera_capture` tool. Lifecycle-aware

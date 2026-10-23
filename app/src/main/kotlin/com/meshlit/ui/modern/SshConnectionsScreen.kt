@@ -17,7 +17,7 @@ import java.util.UUID
     val repository=koinInject<SshConnections>();val connections by repository.connections.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
     var editing by remember{mutableStateOf<SshConnection?>(null)};var password by remember{mutableStateOf("")};var key by remember{mutableStateOf("")}
     var selected by remember{mutableStateOf<String?>(null)};var command by remember{mutableStateOf("")};var output by remember{mutableStateOf("")};var job by remember{mutableStateOf<Job?>(null)};var error by remember{mutableStateOf<String?>(null)}
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         item{NodeSshCard()}
         item{TextButton(onClick=onBack){Text("Back to settings")};Text("SSH connections",style=MaterialTheme.typography.headlineSmall);Text("Connect to hosts where you have permission. Verify the server fingerprint through an independent channel before saving. The remote device must already run an SSH server; this screen does not enroll a layer worker or install software.")}
         items(connections,key={it.id}){connection->Card{Column(Modifier.padding(16.dp)){Text("${connection.name} · ${connection.username}@${connection.host}:${connection.port}")

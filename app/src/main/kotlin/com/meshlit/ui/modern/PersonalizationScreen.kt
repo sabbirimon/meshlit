@@ -13,7 +13,7 @@ import com.meshlit.di.koinInject
     var fact by remember{mutableStateOf("")};var error by remember{mutableStateOf<String?>(null)}
     var style by remember(state.policy.style){mutableStateOf(state.policy.style)}
     fun action(block:()->Unit){try{block();error=null}catch(e:Exception){error=e.message}}
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item {TextButton(onClick=back){Text("Back")};Text("Memory and personality",style=MaterialTheme.typography.headlineSmall)}
         item {Text("Remember preferences over time on this installation. Facts are encrypted locally, can be reviewed/deleted, and apply only to on-device chat. This is recall and personalization, not model retraining. Nothing is learned from web pages automatically.")}
         item {Row{Text("Long-term memory",Modifier.weight(1f));Switch(state.policy.memory,{value->action{memory.policy(state.policy.copy(memory=value,agentCanManage=if(!value) false else state.policy.agentCanManage))}})}}

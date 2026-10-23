@@ -4,6 +4,16 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current device and security gates — 2026-10-23
+
+- [ ] Reconcile and qualify the older Android Studio requests using [the source audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md); prioritize voice input, model transfer, Auto Pilot repair, safe imports, persona/adapter selection and distributed LoRA by real backend evidence.
+
+- [ ] Install and exercise the current build41 APK on Xiaomi; the verified ARM64 file is in its Downloads folder.
+- [ ] Run the Samsung UI, model load/generation, discovery and approved-device revocation acceptance checks.
+- [ ] Prove two-device direct chat and hostile pairing denial; prove layer sharding with coordinator plus two live workers.
+- [ ] Build authenticated multi-member Mesh chat, desktop worker/agent/MCP backends and a real server/container runtime before claiming parity.
+- [ ] Publish release assets only after on-device and signing/package gates; keep the existing prerelease draft until then.
+
 ## Paused Android/desktop peering continuation — 2026-10-12
 
 [Future build plan](docs/PEERING_UI_BUILD_PLAN.md) · [Exact handoff and validation](docs/PEERING_UI_HANDOFF_2026-10-12.md). Implementation is partial and paused at the owner's request; resume from the saved working tree. Both platforms are in scope. Android Studio is the reference, not the target.

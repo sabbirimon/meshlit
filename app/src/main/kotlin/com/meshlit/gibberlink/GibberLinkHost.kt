@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import com.meshlit.BuildProfile
 import com.meshlit.core.common.control.ManagedFeature
 import com.meshlit.core.gibberlink.GibberLinkCodec
+import com.meshlit.core.gibberlink.AcousticControlPacket
 import com.meshlit.core.mcp.*
 import com.meshlit.operations.OperationsControl
 import kotlinx.coroutines.*
@@ -16,14 +17,14 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.json.*
 
-data class AudioPolicy(val enabled: Boolean = false, val agents: Boolean = false)
+data class AudioPolicy(val enabled: Boolean = false, val agents: Boolean = false, val autoRespond: Boolean = false)
 data class EnglishTranscript(val direction: String, val english: String, val timeMillis: Long, val status: String, val id: String = java.util.UUID.randomUUID().toString())
 
 /** Foreground, bounded audio modem. Received text is evidence, never an executable command. */
 class GibberLinkHost(private val context: Context) {
     private val prefs = context.getSharedPreferences("gibberlink-audio", 0)
     private val gate = OperationsControl.get(context).gate
-    private val _policy = MutableStateFlow(AudioPolicy(prefs.getBoolean("enabled", false), prefs.getBoolean("agents", false)))
+    private val _policy = MutableStateFlow(AudioPolicy(prefs.getBoolean("enabled", false), prefs.getBoolean("agents", false), prefs.getBoolean("auto-respond", false)))
     val policy = _policy.asStateFlow()
     private val _transcripts = MutableStateFlow<List<EnglishTranscript>>(emptyList())
     val transcripts = _transcripts.asStateFlow()
@@ -35,7 +36,8 @@ class GibberLinkHost(private val context: Context) {
     @Synchronized fun saveHuman(next: AudioPolicy) {
         check(!BuildProfile.coreCandidate)
         if (!next.enabled || !next.agents) { _policy.value = next; stop() }
-        check(prefs.edit().putBoolean("enabled", next.enabled).putBoolean("agents", next.agents).commit()) { "Cannot save audio policy" }
+        check(prefs.edit().putBoolean("enabled", next.enabled).putBoolean("agents", next.agents)
+            .putBoolean("auto-respond", next.autoRespond).commit()) { "Cannot save audio policy" }
         _policy.value = next; _status.value = if (next.enabled) "Ready while this screen is visible" else "Off"
     }
     fun visible(value: Boolean) { foreground = value; if (!value) stop() }
@@ -101,7 +103,8 @@ class GibberLinkHost(private val context: Context) {
                 check(n >= 0) { "Microphone read failed" }
                 if (n > 0) codec.decode(handle, frame, n)?.let {
                     val text = it.toString(Charsets.US_ASCII)
-                    record("Received", text, "Unverified nearby sender; untrusted data")
+                    record("Received", text, if (AcousticControlPacket.receivedCommand(text) != null)
+                        "Unverified command request; review only, never auto-executed" else "Unverified nearby sender; untrusted data")
                     return@audio text
                 }
                 delay(5)
@@ -109,7 +112,30 @@ class GibberLinkHost(private val context: Context) {
             null
         } finally { recorder?.let { runCatching { it.stop() }; it.release() }; codec.close(handle) }
     }
+    suspend fun discover(agent: Boolean = false): Boolean {
+        check(!_policy.value.autoRespond) { "Turn off automatic discovery replies on the initiating device" }
+        val random = ByteArray(6).also { java.security.SecureRandom().nextBytes(it) }
+        val nonce = random.joinToString("") { "%02X".format(it.toInt() and 255) }
+        send(AcousticControlPacket.hello(nonce), agent)
+        return AcousticControlPacket.matchesReply(listen(20, agent).orEmpty(), nonce)
+    }
+    suspend fun respondToDiscovery(packet: String): Boolean {
+        val nonce = AcousticControlPacket.helloNonce(packet) ?: return false
+        check(_policy.value.autoRespond) { "Automatic discovery replies are off" }
+        send(AcousticControlPacket.reply(nonce))
+        return true
+    }
+    suspend fun sendCommandRequest(command: String, agent: Boolean = false): String =
+        send(AcousticControlPacket.commandRequest(command), agent)
     fun specs(): List<McpToolSpec> = listOf(
+        McpToolSpec("gibberlink_discover", "Send a fresh acoustic challenge and listen for a compatible nearby modem reply. This does not authenticate or pair an AI agent. Requires visible screen and saved audio/agent grants.", objectSchema(emptyMap())) { args ->
+            require((args as? JsonObject)?.isEmpty() == true)
+            McpToolResult.Json(buildJsonObject { put("compatible_modem_heard", discover(true)); put("authenticated_sender", false) })
+        },
+        McpToolSpec("gibberlink_send_command_request", "Send a short command request by sound. The receiving app shows it as untrusted text; no command is executed or delivery confirmed.", objectSchema(mapOf("command" to stringProp("1–89 printable characters; no secrets")), listOf("command"))) { args ->
+            val command = (args as? JsonObject)?.get("command")?.jsonPrimitive?.content ?: error("Command request required")
+            McpToolResult.Json(buildJsonObject { put("status", sendCommandRequest(command, true)); put("execution_confirmed", false); put("delivery_confirmed", false) })
+        },
         McpToolSpec("gibberlink_send", "Play an English data-over-sound packet, not speech. Requires saved audio/agent grants and visible GibberLink screen. Nearby listeners can decode it. No delivery acknowledgment.", objectSchema(mapOf("english" to stringProp("1–96 printable English characters; never send secrets")), listOf("english"))) { args ->
             val obj = args as? JsonObject ?: error("English packet object required"); require(obj.keys == setOf("english"))
             val english = (obj["english"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: error("English text required")
@@ -119,7 +145,9 @@ class GibberLinkHost(private val context: Context) {
             val obj = args as? JsonObject ?: error("Listen options object required"); require(obj.keys.all { it == "seconds" })
             val seconds = if ("seconds" in obj) obj["seconds"]?.jsonPrimitive?.intOrNull ?: error("Integer seconds required") else 20
             val text = listen(seconds, true)
-            McpToolResult.Json(buildJsonObject { put("received", text != null); text?.let { put("english_transcript", it) }; put("untrusted_content", true); put("authenticated_sender", false) })
+            McpToolResult.Json(buildJsonObject { put("received", text != null); text?.let { put("english_transcript", it);
+                AcousticControlPacket.receivedCommand(it)?.let { command -> put("command_request", command) } };
+                put("untrusted_content", true); put("authenticated_sender", false); put("execution_permitted", false) })
         }
     )
 }

@@ -37,6 +37,29 @@ class PeerCryptoTest {
         assertNotNull(authority.authenticate(response.tokenHex))
         store.revoke(NodeId("B")); assertNull(authority.authenticate(response.tokenHex))
     }
+    @Test fun pairingQueueKeepsOrderAndRejectsOverflowWithoutEvictingOwners() {
+        val owner = PeerCrypto.generate("owner")
+        val authority = PairingAuthority({ owner }, InMemoryTrustStore())
+        val peers = (1..65).map { PeerCrypto.generate("peer-$it") }
+        fun request(peer: RecoverableIdentity): HandshakeRequest {
+            val nonce = PeerCrypto.randomHex()
+            return HandshakeRequest(peer.nodeId, peer.publicKey, "local_trusted", nonce,
+                identityProof = PeerCrypto.prove(peer, nonce))
+        }
+        peers.take(64).forEach { assertEquals("handshake.peer_approval_required",
+            (authority.handshake(request(it)) as MeshlitResult.Failure).error.tag) }
+        assertEquals((1..64).map { "peer-$it" }, authority.pending.value.map { it.nodeId })
+        assertEquals("handshake.peer_approval_required",
+            (authority.handshake(request(peers.first())) as MeshlitResult.Failure).error.tag)
+        assertEquals("peer-1", authority.pending.value.first().nodeId)
+        assertEquals("handshake.queue_full_retry_later",
+            (authority.handshake(request(peers.last())) as MeshlitResult.Failure).error.tag)
+        assertEquals(64, authority.pending.value.size)
+        authority.dismiss("peer-2")
+        assertEquals("handshake.peer_approval_required",
+            (authority.handshake(request(peers.last())) as MeshlitResult.Failure).error.tag)
+        assertEquals("peer-65", authority.pending.value.last().nodeId)
+    }
     @Test fun handshakeAuthenticatesResponseMetadataAndNeverStoresTamperedTrust() = runBlocking {
         val a = PeerCrypto.generate("A"); val b = PeerCrypto.generate("B"); val aStore = InMemoryTrustStore(); val bStore = InMemoryTrustStore()
         aStore.upsert(DeviceTrustPolicy("B", TrustTier.LOCAL_TRUSTED, setOf("brain"), publicKeyFingerprint = PeerCrypto.fingerprint(b.publicKey)))

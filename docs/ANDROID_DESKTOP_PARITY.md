@@ -10,7 +10,7 @@ current Android sources and the working desktop registry. These snapshots are no
 an identification of the exact APK first installed on the Samsung; that requires
 an artifact hash/version and device record.
 
-**43 older menu destinations → 49 current menu destinations.**
+**43 older menu destinations → 61 current menu destinations.**
 Current feature-map catalog: **88 feature areas, 38 typed operations**
 (the module count in that historical catalog predates the new desktop-only modules).
 No percentage of product completeness follows from these counts.
@@ -26,6 +26,15 @@ Source references: [old/current menu source](../app/src/main/kotlin/com/meshlit/
 
 | ID / Android menu | Older snapshot | Current Android menu purpose | Desktop source scope / gap |
 | --- | --- | --- | --- |
+| `menu-layout` — Customize menu | Added since snapshot | Add, remove and reorder shortcuts in Settings and the main drawer | No desktop destination |
+| `sharding` — Sharding and workers | Added since snapshot | Pair approved model workers, assess resources and negotiate layers | Port pending: Readiness and worker requirements; desktop layer pipeline pending |
+| `radar` — Device radar | Added since snapshot | Topology, live discovery, saved workers and local identity | Port pending: Nearby discovery and map require desktop discovery backend · port pending |
+| `host-map` — Global host map | Added since snapshot | World projection of consenting relay members and saved hosts | No desktop destination |
+| `device-dashboard` — Device management | Added since snapshot | Review and revoke saved endpoints, groups, workers, relay members and peer chat | Partial/source: Saved endpoints, last verified contact and local host capacity; no inferred online status |
+| `meshchat` — Mesh chat | Added since snapshot | Foreground peer conversations over verified direct or relay connections | Port pending: Multi-device messaging transport and offline delivery · desktop port pending |
+| `securityprivacy` — Security and privacy | Added since snapshot | Permissions, identity, guardrails, network access, audit and policy | Partial/source: Review connection consent, session keys, local storage and response policy |
+| `tools-automation` — Tools and automation | Added since snapshot | MCP registry, Gateway routes, agent jobs and reviewed hooks | No desktop destination |
+| `guardrails` — Local behavior and guardrails | Added since snapshot | Control local instructions and optional gateway term rules | Partial/source: Local system prompt selection; model and provider restrictions remain independent |
 | `search` — Search access and articles | Added since snapshot | Offline content search, Internet permission and agent search grants | Partial/source: Search settings, current chat, saved models/devices; optional browser web handoff |
 | `appearance` — Appearance | Present | Dynamic colors, accents, light and dark mode | Partial/source: Saved desktop themes, English/Chinese and font scale |
 | `crypto` — Local cryptography | Added since snapshot | Offline hashes, random keys, HMAC and authenticated encryption | Partial/source: Offline hashes, random keys, HMAC and authenticated encryption |
@@ -55,9 +64,10 @@ Source references: [old/current menu source](../app/src/main/kotlin/com/meshlit/
 | `ssh` — SSH nodes and connections | Present | Key-authenticated inbound node commands and pinned outbound connections | Partial/source: Pinned outbound SSH and approved-key inbound status |
 | `firewall` — Network rules | Present | Persisted Meshlit listener firewall and network status | Port pending: Persisted Meshlit listener firewall and network status |
 | `device` — Device | Present | Device profile, name and hardware capabilities | Partial/source: Observed local hardware and process inventory |
+| `resources` — Resources and sensors | Added since snapshot | Live RAM, storage, battery, model activity and available sensors | No desktop destination |
 | `tasks` — Task manager | Present | Plan tasks, track real jobs, bulk finish and stop operations | Partial/source: Live local processes, CPU/RSS readings and scoped human Stop |
 | `ide` — Code workspace | Present | Offline source editor, files, syntax highlighting and search | Partial/source: User-selected UTF-8 editor, search and Save As; IDE tooling pending |
-| `hyperl` — HyperL libraries | Present | Native CPU recipes, precise sums, encrypted datasets and kernel source | Partial/source: Built-in native CPU recipes and precise sums; separate licence |
+| `hyperl` — HyperL libraries | Present | Native CPU recipes, precise sums, encrypted datasets and kernel source | Partial/source: Native CPU recipes, bounded custom graphs and precise sums; separate licence |
 | `permissions` — App permissions | Present | Optional setup, runtime grants and Android accessibility | Partial/source: Explicit session grants for selected desktop inference hosts |
 | `files` — Files and storage | Present | Browse, preview AI assets and stream ZIP creation/extraction | Partial/source: User-selected UTF-8 files and Save As; full file/archive management pending |
 | `termux` — Termux integration | Present | Probe an installed shell, manage delegation and view its audit | Port pending: Probe an installed shell, manage delegation and view its audit |
@@ -65,6 +75,8 @@ Source references: [old/current menu source](../app/src/main/kotlin/com/meshlit/
 | `monitor` — Monitoring and layer pipeline | Present | Memory, thermal status and approved model workers | Partial/source: Live local CPU/RAM charts and process sampling; remote pipeline monitor pending |
 | `audit` — Audit and telemetry | Present | Encrypted audit history, device metrics, OTLP collector and exports | Port pending: Encrypted audit history, device metrics, OTLP collector and exports |
 | `logs` — Logs and export | Present | Search logs; filter severity and source; export TXT or JSONL | Port pending: Search logs; filter severity and source; export TXT or JSONL |
+| `identity-recovery` — Device identity and recovery | Added since snapshot | Encrypted signing identity backup and restore | No desktop destination |
+| `rewards` — Mesh rewards wallet | Added since snapshot | Signed local compute receipts and verified backup | No desktop destination |
 | `network` — Network and pairing | Present | Enroll devices, choose transports and approve layer workers | Partial/source: Save trusted HTTPS API addresses; discovery and worker enrollment pending |
 | `peers` — Forwarding peers | Present | Manage peers for the existing inference router | Port pending: Manage peers for the existing inference router |
 | `runtime` — Linux runtime and sandbox | Present | VM configuration and agent activation consent | Port pending: VM configuration and agent activation consent |
@@ -86,8 +98,10 @@ it does not provide a separate advanced layout within every destination.
 `CategoryScreen.categorySections` likewise returns all indexed entries for Advanced
 and only non-advanced entries for Simple. A category with no advanced-only entries
 can therefore look the same. The V2 category wrapper delegates to that screen.
-This source inspection explains a possible cause; no new physical-phone UI test
-was performed for this comparison and no Android screen has been changed here.
+On Samsung build41, the Basic/Advanced state changed, but the shared Quick access
+panel filled the first screen so the filtered list was out of view. The current
+source moves search and mode tabs above Quick access, and shows Quick access only
+in Basic. That final layout still needs a new APK device check.
 
 Desktop now has a curated Basic menu and grouped Advanced menu. Port-pending
 items remain explicitly labelled; Basic/Advanced never changes authority.
@@ -108,8 +122,8 @@ the older feature-map, not whether the feature worked on that phone.
 | `typed-backend` — Durable scoped agent and human commands | Present | implemented | [AgentCommands.kt](../core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/AgentCommands.kt); [AgentBackend.kt](../app/src/main/kotlin/com/meshlit/control/AgentBackend.kt) |
 | `web-api` — Non-Android TLS browser/API enrollment | Present | contract-tested-device-validation-pending | [ControlBridgeServer.kt](../core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/ControlBridgeServer.kt); [WebBridgeHost.kt](../app/src/main/kotlin/com/meshlit/control/WebBridgeHost.kt); [index.html](../app/src/main/assets/control/index.html) |
 | `devices-groups` — Local approved device groups | Present | contract-tested-device-validation-pending | [DeviceDirectory.kt](../core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/DeviceDirectory.kt); [DeviceCompanionPanel.kt](../app/src/main/kotlin/com/meshlit/ui/modern/DeviceCompanionPanel.kt) |
-| `layer-pipeline` — Native model layers over TLS-paired workers | Present | host-proof | [PipelineHost.kt](../app/src/main/kotlin/com/meshlit/pipeline/PipelineHost.kt); [RpcPipelineEngine.kt](../core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/RpcPipelineEngine.kt); [prove-layer-rpc.py](../scripts/prove-layer-rpc.py) |
-| `worker-qr` — QR/manual native worker approval | Present | implemented | [LayerPairingQr.kt](../app/src/main/kotlin/com/meshlit/pipeline/LayerPairingQr.kt); [QrScanner.kt](../app/src/main/kotlin/com/meshlit/devices/QrScanner.kt) |
+| `layer-pipeline` — Native model layers over TLS-paired workers | Present | host-proof | [PipelineHost.kt](../app/src/main/kotlin/com/meshlit/pipeline/PipelineHost.kt); [WorkerAssessment.kt](../app/src/main/kotlin/com/meshlit/pipeline/WorkerAssessment.kt); [RpcPipelineEngine.kt](../core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/RpcPipelineEngine.kt); [prove-layer-rpc.py](../scripts/prove-layer-rpc.py) |
+| `worker-qr` — QR/manual native worker approval | Present | implemented | [LayerPairingQr.kt](../app/src/main/kotlin/com/meshlit/pipeline/LayerPairingQr.kt); [PipelineMcpTools.kt](../app/src/main/kotlin/com/meshlit/pipeline/PipelineMcpTools.kt); [QrScanner.kt](../app/src/main/kotlin/com/meshlit/devices/QrScanner.kt) |
 | `cluster-planning` — Fresh offers, memory weights, candidate choice | Present | implemented | [ClusterNegotiation.kt](../core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/ClusterNegotiation.kt) |
 | `phone-replicas` — Replicated compact memory/tasks on all phones | Present | planned | [layer-pipeline-and-recovery.md](../docs/layer-pipeline-and-recovery.md) |
 | `storage-holders` — Selected heavy model/checkpoint holders | Present | planned | [layer-pipeline-and-recovery.md](../docs/layer-pipeline-and-recovery.md) |

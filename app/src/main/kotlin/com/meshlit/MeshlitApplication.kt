@@ -93,8 +93,8 @@ class MeshlitApplication : android.app.Application() {
      * `settingsRepository.displayNameFlow` instead.
      */
     val displayName: String
-        get() = settingsRepository.displayNameFlowNow()
-            .ifBlank { get<DeviceInfo>().displayName }
+        get() = if (settingsRepository.privateContributorNameNow()) "Private contributor"
+            else settingsRepository.displayNameFlowNow().ifBlank { get<DeviceInfo>().displayName }
     val localIpAddress: String get() = get<DeviceInfo>().localIpAddress
     val httpServerPort: Int get() = 8080
     val nodeIdHex: String get() = stableNodeIdRef.get()
@@ -108,6 +108,22 @@ class MeshlitApplication : android.app.Application() {
     val peerRegistry: com.meshlit.inference.PeerRegistry get() = get()
     val clusterDispatch: com.meshlit.inference.ClusterDispatch get() = get()
     val discoveryCoordinator: com.meshlit.core.discovery.DiscoveryCoordinator get() = get()
+    private val discoveryRevision = java.util.concurrent.atomic.AtomicLong()
+    fun refreshDiscovery() {
+        val revision=discoveryRevision.incrementAndGet()
+        appScope.launch {
+            while (nodeIdHex.isBlank()) kotlinx.coroutines.delay(50L)
+            if (revision != discoveryRevision.get()) return@launch
+            val repo:com.meshlit.disco.PeerRepository=get()
+            val mode=get<com.meshlit.disco.DiscoveryModeStore>().mode.value
+            if (mode == com.meshlit.disco.DiscoveryMode.OFF ||
+                (mode == com.meshlit.disco.DiscoveryMode.AUTO && !MainActivity.foregroundActive)) { repo.stop();return@launch }
+            val self=com.meshlit.core.discovery.LocalPeerDescriptor(nodeIdHex,localIpAddress,httpServerPort,capabilityTier.name,
+                com.meshlit.core.trust.PeerCrypto.fingerprint(get<com.meshlit.peering.DeviceIdentity>().get(nodeIdHex).publicKey), displayName,
+                android.os.Build.MANUFACTURER.orEmpty(), android.os.Build.MODEL.orEmpty())
+            if (revision == discoveryRevision.get()) repo.start(this,self)
+        }
+    }
     val meshlitFirewall: com.meshlit.core.firewall.MeshlitFirewall get() = get()
     val inferenceCoordinator: InferenceCoordinator get() = get()
     val voiceEngine: RunAnywhereVoiceEngine get() = get()
@@ -294,21 +310,8 @@ class MeshlitApplication : android.app.Application() {
                 jobs.joinAll()
             }
 
-            // PeerRepository needs the bootstrap-completed nodeId.
-            try {
-                val repo: com.meshlit.disco.PeerRepository = get()
-                while (nodeIdHex.isBlank()) kotlinx.coroutines.delay(50L)
-                val self = com.meshlit.core.discovery.LocalPeerDescriptor(
-                    nodeId = nodeIdHex,
-                    host = localIpAddress,
-                    port = httpServerPort,
-                    tierTag = capabilityTier.name,
-                    fingerprint = com.meshlit.core.trust.PeerCrypto.fingerprint(get<com.meshlit.peering.DeviceIdentity>().get(nodeIdHex).publicKey),
-                )
-                repo.start(this, self)
-            } catch (t: Throwable) {
-                log.error("app.peer_repo.fail", "PeerRepository start failed", t)
-            }
+            // Default AUTO discovers while the app is visible; MainActivity refreshes on resume/pause.
+            refreshDiscovery()
 
 
         }

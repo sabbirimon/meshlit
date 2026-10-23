@@ -3,6 +3,8 @@ package com.meshlit.ui.modern
 import com.meshlit.workspace.richtext.ReplyBlock
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.meshlit.ui.modern.workspaceStringResource as stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -40,6 +43,10 @@ import com.meshlit.core.inference.*
 import com.meshlit.di.koinInject
 import com.meshlit.ui.theme.ChatTokens as T
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.collectLatest
 
 /** Shared modern navigation for both APK flavors; earlier sources are inventory references only. */
@@ -53,6 +60,26 @@ fun ModernMeshlitApp() {
     var showCapabilities by remember{mutableStateOf(false)}
     var showChatOptions by remember{mutableStateOf(false)}
     var chatMenu by remember{mutableStateOf(false)}
+    var exportChat by remember { mutableStateOf<ChatConversation?>(null) }
+    var deleteChatId by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope=rememberCoroutineScope()
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val conversation = exportChat
+        exportChat = null
+        if (uri != null && conversation != null) {
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) { runCatching {
+                        context.contentResolver.openOutputStream(uri)?.use { stream ->
+                            stream.write(Json { prettyPrint = true }.encodeToString(conversation).toByteArray(Charsets.UTF_8))
+                        } ?: error("Cannot open the selected file")
+                    } }
+                    android.widget.Toast.makeText(context,
+                        if (result.isSuccess) "Full conversation exported" else "Export failed: ${result.exceptionOrNull()?.message}",
+                        android.widget.Toast.LENGTH_LONG).show()
+                }
+        }
+    }
     var showGlobalSearch by remember{mutableStateOf(false)}
     var showChatSearch by rememberSaveable{mutableStateOf(false)}
     var chatSearchQuery by rememberSaveable{mutableStateOf("")}
@@ -64,7 +91,6 @@ fun ModernMeshlitApp() {
     val runtime by coordinator.state.collectAsStateWithLifecycle()
     if(showCapabilities) ModelCapabilitiesDialog(if(state.current?.options?.onlineProfileId==null && state.current?.options?.routeId==null) entries.firstOrNull{it.path==coordinator.loadedModel()?.modelPath} else null,"Selected provider or route"){showCapabilities=false}
     val drawer=rememberDrawerState(DrawerValue.Closed)
-    val scope=rememberCoroutineScope()
     var tab by rememberSaveable { mutableStateOf("chat") }
     var settingsDestination by remember { mutableStateOf<String?>(null) }
     if(!com.meshlit.BuildProfile.coreCandidate) com.meshlit.permissions.FirstLaunchPermissionSetup{tab="permissions"}
@@ -75,7 +101,8 @@ fun ModernMeshlitApp() {
     val colors=MaterialTheme.colorScheme
     val openMenu:()->Unit={scope.launch{drawer.open()}}
     fun select(id:String) {tab=if(com.meshlit.BuildProfile.routeAllowed(id)) id else "about";scope.launch{drawer.close()}}
-    if(showChatOptions) ChatOptionsDialog(state,chats,onSearchSettings={showChatOptions=false;select("search")}){showChatOptions=false}
+    if(showChatOptions) ChatOptionsDialog(state,chats,onSearchSettings={showChatOptions=false;select("search")},
+        onShardingSettings={showChatOptions=false;select("sharding")}){showChatOptions=false}
     if(showGlobalSearch) GlobalSearchDialog(state,onResult={result,query->
         if(result.conversationId!=null) {
             if(!state.running){chats.select(result.conversationId);select("chat");showChatSearch=true;chatSearchQuery=query;chatSearchMessage=result.messageId;showGlobalSearch=false}
@@ -87,7 +114,7 @@ fun ModernMeshlitApp() {
         val sidebar:@Composable ()->Unit={
             WorkspaceSidebar(state,if(tab=="settings") settingsDestination ?: tab else tab,config.sidebarStyle,
                 onSelect={select(it)},onNew={chats.newChat();select("chat")},
-                onChat={chats.select(it);select("chat")},onDelete={chats.delete(it)},onGlobalSearch={showGlobalSearch=true})
+                onChat={chats.select(it);select("chat")},onDelete={deleteChatId=it},onGlobalSearch={showGlobalSearch=true})
         }
         val body:@Composable ()->Unit={
             val settingsPage=tab=="settings" || tab in WorkspaceDestinations.settingsIds
@@ -120,6 +147,13 @@ fun ModernMeshlitApp() {
                             DropdownMenuItem(text={Text("Search this chat")},onClick={chatMenu=false;showChatSearch=true;chatSearchMessage=null})
                             DropdownMenuItem(text={Text("Conversation and token settings")},onClick={chatMenu=false;showChatOptions=true})
                             DropdownMenuItem(text={Text("Model details")},onClick={chatMenu=false;showCapabilities=true})
+                            DropdownMenuItem(text={Text("Export full conversation")},enabled=state.current!=null && !state.running,onClick={
+                                chatMenu=false;exportChat=state.current
+                                exportLauncher.launch("Meshlit-chat-${state.current?.id?.take(8) ?: "export"}.json")
+                            })
+                            DropdownMenuItem(text={Text("Delete this chat")},enabled=state.current!=null && !state.running,onClick={
+                                chatMenu=false;deleteChatId=state.selectedId
+                            })
                         }
                     }},
                     colors=TopAppBarDefaults.topAppBarColors(containerColor=colors.background))})
@@ -127,6 +161,8 @@ fun ModernMeshlitApp() {
                 Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),contentAlignment=Alignment.TopCenter) {
                     key(tab) {when(tab) {
                         "models" -> ModernModelsScreen()
+                        "devices" -> ModernNetworkScreen(onBack={select("chat")},
+                            onDashboard={select("device-dashboard")}, initialPage="app")
                         "monitor" -> ModernMonitorScreen()
                         "media" -> MediaGenerationScreen(onBack={select("chat")})
                         "vision" -> MediaGenerationScreen(onBack={select("chat")},initialKind="vision")
@@ -148,6 +184,12 @@ fun ModernMeshlitApp() {
             ModalDrawerSheet(Modifier.width(minOf(T.sidebar,maxWidth-T.touch)),drawerContainerColor=colors.surface) {sidebar()}
         }){body()}
     }
+    val selectedForDelete = state.conversations.firstOrNull { it.id == deleteChatId }
+    if (selectedForDelete != null) AlertDialog(onDismissRequest={deleteChatId=null},
+        title={Text("Delete chat?")},
+        text={Text("Delete “${selectedForDelete.title}” and its messages from this device?")},
+        confirmButton={TextButton(onClick={chats.delete(selectedForDelete.id);deleteChatId=null}){Text("Delete")}},
+        dismissButton={TextButton(onClick={deleteChatId=null}){Text("Cancel")}})
 }
 
 @Composable

@@ -6,6 +6,8 @@ Scope: Android/shared reference; desktop ports have separate acceptance. Phase l
 
 Status: design, 2026-10-23. No Meshlit credit is currently transferable, redeemable, purchasable or a monetary claim. The current `ContributionReceipt` is a self-signed, local record of a completed hosted job's reported output tokens. Its signature protects that device's history from accidental modification; it does not prove work to an independent buyer.
 
+The Android wallet now has an explicit local receipt opt-in and a separate Contribution measurements view. It shows durable receipt totals and current-process inference counters with their different scopes. It does not upload proofs, expose a monetary balance, or claim that unknown energy, bandwidth and requester confirmation are measured. Current reward participation therefore remains local-only.
+
 ## One meter per service
 
 | Service | Primary billable unit | Evidence required | Never infer from |
@@ -20,6 +22,12 @@ Status: design, 2026-10-23. No Meshlit credit is currently transferable, redeema
 Record energy only when a calibrated meter or OS sensor supplies a value with provenance. Mark estimates separately. Risk score, thermal status and available memory determine admission or price quoting; none is a reward unit. Failed, cancelled, timed-out, forwarded-only and unknown-usage jobs settle at zero usage unless a separately agreed, independently verifiable partial-service rule exists.
 
 ## Contract and evidence
+
+### Proof sharing and connection privacy
+
+The future monetary program must require a separate, revocable enrollment consent before any proof leaves the device. Enrollment identifies the verifier and the exact redacted fields: job/nonce hashes, model or service revision, reported units, start/end times, result commitment, signer identities and signatures. Raw prompts, outputs, phone logs, contacts, coordinates, credentials and payment instruments are excluded. A participant may export the bounded proof journal for an appeal, inspect what was sent, pause future submissions and exit the program; already settled records follow a published retention and dispute policy. A local receipt switch alone must never turn on network sharing.
+
+Approved same-owner local peers may exchange richer **operational** capacity and diagnostic summaries over an authenticated channel, subject to owner scopes. Internet and cross-owner peers receive only the minimum signed job proof needed for settlement, with stricter identity, replay, rate and transport checks. Neither local trust nor reward enrollment grants device control or raw log access. The verifier, not the rewarded device, must authenticate and reconcile the evidence. Self-reported IP geolocation cannot prove a worker's physical origin, independence or delivered work.
 
 1. The buyer selects a service, model/program, device or auto placement policy, region/privacy constraints, maximum budget and a signed quote with unit rates, currency, expiry and cancellation/refund terms. A device cannot change a quote after acceptance.
 2. A unique buyer nonce and globally unique job ID bind the job to the selected worker, model/program hash, input commitment, meter version and agreed limits. Do not place raw prompts, files, credentials or outputs in the public ledger.

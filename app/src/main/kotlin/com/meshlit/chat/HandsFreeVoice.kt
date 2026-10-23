@@ -77,7 +77,8 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             check(local || SpeechRecognizer.isRecognitionAvailable(context)) { "No Android recognition service is installed" }
         }
     }
-    fun preview()=launchSession(false) { speak("Hello, this is a voice sample for Meshlit.") }
+    fun preview(sample:String="Hi, I'm Meshlit. It's good to hear from you. What would you like to explore today?")=
+        launchSession(false) { speak(sample.take(200)) }
     fun start()=launchSession(true) {
         check(!chat.state.value.running) { "Wait for the current reply" }
         if(chat.state.value.current==null) chat.newChat()

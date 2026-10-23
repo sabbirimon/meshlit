@@ -4,6 +4,12 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Added owner requests — 2026-10-23
+
+The owner also asked to reconcile the older Android Studio `mllm` plan/request/TODO files. [The request audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) maps older R-01–R-23 plus open Auto Pilot, voice animation, model import, persona/weights, Ghostty and training requests to this checkout's source and remaining acceptance. An older checkout's “done” status is not inherited by this APK.
+
+The owner asked for Android and Studio/desktop/server/container feature alignment, a dedicated multi-device chat, device radar and approval dashboard, customizable Auto/On/Off privacy controls, parallel agents, improved Models/MCP/Hooks, illustrated help, and cross-device takeover resistance. Source-backed Android and Studio changes plus open acceptance gates are listed in [the redesign plan](docs/REDESIGN_PLAN_2026-10-23.md). An experimental host-client CLI status report is not a server/container daemon; single-peer P2P is not multi-member chat. Public GitHub release and a fully tested app remain requested delivery gates.
+
 Updated 2026-10-10. Historical request text/task IDs remain in docs/history/REQUESTS-before-studio-2026-10-10.md. This ledger maps the current combined desktop/server and Android direction to active plans and acceptance.
 
 | Request group | Implementation and evidence | Remaining scope / tracker |

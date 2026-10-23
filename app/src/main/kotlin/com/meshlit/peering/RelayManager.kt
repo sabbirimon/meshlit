@@ -11,6 +11,7 @@ import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -18,38 +19,66 @@ import java.net.URI
 import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 
-@Serializable data class RelayJoin(val code: String, val name: String, val proof: IdentityProof)
-@Serializable data class RelayMember(val nodeId: String, val name: String, val publicKey: String, val lastSeenMs: Long)
+@Serializable data class RelayJoin(val code: String, val name: String, val proof: IdentityProof,
+    val deviceType: String = "Unknown")
+@Serializable data class RelayMember(val nodeId: String, val name: String, val publicKey: String, val lastSeenMs: Long,
+    val joinedAtMs: Long = 0, val deviceType: String = "Unknown", val latitude: Double? = null,
+    val longitude: Double? = null, val locationUpdatedMs: Long = 0, val activityState: String = "active")
+@Serializable data class RelayHeartbeat(val latitude: Double? = null, val longitude: Double? = null,
+    val activityState: String = "active")
 @Serializable data class RelayWelcome(val proof: IdentityProof, val token: String, val members: List<RelayMember>, val codeProof: String = "")
+// Keep the code proof stable across relay versions. New optional presence fields
+// must not alter the signed JSON that older clients reconstruct after decoding.
+@Serializable private data class LegacyRelayMember(val nodeId: String, val name: String, val publicKey: String,
+    val lastSeenMs: Long, val joinedAtMs: Long = 0)
+@Serializable private data class LegacyRelayWelcome(val proof: IdentityProof, val token: String,
+    val members: List<LegacyRelayMember>, val codeProof: String = "")
 data class RelayState(val enabled: Boolean = false, val code: String = "", val expiresAtMs: Long = 0,
     val members: List<RelayMember> = emptyList(), val joinedUrl: String? = null, val error: String? = null)
 
 /** Designated-node membership relay. Host is reachable through LAN, VPN or an HTTPS reverse proxy. */
 class RelayManager(private val context: Context, private val identity: DeviceIdentity,
-    private val peers: PeerRepository, private val settings: SettingsRepository) {
+    private val peers: PeerRepository, private val settings: SettingsRepository,
+    private val hostLocation: HostLocationStore) {
     private val app get() = context.applicationContext as MeshlitApplication
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutable = MutableStateFlow(RelayState())
     val state = mutable.asStateFlow()
     private var server: Server? = null
     private var heartbeat: Job? = null
+    private var joinedToken: String? = null
     private val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(false).followSslRedirects(false).build()
     private data class MemberSession(val member: RelayMember, val token: String)
     private val sessions = mutableMapOf<String, MemberSession>()
+    private val recentMembers = mutableMapOf<String, RelayMember>()
     private val attempts = mutableMapOf<String, Pair<Long, Int>>()
     private var codeAttempts = 0
     private val usedNonces = mutableMapOf<String, Long>()
-    init { scope.launch { while (isActive) { delay(5000); if (server != null) synchronized(this@RelayManager) { publishMembers() } } } }
+    init {
+        scope.launch { while (isActive) { delay(5000); if (server != null) synchronized(this@RelayManager) { publishMembers() } } }
+        scope.launch { while (isActive) {
+            delay(1000)
+            synchronized(this@RelayManager) {
+                if (server != null && mutable.value.expiresAtMs > 0 &&
+                    System.currentTimeMillis() >= mutable.value.expiresAtMs) rotateCode()
+            }
+        } }
+    }
     fun invite(): String {
-        val state = mutable.value; check(state.enabled)
+        val state = mutable.value; check(state.enabled && state.code.isNotBlank() &&
+            System.currentTimeMillis() < state.expiresAtMs) { "Join code expired; wait for the next code" }
         val key = identity.get(app.nodeIdHex)
         return ClusterInvite("http://${app.localIpAddress}:$port", state.code, key.nodeId, key.publicKey, state.expiresAtMs).encode()
     }
     private fun codeProof(code: String, welcome: RelayWelcome): String {
         val mac = javax.crypto.Mac.getInstance("HmacSHA256")
         mac.init(javax.crypto.spec.SecretKeySpec(code.toByteArray(Charsets.UTF_8), "HmacSHA256"))
-        return PeerCrypto.hex(mac.doFinal(PeerCrypto.json.encodeToString(RelayWelcome.serializer(), welcome.copy(codeProof = "")).toByteArray(Charsets.UTF_8)))
+        val legacy=LegacyRelayWelcome(welcome.proof,welcome.token,welcome.members.map {
+            LegacyRelayMember(it.nodeId,it.name,it.publicKey,it.lastSeenMs,it.joinedAtMs)
+        })
+        return PeerCrypto.hex(mac.doFinal(PeerCrypto.json.encodeToString(LegacyRelayWelcome.serializer(),legacy)
+            .toByteArray(Charsets.UTF_8)))
     }
     val port = 8081
     @Synchronized fun enable() {
@@ -65,7 +94,7 @@ class RelayManager(private val context: Context, private val identity: DeviceIde
         } catch (e: Exception) { candidate.stop(); throw IllegalStateException("relay.start_failed: ${e.message}") }
     }
     @Synchronized fun disable() {
-        server?.stop(); server = null; sessions.clear(); attempts.clear()
+        server?.stop(); server = null; sessions.clear(); recentMembers.clear(); attempts.clear()
         mutable.value = mutable.value.copy(enabled = false, code = "", expiresAtMs = 0, members = emptyList())
     }
     @Synchronized fun rotateCode() {
@@ -74,15 +103,44 @@ class RelayManager(private val context: Context, private val identity: DeviceIde
         mutable.value = mutable.value.copy(code = "%06d".format(java.util.Locale.ROOT, SecureRandom().nextInt(1_000_000)),
             expiresAtMs = System.currentTimeMillis() + 600_000)
     }
-    @Synchronized fun revoke(node: String) { sessions.remove(node); publishMembers() }
+    @Synchronized fun revoke(node: String) { sessions.remove(node); recentMembers.remove(node); publishMembers() }
     @Synchronized private fun publishMembers(): List<RelayMember> {
         val cutoff = System.currentTimeMillis() - 90_000
-        sessions.entries.removeAll { it.value.member.lastSeenMs < cutoff }
-        val members = sessions.values.map { it.member }
+        sessions.entries.removeAll { entry ->
+            if(entry.value.member.lastSeenMs >= cutoff) false else {
+                if(recentMembers.size < 256) recentMembers[entry.key]=entry.value.member.copy(
+                    latitude=null,longitude=null,locationUpdatedMs=0)
+                true
+            }
+        }
+        recentMembers.entries.removeAll { it.value.lastSeenMs < System.currentTimeMillis()-7L*86_400_000L }
+        val ownPin=hostLocation.sharedPin()
+        val members = sessions.values.map { it.member } + recentMembers.values +
+            listOf(RelayMember(app.nodeIdHex,app.displayName,identity.get(app.nodeIdHex).publicKey,
+                System.currentTimeMillis(),deviceType="Android relay host",latitude=ownPin?.latitude,
+                longitude=ownPin?.longitude,locationUpdatedMs=if(ownPin!=null) System.currentTimeMillis() else 0L,
+                activityState=if(com.meshlit.MainActivity.foregroundActive) "active" else "hibernating"))
         mutable.value = mutable.value.copy(members = members)
         return members
     }
-    fun leave() { heartbeat?.cancel(); heartbeat = null; mutable.value = mutable.value.copy(joinedUrl = null) }
+    fun leave() { heartbeat?.cancel(); heartbeat = null; joinedToken=null; mutable.value = mutable.value.copy(joinedUrl = null,members=emptyList()) }
+    fun refreshMembership() {
+        val base=mutable.value.joinedUrl ?: run { if(server!=null) publishMembers();return }
+        val token=joinedToken ?: return
+        scope.launch { runCatching { fetchMembers(base,token) }
+            .onFailure { mutable.value=mutable.value.copy(error="relay.presence_refresh_failed: ${it.message}") } }
+    }
+    private fun fetchMembers(base:String,token:String) {
+        val pin=hostLocation.sharedPin()
+        val response=request("$base/v1/relay/heartbeat",PeerCrypto.json.encodeToString(
+            RelayHeartbeat.serializer(),RelayHeartbeat(pin?.latitude,pin?.longitude,
+                if(com.meshlit.MainActivity.foregroundActive) "active" else "hibernating")),token)
+        // Older relay hosts return {} for heartbeat. Keep the last known list
+        // instead of dropping a valid cross-version session.
+        val members=runCatching { PeerCrypto.json.decodeFromString(ListSerializer(RelayMember.serializer()),response) }
+            .getOrNull() ?: return
+        mutable.value=mutable.value.copy(members=members,error=null)
+    }
     suspend fun join(raw: String, enteredCode: String) = withContext(Dispatchers.IO) {
         val invite = if (raw.trim().startsWith("meshlit://join")) ClusterInvite.decode(raw) else null
         val code = invite?.code ?: enteredCode
@@ -92,7 +150,7 @@ class RelayManager(private val context: Context, private val identity: DeviceIde
         require(uri.scheme in setOf("http", "https") && !uri.host.isNullOrBlank() && uri.userInfo == null && uri.rawQuery == null && uri.fragment == null) { "relay.invalid_endpoint" }
         require(uri.scheme == "https" || isPrivateRFC1918(uri.host) || uri.host in setOf("localhost", "127.0.0.1")) { "relay.https_required: Use HTTPS for internet enrollment" }
         val key = identity.get(app.nodeIdHex); val nonce = PeerCrypto.randomHex()
-        val req = RelayJoin(code, app.displayName.take(128), PeerCrypto.prove(key, nonce))
+        val req = RelayJoin(code, app.displayName.take(128), PeerCrypto.prove(key, nonce),"Android phone")
         val base = rawAddress.trim().trimEnd('/')
         val response = request("$base/v1/relay/join", PeerCrypto.json.encodeToString(RelayJoin.serializer(), req))
         val welcome = PeerCrypto.json.decodeFromString(RelayWelcome.serializer(), response)
@@ -106,17 +164,18 @@ class RelayManager(private val context: Context, private val identity: DeviceIde
         peers.ingest(PeerAdvertisement(welcome.proof.nodeId, uri.host, if (uri.port < 0) if (uri.scheme == "https") 443 else 80 else uri.port,
             "wan", PeerCrypto.fingerprint(welcome.proof.publicKey), ttlSec = 90, transport = "relay"))
         heartbeat?.cancel()
-        mutable.value = mutable.value.copy(joinedUrl = base, error = null)
+        joinedToken=welcome.token
+        mutable.value = mutable.value.copy(joinedUrl = base, members=welcome.members, error = null)
         heartbeat = scope.launch {
             try {
                 while (isActive) {
                     delay(25_000)
-                    request("$base/v1/relay/heartbeat", "{}", welcome.token)
+                    fetchMembers(base,welcome.token)
                     peers.ingest(PeerAdvertisement(welcome.proof.nodeId, uri.host, if (uri.port < 0) if (uri.scheme == "https") 443 else 80 else uri.port,
                         "wan", PeerCrypto.fingerprint(welcome.proof.publicKey), ttlSec = 90, transport = "relay"))
                 }
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { mutable.value = mutable.value.copy(joinedUrl = null, error = "relay.disconnected: ${e.message}"); peers.evict(welcome.proof.nodeId) }
+            catch (e: Exception) { joinedToken=null;mutable.value = mutable.value.copy(joinedUrl = null,members=emptyList(),error = "relay.disconnected: ${e.message}"); peers.evict(welcome.proof.nodeId) }
         }
     }
     private fun request(url: String, body: String, token: String? = null): String {
@@ -178,8 +237,17 @@ class RelayManager(private val context: Context, private val identity: DeviceIde
                     val found = sessions.entries.firstOrNull { PeerCrypto.bytes(it.value.token).let { stored ->
                         runCatching { java.security.MessageDigest.isEqual(stored, PeerCrypto.bytes(token)) }.getOrDefault(false)
                     } } ?: return@synchronized reply(Response.Status.UNAUTHORIZED, "{}")
-                    found.setValue(found.value.copy(member = found.value.member.copy(lastSeenMs = System.currentTimeMillis())))
-                    publishMembers(); return@synchronized reply(Response.Status.OK, "{}")
+                    val update=PeerCrypto.json.decodeFromString(RelayHeartbeat.serializer(),readBounded(session,8192))
+                    require((update.latitude==null)==(update.longitude==null))
+                    require(update.latitude==null || update.latitude.isFinite() && update.latitude in -90.0..90.0)
+                    require(update.longitude==null || update.longitude.isFinite() && update.longitude in -180.0..180.0)
+                    require(update.activityState in setOf("active","hibernating"))
+                    val now=System.currentTimeMillis()
+                    found.setValue(found.value.copy(member = found.value.member.copy(lastSeenMs = now,
+                        latitude=update.latitude,longitude=update.longitude,
+                        locationUpdatedMs=if(update.latitude!=null) now else 0L,activityState=update.activityState)))
+                    return@synchronized reply(Response.Status.OK,PeerCrypto.json.encodeToString(
+                        ListSerializer(RelayMember.serializer()),publishMembers()))
                 }
                 if (session.uri != "/v1/relay/join") return@synchronized reply(Response.Status.NOT_FOUND, "{}")
                 val now = System.currentTimeMillis(); val ip = session.remoteIpAddress.orEmpty()
@@ -196,7 +264,7 @@ class RelayManager(private val context: Context, private val identity: DeviceIde
                 val state = mutable.value
                 if (now > state.expiresAtMs || !java.security.MessageDigest.isEqual(join.code.toByteArray(), state.code.toByteArray()))
                     return@synchronized reply(Response.Status.UNAUTHORIZED, "{}")
-                require(join.name.length <= 128 && join.proof.nodeId.length in 1..128)
+                require(join.name.length <= 128 && join.deviceType.length <= 32 && join.proof.nodeId.length in 1..128)
                 require(PeerCrypto.verify(join.proof, join.proof.nodeId, join.proof.publicKey, join.proof.nonce, now))
                 require(join.proof.nodeId != app.nodeIdHex)
                 usedNonces.entries.removeAll { it.value < now - 120_000 }
@@ -205,7 +273,9 @@ class RelayManager(private val context: Context, private val identity: DeviceIde
                 require(sessions.size < 64 || sessions.containsKey(join.proof.nodeId))
                 val key = identity.get(app.nodeIdHex)
                 val token = PeerCrypto.randomHex()
-                sessions[join.proof.nodeId] = MemberSession(RelayMember(join.proof.nodeId, join.name, join.proof.publicKey, now), token)
+                sessions[join.proof.nodeId] = MemberSession(RelayMember(join.proof.nodeId, join.name, join.proof.publicKey, now, now,
+                    deviceType=join.deviceType), token)
+                recentMembers.remove(join.proof.nodeId)
                 val unsigned = RelayWelcome(PeerCrypto.prove(key, join.proof.nonce), token, publishMembers())
                 val welcome = unsigned.copy(codeProof = codeProof(state.code, unsigned))
                 reply(Response.Status.OK, PeerCrypto.json.encodeToString(RelayWelcome.serializer(), welcome))

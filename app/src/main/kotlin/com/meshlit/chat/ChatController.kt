@@ -13,9 +13,10 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.UUID
 
-@Serializable data class ChatOptions(val onlineProfileId:String?=null,val systemPrompt:String="",val maxTokens:Int=1024,val temperature:Float=0.7f,val historyMessages:Int=10,val routeId:String?=null,val routeScenario:String="general",val webTools:Boolean=false,val phoneTools:Boolean=false,val memoryTools:Boolean=false,val showTokenStats:Boolean=true,val localSearchTools:Boolean=false,val outputBudgetMode:OutputBudgetMode=OutputBudgetMode.MANUAL,val outputTargetSeconds:Int=30,val nodeTools:Boolean=false,val colibriMode:String="OFF",val colibriAgentAllowed:Boolean=false,val cryptoTools:Boolean=false,val gibberlinkTools:Boolean=false,val remoteTools:Boolean=false,val peerTools:Boolean=false) {
+@Serializable data class ChatOptions(val onlineProfileId:String?=null,val systemPrompt:String="",val maxTokens:Int=1024,val temperature:Float=0.7f,val historyMessages:Int=10,val routeId:String?=null,val routeScenario:String="general",val webTools:Boolean=false,val phoneTools:Boolean=false,val memoryTools:Boolean=false,val showTokenStats:Boolean=true,val localSearchTools:Boolean=false,val outputBudgetMode:OutputBudgetMode=OutputBudgetMode.MANUAL,val outputTargetSeconds:Int=30,val nodeTools:Boolean=false,val colibriMode:String="OFF",val colibriAgentAllowed:Boolean=false,val cryptoTools:Boolean=false,val gibberlinkTools:Boolean=false,val remoteTools:Boolean=false,val peerTools:Boolean=false,val companionStyle:CompanionStyle=CompanionStyle.WARM,val companionWarmth:Int=1,val matureTopics:Boolean=false) {
     val usesLocalTools get()=webTools || phoneTools || memoryTools || localSearchTools || nodeTools || cryptoTools || gibberlinkTools || remoteTools || peerTools
-    fun validate(){require((if(nodeTools)8 else 0)+(if(remoteTools)3 else 0)+(if(peerTools)4 else 0)+(if(gibberlinkTools)2 else 0)+(if(cryptoTools)1 else 0)+(if(memoryTools)1 else 0)+(if(localSearchTools)1 else 0)+(if(webTools)3 else 0)+(if(phoneTools)4 else 0)<=10){"Select at most ten chat tools; deselect another group"};require(listOf(nodeTools,remoteTools,peerTools,gibberlinkTools).count{it}<=1 && (!(remoteTools || peerTools || gibberlinkTools) || !(webTools || phoneTools || memoryTools || localSearchTools))){"Choose one device/audio tool group separately from web, phone, memory and search tools"};require(colibriMode in com.meshlit.workspace.ColibriMode.entries.map{it.name});require(!nodeTools || (!webTools && !phoneTools)){"Choose node tools separately from web/phone tools"};require(outputTargetSeconds in 5..120);require(!usesLocalTools || (onlineProfileId==null && routeId==null)){"Chat tools currently require an on-device model"};require(routeId==null || routeId=="__auto__" || routeId.matches(Regex("[A-Za-z0-9_-]{1,64}")));require(routeScenario.matches(Regex("[a-z0-9_-]{1,40}")));require(routeId==null || (onlineProfileId==null && maxTokens<=1024));require(systemPrompt.length<=4000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f && historyMessages in 0..20)}
+    val toolCount get()=(if(nodeTools)8 else 0)+(if(remoteTools)3 else 0)+(if(peerTools)4 else 0)+(if(gibberlinkTools)2 else 0)+(if(cryptoTools)1 else 0)+(if(memoryTools)1 else 0)+(if(localSearchTools)1 else 0)+(if(webTools)3 else 0)+(if(phoneTools)4 else 0)
+    fun validate(){require(companionWarmth in 0..2);require(toolCount<=10){"Select at most ten chat tools; deselect another group"};require(colibriMode in com.meshlit.workspace.ColibriMode.entries.map{it.name});require(outputTargetSeconds in 5..120);require(!usesLocalTools || (onlineProfileId==null && routeId==null)){"Chat tools currently require an on-device model"};require(routeId==null || routeId=="__auto__" || routeId.matches(Regex("[A-Za-z0-9_-]{1,64}")));require(routeScenario.matches(Regex("[a-z0-9_-]{1,40}")));require(routeId==null || (onlineProfileId==null && maxTokens<=1024));require(systemPrompt.length<=4000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f && historyMessages in 0..20)}
 }
 @Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null)
 @Serializable data class ChatConversation(val id:String=UUID.randomUUID().toString(),val title:String="New chat",
@@ -92,6 +93,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         }
         val decision=budgetDecision(if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.HOST) configured.copy(outputBudgetMode=OutputBudgetMode.MANUAL) else configured)
         val options=configured.copy(maxTokens=decision.limit)
+        val instructions=companionInstructions(options)
         val history=_state.value.current!!.messages.filter{it.text.isNotBlank()}.takeLast(options.historyMessages)
         _state.update { old -> old.copy(running=true,error=null,generationStartedMs=android.os.SystemClock.elapsedRealtime(),activeOutputLimit=options.maxTokens,conversations=old.conversations.map { c ->
             if(c.id==selected) c.copy(title=if(c.messages.isEmpty()) text.trim().take(56) else c.title,
@@ -105,12 +107,12 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 androidx.core.content.ContextCompat.startForegroundService(context,
                     android.content.Intent(context,ChatInferenceService::class.java).putExtra("generation",assistant.id))
                 if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.HOST) {
-                    val (model,reply)=colibri.generate((history+user).map{com.meshlit.core.inference.models.OnlineMessage(it.role,it.text)},options.systemPrompt,options.maxTokens,options.temperature)
+                    val (model,reply)=colibri.generate((history+user).map{com.meshlit.core.inference.models.OnlineMessage(it.role,it.text)},instructions,options.maxTokens,options.temperature)
                     _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=reply.text) else it},usageNote="Colibri · $model · buffered text · ${colibriDecision.reason}") else c})}
                     recordUsage(chatTokenUsage("Colibri host · $model",options.maxTokens,reply.inputTokens,reply.outputTokens,null,android.os.SystemClock.elapsedRealtime()-started,null,null))
                 } else if(options.routeId!=null) {
                     val prompt=buildString {
-                        if(options.systemPrompt.isNotBlank()) append("Instructions: ").append(options.systemPrompt).append("\n\n")
+                        if(instructions.isNotBlank()) append("Instructions: ").append(instructions).append("\n\n")
                         history.forEach{append(it.role).append(": ").append(it.text.take(4000)).append('\n')}
                         append("user: ").append(user.text)
                     }
@@ -119,7 +121,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                     _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=result.text) else it},usageNote="Route ${result.routeId} · ${result.mode} · ${result.steps.size} completed steps") else c})}
                     recordUsage(chatTokenUsage("Routed run · counts not aggregated",options.maxTokens,null,null,null,android.os.SystemClock.elapsedRealtime()-started,null,null))
                 } else if(options.onlineProfileId!=null) {
-                    val (profile,reply)=providers.generate(options.onlineProfileId, (history+user).map{com.meshlit.core.inference.models.OnlineMessage(it.role,it.text)},options.systemPrompt,options.maxTokens,options.temperature)
+                    val (profile,reply)=providers.generate(options.onlineProfileId, (history+user).map{com.meshlit.core.inference.models.OnlineMessage(it.role,it.text)},instructions,options.maxTokens,options.temperature)
                     val cost=reply.estimatedCost(profile)
                     val note="${profile.name} · input ${reply.inputTokens ?: "unknown"}, output ${reply.outputTokens ?: "unknown"} tokens · "+
                         (cost?.let{"estimated ${"%.6f".format(it)} ${profile.currency} (user prices)"} ?: "cost unknown")
@@ -127,7 +129,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                     recordUsage(chatTokenUsage("Provider usage",options.maxTokens,reply.inputTokens,reply.outputTokens,null,android.os.SystemClock.elapsedRealtime()-started,null,null))
                 } else {
                 memory.captureRequest(user.text)
-                val prompt=memory.context(user.text)+options.systemPrompt.takeIf{it.isNotBlank()}?.let{"Instructions: $it\n\n"}.orEmpty()+if(history.isEmpty()) user.text else buildString {
+                val prompt=memory.context(user.text)+instructions.takeIf{it.isNotBlank()}?.let{"Instructions: $it\n\n"}.orEmpty()+if(history.isEmpty()) user.text else buildString {
                     append("Continue this conversation. Answer the latest user message.\n")
                     history.forEach { append(it.role).append(": ").append(it.text.take(4000)).append('\n') }
                     append("user: ").append(user.text)
@@ -139,11 +141,16 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                     _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(usageNote="On-device tool loop · ${answer.calls} tool calls · native token totals not aggregated") else c})}
                     recordUsage(chatTokenUsage("Tool loop · counts not aggregated",options.maxTokens,null,null,null,android.os.SystemClock.elapsedRealtime()-started,null,null))
                 } else {
-                val buffer=StringBuilder()
                 val originalInfo=coordinator.loadedModel()
                 val originalEngine=coordinator.engineTag
                 val originalModel=library.models.value.firstOrNull{it.installed && it.path==originalInfo?.modelPath}
-                suspend fun generate()=coordinator.infer(InferenceRequest(prompt=prompt,maxTokens=options.maxTokens,temperature=options.temperature,reuseContext=coordinator.engineTag=="llama-native-local",expectedModelPath=originalInfo?.modelPath,onToken={ token ->
+                val usesChatMl=originalEngine=="runanywhere" && originalModel!=null &&
+                    (originalModel.name.contains("SmolLM2",ignoreCase=true) || originalModel.name.contains("Qwen2.5",ignoreCase=true))
+                val localPrompt=if(usesChatMl) smolLmChatPrompt(memory.context(user.text)+instructions,history,user.text) else prompt
+                val buffer=StringBuilder()
+                suspend fun generate()=coordinator.infer(InferenceRequest(prompt=localPrompt,maxTokens=options.maxTokens,temperature=options.temperature,
+                    stopSequences=if(usesChatMl) listOf("<|im_end|>") else emptyList(),
+                    reuseContext=coordinator.engineTag=="llama-native-local",expectedModelPath=originalInfo?.modelPath,onToken={ token ->
                     buffer.append(token)
                     _state.update { old -> old.copy(conversations=old.conversations.map { c ->
                         if(c.id==selected) c.copy(messages=c.messages.map { if(it.id==assistant.id) it.copy(text=buffer.toString()) else it }) else c }) }

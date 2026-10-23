@@ -57,20 +57,40 @@ import java.io.ByteArrayInputStream
 @Composable fun GibberLinkScreen(back: () -> Unit) {
     val host = koinInject<GibberLinkHost>(); val policy by host.policy.collectAsStateWithLifecycle(); val transcript by host.transcripts.collectAsStateWithLifecycle(); val status by host.status.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope(); val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     var text by remember { mutableStateOf("") }; var busy by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
+    var commandRequest by remember { mutableStateOf("") }; var discoveryResult by remember { mutableStateOf("") }
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (!it) error = "Microphone permission declined" }
     DisposableEffect(host, lifecycle) {
         val observer = LifecycleEventObserver { _, _ -> host.visible(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
         lifecycle.addObserver(observer); host.visible(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
         onDispose { lifecycle.removeObserver(observer); host.visible(false) }
     }
+    LaunchedEffect(host, policy.enabled, policy.autoRespond, lifecycleState) {
+        while (isActive && policy.enabled && policy.autoRespond && lifecycleState == Lifecycle.State.RESUMED) {
+            try {
+                val packet = host.listen(5)
+                if (packet != null) host.respondToDiscovery(packet)
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { delay(1000) }
+        }
+    }
     fun work(action: suspend () -> Unit) { scope.launch { busy = true; error = null; try { action() } catch (e: CancellationException) { throw e } catch (_: Exception) { error = "Audio failed: check foreground visibility, microphone permission and operation grants." } finally { busy = false } } }
     ToolPage("GibberLink · English transcript", back) {
         item { Text("📡 English in, sound across", style = MaterialTheme.typography.titleLarge); Text("Experimental ggwave audio packets. Actual sent and decoded English text appears below. Nearby people can record/decode these sounds: there is no encryption, sender identity or delivery acknowledgment. Never send secrets.") }
-        item { GrantRow("Enable GibberLink audio", policy.enabled) { host.saveHuman(policy.copy(enabled = it)) }; GrantRow("Allow agents to send/listen", policy.agents) { host.saveHuman(policy.copy(agents = it)) } }
+        item { GrantRow("Enable GibberLink audio", policy.enabled) { host.saveHuman(policy.copy(enabled = it)) }; GrantRow("Allow agents to send/listen", policy.agents) { host.saveHuman(policy.copy(agents = it)) }
+            GrantRow("Reply to nearby modem discovery", policy.autoRespond) { host.saveHuman(policy.copy(autoRespond = it)) } }
         item { Text("Keep this screen visible and the phone awake. Agents also need Media/automation operation grants and audio tools for this chat. Incoming text is untrusted and never auto-executes commands.", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Acoustic discovery", style = MaterialTheme.typography.titleMedium)
+            Text("A fresh challenge can detect another compatible modem nearby. It cannot prove that the sender is an AI or an approved device. The responder needs the reply switch and microphone permission.")
+            Button(enabled = policy.enabled && !policy.autoRespond && !busy, onClick = { work { discoveryResult = if (host.discover()) "Compatible nearby modem replied; identity unverified" else "No matching reply in 20 seconds" } }) { Text("Discover nearby modem") }
+            if (discoveryResult.isNotBlank()) Text(discoveryResult) }
         item { OutlinedTextField(text, { text = it.take(96) }, Modifier.fillMaxWidth(), label = { Text("English packet · 1–96 printable characters") }); Text("Status: $status") }
-        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Button(enabled = policy.enabled && !busy, onClick = { work { host.send(text) } }) { Text("Send sound") }; OutlinedButton(enabled = policy.enabled && !busy, onClick = { work { if (host.listen() == null) error = "No complete English packet received in 20 seconds" } }) { Text("Listen") }; TextButton(onClick = host::stop) { Text("Stop") } } }
+        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Button(enabled = policy.enabled && !policy.autoRespond && !busy, onClick = { work { host.send(text) } }) { Text("Send sound") }; OutlinedButton(enabled = policy.enabled && !policy.autoRespond && !busy, onClick = { work { if (host.listen() == null) error = "No complete English packet received in 20 seconds" } }) { Text("Listen") }; TextButton(onClick = host::stop) { Text("Stop") } } }
+        item { Text("Command requests", style = MaterialTheme.typography.titleMedium)
+            Text("Send a short request when IP is unavailable. The receiving transcript shows it for review; this channel does not execute commands or establish trust.")
+            OutlinedTextField(commandRequest, { commandRequest = it.take(89) }, Modifier.fillMaxWidth(), label = { Text("Command request · 1–89 printable characters") })
+            OutlinedButton(enabled = policy.enabled && !policy.autoRespond && !busy && commandRequest.isNotBlank(), onClick = { work { host.sendCommandRequest(commandRequest) } }) { Text("Send command request") } }
         item { TextButton(onClick = { microphone.launch(Manifest.permission.RECORD_AUDIO) }) { Text("Grant microphone permission") }; error?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
         item { Text("English transcript", style = MaterialTheme.typography.titleMedium); TextButton(onClick = host::clearHuman) { Text("Clear session transcript") } }
         items(transcript.size) { i -> val entry = transcript[i]; SelectionContainer { Column { Text("${entry.direction} · ${java.text.DateFormat.getTimeInstance().format(java.util.Date(entry.timeMillis))}", style = MaterialTheme.typography.labelSmall); Text(entry.english); Text(entry.status, style = MaterialTheme.typography.bodySmall) } } }
@@ -102,8 +122,8 @@ class PeerJavascriptBridge(private val host: PeerChatHost) {
     DisposableEffect(host) { onDispose { host.unbind() } }
     LaunchedEffect(policy.enabled, state, allowed) { if (!policy.enabled || state != Lifecycle.State.RESUMED || !allowed) { host.unbind(); web = null } }
     fun work(action: suspend () -> Unit) { scope.launch { error = null; try { action() } catch (e: CancellationException) { throw e } catch (_: Exception) { error = "P2P request failed or timed out. Verify actual connection and receiver grants; outcome may be unknown." } } }
-    ToolPage("P2P chat and commands", back) {
-        item { Text("🔗 Phone to phone · no VPN", style = MaterialTheme.typography.titleLarge); Text("Signed manual pairing + encrypted WebRTC data channels. Direct over LAN/Internet where ICE succeeds. Optional TURN is separately approved; selected route is reported from actual connection stats. Native model-layer streaming is not carried by this chat channel.") }
+    ToolPage("Mesh chat · direct peer", back) {
+        item { Text("🔗 Phone to phone · no VPN", style = MaterialTheme.typography.titleLarge); Text("One live peer conversation on this screen. Signed manual pairing + encrypted WebRTC data channels. Direct over LAN/Internet where ICE succeeds. Optional TURN is separately approved; selected route is reported from actual connection stats. Multi-member rooms and offline message delivery are not yet available. Native model-layer streaming is not carried by this chat channel.") }
         item { GrantRow("Enable foreground P2P", policy.enabled) { host.saveHuman(policy.copy(enabled = it)) }; GrantRow("Allow local agents to send / remote agents to act", policy.agents) { host.saveHuman(policy.copy(agents = it)) } }
         item { GrantRow("Accept scoped peer commands", policy.receiveCommands) { host.saveHuman(policy.copy(receiveCommands = it)) }; GrantRow("Allow peer VM start/stop", policy.vmControl) { host.saveHuman(policy.copy(vmControl = it)) }; GrantRow("Allow peer cluster worker start/stop", policy.clusterControl) { host.saveHuman(policy.copy(clusterControl = it)) } }
         item { Text("All remote commands use agent permissions on this phone, including commands sent by another human. VM/cluster delegation and operation switches also apply. Pairing does not grant root, shell, credentials, settings changes or native worker enrollment. Closing this screen stops the connection.", style = MaterialTheme.typography.bodySmall); Text(status) }

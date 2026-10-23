@@ -61,18 +61,17 @@ object QrScanner {
                 .allowManualInput()
                 .build()
             val client = GmsBarcodeScanning.getClient(activity, options)
-            val raw = suspendCancellableCoroutine<String?> { cont ->
+            suspendCancellableCoroutine<ScanResult> { cont ->
                 val task = client.startScan()
                     .addOnSuccessListener { value ->
-                        if (cont.isActive) cont.resume(value.rawValue)
+                        if (cont.isActive) cont.resume(value.rawValue?.takeIf(String::isNotBlank)?.let { ScanResult.Success(it.trim()) } ?: ScanResult.Failed(-1, "Scanner returned no QR data"))
                     }
                     .addOnFailureListener { err ->
-                        if (cont.isActive) cont.resume(null)
+                        if (cont.isActive) cont.resume(if (err is ApiException && err.statusCode == 17) ScanResult.PlayServicesMissing
+                            else ScanResult.Failed((err as? ApiException)?.statusCode ?: -1, err.message ?: err.javaClass.simpleName))
                     }
                 cont.invokeOnCancellation { /* nothing — task has no cancel */ }
             }
-            if (raw.isNullOrBlank()) ScanResult.Cancelled
-            else ScanResult.Success(raw.trim())
         } catch (api: ApiException) {
             when (api.statusCode) {
                 18 -> ScanResult.Cancelled

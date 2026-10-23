@@ -163,4 +163,14 @@ class PairingPayloadTest {
         assertNotNull(e.message)
         assertTrue(e.message!!.isNotBlank())
     }
+
+    @Test
+    fun `time limited QR round trips and expired QR is rejected`() {
+        val temporary = PairingPayload("Phone", validBaseUrl, validNodeId, "MID",
+            expiresAtEpochMs = System.currentTimeMillis() + 5 * 60 * 1000L)
+        assertEquals(temporary.expiresAtEpochMs, PairingPayload.decode(temporary.encode()).expiresAtEpochMs)
+        val expired = temporary.copy(expiresAtEpochMs = System.currentTimeMillis() - 1)
+        assertThrows(IllegalArgumentException::class.java) { PairingPayload.decode(expired.encode()) }
+        assertThrows(IllegalArgumentException::class.java) { PairingPayload.decode(temporary.encode().replace(Regex("exp=\\d+"), "exp=oops")) }
+    }
 }

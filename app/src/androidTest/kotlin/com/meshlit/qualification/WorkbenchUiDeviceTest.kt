@@ -73,7 +73,7 @@ class WorkbenchUiDeviceTest {
         compose.onNodeWithText("Back").performClick();checks+="workbench-back"
         compose.onNodeWithTag("settings-search").performTextReplacement("no-such-setting-qualification")
         closeSoftKeyboard()
-        compose.onNodeWithText("No matching settings. Advanced includes runtime, networking and automation controls.").assertExists();checks+="empty-search"
+        compose.onNodeWithText("No matching settings. Search covers Basic and Advanced.").assertExists();checks+="empty-search"
         compose.onNodeWithContentDescription("Clear search").performClick()
         compose.onNodeWithTag("settings-search").performTextReplacement("permissions")
         closeSoftKeyboard()
