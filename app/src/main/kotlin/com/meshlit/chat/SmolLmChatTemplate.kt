@@ -19,3 +19,10 @@ internal fun smolLmChatPrompt(system: String, history: List<ChatMessage>, user: 
         append("<|im_start|>user\n").append(content(user)).append("<|im_end|>\n<|im_start|>assistant\n")
     }
 }
+
+/** Qwen3's published ChatML template supports an empty thinking prefix for fast mode. */
+internal fun qwen3ChatPrompt(system:String,history:List<ChatMessage>,user:String):String {
+    val thinking=user.contains("/think",ignoreCase=true) && !user.contains("/no_think",ignoreCase=true)
+    val prompt=smolLmChatPrompt(system,history,user)
+    return prompt+if(thinking) "<think>\n" else "<think>\n\n</think>\n\n"
+}

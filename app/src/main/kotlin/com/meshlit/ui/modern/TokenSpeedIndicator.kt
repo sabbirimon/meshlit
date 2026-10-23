@@ -27,7 +27,7 @@ internal fun tokenSpeedLabel(usage:ChatTokenUsage):String = usage.tokensPerSecon
         modifier=Modifier.fillMaxWidth().heightIn(min=32.dp).testTag("chat-token-speed")) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Default.Speed,null,Modifier.size(16.dp))
-            Text(if(state.running) "Generating · ${((now-(state.generationStartedMs ?: now)).coerceAtLeast(0))/1000}s · limit ${state.activeOutputLimit ?: state.current?.options?.maxTokens ?: 1024}"
+            Text(if(state.running) "${state.operationLabel} · ${((now-(state.generationStartedMs ?: now)).coerceAtLeast(0))/1000}s · limit ${state.activeOutputLimit ?: state.current?.options?.maxTokens ?: 1024}"
                 else tokenSpeedLabel(checkNotNull(usage)),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -43,7 +43,7 @@ internal fun tokenSpeedLabel(usage:ChatTokenUsage):String = usage.tokensPerSecon
             usage.rateBasis?.let{Text(it)}
             usage.budgetReason?.let{Text(it)}
             usage.finishReason?.let{Text("Finish: $it")}
-            Text("Requested limits are not actual usage. This runtime did not provide a verified output-token count, so Meshlit cannot show a token speed. Elapsed time includes application overhead; text chunks and characters are never counted as tokens.")
+            Text(if(usage.output==null) "This runtime did not report output tokens, so token speed is unavailable. Requested limits are not actual usage; text chunks and characters are never counted as tokens." else "Counts come from the selected runtime or provider. End-to-end averages include input processing, network and application overhead; they are not a measured decode-only rate.")
         }
     }},confirmButton={TextButton(onClick=onClose){Text("Close")}})
 }

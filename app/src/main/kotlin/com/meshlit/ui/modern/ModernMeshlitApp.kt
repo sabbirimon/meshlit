@@ -40,6 +40,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshlit.R
@@ -100,9 +102,19 @@ fun ModernMeshlitApp() {
     var tab by rememberSaveable { mutableStateOf("chat") }
     val chatPhotoState=remember{mutableStateOf<android.net.Uri?>(null)}
     val chatPhotoProviderState=remember{mutableStateOf("")}
-    val chatPhotoPromptState=remember{mutableStateOf("Describe this photo accurately, including text you can read.")}
+    val chatDraftState=rememberSaveable{mutableStateOf("")}
+    val chatPhotoTurnState=remember{mutableStateOf<String?>(null)}
+    var attachmentChatId by remember{mutableStateOf(state.selectedId)}
     val chatCapturePathState=remember{mutableStateOf<String?>(null)}
     val chatCaptureUriState=remember{mutableStateOf<android.net.Uri?>(null)}
+    LaunchedEffect(state.selectedId) {
+        if(attachmentChatId!=null && attachmentChatId!=state.selectedId && !state.running) {
+            chatPhotoState.value=null;chatDraftState.value=""
+            chatCapturePathState.value?.let{java.io.File(it).delete()}
+            chatCapturePathState.value=null;chatCaptureUriState.value=null;chatPhotoTurnState.value=null
+        }
+        attachmentChatId=state.selectedId
+    }
     var closing by remember { mutableStateOf(false) }
     val closingAlpha by animateFloatAsState(if(closing) 1f else 0f,animationSpec=tween(260),label="close-overlay")
     var settingsDestination by remember { mutableStateOf<String?>(null) }
@@ -136,6 +148,12 @@ fun ModernMeshlitApp() {
             val ownHeader=settingsPage || tab in setOf("media","vision","voice")
             Scaffold(containerColor=if(glass) Color.Transparent else colors.background,
                 contentWindowInsets=if(ownHeader) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,
+                bottomBar={
+                    if(!wide && tab in setOf("chat","models","devices","agents","settings") && WindowInsets.ime.getBottom(LocalDensity.current)==0 &&
+                        (!settingsPage || settingsDestination==null || settingsDestination==tab)) {
+                        WorkspaceDock(tab,onSelect={select(it)})
+                    }
+                },
                 topBar={if(!ownHeader) TopAppBar(expandedHeight=48.dp,
                     title={if(tab=="chat") Column(Modifier.heightIn(min=T.touch).clickable(onClickLabel="Choose model",onClick={select("models")}),verticalArrangement=Arrangement.Center) {
                         Text("Meshlit",maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium)
@@ -186,7 +204,7 @@ fun ModernMeshlitApp() {
                         else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onMenu=openMenu,onDestinationChanged={destination->
                             settingsDestination=destination
                             if(destination==null && tab!="settings") tab="settings"
-                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,chatPhotoState,chatPhotoProviderState,chatPhotoPromptState,chatCapturePathState,chatCaptureUriState,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onProviders={select("providers")},onOptions={showChatOptions=true})
+                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,chatPhotoState,chatPhotoProviderState,chatDraftState,chatPhotoTurnState,chatCapturePathState,chatCaptureUriState,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onProviders={select("providers")},onOptions={showChatOptions=true})
                     }}
                 }
             }
@@ -216,26 +234,30 @@ fun ModernMeshlitApp() {
 }
 
 @Composable
-private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,photoState:MutableState<android.net.Uri?>,photoProviderState:MutableState<String>,photoPromptState:MutableState<String>,capturePathState:MutableState<String?>,captureUriState:MutableState<android.net.Uri?>,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onFiles:()->Unit,onProviders:()->Unit,onOptions:()->Unit) {
-    var draft by rememberSaveable(state.selectedId) { mutableStateOf("") }
+private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,photoState:MutableState<android.net.Uri?>,photoProviderState:MutableState<String>,draftState:MutableState<String>,photoTurnState:MutableState<String?>,capturePathState:MutableState<String?>,captureUriState:MutableState<android.net.Uri?>,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onFiles:()->Unit,onProviders:()->Unit,onOptions:()->Unit) {
+    var draft by draftState
     var showVoice by remember{mutableStateOf(false)}
-    val media=koinInject<com.meshlit.media.MediaGeneration>()
     val providers=koinInject<com.meshlit.providers.OnlineProviders>()
     val profiles by providers.profiles.collectAsStateWithLifecycle()
-    val visionProfiles=profiles.filter{it.enabled && it.protocol in setOf(com.meshlit.core.inference.models.OnlineProtocol.OPENAI,com.meshlit.core.inference.models.OnlineProtocol.OPENAI_COMPATIBLE)}
+    val visionProfiles=profiles.filter{it.enabled && it.model.isNotBlank() && it.protocol in setOf(com.meshlit.core.inference.models.OnlineProtocol.OPENAI,com.meshlit.core.inference.models.OnlineProtocol.OPENAI_COMPATIBLE)}
     var photo by photoState
     var photoProvider by photoProviderState
-    var photoPrompt by photoPromptState
+    var photoTurnId by photoTurnState
     LaunchedEffect(photo,visionProfiles) {if(photo!=null && visionProfiles.none{it.id==photoProvider}) photoProvider=visionProfiles.firstOrNull()?.id.orEmpty()}
-    var photoBusy by remember{mutableStateOf(false)}
-    var photoError by remember{mutableStateOf<String?>(null)}
     val context=LocalContext.current
     var captureFilePath by capturePathState
     var captureUri by captureUriState
     fun clearPhoto(){photo=null;captureFilePath?.let{java.io.File(it).delete()};captureFilePath=null;captureUri=null}
-    fun selectPhoto(uri:android.net.Uri){clearPhoto();photo=uri;photoError=null;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}
+    fun selectPhoto(uri:android.net.Uri){clearPhoto();photo=uri;showVoice=false;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}
     val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->if(uri!=null) selectPhoto(uri)}
-    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){saved->if(saved && captureUri!=null){photo=captureUri;photoError=null;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}else{clearPhoto();controller.attachmentError("Photo capture was cancelled or failed")}}
+    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){saved->if(saved && captureUri!=null){photo=captureUri;showVoice=false;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}else{clearPhoto();controller.attachmentError("Photo capture was cancelled or failed")}}
+    LaunchedEffect(state.running,photoTurnId) {
+        val turn=photoTurnId
+        if(turn!=null && !state.running) {
+            if(state.current?.messages?.any{it.id==turn && it.text.isNotBlank()}==true) {clearPhoto();draft=""}
+            photoTurnId=null
+        }
+    }
     val list=rememberLazyListState()
     val scope=rememberCoroutineScope()
     val messages=state.current?.messages.orEmpty()
@@ -264,21 +286,20 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
     LaunchedEffect(messages.lastOrNull()?.text?.length,rows.size,state.selectedId) {
         if(rows.isNotEmpty() && followLatest && !searchOpen) list.scrollToItem(rows.lastIndex)
     }
-    val canSend=(runtime is CoordinatorState.Ready || state.current?.options?.onlineProfileId!=null || state.current?.options?.routeId!=null) && !state.running && draft.isNotBlank() && draft.length<=12000
-    val send={ if(canSend) {followLatest=true;controller.send(draft);draft=""} }
+    val chosenVision=visionProfiles.firstOrNull{it.id==photoProvider}
+    val hasChatModel=runtime is CoordinatorState.Ready || state.current?.options?.onlineProfileId!=null || state.current?.options?.routeId!=null
+    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) chosenVision!=null else hasChatModel && draft.isNotBlank()
+    val send={ if(canSend) {
+        followLatest=true
+        val selectedPhoto=photo
+        val sent=controller.send(if(selectedPhoto!=null) draft.ifBlank{"Describe this photo accurately, including any readable text."} else draft,
+            selectedPhoto?.let{PhotoChatRequest(it,checkNotNull(chosenVision))})
+        if(sent!=null) {if(selectedPhoto!=null) photoTurnId=sent else draft=""}
+    } }
     val colors=MaterialTheme.colorScheme
-    val theme=com.meshlit.ui.theme.LocalMeshlitThemeConfig.current
-    val light=colors.background.red+colors.background.green+colors.background.blue>1.5f
-    // Static, inexpensive glow: no blur, animation or rendered model placeholders.
-    val referencePalette=!theme.dynamicColors && theme.accentHue==com.meshlit.ui.theme.AccentHue.SKY && theme.customPalette is com.meshlit.ui.theme.CustomPalette.None
     val keyboardVisible=WindowInsets.ime.getBottom(LocalDensity.current)>0
-    val glow=when {
-        theme.highContrast->colors.background
-        referencePalette && light->Color(0xFF81D9F5)
-        referencePalette->Color(0xFF18254C)
-        else->androidx.compose.ui.graphics.lerp(colors.background,colors.primary,0.2f)
-    }
-    Box(Modifier.fillMaxSize().imePadding().background(Brush.verticalGradient(0f to colors.background,0.62f to colors.background,1f to glow))) {
+    BoxWithConstraints(Modifier.fillMaxSize().imePadding().background(colors.background)) {
+    val panelHeight=(maxHeight*0.4f).coerceAtMost(260.dp)
     Column(Modifier.fillMaxHeight().widthIn(max=T.contentMax).fillMaxWidth().align(Alignment.TopCenter)) {
         if(searchOpen) Column(Modifier.fillMaxWidth().padding(horizontal=T.large).testTag("chat-search-bar")) {
             OutlinedTextField(searchQuery,{onSearchQuery(it.take(200))},Modifier.fillMaxWidth().testTag("chat-search-query"),singleLine=true,label={Text("Search this conversation")},
@@ -297,6 +318,8 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                 Spacer(Modifier.height(T.large))
                 Text(stringResource(R.string.modern_greeting),style=MaterialTheme.typography.headlineSmall,
                     textAlign=TextAlign.Center,modifier=Modifier.widthIn(max=280.dp))
+                Spacer(Modifier.height(20.dp))
+                ModelWelcomeSuggestion(onModels)
             }
         } else Box(Modifier.weight(1f)) {
             LazyColumn(state=list,modifier=Modifier.fillMaxSize().testTag("chat-timeline"),contentPadding=PaddingValues(horizontal=T.large,vertical=T.medium),verticalArrangement=Arrangement.spacedBy(14.dp)) {
@@ -305,12 +328,16 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         "user" -> Row(Modifier.fillMaxWidth().padding(top=T.medium),horizontalArrangement=Arrangement.End) {
                             val currentMatch=searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key
                             Surface(shape=MaterialTheme.shapes.extraLarge,color=if(currentMatch) colors.secondaryContainer else colors.surfaceContainerHigh,modifier=Modifier.widthIn(max=T.bubbleMax).then(if(currentMatch) Modifier.testTag("chat-search-current-match") else Modifier)) {
-                                SelectionContainer {Text(message.text,Modifier.padding(T.large),style=MaterialTheme.typography.bodyLarge)}
+                                Column(Modifier.padding(T.large)) {
+                                    message.attachmentNote?.let{Text(it,style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant);Spacer(Modifier.height(6.dp))}
+                                    SelectionContainer {Text(message.text,style=MaterialTheme.typography.bodyLarge)}
+                                }
                             }
                         }
                         "header" -> Row(Modifier.fillMaxWidth().padding(top=T.small),verticalAlignment=Alignment.CenterVertically) {
-                            Text("Meshlit",style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant)
-                            if(message.text.isEmpty() && state.running) {Spacer(Modifier.width(T.medium));LinearProgressIndicator(Modifier.width(80.dp))}
+                            Text(message.source ?: "Meshlit",style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false))
+                            if(message.text.isEmpty() && state.running && message.id==controller.generationId) {Spacer(Modifier.width(T.medium));LinearProgressIndicator(Modifier.width(60.dp))}
+                            else if(message.text.isEmpty()) message.status?.let{Text(it,Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)}
                         }
                         "block" -> ReplyContent(checkNotNull(row.block),if(searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key) Modifier.background(colors.secondaryContainer.copy(alpha=0.45f)).testTag("chat-search-current-match") else Modifier)
                         "actions" -> MessageActions(message.text,message.usage)
@@ -320,41 +347,9 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
             if(!nearBottom && rows.isNotEmpty()) SmallFloatingActionButton(onClick={followLatest=true;scope.launch{list.animateScrollToItem(rows.lastIndex)}},
                 modifier=Modifier.align(Alignment.BottomCenter).padding(T.small)) {Icon(Icons.Default.ArrowDownward,stringResource(R.string.modern_latest))}
         }
-        if(showVoice && !com.meshlit.BuildProfile.coreCandidate) HandsFreeVoiceDialog(controller){showVoice=false}
-        if(photo!=null) Card(Modifier.fillMaxWidth().padding(horizontal=T.large,vertical=T.small).testTag("chat-photo-card")) {
-            Column(Modifier.fillMaxWidth().padding(T.medium),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Default.Image,null,Modifier.size(20.dp))
-                    Text("Photo selected",Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.titleSmall)
-                    TextButton(enabled=!photoBusy,onClick={clearPhoto()}){Text("Remove")}
-                }
-                if(visionProfiles.isEmpty()) {
-                    Text("Vision model: none connected",style=MaterialTheme.typography.labelMedium)
-                    Text("This chat model reads text only. Add a vision provider to analyze the photo.",style=MaterialTheme.typography.bodySmall)
-                    TextButton(onClick=onProviders){Text("Set up vision model")}
-                } else {
-                    Text("Vision model",style=MaterialTheme.typography.labelMedium)
-                    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {visionProfiles.forEach { profile ->
-                        FilterChip(selected=photoProvider==profile.id,onClick={photoProvider=profile.id},label={Text("${profile.name} · ${profile.model}",maxLines=1,overflow=TextOverflow.Ellipsis)})
-                    }}
-                    OutlinedTextField(photoPrompt,{photoPrompt=it.take(1000)},Modifier.fillMaxWidth(),label={Text("Ask about photo")},maxLines=2)
-                    Text("The photo goes to this provider for analysis. The chat model receives its description, not the pixels.",style=MaterialTheme.typography.bodySmall)
-                    Button(enabled=!photoBusy && !state.running && photoProvider.isNotBlank() && photoPrompt.isNotBlank() && draft.length<9000,onClick={
-                        val chosen=photo ?: return@Button
-                        photoBusy=true;photoError=null
-                        scope.launch {try {
-                            val result=media.generate(photoProvider,"vision","",photoPrompt,"",chosen).text ?: error("Vision provider returned no description")
-                            val addition="${draft.ifBlank { photoPrompt }}\n\nPhoto analysis (from ${visionProfiles.firstOrNull{it.id==photoProvider}?.name ?: "selected provider"}; original photo not stored):\n$result"
-                            require(addition.length<=12000){"Photo question and description are too long"}
-                            check(controller.send(addition)!=null){"Load or select a chat model, then retry the photo"}
-                            draft=""
-                            clearPhoto()
-                        }catch(e:Exception){photoError=e.message ?: "Photo analysis failed"}finally{photoBusy=false}}
-                    },modifier=Modifier.fillMaxWidth().testTag("chat-analyze-photo")){Text(if(photoBusy) "Analyzing…" else "Send photo")}
-                }
-                photoError?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-            }
-        }
+        if(showVoice && !com.meshlit.BuildProfile.coreCandidate) HandsFreeVoiceDialog(controller,maxHeight=panelHeight){showVoice=false}
+        if(photo!=null) ChatPhotoAttachment(checkNotNull(photo),visionProfiles,photoProvider,!state.running,
+            onProvider={photoProvider=it},onRemove={clearPhoto()},onSetup=onProviders,maxHeight=panelHeight)
         val access=state.current?.options ?: com.meshlit.chat.ChatOptions()
         val accessLabel=when {
             access.onlineProfileId!=null -> "Online provider selected · chat tools off"
@@ -363,15 +358,21 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
             access.usesLocalTools -> "Local chat · Web request ${if(access.webTools) "on" else "off"} · Phone request ${if(access.phoneTools) "on" else "off"} · ${access.toolCount} tool slots"
             else -> "Local chat · Web and phone tools off"
         }
-        TextButton(onClick=onOptions,modifier=Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("chat-access-indicator")) {
-            Text("Access: $accessLabel",maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.labelSmall)
-        }
-        if(state.current?.options?.showTokenStats!=false) TokenSpeedIndicator(state,onOptions)
+        if(!keyboardVisible && state.current?.options?.showTokenStats!=false) TokenSpeedIndicator(state,onOptions)
+        if(photo!=null && draft.length>4000) Text("Photo questions support up to 4,000 characters.",Modifier.padding(horizontal=16.dp),color=colors.error,style=MaterialTheme.typography.bodySmall)
         state.error?.let { Box(Modifier.padding(horizontal=T.large)) {ErrorCard(it){controller.clearError()}} }
         if(runtime is CoordinatorState.Error) Box(Modifier.padding(horizontal=T.large)) {ErrorCard(runtime.message,onModels)}
         Column(Modifier.fillMaxWidth().padding(horizontal=T.large,vertical=if(keyboardVisible) T.small else T.medium)) {
-            Surface(shape=RoundedCornerShape(32.dp),color=MaterialTheme.colorScheme.surface.copy(alpha=0.97f),shadowElevation=2.dp) {
-                Row(Modifier.fillMaxWidth().padding(horizontal=T.tiny,vertical=T.tiny),verticalAlignment=Alignment.CenterVertically) {
+            Surface(shape=RoundedCornerShape(24.dp),color=colors.surfaceContainerLow,
+                border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant.copy(alpha=0.65f))) {
+                Column(Modifier.fillMaxWidth().padding(6.dp)) {
+                    TextField(value=draft,onValueChange={draft=it.take(12000)},enabled=!state.running,
+                        modifier=Modifier.fillMaxWidth().testTag("chat-composer"),
+                        placeholder={Text(if(photo!=null) "Ask about this photo…" else stringResource(R.string.modern_message),style=MaterialTheme.typography.bodyLarge)},maxLines=4,
+                        keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={send()}),
+                        colors=TextFieldDefaults.colors(focusedContainerColor=Color.Transparent,unfocusedContainerColor=Color.Transparent,
+                            disabledContainerColor=Color.Transparent,focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent,disabledIndicatorColor=Color.Transparent))
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     ChatAttachmentActions(!state.running,onText={text->if(draft.length+text.length+2<=12000) draft=if(draft.isBlank()) text else "$draft\n\n$text" else controller.attachmentError("Attachment plus draft exceeds 12000 characters")},onSelectedImage={selectPhoto(it)},onPhoto={photoPicker.launch("image/*")},onCamera={try{
                         clearPhoto()
                         val dir=java.io.File(context.cacheDir,"exports/captures").apply{mkdirs();listFiles().orEmpty().filter{it.name.startsWith("chat-") && System.currentTimeMillis()-it.lastModified()>86_400_000}.forEach{it.delete()}}
@@ -380,16 +381,17 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         captureUri=androidx.core.content.FileProvider.getUriForFile(context,"${context.packageName}.fileprovider",target)
                         camera.launch(checkNotNull(captureUri))
                     }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions)
-                    TextField(value=draft,onValueChange={draft=it},modifier=Modifier.weight(1f).testTag("chat-composer"),
-                        placeholder={Text(stringResource(R.string.modern_message),style=MaterialTheme.typography.bodyLarge)},maxLines=6,
-                        keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={send()}),
-                        colors=TextFieldDefaults.colors(focusedContainerColor=Color.Transparent,unfocusedContainerColor=Color.Transparent,
-                            focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent))
-                    if(!com.meshlit.BuildProfile.coreCandidate) IconButton(onClick={showVoice=true},enabled=!state.running){Icon(Icons.Default.Mic,"Hands-free voice conversation")}
-                    FilledIconButton(enabled=state.running || canSend,onClick={if(state.running) controller.stop() else send()},modifier=Modifier.size(T.touch),
-                        colors=IconButtonDefaults.filledIconButtonColors(containerColor=colors.primary,contentColor=colors.onPrimary)) {
-                        Icon(if(state.running) Icons.Default.Stop else Icons.Default.ArrowUpward,
-                            stringResource(if(state.running) R.string.modern_stop else R.string.modern_send))
+                        TextButton(onClick=onOptions,modifier=Modifier.weight(1f).testTag("chat-access-indicator").semantics{contentDescription="Access: $accessLabel"},contentPadding=PaddingValues(horizontal=4.dp)) {
+                            Icon(if(access.usesLocalTools) Icons.Default.Tune else Icons.Default.Shield,null,Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if(access.usesLocalTools) "Web ${if(access.webTools) "on" else "off"} · Phone ${if(access.phoneTools) "on" else "off"}" else "Tools off",style=MaterialTheme.typography.labelMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                        }
+                        if(!com.meshlit.BuildProfile.coreCandidate) IconButton(onClick={showVoice=!showVoice},enabled=!state.running && photo==null){Icon(if(showVoice) Icons.Default.Keyboard else Icons.Default.Mic,if(showVoice) "Close voice controls" else "Open voice controls",Modifier.size(22.dp))}
+                        FilledIconButton(enabled=state.running || canSend,onClick={if(state.running) controller.stop() else send()},modifier=Modifier.size(T.touch).testTag("chat-send-stop"),
+                            colors=IconButtonDefaults.filledIconButtonColors(containerColor=colors.primary,contentColor=colors.onPrimary)) {
+                            Icon(if(state.running) Icons.Default.Stop else Icons.Default.ArrowUpward,
+                                if(state.running) "Stop response" else if(photo!=null) "Send photo" else stringResource(R.string.modern_send),Modifier.size(22.dp))
+                        }
                     }
                 }
             }
@@ -398,7 +400,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                 "llama-rpc-layer" -> "Cluster model"
                 else -> "Selected model"
             }
-            if(!keyboardVisible) Text(mode,Modifier.fillMaxWidth().padding(top=T.small),textAlign=TextAlign.Center,
+            if(!keyboardVisible) Text(if(photo!=null) "Photo → selected vision provider" else mode,Modifier.fillMaxWidth().padding(top=T.small),textAlign=TextAlign.Center,
                 style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

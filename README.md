@@ -46,7 +46,7 @@ areas; unsupported platforms and accelerators are not advertised as ready.
 
 | Area | Source behavior | Evidence and practical boundary |
 | --- | --- | --- |
-| Local AI chat | Real bundled SmolLM2 135M Instruct Q4_K_M; saved chats, model selector, native Markdown/tables/code, full response reader, output-token controls and keyboard-aware composer | Real emulator load and generation observed. The 101 MiB starter tests installation; it is not a strong general-purpose agent or vision model |
+| Local AI chat | Real bundled Qwen2.5 0.5B Instruct Q4_K_M; saved chats, model selector, native Markdown/tables/code, full response reader, output-token controls and keyboard-aware composer | Real emulator load and generation observed. The approximately 469 MiB starter supports installation checks; it is not a strong general-purpose agent or vision model |
 | Model management | RunAnywhere/verified HTTPS downloads, pinned Hugging Face artifacts, resumable transfers, multi-file import, validation, load/unload and startup policy | Download completion is separate from validated installation and usable generation; account access to gated weights remains required |
 | Phone layer sharding | Native CPU coordinator/workers, memory-aware layer placement and pinned authenticated TLS tunnels | Real two-worker **desktop** execution exists. Oversized-model execution across physical phones remains an acceptance gate |
 | Context and KV cache | Native context/thread/cache controls and encrypted local CPU KV checkpoints | Backend capabilities differ; distributed/portable KV recovery and replicated failover remain unfinished |

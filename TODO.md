@@ -4,6 +4,10 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current priority — 2026-10-24
+
+See the ordered [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md). Photo-to-chat lifecycle and the Kandari-inspired compact Android UI are implemented in source; device and real-provider acceptance are tracked separately. The older build41/install and draft-release notes below are historical gates: build43 beta.4 was published, with the Core Candidate CI timeout still open.
+
 ## Current device and security gates — 2026-10-23
 
 - [ ] Reconcile and qualify the older Android Studio requests using [the source audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md); prioritize voice input, model transfer, Auto Pilot repair, safe imports, persona/adapter selection and distributed LoRA by real backend evidence.

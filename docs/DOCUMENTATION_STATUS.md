@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-131 active, 19 historical, 8 protected, 1 template, 6 third-party; 166 Markdown documents including this index.
+132 active, 19 historical, 8 protected, 1 template, 6 third-party; 167 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -86,6 +86,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/DEVICE_COMPATIBILITY.md](DEVICE_COMPATIBILITY.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/DISCOVERY_AND_COMMUNITY.md](DISCOVERY_AND_COMMUNITY.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/GIBBERLINK.md](GIBBERLINK.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/HIGH_IMPACT_BACKLOG_2026-10-24.md](HIGH_IMPACT_BACKLOG_2026-10-24.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md](LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/LOCAL_MODEL_TOOLS.md](LOCAL_MODEL_TOOLS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MACOS_OFFLINE.md](MACOS_OFFLINE.md) | desktop/server; individual acceptance gates apply |

@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 131,
+    "active": 132,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -79,7 +79,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current regressions, limitations and verification",
-      "contentSha256WithoutTrackingBlock": "b13aad725a8d769fc05cb115f5a4abad0b0f3218c17345b35e280a47b719d663"
+      "contentSha256WithoutTrackingBlock": "52dcc0fbc552795ad430bf3bc348c311efb754c5c2b82fe34d49e10170240673"
     },
     {
       "path": "BUILD.md",
@@ -128,28 +128,28 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit implementation and qualification plan",
-      "contentSha256WithoutTrackingBlock": "437ca7ce7c6e446044b54565a7c1cf43c1a249ff503cd5866fd62b5de06b890c"
+      "contentSha256WithoutTrackingBlock": "6fc6b5776ccc34cd969526705e4e1888140d81904f0f58c989fea6f5e28a1da7"
     },
     {
       "path": "PROGRESS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "da3ed0a9cbc2a9926178a81dcbdac4858388092f43deea264a09cef63f38aab5"
+      "contentSha256WithoutTrackingBlock": "aaced3a27b198b8b6a628fa8bf02c25dce888d37c8f732da4e5ae9ecfe8ae35e"
     },
     {
       "path": "README.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit v2 \u2014 adaptive AI workspace and experimental distributed compute",
-      "contentSha256WithoutTrackingBlock": "9c293462d1a6e4cebc1cc9a9e9f14f0b5a080fe9897a86ce8f82b4f2bb4a4d16"
+      "contentSha256WithoutTrackingBlock": "c0084c86bd3767ce0656def7afaaffbf4a23f07d9c25b7bcafb48c387c8c03b4"
     },
     {
       "path": "REQUESTS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "8a3a03e3723c280f3c25f0e0c12240787df5e1efdf73de0252cd8e76b91a9f9b"
+      "contentSha256WithoutTrackingBlock": "f5e482ed95a2a6d17742a5f611cf5d310700a905bf8e8c15f7d8689b82d030c9"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "1d8fe676c15f7f6b7397a902f242e87daabeb629d5e8ff49015dac274855fe56"
+      "contentSha256WithoutTrackingBlock": "1219e13e3afb47cccaf62beb594cb3f9569e2f8aa8444c2b7efa27302e92b7ce"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -460,6 +460,13 @@
       "contentSha256WithoutTrackingBlock": "91505b580d037e3bf0b440b42d2884e3f32838febfa962c354ca40db6e5234b9"
     },
     {
+      "path": "docs/HIGH_IMPACT_BACKLOG_2026-10-24.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "High-impact work and remaining acceptance",
+      "contentSha256WithoutTrackingBlock": "cc3c334317ca87ae33328e857234d39cd44681c7103dab2df071e0f107d7cd96"
+    },
+    {
       "path": "docs/LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md",
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
@@ -667,7 +674,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "ac18c7cb5ec68f377cf85311194e13d82739a8f0020cc3a2d989d3ca86c16159"
+      "contentSha256WithoutTrackingBlock": "dcfe49f9e01b2ad745f609e641d79e52d1c28908d6138848e3dc05ab059f8af2"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",

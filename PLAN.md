@@ -4,6 +4,10 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Priority order — 2026-10-24
+
+The owner requested major-impact or complex work first. Follow the [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md): reliable model/media chat first, physical multi-device execution/recovery next, then Internet relay/group chat, Studio agent parity and separately qualified operational/reward backends.
+
 ## Android and Studio workspace continuation — 2026-10-23
 
 The [older Android Studio request audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) now preserves untransferred requests as explicit gates. This iteration adds an embedded pairing radar, relay join-code countdown with automatic rotation, clearer direct/VPN/relay/web connection choices, narrower phone typography, responsive Settings shortcuts and direct Security Lab → VM/packages navigation. Rebuild, physical UI inspection, pairing and release checks still govern delivery.

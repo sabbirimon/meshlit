@@ -139,6 +139,13 @@ class ModelLibrary(private val context: Context, private val coordinator: Infere
         val plan=devicePlan()
         return DeviceRuntimePolicy.fits(plan,entry.sizeBytes,entry.metadata?.kvBytes(plan.recommendedContext,"f16"))
     }
+    fun downloadRecommendation(id:String):String {
+        val advice=CompactModelRecommendations.assess(deviceSnapshot()).firstOrNull{it.model.id==id}
+            ?: error("Unknown model recommendation")
+        require(advice.hardwareFit){advice.reason}
+        require(freeStorage()>=advice.storageNeeded){"Free space for the model, runtime copy and storage reserve before downloading"}
+        return addHubArtifact(advice.model.artifact,ModelDownloadBackend.VERIFIED_HTTP)
+    }
     fun addHubArtifact(artifact:HubArtifact,backend:ModelDownloadBackend):String {
         val id=addUrl(artifact.url,artifact.fileName.removeSuffix(".gguf"),startDownload=false)
         change(id){it.copy(sizeBytes=artifact.sizeBytes ?: 0,sha256=artifact.sha256,source="Hugging Face · ${artifact.repo} @ ${artifact.revision.take(8)}")}

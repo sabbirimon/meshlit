@@ -4,6 +4,10 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current photo lifecycle correction — 2026-10-24
+
+The old photo path ran in a screen coroutine and then required a second text-model request. Source now uses the chat controller and displays the selected vision provider answer directly, without requiring a local text model. Stop, timeout, interrupted history and provider-change handling are explicit. Real provider and spoken offline voice acceptance remain open. The build43 V2 debug CI stage passed, but its separate Core Candidate stage hit the job timeout.
+
 ## Current build41 device observations — 2026-10-23
 
 Samsung build42 showed an ordinary “hi” sent through the local tool planner whenever Web/Phone grants were enabled; the bundled small model returned an unrelated refusal. Source now requires an apparent tool request before using that planner, with a regression test for greetings and explicit commands. The voice mic opened a modal and auto-started; source now uses inline manual Start/Stop controls, a live input level/speech indicator, and a clear no-speech timeout. Photo selection opened a blocking dialog and could not show a usable model choice when no vision profile existed; source now uses an inline card with visible provider/model choices and a single Send photo action, or a setup link. Physical Samsung voice and provider vision response checks remain open; the bundled text model cannot process pixels.

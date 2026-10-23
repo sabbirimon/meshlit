@@ -4,6 +4,10 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Major-impact-first continuation — 2026-10-24
+
+The owner requested remaining work ranked by impact/complexity and a simpler UI like Kandari. Implementation and remaining gates are recorded in the [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md). Photo/model selection and Send/Stop are being unified before claiming general media reliability or Studio parity.
+
 ## Added owner requests — 2026-10-23
 
 The owner also asked to reconcile the older Android Studio `mllm` plan/request/TODO files. [The request audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) maps older R-01–R-23 plus open Auto Pilot, voice animation, model import, persona/weights, Ghostty and training requests to this checkout's source and remaining acceptance. An older checkout's “done” status is not inherited by this APK.

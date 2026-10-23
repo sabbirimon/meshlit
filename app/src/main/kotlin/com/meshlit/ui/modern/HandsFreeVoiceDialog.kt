@@ -14,6 +14,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Tune
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -29,7 +34,7 @@ import org.koin.compose.koinInject
         DropdownMenu(expanded,{expanded=false}){items.forEach{(id,name)->DropdownMenuItem(text={Text(name)},onClick={onSelect(id);expanded=false})}}}
 }
 @OptIn(ExperimentalLayoutApi::class)
-@Composable internal fun HandsFreeVoiceDialog(chat:ChatController,onClose:()->Unit) {
+@Composable internal fun HandsFreeVoiceDialog(chat:ChatController,maxHeight:Dp=340.dp,onClose:()->Unit) {
     val context=LocalContext.current;val models=koinInject<VoiceModels>();val providers=koinInject<OnlineProviders>()
     val voice=remember{HandsFreeVoice(context,chat,models,providers)}
     val state by voice.state.collectAsState();val packs by models.models.collectAsState();val profiles by providers.profiles.collectAsState()
@@ -67,10 +72,15 @@ import org.koin.compose.koinInject
     LaunchedEffect(options) { VoicePreferences.save(context,options) }
     DisposableEffect(voice,owner){val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_PAUSE) voice.stop()}
         owner.lifecycle.addObserver(observer);onDispose{owner.lifecycle.removeObserver(observer);voice.close()}}
-    Card(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=4.dp).testTag("voice-panel")) { Column(Modifier.fillMaxWidth().heightIn(max=340.dp).verticalScroll(rememberScrollState()).padding(12.dp).testTag("voice-options"),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) { Text("Voice conversation",style=MaterialTheme.typography.titleMedium);TextButton(onClick=onClose){Text("Close")} }
-        Text("Tap Start and speak. The meter shows microphone input; Stop ends the session.")
-        Text(state.phase,modifier=Modifier.testTag("voice-phase"),style=MaterialTheme.typography.titleSmall)
+    Card(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=4.dp).testTag("voice-panel")) { Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).verticalScroll(rememberScrollState()).padding(12.dp).testTag("voice-options"),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Voice",style=MaterialTheme.typography.titleSmall)
+                Text(state.phase,modifier=Modifier.testTag("voice-phase"),style=MaterialTheme.typography.bodyMedium)
+            }
+            IconButton(onClick={showSettings=!showSettings}){Icon(Icons.Default.Tune,if(showSettings) "Hide voice settings" else "Voice settings")}
+            IconButton(onClick=onClose){Icon(Icons.Default.Close,"Close voice controls")}
+        }
         (state.error ?: error)?.let{Text(it,color=MaterialTheme.colorScheme.error)}
         if(state.phase.startsWith("Listening")) {
             LinearProgressIndicator(progress={state.inputLevel.coerceIn(0f,1f)},modifier=Modifier.fillMaxWidth().testTag("voice-input-level"))
@@ -82,7 +92,7 @@ import org.koin.compose.koinInject
         }},modifier=Modifier.fillMaxWidth().testTag("voice-start-stop")){Text(if(state.busy) "Stop" else "Start listening")}
         Text("${options.input.label} · ${options.output.label} · ${if(options.network) "network audio allowed" else "network audio off"}",style=MaterialTheme.typography.bodySmall)
         if(!offlineInputReady && !options.network) Text("No offline recognizer is ready on this device. Install a verified Whisper pack in Voice settings; Android's speech service here cannot guarantee offline use.",color=MaterialTheme.colorScheme.error)
-        TextButton(onClick={showSettings=!showSettings}) { Text(if(showSettings) "Hide voice settings" else "Voice settings") }
+
         if(showSettings) {
         VoiceChoice("Recognition",options.input.name,SpeechInput.entries.map{it.name to it.label},enabled){options=options.copy(input=SpeechInput.valueOf(it))}
         VoiceChoice("Voice reply",options.output.name,SpeechOutput.entries.map{it.name to it.label},enabled){options=options.copy(output=SpeechOutput.valueOf(it),style=VoiceStyle.NATURAL)}

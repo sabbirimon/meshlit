@@ -26,15 +26,17 @@ internal fun shouldPlanToolCall(message:String,options:ChatOptions):Boolean {
     return Regex("\\b(search|browse|look up|google|open|navigate|visit|play|call|dial|send|text|message|read|find|locate|scan|run|execute|list|show|check|fetch|download|install|turn on|turn off|connect|pair|remember|save|forget)\\b").containsMatchIn(text) ||
         options.webTools && Regex("\\b(latest|today|current news|right now|this week)\\b").containsMatchIn(text)
 }
-@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null)
+data class PhotoChatRequest(val uri:android.net.Uri,val profile:com.meshlit.core.inference.models.OnlineProfile)
+
+@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null)
 @Serializable data class ChatConversation(val id:String=UUID.randomUUID().toString(),val title:String="New chat",
     val messages:List<ChatMessage> = emptyList(),val updatedAt:Long=System.currentTimeMillis(),val options:ChatOptions=ChatOptions(),val usageNote:String?=null)
 data class ChatState(val conversations:List<ChatConversation> = emptyList(),val selectedId:String?=null,
-    val running:Boolean=false,val error:String?=null,val generationStartedMs:Long?=null,val activeOutputLimit:Int?=null) {
+    val running:Boolean=false,val error:String?=null,val generationStartedMs:Long?=null,val activeOutputLimit:Int?=null,val operationLabel:String="Generating") {
     val current get()=conversations.firstOrNull { it.id==selectedId }
 }
 
-class ChatController(private val context:Context,private val coordinator:InferenceCoordinator,private val appScope:CoroutineScope,private val providers:com.meshlit.providers.OnlineProviders,private val router:com.meshlit.routing.ModelRoutes,private val localTools:LocalChatTools,private val memory:PersonalMemory,private val library:com.meshlit.models.ModelLibrary,private val colibri:com.meshlit.colibri.ColibriBackend) {
+class ChatController(private val context:Context,private val coordinator:InferenceCoordinator,private val appScope:CoroutineScope,private val providers:com.meshlit.providers.OnlineProviders,private val router:com.meshlit.routing.ModelRoutes,private val localTools:LocalChatTools,private val memory:PersonalMemory,private val library:com.meshlit.models.ModelLibrary,private val colibri:com.meshlit.colibri.ColibriBackend,private val media:com.meshlit.media.MediaGeneration) {
     private val _state=MutableStateFlow(ChatState())
     val state:StateFlow<ChatState> = _state.asStateFlow()
     private val file=File(context.filesDir,"conversations-v1.json")
@@ -47,7 +49,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
     fun budgetDecision(options:ChatOptions)=clusterOutputBudget(options,coordinator.engineTag,coordinator.loadedModel(),evidence.value,android.os.SystemClock.elapsedRealtime())
     @Volatile var generationId:String?=null; private set
     val ready=appScope.async(Dispatchers.IO) {
-        val items=runCatching { json.decodeFromString<List<ChatConversation>>(file.readText()) }.getOrDefault(emptyList()).take(40)
+        val items=runCatching { json.decodeFromString<List<ChatConversation>>(file.readText()) }.getOrDefault(emptyList()).take(40).map{c->c.copy(messages=c.messages.map{m->if(m.status=="Analyzing photo") m.copy(status="Interrupted · attach the photo again to retry") else m})}
         _state.value=ChatState(items,restoredChatSelection(items,runCatching{selectionFile.readText()}.getOrNull()))
     }
     private suspend fun save()=persistence.withLock { withContext(Dispatchers.IO) {
@@ -82,39 +84,52 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         _state.update{old->old.copy(conversations=old.conversations.map{if(it.id==old.selectedId) it.copy(options=options) else it})}
         appScope.launch{runCatching{save()}.onFailure{error->_state.update{it.copy(error="Cannot save chat options: ${error.javaClass.simpleName}")}}}
     }
-    fun send(text:String):String? {
+    fun send(text:String,photo:PhotoChatRequest?=null):String? {
         if(!ready.isCompleted || _state.value.running || text.isBlank()) return null
         require(text.length<=12000) { "Message is too long" }
         if(_state.value.current==null) newChat()
         val selected=_state.value.selectedId!!
-        val user=ChatMessage(role="user",text=text.trim())
-        val assistant=ChatMessage(role="assistant",text="")
+        val user=ChatMessage(role="user",text=text.trim(),attachmentNote=photo?.let{"Photo attached · original image not retained"})
+        val assistant=ChatMessage(role="assistant",text="",source=photo?.let{"${it.profile.name} · ${it.profile.model}"},status=photo?.let{"Analyzing photo"})
         val configured=_state.value.current!!.options
-        try { configured.validate();com.meshlit.BuildProfile.requireChat(configured) } catch(e:Exception) {
+        try { configured.validate();com.meshlit.BuildProfile.requireChat(configured)
+            if(photo!=null) {
+                require(!com.meshlit.BuildProfile.coreCandidate){"Image analysis is unavailable in Core Candidate"}
+                require(photo.uri.scheme=="content"){"Select a photo from your device"}
+                require(photo.profile.enabled && photo.profile.model.isNotBlank() && photo.profile.protocol in setOf(com.meshlit.core.inference.models.OnlineProtocol.OPENAI,com.meshlit.core.inference.models.OnlineProtocol.OPENAI_COMPATIBLE)){"Choose an enabled vision provider and model"}
+                require(providers.profiles.value.any{it==photo.profile}){"Photo provider changed. Review it before sending."}
+            }
+        } catch(e:Exception) {
             _state.update { it.copy(error=e.message) };return null
         }
-        val localRoute=configured.onlineProfileId==null && configured.routeId==null && !configured.usesLocalTools
+        val localRoute=photo==null && configured.onlineProfileId==null && configured.routeId==null && !configured.usesLocalTools
         val colibriDecision=if(localRoute) colibri.decision(selected,com.meshlit.workspace.ColibriMode.parse(configured.colibriMode),configured.colibriAgentAllowed,coordinator.state.value is CoordinatorState.Ready) else null
         if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.BLOCKED) { _state.update{it.copy(error=colibriDecision.reason)};return null }
-        if(configured.onlineProfileId==null && configured.routeId==null && colibriDecision?.route!=com.meshlit.workspace.ColibriRoute.HOST && coordinator.state.value !is CoordinatorState.Ready) {
+        if(photo==null && configured.onlineProfileId==null && configured.routeId==null && colibriDecision?.route!=com.meshlit.workspace.ColibriRoute.HOST && coordinator.state.value !is CoordinatorState.Ready) {
             _state.update { it.copy(error="Load a model from Models before sending a message") };return null
         }
         val decision=budgetDecision(if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.HOST) configured.copy(outputBudgetMode=OutputBudgetMode.MANUAL) else configured)
-        val options=configured.copy(maxTokens=decision.limit)
+        val options=configured.copy(maxTokens=if(photo!=null) 512 else decision.limit)
         val instructions=companionInstructions(options)
         val history=_state.value.current!!.messages.filter{it.text.isNotBlank()}.takeLast(options.historyMessages)
-        _state.update { old -> old.copy(running=true,error=null,generationStartedMs=android.os.SystemClock.elapsedRealtime(),activeOutputLimit=options.maxTokens,conversations=old.conversations.map { c ->
+        _state.update { old -> old.copy(running=true,error=null,operationLabel=if(photo!=null) "Analyzing photo" else "Generating",generationStartedMs=android.os.SystemClock.elapsedRealtime(),activeOutputLimit=options.maxTokens,conversations=old.conversations.map { c ->
             if(c.id==selected) c.copy(title=if(c.messages.isEmpty()) text.trim().take(56) else c.title,
                 messages=(c.messages+user+assistant).takeLast(100),updatedAt=System.currentTimeMillis()) else c }) }
         generationId=assistant.id
         generation=appScope.launch {
             val started=android.os.SystemClock.elapsedRealtime()
-            fun recordUsage(usage:ChatTokenUsage) {_state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(usage=usage.copy(budgetReason=decision.explanation)) else it}) else c})}}
+            fun recordUsage(usage:ChatTokenUsage) {_state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(usage=usage.copy(budgetReason=if(photo!=null) "Vision request limit; actual usage is reported separately" else decision.explanation)) else it}) else c})}}
             try {
                 ready.await();save()
                 androidx.core.content.ContextCompat.startForegroundService(context,
                     android.content.Intent(context,ChatInferenceService::class.java).putExtra("generation",assistant.id))
-                if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.HOST) {
+                if(photo!=null) {
+                    val result=withTimeout(180_000) { media.generate(photo.profile.id,"vision","",user.text,image=photo.uri,expectedProfile=photo.profile) }
+                    currentCoroutineContext().ensureActive()
+                    val answer=result.text?.takeIf{it.isNotBlank()} ?: error("Vision provider returned no answer")
+                    _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=answer,status=null) else it},usageNote="Photo answered by ${photo.profile.name} · ${photo.profile.model} · original image not retained") else c})}
+                    recordUsage(chatTokenUsage("Vision provider · ${photo.profile.model}",512,result.usage?.inputTokens,result.usage?.outputTokens,null,android.os.SystemClock.elapsedRealtime()-started,null,null))
+                } else if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.HOST) {
                     val (model,reply)=colibri.generate((history+user).map{com.meshlit.core.inference.models.OnlineMessage(it.role,it.text)},instructions,options.maxTokens,options.temperature)
                     _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=reply.text) else it},usageNote="Colibri · $model · buffered text · ${colibriDecision.reason}") else c})}
                     recordUsage(chatTokenUsage("Colibri host · $model",options.maxTokens,reply.inputTokens,reply.outputTokens,null,android.os.SystemClock.elapsedRealtime()-started,null,null))
@@ -152,9 +167,11 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 val originalInfo=coordinator.loadedModel()
                 val originalEngine=coordinator.engineTag
                 val originalModel=library.models.value.firstOrNull{it.installed && it.path==originalInfo?.modelPath}
+                val qwen3=originalModel?.name?.contains("Qwen3",ignoreCase=true)==true
                 val usesChatMl=originalEngine=="runanywhere" && originalModel!=null &&
-                    (originalModel.name.contains("SmolLM2",ignoreCase=true) || originalModel.name.contains("Qwen2.5",ignoreCase=true))
-                var localPrompt=if(usesChatMl) smolLmChatPrompt(memory.context(user.text)+instructions,history,user.text) else prompt
+                    (originalModel.name.contains("SmolLM2",ignoreCase=true) || originalModel.name.contains("Qwen2.5",ignoreCase=true) || qwen3)
+                fun chatPrompt(system:String,turns:List<ChatMessage>)=if(qwen3) qwen3ChatPrompt(system,turns,user.text) else smolLmChatPrompt(system,turns,user.text)
+                var localPrompt=if(usesChatMl) chatPrompt(memory.context(user.text)+instructions,history) else prompt
                 var localTemperature=options.temperature
                 var freshRetry=false
                 val buffer=StringBuilder()
@@ -174,7 +191,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 }
                 if(result is MeshlitResult.Success && isUnrelatedRepeat(user.text,history,completedChatText(buffer.toString(),result.value.finalText))) {
                     freshRetry=true
-                    localPrompt=if(usesChatMl) smolLmChatPrompt(memory.context(user.text)+instructions+"\nPast assistant replies may be mistaken. Answer only the latest user message; do not repeat a previous reply.",emptyList(),user.text)
+                    localPrompt=if(usesChatMl) chatPrompt(memory.context(user.text)+instructions+"\nPast assistant replies may be mistaken. Answer only the latest user message; do not repeat a previous reply.",emptyList())
                         else "${memory.context(user.text)}$instructions\nAnswer only this latest user message, without repeating earlier replies.\nUser: ${user.text}"
                     localTemperature=minOf(options.temperature,0.4f)
                     buffer.clear()
@@ -195,13 +212,17 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                     android.os.SystemClock.elapsedRealtime()-started,completed.value.tokensPerSecond,originalInfo?.contextSize,completed.value.finishReason.tag))
                 }
                 }
-            } catch(cancelled:CancellationException) { throw cancelled }
+            } catch(timeout:TimeoutCancellationException) { _state.update{it.copy(error=if(photo!=null) "Photo analysis timed out. Check the provider and retry." else "Generation timed out. Check the model and retry.")} }
+            catch(cancelled:CancellationException) { throw cancelled }
             catch(error:Exception) { _state.update { it.copy(error=error.message ?: "Generation failed") } }
             finally {
+                if(photo!=null) _state.update { old -> old.copy(conversations=old.conversations.map { c ->
+                    if(c.id==selected) c.copy(messages=c.messages.map{m->if(m.id==assistant.id && m.text.isBlank()) m.copy(status=if(old.error!=null) "Photo failed · review the error and retry" else "Stopped · photo not answered") else m}) else c
+                }) }
                 withContext(NonCancellable) { runCatching { save() } }
                 generationId=null
                 context.stopService(android.content.Intent(context,ChatInferenceService::class.java))
-                _state.update { it.copy(running=false,generationStartedMs=null,activeOutputLimit=null) }
+                _state.update { it.copy(running=false,generationStartedMs=null,activeOutputLimit=null,operationLabel="Generating") }
             }
         }
         return assistant.id
@@ -212,7 +233,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         colibri.requestByAgent(chat.id,mode,chat.options.colibriAgentAllowed)
     }
     fun stopIfMatching(id:String?) { if(id!=null && id==generationId) stop() }
-    fun stop() { generation?.cancel();coordinator.cancel() }
+    fun stop() { generation?.cancel();if(_state.value.operationLabel!="Analyzing photo") coordinator.cancel() }
     fun attachmentError(message:String){_state.update{it.copy(error=message)}}
     fun clearError() { _state.update { it.copy(error=null) } }
 }

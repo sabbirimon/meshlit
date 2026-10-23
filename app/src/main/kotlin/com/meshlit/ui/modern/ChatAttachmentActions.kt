@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -68,10 +70,10 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
         }catch(c:CancellationException){throw c}catch(e:Exception){error=e.message}finally{busy=false}}
     }
     IconButton(enabled=enabled && !busy,onClick={menu=true}){Icon(Icons.Default.Add,"Add photo, file or chat options")}
-    if(menu) ModalBottomSheet(onDismissRequest={menu=false}) { Column(Modifier.fillMaxWidth().padding(bottom=20.dp)) {
+    if(menu) ModalBottomSheet(onDismissRequest={menu=false}) { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom=20.dp)) {
         Text("Add to chat",Modifier.padding(horizontal=24.dp,vertical=10.dp),style=MaterialTheme.typography.titleLarge)
-        if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;onPhoto()},headlineContent={Text("Photo from device")},supportingContent={Text("Analyze with a selected online vision provider, then add its description to your draft")},leadingContent={Icon(Icons.Default.Image,null)})
-        if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;onCamera()},headlineContent={Text("Take a photo")},supportingContent={Text("Capture with the camera app, then review before online analysis")},leadingContent={Icon(Icons.Default.PhotoCamera,null)})
+        if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;onPhoto()},headlineContent={Text("Photo from device")},supportingContent={Text("Choose a photo, review its model, then use Send")},leadingContent={Icon(Icons.Default.Image,null)})
+        if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;onCamera()},headlineContent={Text("Take a photo")},supportingContent={Text("Capture, review, and ask in the normal message box")},leadingContent={Icon(Icons.Default.PhotoCamera,null)})
         ListItem(modifier=Modifier.clickable{menu=false;pick.launch(arrayOf("*/*"))},headlineContent={Text("Choose files")},supportingContent={Text("Pick any type; Meshlit checks whether this chat can read it")},leadingContent={Icon(Icons.Default.AttachFile,null)})
         HorizontalDivider()
         ListItem(modifier=Modifier.clickable{menu=false;onFiles()},headlineContent={Text("Browse files and folders")},supportingContent={Text("Open the file workspace; other file formats are not chat attachments yet")},leadingContent={Icon(Icons.Default.FolderOpen,null)})
