@@ -1,10 +1,10 @@
 <p align="center"><picture>
 <source media="(prefers-color-scheme: light)" srcset="docs/assets/meshlit-v2-hero-light.svg">
 <source media="(prefers-color-scheme: dark)" srcset="docs/assets/meshlit-v2-hero.svg">
-<img src="docs/assets/meshlit-v2-hero.svg" alt="Meshlit by IMON — Android local AI, agent tools and experimental phone LLM clusters" width="100%">
+<img src="docs/assets/meshlit-v2-hero.svg" alt="Meshlit by IMON — local AI, agents and experimental device compute across Android and desktop previews" width="100%">
 </picture></p>
 
-# Meshlit — local AI agents, on-device models and experimental distributed inference
+# Meshlit — One app, many minds
 <!-- meshlit-document-tracking:start -->
 Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
@@ -13,12 +13,12 @@ Scope: cross-platform tracking; feature and device gates remain separate. Phase 
 **Current checkpoint (2026-10-24):** [saved source, pending validation and resumption guide](docs/PAUSED_CHECKPOINT_2026-10-24.md). Build45 is not a qualified release; use the published beta assets for existing test builds.
 
 
-**Many nodes. One mind.** Meshlit brings local AI chat, owner-controlled AI agents,
-GGUF model management and explicit device pairing to Android. Its Kotlin and
-Jetpack Compose app uses RunAnywhere and llama.cpp; an experimental Intel Mac
-Studio preview and optional host companions extend the workspace. Agent tools,
-MCP connections, offline model use and federated inference are documented with
-their current validation limits below.
+**Local AI, GGUF models, owner-controlled agents and experimental device compute.**
+Meshlit has an Android app, an experimental Intel Mac Studio preview and optional
+host companions. Its Kotlin and Jetpack Compose Android client uses RunAnywhere
+and llama.cpp; agent tools, MCP connections, offline model use and federated
+inference are documented with their current validation limits below. Workstations
+and research labs are welcome to test the broader system and share measured results.
 
 This repository is the home for current Meshlit source and beta releases. The
 earlier `meshlit-v2` repository remains available for its original pull requests

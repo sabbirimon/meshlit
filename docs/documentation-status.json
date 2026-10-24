@@ -141,8 +141,8 @@
       "path": "README.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
-      "title": "Meshlit \u2014 local AI agents, on-device models and experimental distributed inference",
-      "contentSha256WithoutTrackingBlock": "f755ff33ae8596bbf459cec334cc9d5a5b9df8324be600c07b409b7133671d3e"
+      "title": "Meshlit \u2014 One app, many minds",
+      "contentSha256WithoutTrackingBlock": "3419669c75578e17207aa7ab091cbe930f2da50cb97dad51e98b2966f58c69ad"
     },
     {
       "path": "REQUESTS.md",

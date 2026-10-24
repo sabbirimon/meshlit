@@ -1,8 +1,9 @@
-# Meshlit v2
+# Meshlit — One app, many minds
 
 > Project owner: IMON (@sabbirimon).
-> Open-source Android-first local AI workspace and experimental phone LLM cluster.
-> Apache-2.0 source, Kotlin/Compose, RunAnywhere/llama.cpp, GGUF models and scoped agent tools.
+> Open-source local AI workspace with an Android app, experimental Intel Mac desktop preview and optional host companions.
+> Apache-2.0 source, Kotlin/Compose, RunAnywhere/llama.cpp, GGUF models, MCP and scoped AI agent tools.
+> Experimental federated inference and device compute invite measured testing on workstations and in research labs.
 > Physical-phone oversized-model pipeline proof and replicated failover remain pending.
 
 ## Authoritative status and agent context
