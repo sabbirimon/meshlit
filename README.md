@@ -37,6 +37,24 @@ servers, clusters, cloud, embedded and edge environments, with phones as one cli
 Layer/pipeline sharding, native hardware backends and adaptive networking are research
 areas; unsupported platforms and accelerators are not advertised as ready.
 
+## Why Meshlit exists
+
+**A useful device should have another chapter.** A phone that can still run a
+small local model can help its owner write, learn and solve everyday problems
+without sending every prompt to a remote service. Another approved device may
+contribute storage, capture, tools or bounded compute according to what it can
+actually do. Meshlit brings those pieces into one workspace with visible
+permissions, model choices and Stop controls. The aim is to make AI more
+accessible, private when run locally, and useful across the hardware people
+already own.
+
+Keeping working electronics in service can also reduce the need for new
+materials and delay waste; the [US EPA's electronics guidance](https://www.epa.gov/electronics-batteries-management/electronics-basic-information-research-and-initiatives)
+explains the value of reuse and longer product life. Meshlit has not measured a
+net environmental saving. Power use, battery health, repair, workload efficiency
+and device lifetime all matter. Hardware testers can help measure those factors
+alongside performance, so this goal has evidence behind it.
+
 <p>
 <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache_2.0-36b5bc?style=flat-square"></a>
 <img alt="Android 7 and later" src="https://img.shields.io/badge/Android-7%2B-62bf86?style=flat-square">

@@ -37,6 +37,7 @@ Include these details in a [new issue](https://github.com/sabbirimon/meshlit/iss
 | Setup | Local/online route, backend, context and cache settings, network type and number of peers |
 | Steps | Short numbered reproduction, expected result and observed result |
 | Evidence | Sanitized screenshot/log, elapsed time or measured counters; mark unavailable values as unknown |
+| Resource use | Observed battery, power, temperature and device age when available; explain how each was measured |
 
 Remove account IDs, tokens, private prompts, precise locations and unrelated
 device data before sharing. The [device-testing record](docs/DEVICE_TESTING_2026-10-08.md)

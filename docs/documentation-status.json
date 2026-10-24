@@ -107,7 +107,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Contributing to Meshlit",
-      "contentSha256WithoutTrackingBlock": "9d1fe25239e054efe99088945ea1bd6f7282339d63caa8aceba3ef6a51c74afb"
+      "contentSha256WithoutTrackingBlock": "1a2d82f29ad5b350a47b301bcff4d8ad3d33f985d9b5430a188a84681d378128"
     },
     {
       "path": "FEATURE_MAP.md",
@@ -142,7 +142,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 local AI agents, on-device models and experimental distributed inference",
-      "contentSha256WithoutTrackingBlock": "a2925e7346f21e80041d10bfae6af578c07524813e748fd9ce42729aa18a7022"
+      "contentSha256WithoutTrackingBlock": "afca2e719e6410d73c32c7b2d7e4747d2eb6323795eedfbac9a3568c6616eb31"
     },
     {
       "path": "REQUESTS.md",
