@@ -235,6 +235,12 @@ human-controlled. Crawling respects access controls and robots restrictions.
 
 Useful contributions include reproducible device/model reports, backend failure
 contracts, UI accessibility fixes, actual paired-host tests and clear documentation.
+**More hands and more hardware are welcome.** Meshlit needs testers with different
+Android ABIs and memory sizes, physical phone pairs, Intel/AMD/Apple host CPUs,
+GPU-capable systems, accessible UI setups and varied LAN/VPN conditions. Please
+report both successes and failures with the exact build, device, model, steps
+and measured result. Even one reliable model-load or pairing report helps define
+what works on real hardware; no accelerator or cluster support is presumed.
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), [build handoff](AGENT_BUILD.md) and
 [open issues](https://github.com/sabbirimon/meshlit/issues). Include evidence,
 avoid secrets, and label proposed versus measured capability.
