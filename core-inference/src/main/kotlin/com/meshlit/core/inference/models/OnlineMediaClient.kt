@@ -7,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import okio.ByteString.Companion.decodeBase64
 import okio.ByteString.Companion.toByteString
 import java.util.concurrent.TimeUnit
@@ -30,6 +31,7 @@ class OnlineMediaClient(private val client:OkHttpClient=OkHttpClient.Builder().c
         val call=client.newCall(request)
         val watcher=launch(Dispatchers.IO){try{awaitCancellation()}finally{call.cancel()}}
         try {call.execute().use{r->check(r.isSuccessful){"Media provider HTTP ${r.code}; verify model, API access and billing"};consume(r)}}
+        catch (error:IOException) {currentCoroutineContext().ensureActive();throw error}
         finally{watcher.cancel()}
     }}
     private fun json(response:Response,limit:Long=12L*1024*1024):JsonObject {
