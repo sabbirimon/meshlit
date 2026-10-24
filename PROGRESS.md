@@ -4,9 +4,29 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Repository consolidation and release verification — 2026-10-24
+
+The established [Meshlit repository](https://github.com/sabbirimon/meshlit)
+now carries the current v2 application source on `main` through [migration PR
+#4](https://github.com/sabbirimon/meshlit/pull/4), preserving the earlier Meshlit
+history and the tested v2 `dev` history. The final v2 `dev` source also reached
+`meshlit-v2/main` through [PR #3](https://github.com/sabbirimon/meshlit-v2/pull/3).
+The unified tree differs from that final v2 source only in project-home links,
+legal/notice URLs, documentation, README graphics and discovery text; it does
+not add a new app implementation or qualify build45 on hardware.
+
+The migration PR passed both Android debug jobs and Ubuntu, Windows and macOS
+host-client contract checks. The v2 `dev` to `main` PR passed all ten checks.
+Five release entries were copied to the unified repository: four published
+pre-releases and the still-draft beta.2. All **35 assets** (7,508,519,559 bytes)
+match their source filenames, sizes and SHA-256 digests; the four published tag
+refs point to the same commits as before. Release and screenshot provenance is
+unchanged. Real phone and cross-platform hardware acceptance remains scoped to
+the evidence linked in the README and the checkpoint below.
+
 ## Source-save and publication handoff — 2026-10-24
 
-The owner subsequently requested saving and pushing the paused Meshlit source and documentation. The review branch is now `feature/peering-ui-2026-10-12`; PR #5 replaces PR #4 after the branch rename. [The current checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) lists the source additions, failed/incomplete evidence, ranked remaining work and build/run links. This publication preserves the reviewed source without resuming application builds or phone operations. The older pause entry below records the state at interruption; its no-push statement is historical.
+The owner subsequently requested saving and pushing the paused Meshlit source and documentation. The review branch was renamed to `feature/peering-ui-2026-10-12`; v2 PR #5 replaced v2 PR #4 after that rename and merged into `dev` before PR #3 reached `main`. [The current checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) lists the source additions, failed/incomplete evidence, ranked remaining work and build/run links. This publication preserves the reviewed source without resuming physical phone operations. The older pause entry below records the state at interruption; its no-push statement is historical.
 
 The previous PR run exposed `OnlineMediaClientTest.cancelledVisionCannotReturnAnAnswer`: OkHttp surfaced a cancelled request as `IOException`, which escaped the coroutine cancellation contract. `OnlineMediaClient.exchange` now rechecks coroutine activity when `call.execute()` throws `IOException`, preserving a real I/O error while reporting cancellation as cancellation. The targeted `OnlineMediaClientTest` suite passed locally with JDK 21 and the installed Android SDK (`:core-inference:testDebugUnitTest`); the full PR build remains the publication gate. The owner also requested consolidating the current source and release files under `sabbirimon/meshlit`; repository and release migration is in progress.
 
