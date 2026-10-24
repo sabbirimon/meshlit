@@ -8,7 +8,7 @@ internal fun smolLmChatPrompt(system: String, history: List<ChatMessage>, user: 
         .replace("<|im_end|>", "<| im_end |>")
     return buildString {
         append("<|im_start|>system\n")
-        append(content(system.take(5200).ifBlank { "You are a helpful AI assistant named SmolLM, trained by Hugging Face." }))
+        append(content(system.take(7600).ifBlank { "You are Meshlit, a helpful AI assistant." }))
         append("<|im_end|>\n")
         history.takeLast(20).forEach { message ->
             if (message.role in setOf("user", "assistant")) {
@@ -20,9 +20,23 @@ internal fun smolLmChatPrompt(system: String, history: List<ChatMessage>, user: 
     }
 }
 
+/** All three adapters accept raw completion prompts; native CPU/RPC need the same role formatting. */
+internal fun usesChatMlPrompt(engine:String,modelName:String):Boolean =
+    engine in setOf("runanywhere","llama-native-local","llama-rpc-layer") &&
+        listOf("SmolLM2","Qwen2.5","Qwen3").any { modelName.contains(it,ignoreCase=true) }
+
 /** Qwen3's published ChatML template supports an empty thinking prefix for fast mode. */
 internal fun qwen3ChatPrompt(system:String,history:List<ChatMessage>,user:String):String {
-    val thinking=user.contains("/think",ignoreCase=true) && !user.contains("/no_think",ignoreCase=true)
+    val thinking=qwen3ThinkingRequested(user)
     val prompt=smolLmChatPrompt(system,history,user)
     return prompt+if(thinking) "<think>\n" else "<think>\n\n</think>\n\n"
+}
+
+internal fun qwen3ThinkingRequested(user:String)=user.contains("/think",ignoreCase=true) && !user.contains("/no_think",ignoreCase=true)
+
+/** Qwen3's opening thinking marker is supplied by the template, so it is not in streamed text. */
+internal fun qwen3AnswerText(raw:String,thinkingStarted:Boolean):String {
+    val close=raw.indexOf("</think>",ignoreCase=true)
+    if(close>=0 && (thinkingStarted || raw.trimStart().startsWith("<think>",ignoreCase=true))) return raw.substring(close+8).trimStart()
+    return if(thinkingStarted || raw.trimStart().startsWith("<think>",ignoreCase=true)) "" else raw
 }

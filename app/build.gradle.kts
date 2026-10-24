@@ -91,8 +91,8 @@ android {
             applicationIdSuffix = ".v2"
             // Keep this preview version in step with the release evidence.
             // so Play Store and F-Droid see a fresh artifact.
-            versionName = "2.0.0-v2build44"
-            versionCode = 44
+            versionName = "2.0.0-v2build45"
+            versionCode = 45
             buildConfigField("boolean", "USE_NEW_UI", "true")
             resValue("string", "app_name", "Meshlit v2")
         }

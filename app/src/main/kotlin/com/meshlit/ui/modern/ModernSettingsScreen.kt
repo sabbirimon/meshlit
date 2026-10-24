@@ -45,6 +45,10 @@ import kotlinx.coroutines.*
         destination=next
     }
     fun back() {
+        if (history.isEmpty() && initialDestination != null && onExit != null) {
+            onExit()
+            return
+        }
         val previous=history.lastOrNull()
         history=ArrayList(history.dropLast(1))
         destination=previous?.ifEmpty { null }

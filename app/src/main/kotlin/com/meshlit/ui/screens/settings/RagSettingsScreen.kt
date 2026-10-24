@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -51,16 +53,18 @@ fun RagSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
+            KnowledgeLibraryPanel()
             Section(title = stringResource(R.string.cloud_settings_rag_title)) {
                 Text(
                     text = stringResource(R.string.cloud_settings_rag_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text("Experimental: the older local vector store is in memory and the remote endpoint is a placeholder. Choose a mode only for compatible connected flows; this is not durable source ingestion.",style=MaterialTheme.typography.bodySmall)
+                Text("These legacy backend preferences apply only to compatible connected flows. They do not upload the knowledge library or enable remote indexing. Use the explicit library grants above for chat retrieval.",style=MaterialTheme.typography.bodySmall)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),

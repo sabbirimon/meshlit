@@ -28,7 +28,7 @@ internal fun shouldPlanToolCall(message:String,options:ChatOptions):Boolean {
 }
 data class PhotoChatRequest(val uri:android.net.Uri,val profile:com.meshlit.core.inference.models.OnlineProfile)
 
-@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null)
+@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null,val knowledgeSources:List<String> = emptyList())
 @Serializable data class ChatConversation(val id:String=UUID.randomUUID().toString(),val title:String="New chat",
     val messages:List<ChatMessage> = emptyList(),val updatedAt:Long=System.currentTimeMillis(),val options:ChatOptions=ChatOptions(),val usageNote:String?=null)
 data class ChatState(val conversations:List<ChatConversation> = emptyList(),val selectedId:String?=null,
@@ -36,7 +36,7 @@ data class ChatState(val conversations:List<ChatConversation> = emptyList(),val 
     val current get()=conversations.firstOrNull { it.id==selectedId }
 }
 
-class ChatController(private val context:Context,private val coordinator:InferenceCoordinator,private val appScope:CoroutineScope,private val providers:com.meshlit.providers.OnlineProviders,private val router:com.meshlit.routing.ModelRoutes,private val localTools:LocalChatTools,private val memory:PersonalMemory,private val library:com.meshlit.models.ModelLibrary,private val colibri:com.meshlit.colibri.ColibriBackend,private val media:com.meshlit.media.MediaGeneration) {
+class ChatController(private val context:Context,private val coordinator:InferenceCoordinator,private val appScope:CoroutineScope,private val providers:com.meshlit.providers.OnlineProviders,private val router:com.meshlit.routing.ModelRoutes,private val localTools:LocalChatTools,private val memory:PersonalMemory,private val library:com.meshlit.models.ModelLibrary,private val colibri:com.meshlit.colibri.ColibriBackend,private val media:com.meshlit.media.MediaGeneration,private val knowledge:com.meshlit.knowledge.KnowledgeLibrary) {
     private val _state=MutableStateFlow(ChatState())
     val state:StateFlow<ChatState> = _state.asStateFlow()
     private val file=File(context.filesDir,"conversations-v1.json")
@@ -84,7 +84,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         _state.update{old->old.copy(conversations=old.conversations.map{if(it.id==old.selectedId) it.copy(options=options) else it})}
         appScope.launch{runCatching{save()}.onFailure{error->_state.update{it.copy(error="Cannot save chat options: ${error.javaClass.simpleName}")}}}
     }
-    fun send(text:String,photo:PhotoChatRequest?=null):String? {
+    fun send(text:String,photo:PhotoChatRequest?=null,voiceConversation:Boolean=false):String? {
         if(!ready.isCompleted || _state.value.running || text.isBlank()) return null
         require(text.length<=12000) { "Message is too long" }
         if(_state.value.current==null) newChat()
@@ -110,7 +110,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         }
         val decision=budgetDecision(if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.HOST) configured.copy(outputBudgetMode=OutputBudgetMode.MANUAL) else configured)
         val options=configured.copy(maxTokens=if(photo!=null) 512 else decision.limit)
-        val instructions=companionInstructions(options)
+        val baseInstructions=companionInstructions(options)+if(voiceConversation) "\nThis is a spoken conversation. Reply naturally and concisely, usually in one to three sentences. Avoid markdown and long lists unless requested. Keep the configured identity and permissions." else ""
         val history=_state.value.current!!.messages.filter{it.text.isNotBlank()}.takeLast(options.historyMessages)
         _state.update { old -> old.copy(running=true,error=null,operationLabel=if(photo!=null) "Analyzing photo" else "Generating",generationStartedMs=android.os.SystemClock.elapsedRealtime(),activeOutputLimit=options.maxTokens,conversations=old.conversations.map { c ->
             if(c.id==selected) c.copy(title=if(c.messages.isEmpty()) text.trim().take(56) else c.title,
@@ -120,6 +120,20 @@ class ChatController(private val context:Context,private val coordinator:Inferen
             val started=android.os.SystemClock.elapsedRealtime()
             fun recordUsage(usage:ChatTokenUsage) {_state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(usage=usage.copy(budgetReason=if(photo!=null) "Vision request limit; actual usage is reported separately" else decision.explanation)) else it}) else c})}}
             try {
+                val remoteKnowledge = options.onlineProfileId != null || options.routeId != null || options.usesLocalTools ||
+                    colibriDecision?.route == com.meshlit.workspace.ColibriRoute.HOST || coordinator.engineTag !in setOf("runanywhere", "llama-native-local")
+                val grounding = if (photo != null) "" to emptyList<String>() else withContext(Dispatchers.IO) {
+                    synchronized(knowledge.corpus) {
+                        val reference = knowledge.corpus.context(user.text, remoteKnowledge, agent = options.usesLocalTools)
+                        reference to if (reference.isBlank()) emptyList() else knowledge.corpus.search(user.text, 3).mapIndexed { index, hit ->
+                            "[K${index + 1}] ${hit.title} · ${hit.source} · part ${hit.chunk + 1} · ${hit.documentId.take(12)}"
+                        }
+                    }
+                }
+                val instructions = baseInstructions + grounding.first
+                if (grounding.second.isNotEmpty()) _state.update { old -> old.copy(conversations = old.conversations.map { c ->
+                    if (c.id == selected) c.copy(messages = c.messages.map { if (it.id == assistant.id) it.copy(knowledgeSources = grounding.second) else it }) else c
+                }) }
                 ready.await();save()
                 androidx.core.content.ContextCompat.startForegroundService(context,
                     android.content.Intent(context,ChatInferenceService::class.java).putExtra("generation",assistant.id))
@@ -168,8 +182,8 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 val originalEngine=coordinator.engineTag
                 val originalModel=library.models.value.firstOrNull{it.installed && it.path==originalInfo?.modelPath}
                 val qwen3=originalModel?.name?.contains("Qwen3",ignoreCase=true)==true
-                val usesChatMl=originalEngine=="runanywhere" && originalModel!=null &&
-                    (originalModel.name.contains("SmolLM2",ignoreCase=true) || originalModel.name.contains("Qwen2.5",ignoreCase=true) || qwen3)
+                val usesChatMl=originalModel!=null && usesChatMlPrompt(originalEngine,originalModel.name)
+                fun visibleReply(raw:String)=if(qwen3 && usesChatMl) qwen3AnswerText(raw,qwen3ThinkingRequested(user.text)) else raw
                 fun chatPrompt(system:String,turns:List<ChatMessage>)=if(qwen3) qwen3ChatPrompt(system,turns,user.text) else smolLmChatPrompt(system,turns,user.text)
                 var localPrompt=if(usesChatMl) chatPrompt(memory.context(user.text)+instructions,history) else prompt
                 var localTemperature=options.temperature
@@ -180,7 +194,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                     reuseContext=coordinator.engineTag=="llama-native-local" && !freshRetry,expectedModelPath=originalInfo?.modelPath,onToken={ token ->
                     buffer.append(token)
                     _state.update { old -> old.copy(conversations=old.conversations.map { c ->
-                        if(c.id==selected) c.copy(messages=c.messages.map { if(it.id==assistant.id) it.copy(text=buffer.toString()) else it }) else c }) }
+                        if(c.id==selected) c.copy(messages=c.messages.map { if(it.id==assistant.id) it.copy(text=visibleReply(buffer.toString())) else it }) else c }) }
                 }))
                 var result=generate()
                 if(result is MeshlitResult.Failure && result.error is com.meshlit.core.common.MeshlitError.Native && memory.state.value.policy.recovery && originalModel!=null && library.models.value.any{it==originalModel} && coordinator.loadedModel()?.modelPath==originalModel.path) {
@@ -201,7 +215,8 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 val completed=result
                 if(completed is MeshlitResult.Failure) error(completed.error.tag)
                 if(completed is MeshlitResult.Success) {
-                    val answer=completedChatText(buffer.toString(),completed.value.finalText)
+                    val answer=visibleReply(completedChatText(buffer.toString(),completed.value.finalText))
+                    check(answer.isNotBlank()) { "The reasoning model did not reach a final answer within this response. Increase the output limit or try /no_think." }
                     _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=answer) else it}) else c})}
                 }
                 if(completed is MeshlitResult.Success) _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(usageNote="Input ${completed.value.promptTokens ?: "unknown"}, output ${completed.value.generatedTokens ?: "unknown"} tokens · cached ${completed.value.cachedPromptTokens ?: "unknown"}${if(freshRetry) " · fresh-context retry; first-run usage not included" else ""}") else c})}

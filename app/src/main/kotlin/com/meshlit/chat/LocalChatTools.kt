@@ -16,7 +16,7 @@ class LocalChatTools(private val inference:InferenceCoordinator,private val gate
         options.validate();com.meshlit.BuildProfile.requireChat(options)
         val model=inference.loadedModel() ?: error("Load a local model before enabling tools")
         val names=buildSet {
-            if(options.nodeTools) addAll(listOf("vm_status","vm_start","vm_wait","vm_stop","vm_exec","ssh_nodes","ssh_node_request","colibri_mode"))
+            if(options.nodeTools) addAll(listOf("cyber_skills_list","cyber_skill_read","vm_status","vm_start","vm_wait","vm_stop","vm_exec","ssh_nodes","ssh_node_request","colibri_mode"))
             if(options.cryptoTools) add("crypto_local")
             if(options.gibberlinkTools) addAll(listOf("gibberlink_send","gibberlink_listen"))
             if(options.remoteTools) addAll(listOf("remote_commands_access","remote_nodes","remote_node_command"))

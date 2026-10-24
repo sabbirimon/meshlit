@@ -13,14 +13,14 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 | Local core engine | Host/payload verified; Experimental | Clean-machine, lifecycle/stress, wider quality and hardware |
 | Shared sharding | Contract-tested planner; desktop executor pending | Live paired-worker controller and independent-device oversized-model/peer-loss proof |
 | Desktop management | Partial source and scoped host qualification | Remaining real category controllers and operational acceptance |
-| Android reliability | Historical baseline build/lint passed; new 2026-10-12 integration not yet qualified | Current Samsung/Xiaomi/Windows category device qualification |
+| Android reliability | Build44 evidence retained; build45 source saved, final build/lint/device qualification incomplete | Owner resumes work, then changed contracts, both flavors/lints and Samsung voice/RAG/native checks |
 | Governed agents and fleet | Android reference; desktop authority/audit port pending | Common permission/controller/audit bridge before autonomous MCP/A2A/hooks |
 | Platform and distribution | Intel Experimental release published; recovered payloads/hash verification pass | Clean-target signing/privacy and independent OS/device gates; CI remains separately observed |
-| Android/desktop peering, identity, wallet and UI | Partial uncommitted source; paused at owner request | Desktop and Android compile/integration review, strict lint and qualified peer/recovery tests |
+| Android/desktop peering, identity, wallet and UI | Partial source saved for PR #4; application work paused for HyperL-first delivery | Desktop and Android compile/integration review, strict lint and qualified peer/recovery tests |
 
 ## Coverage and maintenance
 
-132 active, 19 historical, 8 protected, 1 template, 6 third-party; 167 Markdown documents including this index.
+133 active, 19 historical, 8 protected, 1 template, 6 third-party; 168 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -96,6 +96,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/OLD_ANDROID_GAP_AUDIT_2026-10-23.md](OLD_ANDROID_GAP_AUDIT_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md](OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/P2P_AND_CRYPTO.md](P2P_AND_CRYPTO.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/PAUSED_CHECKPOINT_2026-10-24.md](PAUSED_CHECKPOINT_2026-10-24.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PEERING_UI_BUILD_PLAN.md](PEERING_UI_BUILD_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PEERING_UI_HANDOFF_2026-10-12.md](PEERING_UI_HANDOFF_2026-10-12.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PENDING_FEATURES.md](PENDING_FEATURES.md) | Android/shared reference; desktop ports have separate acceptance |

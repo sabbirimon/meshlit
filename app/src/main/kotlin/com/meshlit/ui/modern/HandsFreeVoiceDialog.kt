@@ -37,7 +37,7 @@ import org.koin.compose.koinInject
 @Composable internal fun HandsFreeVoiceDialog(chat:ChatController,maxHeight:Dp=340.dp,onClose:()->Unit) {
     val context=LocalContext.current;val models=koinInject<VoiceModels>();val providers=koinInject<OnlineProviders>()
     val voice=remember{HandsFreeVoice(context,chat,models,providers)}
-    val state by voice.state.collectAsState();val packs by models.models.collectAsState();val profiles by providers.profiles.collectAsState()
+    val chatState by chat.state.collectAsState();val state by voice.state.collectAsState();val packs by models.models.collectAsState();val profiles by providers.profiles.collectAsState()
     val scope=rememberCoroutineScope()
     var options by remember(context){mutableStateOf(VoicePreferences.load(context,models.models.value))}
     var showSettings by remember { mutableStateOf(false) }
@@ -74,26 +74,47 @@ import org.koin.compose.koinInject
         owner.lifecycle.addObserver(observer);onDispose{owner.lifecycle.removeObserver(observer);voice.close()}}
     Card(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=4.dp).testTag("voice-panel")) { Column(Modifier.fillMaxWidth().heightIn(max=maxHeight).verticalScroll(rememberScrollState()).padding(12.dp).testTag("voice-options"),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Voice",style=MaterialTheme.typography.titleSmall)
+            VoiceActivity(state,Modifier.size(56.dp))
+            Column(Modifier.weight(1f).padding(horizontal=12.dp)) {
+                Text(if(options.mode==VoiceMode.LIVE) "Live voice" else "Voice message",style=MaterialTheme.typography.titleMedium)
                 Text(state.phase,modifier=Modifier.testTag("voice-phase"),style=MaterialTheme.typography.bodyMedium)
+                if(state.busy) Text("${state.elapsedSeconds/60}:${(state.elapsedSeconds%60).toString().padStart(2,'0')} · ${state.completedTurns} replies",style=MaterialTheme.typography.labelSmall)
             }
             IconButton(onClick={showSettings=!showSettings}){Icon(Icons.Default.Tune,if(showSettings) "Hide voice settings" else "Voice settings")}
-            IconButton(onClick=onClose){Icon(Icons.Default.Close,"Close voice controls")}
+            IconButton(onClick={voice.stop();onClose()}){Icon(Icons.Default.Close,"End and close voice")}
         }
         (state.error ?: error)?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        if(state.phase.startsWith("Listening")) {
+        if(!state.busy) FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            VoiceMode.entries.forEach{mode->FilterChip(options.mode==mode,{options=options.copy(mode=mode)},label={Text(mode.label)},enabled=enabled)}
+        }
+        if(options.captions) {
+            state.lastHeard?.let{Text("You · $it",style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("voice-user-caption"))}
+            val generating=chatState.current?.messages?.lastOrNull()?.takeIf{it.role=="assistant"}?.text
+            val caption=when(state.phase) {
+                "Thinking" -> generating?.takeIf{it.isNotBlank()}
+                "Speaking","Preparing voice" -> state.caption
+                else -> state.lastReply?.let(::spokenReply)
+            }
+            caption?.takeIf{it.isNotBlank()}?.let{Text(it,style=MaterialTheme.typography.bodyLarge,modifier=Modifier.testTag("voice-reply-caption"))}
+        }
+        if(state.phase=="Listening") {
             LinearProgressIndicator(progress={state.inputLevel.coerceIn(0f,1f)},modifier=Modifier.fillMaxWidth().testTag("voice-input-level"))
-            Text(if(state.speechDetected) "Speech heard · release your voice to send" else "Microphone listening · speak now",style=MaterialTheme.typography.bodySmall)
+            Text(if(state.speechDetected) "I hear you · pause to send" else "Listening · speak when ready",style=MaterialTheme.typography.bodySmall)
+        }
+        if(state.active) FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick={voice.setMuted(!state.muted)},modifier=Modifier.testTag("voice-mute")){Text(if(state.muted) "Unmute" else "Mute mic")}
+            OutlinedButton(enabled=state.phase in setOf("Transcribing","Thinking","Preparing voice","Speaking"),onClick={voice.interrupt()},modifier=Modifier.testTag("voice-interrupt")){Text("Interrupt")}
         }
         Button(enabled=!importing && (state.busy || (!missingRecognition && !missingVoice && !missingProvider && (options.network || offlineInputReady))),onClick={if(state.busy) voice.stop() else {
             testPending=false
             if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) start() else permission.launch(Manifest.permission.RECORD_AUDIO)
-        }},modifier=Modifier.fillMaxWidth().testTag("voice-start-stop")){Text(if(state.busy) "Stop" else "Start listening")}
-        Text("${options.input.label} · ${options.output.label} · ${if(options.network) "network audio allowed" else "network audio off"}",style=MaterialTheme.typography.bodySmall)
-        if(!offlineInputReady && !options.network) Text("No offline recognizer is ready on this device. Install a verified Whisper pack in Voice settings; Android's speech service here cannot guarantee offline use.",color=MaterialTheme.colorScheme.error)
+        }},modifier=Modifier.fillMaxWidth().testTag("voice-start-stop")){Text(if(state.busy) "End conversation" else if(options.mode==VoiceMode.LIVE) "Start live" else "Start one turn")}
+        Text(if(options.network) "Network audio allowed · ${options.input.label}" else "Offline audio · ${options.input.label}",style=MaterialTheme.typography.labelSmall)
+        if(!offlineInputReady && !options.network) Text("Install an offline speech pack in Voice settings to get started.",color=MaterialTheme.colorScheme.error)
 
         if(showSettings) {
+        Row(verticalAlignment=Alignment.CenterVertically){Text("Audio conversation captions",Modifier.weight(1f));Switch(options.captions,{options=options.copy(captions=it)},enabled=enabled)}
+        Text("Live mode listens again after each reply, for up to 10 replies or five minutes. Tap Interrupt to stop a reply and speak. Mute releases capture; End releases the session. Automatic acoustic interruption is not yet qualified.",style=MaterialTheme.typography.bodySmall)
         VoiceChoice("Recognition",options.input.name,SpeechInput.entries.map{it.name to it.label},enabled){options=options.copy(input=SpeechInput.valueOf(it))}
         VoiceChoice("Voice reply",options.output.name,SpeechOutput.entries.map{it.name to it.label},enabled){options=options.copy(output=SpeechOutput.valueOf(it),style=VoiceStyle.NATURAL)}
         Row{Text("Allow network audio",Modifier.weight(1f));Switch(options.network,{options=options.copy(network=it)},enabled=enabled,modifier=Modifier.testTag("voice-network"))}
@@ -128,6 +149,6 @@ import org.koin.compose.koinInject
         OutlinedButton(enabled=enabled,onClick={importer.launch("*/*")}){Text(if(importing) "Verifying voice pack…" else "Import offline voice pack")}
         packs.forEach{pack->Row{Text("${pack.name}\n${pack.kind} · ${pack.license}",Modifier.weight(1f));TextButton(enabled=enabled,onClick={scope.launch{importing=true;try{models.remove(pack.id)}catch(e:Exception){error=e.message}finally{importing=false}}}){Text("Remove")}}}
         }
-        if(showSettings) Text("Turn-taking conversation is implemented. Full-duplex interruptions through Gemini Live / OpenAI Realtime need separate adapters and live account tests. Claude text can use any configured speech adapter; no native Claude voice API is assumed.")
+        if(showSettings) Text("Captions follow synthesized phrases, not word timestamps. PCM activity uses measured audio; Android voices expose playback state only. Cloud realtime speech requires a separately qualified adapter.")
     } }
 }

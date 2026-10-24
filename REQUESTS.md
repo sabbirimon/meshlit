@@ -4,7 +4,33 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Save source and documentation — 2026-10-24
+
+The owner requested saving Meshlit progress and pushing it to Meshlit GitHub, then asked for documentation coverage comparable to HyperL. [The paused checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) links build/run instructions, implemented fixes, incomplete evidence, prioritized pending work and agent handoff. Existing PR #4 is the review destination. No new voice work, APK build, device operation or release is authorized by this save step.
+
+
+## Owner continuation requests — 2026-10-24
+
+- Latest direction: pause voice/Meshlit builds and ship HyperL first. Preserve
+  current fixes and documentation; final APK/lint/device acceptance stays pending.
+
+- Natural voice input/output and audio conversation subtitles: Live / One turn,
+  visible activity, mute, tap-to-interrupt and phrase captions are in source;
+  physical acceptance and native realtime/full-duplex adapters remain separate.
+- Claude-Red native skills usable by people or supported LLMs: eight independent
+  defensive references now share Android/Studio content and Android read-only MCP
+  tools. Full upstream attack-skill import and blanket firewall/security weakening
+  were not implemented. Existing scoped lab execution grants stay in force.
+
+- “Do all”: continue the ranked unfinished feature/qualification backlog; no blanket completion claim.
+- “Also improve HyperL”: review execution, resource admission, cancellation and measured performance. The current source adds backend-correct admission and bounded repeated CPU measurements; mixed accelerator execution remains a separate workstream.
+- “Note every progress and how do u fix in proper documents”: keep cause → implementation → test evidence → remaining gate in PROGRESS.md, with matching feature docs and offline user guide. Record failures as well as successes.
+- Samsung is reserved for this Meshlit testing session; do not interfere with the concurrent Kandari phone work.
+- The owner selected both offline and online vision, then deferred online testing: “ill test online later.” Continue offline qualification now; leave actual provider vision acceptance open for the owner. Do not request credentials in chat or count deferred online testing as passed.
+
 ## Major-impact-first continuation — 2026-10-24
+
+The owner additionally requested natural live voice input/output similar in interaction to Gemini or ChatGPT, where hardware supports it. Existing `HandsFreeVoice` performs bounded sequential recognition → chat → synthesis and has manual Stop; it does not yet implement simultaneous listening/speaking or acoustic interruption. Acceptance must include visible state/input activity, microphone ownership, immediate stop, interruption and echo handling, local-model memory/latency checks, lifecycle cleanup and a real spoken conversation. Preserve an offline turn-taking fallback; online live adapters require separate provider configuration and acceptance. The owner's online vision test remains deferred.
 
 The owner requested remaining work ranked by impact/complexity and a simpler UI like Kandari. Implementation and remaining gates are recorded in the [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md). Photo/model selection and Send/Stop are being unified before claiming general media reliability or Studio parity.
 

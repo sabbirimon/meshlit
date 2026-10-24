@@ -11,6 +11,29 @@ only implements the restrictions described in PLAY_DISTRIBUTION.md.
 
 ## Capability probes rather than a universal root switch
 
+### Built-in security references — 2026-10-24 source
+
+Android **Security Lab** and Studio **Security skills** now share eight plain-text
+references: security reports, source review, configuration review, dependency
+review, crash triage, API authorization, mobile privacy and agent trust boundaries.
+People can read or copy them into any supported LLM. Android MCP-capable agents
+can call `cyber_skills_list` and `cyber_skill_read`; local chat exposes these with
+its selected CYBER tools and saved operation/delegation grant. A model's ability
+to follow a reference remains dependent on that model.
+
+The owner requested Claude-Red integration and looser controls. The reviewed
+[upstream snapshot](https://github.com/SnailSploit/Claude-Red/tree/a8de813edc9f66f60d44cfe42d47750e89d9930b)
+informed this independently written defensive subset. It is not a full import of
+upstream attack skills, installers or payloads. The references execute nothing,
+cannot grant network access, and do not modify firewall or agent authorization.
+Actual lab tools retain exact artifact scope, expiry, separate execution grants,
+VM isolation and emergency stop. Studio's read/copy panel does not implement its
+pending lab execution or agent MCP bridge.
+
+Unit checks cover catalog uniqueness/bounded content, unknown IDs and denial when
+CYBER agent execution is unavailable. APK compilation is separate from physical
+agent use; see [progress](../PROGRESS.md) for current qualification.
+
 Probe OS/API, architecture, kernel, available native executables, USB classes,
 user-granted handles, root broker, namespaces, cgroups, perf/eBPF permissions,
 SELinux policy, `/dev/kvm` and actual vendor runtime libraries. Present supported,

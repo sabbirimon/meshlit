@@ -4,6 +4,29 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+[Current saved checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) contains the ranked next gates and [build/run handoff](docs/PAUSED_CHECKPOINT_2026-10-24.md#buildrun-and-agent-handoff). This source push does not complete the unchecked acceptance items.
+
+
+## Current continuation — 2026-10-24
+
+**Paused by owner: ship HyperL first.** The queue below is preserved for resumption.
+
+- [x] Live / One turn voice, mute, tap interruption, audio focus, phrase captions and speech-memory admission source.
+- [x] Correct review findings in silence handling, capture/transcription state, short-turn endpoint, caption truncation and AudioTrack cleanup.
+- [x] Shared eight-reference defensive skill catalog; Android MCP/local chat integration and Android/Studio read-copy panels.
+- [ ] Qualify updated physical microphone conversation, captions, interruption, mute, End/background and speech coexistence on Samsung.
+- [ ] Integrate and qualify offline photo Chat; isolated SmolVLM probe took 82.686 s and omitted color. Online testing is deferred to the owner.
+- [ ] Full-duplex acoustic interruption and online realtime speech adapters; no completion claim from current turn-taking voice.
+
+- [x] Shared bounded persistent knowledge corpus and failure/grant tests.
+- [x] Android encrypted import/search/remove and chat grounding source path.
+- [x] Studio encrypted vault and opt-in chat grounding source path.
+- [x] HyperL selected-backend estimate and repeat CPU measurement source path.
+- [ ] Qualify latest Android/Studio UI, source attribution, native Qwen and actual offline spoken conversation.
+- [ ] Re-run contract tests after catalog/template/remote changes; both flavor build/lint before APK delivery.
+- [ ] Complete physical layer execution/recovery, multi-member encrypted delivery and reverse native relay; source additions above do not close them.
+- [ ] Qualify real provider vision, training, operational runtimes/cloud billing and monetary rewards with the required hosts/accounts.
+
 ## Current priority — 2026-10-24
 
 See the ordered [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md). Photo-to-chat lifecycle and the Kandari-inspired compact Android UI are implemented in source; device and real-provider acceptance are tracked separately. The older build41/install and draft-release notes below are historical gates: build43 beta.4 was published, with the Core Candidate CI timeout still open.

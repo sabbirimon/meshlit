@@ -118,6 +118,7 @@ fun ModernMeshlitApp() {
     var closing by remember { mutableStateOf(false) }
     val closingAlpha by animateFloatAsState(if(closing) 1f else 0f,animationSpec=tween(260),label="close-overlay")
     var settingsDestination by remember { mutableStateOf<String?>(null) }
+    var settingsOrigin by rememberSaveable { mutableStateOf("chat") }
     if(!com.meshlit.BuildProfile.coreCandidate) com.meshlit.permissions.FirstLaunchPermissionSetup{tab="permissions"}
     LaunchedEffect(chats) { chats.ready.await() }
     BackHandler(tab!="chat"){tab="chat"}
@@ -127,7 +128,11 @@ fun ModernMeshlitApp() {
     val glass=config.surfaceStyle==com.meshlit.ui.theme.SurfaceStyle.GLASS
     val colors=MaterialTheme.colorScheme
     val openMenu:()->Unit={scope.launch{drawer.open()}}
-    fun select(id:String) {tab=if(com.meshlit.BuildProfile.routeAllowed(id)) id else "about";scope.launch{drawer.close()}}
+    fun select(id:String) {
+        if(id in WorkspaceDestinations.settingsIds && tab!="settings" && tab !in WorkspaceDestinations.settingsIds) settingsOrigin=tab
+        tab=if(com.meshlit.BuildProfile.routeAllowed(id)) id else "about"
+        scope.launch{drawer.close()}
+    }
     if(showChatOptions) ChatOptionsDialog(state,chats,onSearchSettings={showChatOptions=false;select("search")},
         onShardingSettings={showChatOptions=false;select("sharding")}){showChatOptions=false}
     if(showGlobalSearch) GlobalSearchDialog(state,onResult={result,query->
@@ -201,7 +206,7 @@ fun ModernMeshlitApp() {
                         "vision" -> MediaGenerationScreen(onBack={select("chat")},initialKind="vision")
                         "voice" -> HandsFreeVoiceDialog(chats){select("chat")}
                         "structured" -> ModernStructuredScreen()
-                        else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onMenu=openMenu,onDestinationChanged={destination->
+                        else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onExit=if(tab!="settings") ({tab=settingsOrigin;settingsDestination=null}) else null,onMenu=openMenu,onDestinationChanged={destination->
                             settingsDestination=destination
                             if(destination==null && tab!="settings") tab="settings"
                         }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,chatPhotoState,chatPhotoProviderState,chatDraftState,chatPhotoTurnState,chatCapturePathState,chatCaptureUriState,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onProviders={select("providers")},onOptions={showChatOptions=true})
@@ -340,7 +345,14 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                             else if(message.text.isEmpty()) message.status?.let{Text(it,Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)}
                         }
                         "block" -> ReplyContent(checkNotNull(row.block),if(searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key) Modifier.background(colors.secondaryContainer.copy(alpha=0.45f)).testTag("chat-search-current-match") else Modifier)
-                        "actions" -> MessageActions(message.text,message.usage)
+                        "actions" -> Column {
+                            if (message.knowledgeSources.isNotEmpty()) {
+                                var showSources by remember(message.id) { mutableStateOf(false) }
+                                TextButton(onClick = { showSources = !showSources }) { Text("${message.knowledgeSources.size} reference excerpts provided") }
+                                if (showSources) message.knowledgeSources.forEach { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 4.dp)) }
+                            }
+                            MessageActions(message.text,message.usage)
+                        }
                     }
                 }
             }

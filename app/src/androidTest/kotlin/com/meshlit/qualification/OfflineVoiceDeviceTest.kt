@@ -32,6 +32,10 @@ class OfflineVoiceDeviceTest {
         val times=linkedMapOf<String,Double>()
         val adapter=OfflineSpeechAdapter(models)
         var report:JsonObject?=null
+        var transcript:String?=null
+        var pcmBytes:Int?=null
+        var pcmRate:Int?=null
+        var completed=false
         try {
         for(name in listOf("whisper-tiny-en","piper-lessac-medium")) {
             if(models.models.value.none{it.id==name}) {
@@ -44,23 +48,41 @@ class OfflineVoiceDeviceTest {
                 val wav=readVoiceWav(File(source,"reference.wav").readBytes());assertEquals(16000,wav.rate)
                 start=System.nanoTime();val text=adapter.transcribe(wav.bytes);times["transcriptionMs"]=(System.nanoTime()-start)/1e6
                 assertTrue("Real reference speech was not recognized",text.lowercase().contains("early nightfall"))
+                transcript=text
                 start=System.nanoTime();adapter.load("piper-lessac-medium",SpeechKind.PIPER_TTS);times["synthesisLoadMs"]=(System.nanoTime()-start)/1e6
                 start=System.nanoTime();val audio=adapter.synthesize("Hello. Meshlit can use an offline voice adapter.",VoiceStyle.NATURAL);times["synthesisMs"]=(System.nanoTime()-start)/1e6
                 assertEquals(22050,audio.rate);assertTrue(audio.bytes.size>22050);assertTrue(voiceEnergy(audio.bytes,audio.bytes.size)>0.001)
+                pcmBytes=audio.bytes.size;pcmRate=audio.rate
                 assertEquals("Speech model must not replace the owner's chat model",chatBefore,inference.loadedModel()?.modelPath)
                 start=System.nanoTime()
-                val answer=inference.infer(InferenceRequest("Say hello.",maxTokens=16,temperature=0f,seed=42,
+                val name=library.models.value.firstOrNull{it.path==chatBefore}?.name.orEmpty()
+                val prompt=if(usesChatMlPrompt(inference.engineTag,name)) {
+                    if(name.contains("Qwen3",true)) qwen3ChatPrompt("You are Meshlit.",emptyList(),"Say hello in one short sentence.")
+                    else smolLmChatPrompt("You are Meshlit.",emptyList(),"Say hello in one short sentence.")
+                } else "Say hello in one short sentence."
+                val answer=inference.infer(InferenceRequest(prompt,maxTokens=32,temperature=0f,seed=42,
                     expectedModelPath=chatBefore,onDeviceOnly=true,publishEvents=false,onToken={}))
                 times["localLlmWithSpeechLoadedMs"]=(System.nanoTime()-start)/1e6
                 assertTrue("Local LLM failed with both speech models loaded",answer is MeshlitResult.Success)
                 assertTrue("No real local reply",(answer as MeshlitResult.Success).value.finalText.isNotBlank())
+                completed=true
                 report=buildJsonObject{put("format","meshlit-offline-voice/1");put("timestampEpochMs",System.currentTimeMillis());put("status","passed-listed-cases")
                     put("recognition","Whisper Tiny English INT8 / ONNX");put("synthesis","Piper Lessac medium / ONNX");put("transcript",text)
                     put("pcmBytes",audio.bytes.size);put("pcmSampleRate",audio.rate);put("microphoneTested",false);put("liveConversationTested",false);put("providerTested",false)
                     put("chatModelPreserved",true);put("localLlmExecutedWithSpeechLoaded",true)
                     put("timingsMs",buildJsonObject{times.forEach{(name,value)->put(name,value)}})}
             }
-        }finally{try{adapter.close()}finally{source.deleteRecursively()}}
+        }finally{try{adapter.close()}finally{
+            source.deleteRecursively()
+            val evidence=report ?: buildJsonObject {
+                put("format","meshlit-offline-voice/1");put("timestampEpochMs",System.currentTimeMillis());put("status","incomplete-or-failed")
+                put("recognitionPassed",transcript!=null);transcript?.let{put("transcript",it)}
+                put("synthesisPassed",pcmBytes!=null);pcmBytes?.let{put("pcmBytes",it)};pcmRate?.let{put("pcmSampleRate",it)}
+                put("localLlmExecutedWithSpeechLoaded",completed);put("microphoneTested",false);put("liveConversationTested",false);put("providerTested",false)
+                put("timingsMs",buildJsonObject{times.forEach{(name,value)->put(name,value)}})
+            }
+            File(context.filesDir,"qualification/offline-voice.json").apply{parentFile!!.mkdirs();writeText(evidence.toString())}
+        }}
         assertEquals("Speech cleanup must preserve the chat model",chatBefore,inference.loadedModel()?.modelPath)
         val file=File(context.filesDir,"qualification/offline-voice.json");file.parentFile!!.mkdirs();file.writeText(checkNotNull(report).toString())
     }

@@ -4,6 +4,24 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+[Current paused checkpoint and ordered resumption gates](docs/PAUSED_CHECKPOINT_2026-10-24.md) · [Build/run](BUILD.md) · [Agent handoff](docs/SESSION_HANDOFF.md). Source publication does not resume application qualification.
+
+
+## Execution record — 2026-10-24 continuation
+
+**Paused by owner for HyperL-first delivery.** Preserve Meshlit source/docs; do not
+continue APK builds, installs or voice qualification until resumed. The interrupted
+final build is recorded in PROGRESS.md and is not a passed validation gate.
+
+Carry out the ranked backlog without treating new menus as completed backends. The current implementation slice covers model reliability, origin-preserving navigation, shared persistent RAG, Studio model recommendations and HyperL admission/measurement. Each fix and failed device case is recorded in [PROGRESS.md](PROGRESS.md). Run changed contracts, then both APK/lint gates, then qualify on reserved Samsung. Keep physical multi-device, reverse relay, group delivery, operational cloud/training and monetary settlement acceptance separate.
+
+The slice now also includes live turn-taking voice, captions, mute/interruption,
+audio cleanup and eight shared defensive references. Stabilize the reviewed
+source, run both flavor build/lint gates, then test Samsung controls, real offline
+speech and knowledge ingestion. Keep online testing deferred and Xiaomi untouched.
+The isolated SmolVLM probe is evidence for a possible CPU adapter, not a delivered
+offline Chat feature. Full-duplex and cloud realtime voice remain future adapters.
+
 ## Priority order — 2026-10-24
 
 The owner requested major-impact or complex work first. Follow the [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md): reliable model/media chat first, physical multi-device execution/recovery next, then Internet relay/group chat, Studio agent parity and separately qualified operational/reward backends.
@@ -44,7 +62,7 @@ No single project-wide phase number or completion percentage is used. The workst
 | Local core engine | Intel bundled Qwen/CPU baseline and verified AVX2; lazy load, context/thread/batch/KV controls, memory admission and idle unload; both recovered installer launchers pass | Clean-machine installation, long-run lifecycle/leak/crash/quality cases; wider model and hardware qualification |
 | Shared sharding | Portable GGUF and CPU worker admission shared by Android/desktop; capacity-bounded integer/manual layer proportions and weak-worker exclusion pass contracts | Desktop live-worker RPC controller, paired independent devices, measured allocation/latency/memory, oversized-model and peer-loss tests |
 | Desktop management | Seven categories, distinct Basic/Advanced menus, bounded global/settings/chat/model/node search, real local monitoring, human shell, SSH/status listener and HyperL CPU | HF download/cancel/storage failures, actual process Stop, interactive SSH; finish pending category backends |
-| Android reliability | Both current Full V1/V2 APK assemblies/lints pass; earlier Samsung build-37 local/UI checks are historical | Install and test current build on Samsung, then Xiaomi/Windows categories; preserve data and human permissions |
+| Android reliability | Build44 passed its scoped gates; build45 source is saved with final build/lint and physical voice/RAG checks incomplete | Resume only on owner instruction, then qualify final source on available Samsung; preserve app data and phone ownership |
 | Governed agents and fleet | Android typed controls/grants/audit and optional gateways are references; desktop shared agent dispatch remains pending | One common authority/controller layer, durable redacted audit, scopes/budgets/revocation/Stop, then MCP/A2A/hooks and controlled automation |
 | Platform and release | Intel DMG/PKG recovered-payload qualification; source/review pushed; all eight public asset digests verified | Experimental release published with matching digests; Developer ID/notarization and independent OS/device acceptance precede production |
 

@@ -60,6 +60,7 @@ fun main(args: Array<String>) {
     var colibriMode by remember { mutableStateOf(ColibriMode.OFF) }
     var observedAt by remember { mutableStateOf<Long?>(null) }
     val localEngine = remember { LocalEngine() }
+    val knowledge = remember { DesktopKnowledge() }
     val enginePreferences = remember { EnginePreferences() }
     var engineOptions by remember { mutableStateOf(enginePreferences.load()) }
     var sendAfterLoad by remember { mutableStateOf(false) }
@@ -116,7 +117,7 @@ fun main(args: Array<String>) {
         }
     }
     fun requestsAllowed() = if (localMode) localSession != null && connected else network && connected
-    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close() } }
+    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close(); knowledge.lock() } }
     fun colibriReady() = connected && observedAt?.let { System.nanoTime() - it in 0..300_000_000_000L } == true
     fun hostAllowed() = localMode || !colibriHost || colibriDecision(colibriMode, network, colibriReady(), false).route == ColibriRoute.HOST
     fun connect() {
@@ -158,7 +159,9 @@ fun main(args: Array<String>) {
                 }
                 val result = try {
                     withContext(Dispatchers.IO) {
-                        generationClient.generateConfigured(model, context, GenerationBudget(budget.toInt()), system) { chunk ->
+                        val references = knowledge.context(context.last().content, remote = !localMode)
+                        val groundedSystem = (system.orEmpty() + references).takeIf { it.isNotBlank() }
+                        generationClient.generateConfigured(model, context, GenerationBudget(budget.toInt()), groundedSystem) { chunk ->
                             reply.append(chunk)?.let { updates.value = it }
                         }
                     }
@@ -278,6 +281,10 @@ fun main(args: Array<String>) {
                             RadioButton(!localMode, { stop(true); localMode = false; messages = emptyList() }); Text(t("Remote host", "远程主机"))
                         }
                         if (localMode) {
+                            ModelRecommendations(onLoad = { item ->
+                                stop(true); customModel = java.nio.file.Path.of(item.path); customModelHash = item.sha256
+                                messages = emptyList(); loadLocal(); settings = false
+                            })
                             ModelManager(onLoad = { item ->
                                 stop(true); customModel = java.nio.file.Path.of(item.path); customModelHash = item.sha256
                                 messages = emptyList(); loadLocal(); settings = false
@@ -357,6 +364,8 @@ fun main(args: Array<String>) {
                         "terminal", "commands" -> TerminalPanel()
                         "files", "ide" -> FilePanel()
                         "discover" -> HuggingFacePanel()
+                        "rag" -> KnowledgePanel(knowledge)
+                        "securitylab" -> SecuritySkillsPanel()
                         "behavior", "guardrails" -> {
                             Text("Local model instructions · session only")
                             ResponsePolicy.entries.forEach { policy ->

@@ -62,3 +62,9 @@ This screenshot shows a captured test photo with no configured vision provider. 
 - App unit suites: 229 tests per flavor; core inference: 284 tests; no failures. The required MCP (139), sandbox (14), and network (46) suites were confirmed up to date with no failures.
 - Crawler: nine tests passed in its disposable test environment. Documentation tracking, feature-map, HyperL provenance and diff whitespace checks passed.
 - ARM64 build44: 566,925,570 bytes, SHA-256 `500d2f7e3f11a10974d5642c59a16a9e232492ac89175ba447b29fc50444ae08`. Debug signature and pinned bundled Qwen asset verified; Xiaomi Download copy matches. This is a test APK, not a production qualification.
+
+## Current source continuation (not yet a new delivered APK)
+
+See [PROGRESS.md](../PROGRESS.md) for cause/fix/test records. Durable bounded text RAG now has shared retrieval logic, Android encrypted import/source labels and a Studio password-unlocked encrypted vault. Explicit local/remote/agent grants govern reuse. This closes the source stub for these text flows, not PDF/Office parsing, semantic embeddings, remote vector-service qualification or training. Studio model recommendations share Android artifact pins and use actual host capacity. HyperL now validates native snapshot overhead and offers bounded repeated CPU measurements.
+
+Samsung build44 loaded Qwen3 0.6B and greeted normally. A fast-mode arithmetic case failed (17+25 →32); explicit reasoning later returned42. SDK token counts remain deliberately unavailable because their provenance was previously disproven. Latest source fixes and all broader acceptance rows above remain subject to final tests and device checks.

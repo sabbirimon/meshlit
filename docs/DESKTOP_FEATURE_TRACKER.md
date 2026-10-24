@@ -86,3 +86,7 @@ must precede persistent autonomous jobs. The current human terminal panel is not
 For each update record source revision, feature IDs changed, passed and failed commands,
 actual runtime/device evidence, known limitations, package hashes and release URL in the
 [build log](DESKTOP_BUILD_LOG.md). Append corrections; do not turn historical tests into new-build proof.
+
+## Source continuation — 2026-10-24
+
+Knowledge library now uses shared bounded text retrieval, an AES-GCM passphrase-unlocked local vault, import/search/remove and separate local/remote chat grants. Model recommendations now use the shared revision/hash catalog with observed host capacity and the existing verified download client. HyperL gains bounded repeated native measurements, a ten-second deadline and capped result previews; revocation waits for cancellation before admitting another operation. These source additions are not in the published build40.1 installer. Final desktop tests/render checks and native measurements remain qualification gates; broader daemon/MCP/agent/cluster parity remains open.

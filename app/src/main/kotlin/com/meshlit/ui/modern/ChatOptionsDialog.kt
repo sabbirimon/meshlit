@@ -123,7 +123,7 @@ import kotlinx.coroutines.launch
             TextButton(onClick=onSearchSettings){Text("Manage search access and articles")}
             Row{Text("Allow phone tools",Modifier.weight(1f));Switch(options.phoneTools,{options=options.copy(phoneTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
             Text("Runs with the loaded on-device model and needs no external host. Requires saved autonomy, app scope and Android Accessibility in Settings → Phone agent and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant.")
-            Row{Text("Allow VM and SSH node tools",Modifier.weight(1f));Switch(options.nodeTools,{options=options.copy(nodeTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
+            Row{Text("Allow node tools and security references",Modifier.weight(1f));Switch(options.nodeTools,{options=options.copy(nodeTools=it,colibriMode="OFF")},enabled=!com.meshlit.BuildConfig.PLAY_REVIEW)}
             Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. The combined chat tool list is limited to ten. VM/QEMU and remote nodes must actually be available.")
             Row{Text("Local cryptography tools",Modifier.weight(1f));Switch(options.cryptoTools,{options=options.copy(cryptoTools=it,colibriMode="OFF")})}
             Text("Requires the saved cryptography agent grant. Keys/tool results are visible to the model and saved chat; keep real credentials in the vault.")

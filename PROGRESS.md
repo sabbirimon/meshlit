@@ -4,6 +4,86 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Source-save and publication handoff — 2026-10-24
+
+The owner subsequently requested saving and pushing the paused Meshlit source and documentation to its existing branch/PR #4. [The current checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) lists the source additions, failed/incomplete evidence, ranked remaining work and build/run links. This publication preserves the reviewed source without resuming application builds, phone operations or release work. The older pause entry below records the state at interruption; its no-push statement is historical.
+
+
+## Meshlit checkpoint — 2026-10-24, paused for HyperL priority
+
+At the owner's explicit request, voice/device qualification is paused so HyperL
+can ship first. The final Meshlit build was interrupted with SIGINT (client exit
+130); partial output is preserved at `/tmp/meshlit45-final-qualification.log`.
+Bundled-model integrity and pinned HyperL provenance checks passed before the
+build. Its partial test tasks do not establish a complete validation pass. No new
+APK was installed, copied, committed, pushed or released during this checkpoint.
+All source fixes, regression additions and documentation below are preserved in
+the working tree. Resume with changed-contract tests, both flavor assembly/lint,
+then Samsung-only voice/knowledge/native qualification. Xiaomi was not operated.
+
+## Reliability, knowledge library and HyperL continuation — 2026-10-24 (paused)
+
+The owner requested all remaining work, then explicitly included HyperL and requested a record of each fix. Samsung is reserved for Meshlit; Xiaomi remains available to the concurrent Kandari work. No new APK or public release is claimed in this entry.
+
+### Voice and defensive skill continuation
+
+Voice source now offers Live / One turn, manual Start/End, microphone mute,
+tap-to-interrupt with cleanup before the next turn, an audio-focus boundary,
+memory admission and optional phrase captions. Live mode remains sequential
+recognition → selected chat model → synthesis; automatic acoustic interruption,
+full-duplex speech and cloud realtime protocols are not implemented. Online
+testing remains deferred by the owner. [Voice setup and limits](docs/MEMORY_AND_VOICE.md).
+
+The source review found and corrected five further issues before final assembly:
+
+| Cause | Fix | Validation gate |
+| --- | --- | --- |
+| Android recognition treated ordinary silence/no-match as a fatal session error | Classify these as no speech so Live can listen again; permission/network errors stay fatal | New error-classification regression; device rerun pending |
+| UI said Listening after microphone capture had ended | Publish Transcribing and track capture ownership separately; allow interruption while transcribing; reject stale recognition callbacks | Physical state/mute/interrupt checks pending |
+| Short speech passed acceptance but failed the silence endpoint's stricter threshold; valid speech at the wall deadline was discarded | Shared bounded detector uses consistent speech qualification, retains valid captured audio at deadline and caps PCM at exactly 960,000 bytes | Short-utterance, continuous/silent limit regressions |
+| Captions hid speech after three lines on small screens | Keep full current phrase/transcript in the scrollable panel | Samsung narrow-screen check pending |
+| Playback cleanup could release AudioTrack before the cancelled meter finished | Join the meter under non-cancellable cleanup before release | Review fix; no device crash was claimed or reproduced |
+
+Android and Studio also expose eight independently written defensive security
+references. Android MCP and local chat can read them under existing CYBER grants;
+Studio supports read/copy. This is a reviewed subset inspired by Claude-Red revision
+`a8de813edc9f66f60d44cfe42d47750e89d9930b`, not the upstream attack catalog or a new
+permission bypass. [Scope and usage](docs/SECURITY_LAB_AND_HARDWARE_ACCESS.md).
+The initial voice/skill shared, desktop and both-app unit run passed in
+`/tmp/meshlit45-voice-skills-contracts.log`; the later review fixes require rerun.
+The earlier build45 assembly/test APK succeeded, but its lint run was deliberately
+cancelled before these voice changes. No current lint pass is inferred from it.
+
+| Finding / cause | Change in source | Evidence and remaining gate |
+| --- | --- | --- |
+| Provider setup Back discarded the originating workspace | Direct settings destinations remember the origin and leave nested history intact; provider button says Back | Compiles; physical new-build navigation still pending |
+| Existing RAG vector helper was in-memory and had no ingestion path | Added shared bounded lexical corpus, Android encrypted document import/search/remove, explicit local/remote/agent grants, source labels supplied to chat, read-only `knowledge_search` MCP | Shared persistence, bounds, corruption and grant tests passed; physical import/chat and MCP integration still pending. This is text retrieval, not semantic embeddings or training |
+| Studio lacked persistent knowledge ingestion | Added passphrase-unlocked AES-GCM vault, atomic replacement, bounded UTF-8 import, search, delete, local/remote chat grants | Desktop tests passed, including wrong password and tamper preservation. UI render and real grounded model answer still pending |
+| Remote RAG manufactured a provider `.example.com` URL | Requires an explicit HTTPS bridge and credential reference; no redirect, bounded request/response, timeout and cancellation | New no-endpoint/insecure-endpoint tests queued; no vendor vector DB or paid account has been qualified |
+| HyperL Validate omitted JNI snapshots from its displayed estimate | Selected-backend admission now includes native snapshots | Reference/backend-estimate regression passed; real native measurement pending |
+| HyperL had only one-shot elapsed timing | Added one warm-up plus five bounded CPU runs, median/p95, graph/output hashes and repeat consistency | Real reference recipe unit tests passed; not a claim of GPU, NPU, cluster speed or billable work |
+| Qwen recommendation still showed Load after successful loading | Card now observes inference state and displays Loaded / ready for chat | Compile/device check pending for this latest edit |
+| Raw native CPU/RPC chat omitted role templates for known Qwen/SmolLM models | Native and SDK chat now share known-model ChatML selection; fallback identity names Meshlit | New backend-selection regression queued; native phone inference pending |
+| Android and Studio model catalogs could drift | Moved four reviewed GGUF artifact pins into shared workspace; Studio uses host RAM/disk/engine estimates and its real verified downloader | New Studio recommendation tests queued; no extra model download triggered |
+
+### Samsung build44 observations (existing installed build)
+
+- Qwen3 0.6B Q4_K_M actually loaded through RunAnywhere. The recommendation card failed to show this, but the installed-model row said Loaded and Chat identified its managed file.
+- Fresh `Hello` returned `Hello! How can I assist you today?` in 9.8 seconds.
+- `What is 17 plus 25? Answer with the number only.` returned **32**, incorrectly, in 10.2 seconds. This is a retained failed quality case.
+- Fresh `/think What is 17 plus 25?` eventually returned **42** in 38.4 seconds. Its intermediate reasoning was confused and exposed a closing think marker; this is not broad accuracy qualification.
+- Token speed was unavailable. Source inspection confirms pinned SDK terminal counters were previously disproven as authoritative; `SdkStreamAccounting` intentionally withholds them. The fix must use genuine native counters, never count text chunks as tokens.
+
+### Offline speech rerun on Samsung build44
+
+The installed real Whisper/Piper test ran for 44.111 seconds. Whisper recognized the required reference phrase and Piper produced non-silent 22,050 Hz PCM; the subsequent local model check failed with `No real local reply`. Its raw `Say hello.` completion prompt did not use the known Qwen role format. The test source now uses the same model-specific ChatML selection as production chat and writes partial evidence on failure. This correction has not yet been rerun on the phone. Microphone capture and a live spoken conversation remain unverified.
+
+### Validation checkpoints
+
+Owner steering: both offline and online photo support are requested; online testing is deferred to the owner. Source inspection found Chat currently accepts only online vision profiles, while the SDK local vision wrapper lacks its native backend. Offline photo understanding is therefore still an implementation/physical acceptance gate. A separate bounded Samsung native CPU probe used official SmolVLM-256M Q8 and its matching projector (279 MB combined), pinned to Hugging Face revision `b9e4379657e1450d04d02eec8e345667265b0a00`. It identified the fixture's square but omitted its red color, taking 82.686 seconds for the request. [Retained probe evidence](docs/evidence/2026-10-24/samsung-isolated-vision.json) records actual native usage. The probe was stopped and its port forward removed. This was not in-app photo chat or general vision quality acceptance.
+
+First compile and shared tests: `/tmp/meshlit45-knowledge-compile.log`, successful. First shared/desktop/app run: `/tmp/meshlit45-contract-tests.log`, successful; shared 8 tests, desktop 36 (1 skipped), V2 app 230, zero failures/errors. Later prompt/catalog/remote changes are not covered by that earlier run. Second contract run (`/tmp/meshlit45-final-contracts.log`) passed: shared 8, desktop 37 (1 skipped), cloud-MCP 67, inference 284, app 231 per flavor; zero failures/errors. Later reasoning-display/test-evidence/desktop-HyperL refinements still require a rerun. Full V1/V2 build/lint, physical RAG/voice/native checks and release remain open. See the [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md) for work not closed by this iteration.
+
 ## Unified media chat and compact navigation — 2026-10-24
 
 Source moves photo analysis into the chat controller: direct provider answers, ordinary Send/Stop, attributed history, bounded requests, configuration-change rejection and actual provider usage where supplied. The UI adds a compact mobile dock, wider composer and smaller manual voice panel inspired by Kandari. Hardware-aware, checksum-pinned Qwen recommendations and an optional first-run review entry are also implemented. The app unit suites passed 229 tests per flavor and core inference passed 284 tests. Required MCP (139), sandbox (14) and network (46) tests were confirmed up to date with no failures; all nine crawler tests passed in its disposable test environment. HyperL provenance, feature-map and documentation checks passed. Both flavor assemblies and lints passed (zero errors, 399 warnings, 19 hints per flavor); actual provider vision and physical spoken audio remain unqualified. See the [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md).

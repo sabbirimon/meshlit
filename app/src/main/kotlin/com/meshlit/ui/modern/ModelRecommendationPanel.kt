@@ -32,6 +32,9 @@ internal fun ModelWelcomeSuggestion(onModels:()->Unit) {
 @Composable
 internal fun ModelRecommendationPanel(library:ModelLibrary,onError:(String)->Unit) {
     val entries by library.models.collectAsStateWithLifecycle()
+    val coordinator=com.meshlit.di.koinInject<com.meshlit.core.inference.InferenceCoordinator>()
+    val runtime by coordinator.state.collectAsStateWithLifecycle()
+    val loadedPath=(runtime as? com.meshlit.core.inference.CoordinatorState.Ready)?.model?.modelPath
     val scope=rememberCoroutineScope()
     var smallest by remember{mutableStateOf(false)}
     var expanded by remember{mutableStateOf(false)}
@@ -66,7 +69,8 @@ internal fun ModelRecommendationPanel(library:ModelLibrary,onError:(String)->Uni
                     Text("${installed.phase} · ${modelStorageLabel(installed.bytes)} received",style=MaterialTheme.typography.bodySmall)
                     TextButton(onClick={library.pause(installed.id)}){Text("Pause download")}
                 } else if(installed?.installed==true) {
-                    OutlinedButton(enabled=!loading,onClick={scope.launch{loading=true;try{library.load(installed.id)}catch(c:CancellationException){throw c}catch(e:Exception){onError(e.message ?: "Model load failed")}finally{loading=false}}}){Text(if(loading) "Loading…" else "Load installed model")}
+                    val loaded=installed.path==loadedPath
+                    OutlinedButton(enabled=!loading && !loaded,onClick={scope.launch{loading=true;try{library.load(installed.id)}catch(c:CancellationException){throw c}catch(e:Exception){onError(e.message ?: "Model load failed")}finally{loading=false}}}){Text(if(loaded) "Loaded · ready for chat" else if(loading) "Loading…" else "Load installed model")}
                 } else Button(enabled=!loading && a.hardwareFit && device.freeStorage>=a.storageNeeded && library.ready.isCompleted,onClick={
                     try {library.downloadRecommendation(a.model.id)}catch(e:Exception){onError(e.message ?: "Download could not start")}
                 }){Text("Download · ${modelStorageLabel(a.model.bytes)}")}

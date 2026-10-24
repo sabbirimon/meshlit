@@ -10,6 +10,9 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+**Current checkpoint (2026-10-24):** [saved source, pending validation and resumption guide](docs/PAUSED_CHECKPOINT_2026-10-24.md). Meshlit application work remains paused while HyperL ships; build45 is not a qualified release.
+
+
 **Many nodes. One mind.** AI runtime, agent gateway and distributed-compute research.
 Installable applications: Android and an Experimental Intel Mac desktop preview. Optional source companions: operator-owned hosts.
 

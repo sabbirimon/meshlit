@@ -4,6 +4,27 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current validation boundary — 2026-10-24
+
+The paused build45 source fixes and unresolved cases are summarized in [the checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md). Publication preserves this work; final voice regressions, both flavor build/lint and physical device checks remain open. Earlier successful builds below apply only to their named revisions.
+
+
+## Active reliability findings — 2026-10-24
+
+- **Source review fixes / device retest pending:** Live voice no longer treats
+  ordinary Android silence as a fatal error, claims Listening during transcription,
+  discards short qualified speech at timeout, truncates phrase captions to three
+  lines, or releases AudioTrack before its meter child finishes. Regression tests
+  and physical validation are recorded separately in PROGRESS.md.
+- **Observed isolated probe:** Samsung native SmolVLM identified a square but
+  omitted color and took 82.686 s. In-app offline photo Chat remains unwired.
+
+- **Observed:** Qwen3 0.6B fast-mode Samsung reply gave 32 for 17+25. Explicit reasoning returned 42 after 38.4 s. Preserve both results; do not claim model-quality acceptance.
+- **Source fix / device retest pending:** Provider setup Back loses origin; recommendation Load button does not indicate loaded state; native Qwen completion path omitted ChatML roles.
+- **Source fix / final qualification pending:** RAG had no durable ingestion; remote RAG used a placeholder domain; HyperL displayed reference-only memory admission in native mode.
+- **Source fix / retest pending:** Qwen3 now suppresses incomplete reasoning text and strips the template closing marker before saving/displaying its final answer.
+- **Open:** SDK counters are not authoritative; physical live speech/image understanding and full device-layout sweep remain gates.
+
 ## Current photo lifecycle correction — 2026-10-24
 
 The old photo path ran in a screen coroutine and then required a second text-model request. Source now uses the chat controller and displays the selected vision provider answer directly, without requiring a local text model. Stop, timeout, interrupted history and provider-change handling are explicit. Real provider and spoken offline voice acceptance remain open. The build43 V2 debug CI stage passed, but its separate Core Candidate stage hit the job timeout.
