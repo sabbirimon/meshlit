@@ -142,7 +142,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 local AI agents, on-device models and experimental distributed inference",
-      "contentSha256WithoutTrackingBlock": "a5fccf5789205389da60779a13a3b18227913924aa457ea64d538065a89aab80"
+      "contentSha256WithoutTrackingBlock": "f755ff33ae8596bbf459cec334cc9d5a5b9df8324be600c07b409b7133671d3e"
     },
     {
       "path": "REQUESTS.md",

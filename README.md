@@ -48,6 +48,11 @@ permissions, model choices and Stop controls. The aim is to make AI more
 accessible, private when run locally, and useful across the hardware people
 already own.
 
+**For people first:** the useful outcome is a person who can learn, create or
+solve a problem with more choice over where their data goes and how their
+devices are used. Human approval stays central when Meshlit reaches outside the
+phone or gives an agent a tool.
+
 Keeping working electronics in service can also reduce the need for new
 materials and delay waste; the [US EPA's electronics guidance](https://www.epa.gov/electronics-batteries-management/electronics-basic-information-research-and-initiatives)
 explains the value of reuse and longer product life. Meshlit has not measured a
