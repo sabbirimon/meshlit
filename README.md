@@ -345,9 +345,15 @@ and limits listed above.
 
 ## Beta downloads, agreements and store preparation
 
-[GitHub beta releases](https://github.com/sabbirimon/meshlit/releases) carry
-separate ARM64 phone and x86_64 emulator APKs, checksums and testing notes. They
-are debug-signed experimental builds. The optional Play review APK/AAB narrows
+[GitHub beta releases](https://github.com/sabbirimon/meshlit/releases) now hold
+the original v2 release files and checksums in this repository. The
+[Android beta.4 entry](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.4)
+has ARM64 phone, universal and x86_64 APKs plus testing notes; these are
+debug-signed experimental builds. The
+[Intel Mac Studio 40.1 entry](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-macos-intel-build40.1)
+has DMG/PKG installers, source and validation manifests, and checksums. Its
+clean-machine acceptance remains open. Beta.2 remains an unpublished draft,
+matching the original release state. The optional Play review APK/AAB narrows
 sensitive capabilities and is **not approved or ready for store submission**.
 Read [Play preparation](docs/PLAY_DISTRIBUTION.md) for exact build commands and gaps.
 

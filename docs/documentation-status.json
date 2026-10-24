@@ -142,7 +142,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 One app, many minds",
-      "contentSha256WithoutTrackingBlock": "95ce8e5668bec1efc56bf0c65cca4f4911ede61e667df6f4e25cbf607660a659"
+      "contentSha256WithoutTrackingBlock": "d3657a2c69e9b703445a0aa57eec6a8cab23afe26ce4d9939898d5cd606daaaf"
     },
     {
       "path": "REQUESTS.md",
