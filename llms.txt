@@ -1,4 +1,4 @@
-# Meshlit — One app, many minds
+# Meshlit — Many devices. One mind.
 
 > Project owner: IMON (@sabbirimon).
 > Open-source local AI workspace with an Android app, experimental Intel Mac desktop preview and optional host companions.

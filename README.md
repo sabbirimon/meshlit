@@ -4,7 +4,7 @@
 <img src="docs/assets/meshlit-v2-hero.svg" alt="Meshlit by IMON — local AI, agents and experimental device compute across Android and desktop previews" width="100%">
 </picture></p>
 
-# Meshlit — One app, many minds
+# Meshlit — Many devices. One mind.
 <!-- meshlit-document-tracking:start -->
 Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
