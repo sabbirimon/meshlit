@@ -107,7 +107,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Contributing to Meshlit",
-      "contentSha256WithoutTrackingBlock": "1a2d82f29ad5b350a47b301bcff4d8ad3d33f985d9b5430a188a84681d378128"
+      "contentSha256WithoutTrackingBlock": "37d3912b1bfcd6c0a00317cba1cac785de99461a1240acd7ca5c8cf02a6627b6"
     },
     {
       "path": "FEATURE_MAP.md",
@@ -142,7 +142,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 One app, many minds",
-      "contentSha256WithoutTrackingBlock": "3419669c75578e17207aa7ab091cbe930f2da50cb97dad51e98b2966f58c69ad"
+      "contentSha256WithoutTrackingBlock": "95ce8e5668bec1efc56bf0c65cca4f4911ede61e667df6f4e25cbf607660a659"
     },
     {
       "path": "REQUESTS.md",

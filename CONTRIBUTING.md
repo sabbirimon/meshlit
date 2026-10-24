@@ -4,10 +4,11 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Meshlit's priority is verifiable local inference and genuine phone layer execution.
-Good contributions include reproducible Android/model reports, native worker and
-recovery contracts, accessibility improvements and real owner-controlled adapter
-checks. Read AGENTS.md, AGENT_BUILD.md, PROGRESS.md and BUILD_MILESTONES.md first.
+Meshlit's priority is verifiable local inference across its implemented clients
+and genuine phone layer execution. Good contributions include reproducible
+Android or desktop/model reports, native worker and recovery contracts,
+accessibility improvements and real owner-controlled adapter checks. Read
+AGENTS.md, AGENT_BUILD.md, PROGRESS.md and BUILD_MILESTONES.md first.
 Setup questions, feature ideas and usability feedback are also welcome. Describe
 the device or use case and the behavior you expected; code is not required.
 
@@ -15,8 +16,8 @@ the device or use case and the behavior you expected; code is not required.
 
 We welcome testing help across many kinds of hardware and networks. Useful
 coverage includes low-memory and newer ARM64 Android phones, x86_64 emulators,
-two or more physical phones for pairing, Intel/AMD/Apple desktop hosts, and
-systems with vendor GPU/NPU drivers. Diverse screen sizes, accessibility
+two or more physical phones for pairing, Intel/AMD/Apple workstations, lab
+machines and systems with vendor GPU/NPU drivers. Diverse screen sizes, accessibility
 settings, thermal conditions, local networks and VPNs also matter. For small
 IoT or edge devices, report the actual storage, sensor, routing or tool role;
 do not infer that they can run transformer layers.

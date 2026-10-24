@@ -9,6 +9,7 @@
 ## Authoritative status and agent context
 - [README](https://github.com/sabbirimon/meshlit/blob/main/README.md): Product purpose, source coverage and build entry.
 - [Progress](https://github.com/sabbirimon/meshlit/blob/main/PROGRESS.md): Named test evidence and remaining limits.
+- [Contributing](https://github.com/sabbirimon/meshlit/blob/main/CONTRIBUTING.md): Hardware test reports, code contributions and feedback.
 - [Agent instructions](https://github.com/sabbirimon/meshlit/blob/main/AGENTS.md): Repository workflow; human requests have priority.
 - [Build handoff](https://github.com/sabbirimon/meshlit/blob/main/AGENT_BUILD.md): Toolchains, native builds and validation.
 - [Feature inventory](https://github.com/sabbirimon/meshlit/blob/main/docs/feature-map.json): Machine-readable source map, not a completion score.

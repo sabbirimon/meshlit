@@ -25,6 +25,13 @@ earlier `meshlit-v2` repository remains available for its original pull requests
 and release provenance.
 Installable applications: Android and an Experimental Intel Mac desktop preview. Optional source companions: operator-owned hosts.
 
+> **Help test and contribute.** We welcome developers, researchers, workstation
+> owners and people testing on everyday phones. Try a narrow workflow on your
+> hardware, then share the exact build, device, steps, measured results and any
+> failure. Ideas, accessibility feedback and documentation help are welcome too;
+> code is not required. See [CONTRIBUTING.md](CONTRIBUTING.md) or
+> [open an issue](https://github.com/sabbirimon/meshlit/issues).
+
 **A project by IMON** · [@sabbirimon](https://github.com/sabbirimon)
 
 See [authors and attribution](AUTHORS.md).
@@ -78,6 +85,7 @@ these directions from features already measured on devices.
 <p>
 <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache_2.0-36b5bc?style=flat-square"></a>
 <img alt="Android 7 and later" src="https://img.shields.io/badge/Android-7%2B-62bf86?style=flat-square">
+<img alt="Experimental Intel Mac desktop preview" src="https://img.shields.io/badge/Desktop-Intel_Mac_preview-8bb5f5?style=flat-square">
 <img alt="Kotlin and Jetpack Compose" src="https://img.shields.io/badge/UI-Kotlin_%2B_Compose-9186f2?style=flat-square">
 <img alt="GGUF model runtime" src="https://img.shields.io/badge/Models-GGUF_%2F_llama.cpp-54a9ec?style=flat-square">
 <img alt="Experimental development build" src="https://img.shields.io/badge/Status-Experimental-e5ab54?style=flat-square">
@@ -120,6 +128,8 @@ Vendor GPU/NPU adapters and IoT companions remain future work. Raspberry Pi, ESP
 NAS and network appliances can eventually contribute storage, sensors, capture,
 preprocessing, routing or tools according to real capability. Listing a device
 category does not imply that it can execute transformer layers.
+
+![Meshlit platform coverage: Android beta app, experimental Intel Mac desktop preview, and workstation or lab research with distinct validation scopes](docs/assets/meshlit-platform-coverage.svg)
 
 [Reply reader and token controls](docs/CHAT_PRESENTATION.md) explains formatting,
 theme highlights, export and measured versus unavailable token rates.
@@ -270,6 +280,8 @@ human-controlled. Crawling respects access controls and robots restrictions.
    training with owner-controlled hosts and real datasets.
 5. Expand audit coverage, remote retry/outbox, fleet queries and external dashboards.
 6. Improve remaining legacy screens, tutorials, compiler tooling and release gates.
+
+![Meshlit hardware contribution cycle: choose one workflow, run it on named hardware, measure the result and share a reproducible report](docs/assets/meshlit-test-cycle.svg)
 
 Useful contributions include reproducible device/model reports, backend failure
 contracts, UI accessibility fixes, actual paired-host tests and clear documentation.

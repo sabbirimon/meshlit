@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 430" role="img" aria-labelledby="title description">
+  <title id="title">Meshlit platform and testing scopes</title>
+  <desc id="description">Android beta builds, an experimental Intel Mac Studio preview, and open workstation and lab research each have separate evidence and limitations.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#101522"/><stop offset="1" stop-color="#183242"/></linearGradient>
+    <linearGradient id="rule" x2="1" y2="0"><stop stop-color="#65d7cc"/><stop offset=".55" stop-color="#8bb5f5"/><stop offset="1" stop-color="#f4af7a"/></linearGradient>
+    <style>
+      text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      .title{fill:#f5f8fa;font-size:34px;font-weight:750}
+      .sub{fill:#b7c9d3;font-size:17px}
+      .card{fill:#20303e;stroke:#496172;stroke-width:1.5}
+      .eyebrow{font-size:12px;font-weight:750;letter-spacing:1.6px}
+      .head{fill:#f5f8fa;font-size:25px;font-weight:700}
+      .body{fill:#d1dce2;font-size:17px}
+      .foot{fill:#b7c9d3;font-size:15px}
+    </style>
+  </defs>
+  <rect width="1280" height="430" fill="url(#bg)"/>
+  <rect x="42" y="38" width="140" height="5" rx="2.5" fill="url(#rule)"/>
+  <text x="42" y="91" class="title">One workspace, different validation scopes</text>
+  <text x="42" y="123" class="sub">See what has a test build and where real hardware reports are still needed.</text>
+
+  <rect x="42" y="152" width="376" height="210" rx="22" class="card"/>
+  <rect x="42" y="152" width="376" height="5" rx="2.5" fill="#65d7cc"/>
+  <text x="66" y="190" class="eyebrow" fill="#75e2d7">ANDROID BETA</text>
+  <text x="66" y="228" class="head">Phone application</text>
+  <text x="66" y="267" class="body">GGUF chat and model controls</text>
+  <text x="66" y="295" class="body">Pairing and scoped agent tools</text>
+  <text x="66" y="331" class="foot">Evidence varies by build and device.</text>
+
+  <rect x="452" y="152" width="376" height="210" rx="22" class="card"/>
+  <rect x="452" y="152" width="376" height="5" rx="2.5" fill="#8bb5f5"/>
+  <text x="476" y="190" class="eyebrow" fill="#9bc4ff">INTEL MAC PREVIEW</text>
+  <text x="476" y="228" class="head">Desktop Studio</text>
+  <text x="476" y="267" class="body">Offline CPU model preview</text>
+  <text x="476" y="295" class="body">Build 40.1 installer checks</text>
+  <text x="476" y="331" class="foot">Clean-machine testing is still open.</text>
+
+  <rect x="862" y="152" width="376" height="210" rx="22" class="card"/>
+  <rect x="862" y="152" width="376" height="5" rx="2.5" fill="#f4af7a"/>
+  <text x="886" y="190" class="eyebrow" fill="#ffc396">WORKSTATIONS + LABS</text>
+  <text x="886" y="228" class="head">Research and tests</text>
+  <text x="886" y="267" class="body">Host, GPU/NPU and cluster studies</text>
+  <text x="886" y="295" class="body">Share measured successes and failures</text>
+  <text x="886" y="331" class="foot">No broad hardware claim without proof.</text>
+
+  <text x="42" y="404" class="foot">Windows/Linux host contracts pass in CI; end-to-end hardware acceptance remains separate.</text>
+</svg>
