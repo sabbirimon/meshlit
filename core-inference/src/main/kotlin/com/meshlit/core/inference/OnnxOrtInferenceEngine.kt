@@ -181,12 +181,10 @@ class OnnxOrtInferenceEngine : InferenceEngine {
             request.onToken(result)
             MeshlitResult.Success(
                 InferenceResult(
-                    promptTokens = 0,
-                    generatedTokens = result.length,
+                    promptTokens = null,
+                    generatedTokens = null,
                     totalDurationMs = duration,
-                    tokensPerSecond = if (duration > 0) {
-                        result.length * 1000f / duration
-                    } else 0f,
+                    tokensPerSecond = null,
                     finishReason = FinishReason.NATURAL_STOP,
                     finalText = result,
                 ),

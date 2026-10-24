@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <!-- Review candidate only. File/media access uses explicit SAF/photo picker grants. -->
+    <!-- Keep the overlay independently lintable; SMS is removed below. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" tools:node="remove" />
+    <application android:label="Meshlit Play Review" tools:replace="android:label">
+        <service android:name="com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService" tools:node="remove" />
+        <service android:name="com.meshlit.core.net.capture.MeshlitCaptureVpnService" tools:node="remove" />
+        <receiver android:name="com.meshlit.network.termux.TermuxResultReceiver" tools:node="remove" />
+        <service android:name=".ssh.NodeSshService" tools:node="remove" tools:targetApi="26" />
+    </application>
+</manifest>

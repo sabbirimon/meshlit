@@ -1,4 +1,6 @@
 import java.util.Properties
+import java.io.File
+import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.application)
@@ -6,12 +8,33 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Operator-owned signing properties are never generated or committed by this build.
+val meshlitSigningFile = providers.gradleProperty("meshlit.signingProperties").orNull?.let { rootProject.file(it) }
+    ?: File(System.getProperty("user.home"), ".gradle/meshlit-release.properties")
+
 android {
+    signingConfigs {
+        getByName("debug") {
+            providers.gradleProperty("meshlit.debugKeystore").orNull?.let { storeFile = rootProject.file(it) }
+        }
+        create("release") {
+            if (meshlitSigningFile.exists()) {
+                val props = Properties().apply { meshlitSigningFile.inputStream().use { load(it) } }
+                storeFile = rootProject.file(requireNotNull(props.getProperty("storeFile")))
+                storePassword = requireNotNull(props.getProperty("storePassword"))
+                keyAlias = requireNotNull(props.getProperty("keyAlias"))
+                keyPassword = requireNotNull(props.getProperty("keyPassword"))
+            }
+        }
+    }
+    packaging { jniLibs.useLegacyPackaging = true }
     namespace = "com.meshlit"
     compileSdk = 37
 
     defaultConfig {
         applicationId = "com.meshlit"
+        buildConfigField("boolean", "PLAY_REVIEW", "false")
+        buildConfigField("boolean", "CORE_CANDIDATE", "false")
         // Floor = API 24 (Android 7.0). The RunAnywhere SDK 0.20.12
         // ships `libllama.so` with API 24+ symbol requirements (and
         // uses java.time on cold paths); `:core-inference` already
@@ -26,8 +49,8 @@ android {
         // /v1/health `version` field distinguishes the cluster
         // build from the pre-cluster baseline, and the GitHub
         // dev release gets a fresh version tag.
-        versionCode = 3
-        versionName = "0.2.3"
+        versionCode = 42
+        versionName = "0.2.8-cluster-studio"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -66,10 +89,10 @@ android {
         create("meshlitV2") {
             dimension = "ui"
             applicationIdSuffix = ".v2"
-            // Build no. 1 of the new UI. Bump versionCode by 1
+            // Keep this preview version in step with the release evidence.
             // so Play Store and F-Droid see a fresh artifact.
-            versionName = "2.0.0-v2build1"
-            versionCode = (defaultConfig.versionCode ?: 1) + 1
+            versionName = "2.0.0-v2build45"
+            versionCode = 45
             buildConfigField("boolean", "USE_NEW_UI", "true")
             resValue("string", "app_name", "Meshlit v2")
         }
@@ -83,18 +106,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Phase 7 — wire the release signing config. When
-            // `~/.gradle/meshlit-release.properties` is present (operator
-            // has populated the four keystore fields) this resolves to
-            // a real production APK. Otherwise we fall back to debug
-            // signing so the build still completes for local smoke
-            // tests; the §1 release gate then flags the build as
-            // "unsigned at tag time" — see `docs/release-checklist.md` §1.
-            signingConfig = if (rootProject.file("~/.gradle/meshlit-release.properties").exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // Production release is unsigned without explicit operator keys; never fall back to debug.
+            signingConfig = if (meshlitSigningFile.exists()) signingConfigs.getByName("release") else null
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -120,6 +133,27 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
         }
+    }
+
+    // Review-only distribution: narrower manifest, no cross-app autonomous service.
+    // Debug-signed for installation; neither this APK nor its AAB is Play approved.
+    buildTypes.create("playReview") {
+        initWith(buildTypes.getByName("debug"))
+        matchingFallbacks += listOf("debug")
+        applicationIdSuffix = ".playreview"
+        versionNameSuffix = "-play-review"
+        isDebuggable = false
+        signingConfig = signingConfigs.getByName("debug")
+        buildConfigField("boolean", "PLAY_REVIEW", "true")
+    }
+
+    // Separate package and app data; not a claim of production qualification.
+    buildTypes.create("productionCandidate") {
+        initWith(buildTypes.getByName("playReview"))
+        matchingFallbacks += listOf("debug")
+        applicationIdSuffix = ".production"
+        versionNameSuffix = "-core-candidate"
+        buildConfigField("boolean", "CORE_CANDIDATE", "true")
     }
 
     // Phase 1.0 — Lean APK (debug only). The Debug variant ships
@@ -169,16 +203,9 @@ android {
         noCompress += "gguf"
     }
 
-    // Phase 7 — lint config. Default Android lint runs without a config
-    // block, which leaves every default rule on and emits hundreds of
-    // MissingTranslation / HardcodedText / IconLocation warnings that
-    // have always been benign. We keep lint non-fatal (the gate is
-    // "no NEW warnings introduced", not "zero warnings") and disable
-    // the two rules that are noisy by default. `abortOnError = true`
-    // would block a release build on any pre-existing warning; flipping
-    // it on only after the lint tree is clean is a follow-up.
+    // Errors block builds; existing warning cleanup is tracked separately.
     lint {
-        abortOnError = false
+        abortOnError = true
         warningsAsErrors = false
         checkReleaseBuilds = true
         disable += setOf(
@@ -188,34 +215,6 @@ android {
             "IconMissingDensityFolder",
             "GoogleAppIndexingWarning",
         )
-    }
-
-    // Phase 7 — release signing. The Phase 8 hook PR shipped without
-    // any `signingConfigs` block, so `:app:assembleRelease` could not
-    // produce a signed APK and §1 of the release checklist stayed red.
-    //
-    // We do NOT generate a production keystore here (the release
-    // captain owns that — see `keystore.properties.example` at the
-    // repo root for the operator template). Instead the build reads
-    // the four keystore fields from `~/.gradle/meshlit-release.properties`
-    // if that file exists, otherwise falls back to debug signing so
-    // `./gradlew :app:assembleRelease` still produces an installable
-    // APK for local smoke tests. Tag-time build with a real keystore
-    // is the release captain's responsibility (see §8 in
-    // `docs/release-checklist.md`).
-    signingConfigs {
-        create("release") {
-            val ksProps = rootProject.file("~/.gradle/meshlit-release.properties")
-            if (ksProps.exists()) {
-                val props = Properties().apply {
-                    ksProps.inputStream().use { load(it) }
-                }
-                storeFile = file(props.getProperty("storeFile"))
-                storePassword = props.getProperty("storePassword")
-                keyAlias = props.getProperty("keyAlias")
-                keyPassword = props.getProperty("keyPassword")
-            }
-        }
     }
 
     // Phase 1.0 — Lean APK. The bundled `smollm2-360m-instruct-q8_0.gguf`
@@ -253,26 +252,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Preserve both SSH modules' metadata, alongside their offline licence assets.
+            merges += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE", "META-INF/NOTICE")
         }
     }
 
-    // OkHttp 4.x ↔ 5.x is not binary compatible. OpenTelemetry's OTLP
-    // sender pulls OkHttp 5.3.2 transitively, but the project pins
-    // OkHttp to 4.12.0 (the last 4.x line — the only line
-    // MockWebServer 4.12.0 understands). Force resolution to 4.12.0
-    // so the unit test runtime classpath is consistent.
-    configurations.all {
-        resolutionStrategy {
-            force("com.squareup.okhttp3:okhttp:4.12.0")
-            force("com.squareup.okhttp3:okhttp-android:4.12.0")
-            force("com.squareup.okhttp3:okhttp-jvm:4.12.0")
-            force("com.squareup.okhttp3:mockwebserver:4.12.0")
-            force("com.squareup.okhttp3:logging-interceptor:4.12.0")
-        }
-    }
+
 }
 
 dependencies {
+    implementation(libs.androidx.security.crypto)
+    implementation(project(":shared-workspace"))
     // Project modules (app consumes the orchestration facade)
     implementation(project(":core-orchestration"))
     implementation(project(":core-common"))
@@ -282,6 +272,10 @@ dependencies {
     implementation(project(":core-discovery"))
     implementation(project(":core-inference"))
     implementation(project(":core-mcp"))
+    implementation(project(":core-federation"))
+    implementation(project(":core-gpu"))
+    implementation(project(":core-hyperl"))
+    implementation(project(":core-gibberlink"))
     implementation(project(":core-cloud-mcp"))
     implementation(project(":core-training"))
     implementation(project(":core-files"))
@@ -291,6 +285,7 @@ dependencies {
     implementation(project(":core-tunnel"))
     implementation(project(":core-users"))
     implementation(project(":core-terminal"))
+    implementation(project(":core-sandbox"))
     implementation(project(":core-bootstrap"))
     implementation(project(":core-registry"))
     implementation(project(":core-lifecycle"))
@@ -307,6 +302,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.material)
@@ -326,6 +322,9 @@ dependencies {
     implementation(libs.androidx.window.core)
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.navigation.compose)
+    // Parse replies to native Compose blocks; never execute model HTML/scripts.
+    implementation(libs.commonmark)
+    implementation(libs.commonmark.tables)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Logging — slf4j-api alone gives us NOP; logback-android binds it
@@ -344,14 +343,14 @@ dependencies {
     // supported minSdk (pure-Java), unlike Ktor 3 client which needs
     // DEX 040 bytecode from API 33.
     implementation(libs.okhttp.core)
+    implementation(libs.nanohttpd.core)
+    implementation("org.bouncycastle:bcprov-jdk18on:1.86")
 
-    // QR pairing code generation (we render our own Meshlit pairing
-    // QR on the Devices screen) + Google Play Services Code Scanner
-    // (we scan peers' QR codes via Play Services' bundled scanner
-    // UI). The scanner ships as a small stub that downloads the
-    // module from Play Services on first launch — no CAMERA
-    // permission needed in the manifest, no CameraX dep.
+    // Render identity QRs locally and scan live camera frames with
+    // EasyQRScan's in-app CameraX/ML Kit surface. The older Play
+    // Services scanner remains for legacy worker/Devices surfaces.
     implementation(libs.zxing.core)
+    implementation(libs.easyqrscan.scanner)
     implementation(libs.play.services.code.scanner)
 
     // CameraX — `agent_camera_capture` tool. Lifecycle-aware
@@ -403,4 +402,98 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+// Restricted build environments may choose a writable Robolectric dependency home.
+val meshlitTestHome = providers.gradleProperty("meshlit.testHome")
+tasks.withType<Test>().configureEach {
+    if (meshlitTestHome.isPresent) systemProperty("user.home", meshlitTestHome.get())
+}
+
+val meshlitRobolectricDir=providers.gradleProperty("meshlit.robolectricDir")
+tasks.withType<Test>().configureEach {
+    if(meshlitRobolectricDir.isPresent){
+        systemProperty("robolectric.offline","true")
+        systemProperty("robolectric.dependency.dir",meshlitRobolectricDir.get())
+    }
+}
+
+// A build must not silently omit its real starter model. Preparation is explicit
+// and reproducible, rather than an unpinned download during Gradle configuration.
+abstract class VerifyBundledModel:DefaultTask() {
+    @get:InputFile abstract val manifestFile:RegularFileProperty
+    @get:InputDirectory abstract val assetDirectory:DirectoryProperty
+    @TaskAction fun verify() {
+        val manifest=groovy.json.JsonSlurper().parse(manifestFile.get().asFile) as Map<*,*>
+        val file=assetDirectory.file(manifest["filename"] as String).get().asFile
+        check(file.isFile) { "Missing bundled model. Run python3 scripts/prepare-bundled-model.py from the repository root." }
+        check(file.length()==(manifest["sizeBytes"] as Number).toLong()) { "Bundled model size mismatch. Prepare the model again." }
+        val digest=MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer=ByteArray(1024*1024)
+            while(true) { val n=input.read(buffer);if(n<0) break;digest.update(buffer,0,n) }
+        }
+        val hash=digest.digest().joinToString("") { "%02x".format(it) }
+        check(hash==manifest["sha256"]) { "Bundled model checksum mismatch. Prepare the model again." }
+    }
+}
+val verifyBundledModel by tasks.registering(VerifyBundledModel::class) {
+    manifestFile.set(layout.projectDirectory.file("src/main/assets/models/bundled-model.json"))
+    assetDirectory.set(layout.projectDirectory.dir("src/main/assets/models"))
+}
+// Consent must display the exact reviewed documents, including material data-flow changes.
+abstract class VerifyOfflinePolicies:DefaultTask() {
+    @get:InputFile abstract val termsDocument:RegularFileProperty
+    @get:InputFile abstract val privacyDocument:RegularFileProperty
+    @get:InputFile abstract val termsAsset:RegularFileProperty
+    @get:InputFile abstract val privacyAsset:RegularFileProperty
+    @get:InputFile abstract val agreementSource:RegularFileProperty
+    @TaskAction fun verify() {
+        val version=Regex("const val VERSION\\s*=\\s*\"([^\"]+)\"")
+            .find(agreementSource.get().asFile.readText())?.groupValues?.get(1)
+            ?: error("Review the legal agreement version before building.")
+        listOf(termsDocument.get().asFile to termsAsset.get().asFile,
+            privacyDocument.get().asFile to privacyAsset.get().asFile).forEach { (document,asset) ->
+            check(document.readBytes().contentEquals(asset.readBytes())) {
+                "Offline agreement differs from ${document.name}. Review and synchronize the legal assets before building."
+            }
+            check(document.readLines().getOrNull(1)?.startsWith("Version $version ·") == true) {
+                "Agreement acceptance version differs from ${document.name}. Review consent renewal before building."
+            }
+        }
+    }
+}
+val verifyOfflinePolicies by tasks.registering(VerifyOfflinePolicies::class) {
+    termsDocument.set(rootProject.layout.projectDirectory.file("docs/TERMS_OF_USE.md"))
+    privacyDocument.set(rootProject.layout.projectDirectory.file("docs/PRIVACY_POLICY.md"))
+    termsAsset.set(layout.projectDirectory.file("src/main/assets/legal/terms.txt"))
+    privacyAsset.set(layout.projectDirectory.file("src/main/assets/legal/privacy.txt"))
+    agreementSource.set(layout.projectDirectory.file("src/main/kotlin/com/meshlit/legal/LegalAgreementStore.kt"))
+}
+tasks.named("preBuild") { dependsOn(verifyBundledModel,verifyOfflinePolicies) }
+
+
+// Original lab companions shipped as data; installation requires an explicit human VM action.
+abstract class GenerateLabAssets:DefaultTask() {
+    @get:InputFile abstract val cyber:RegularFileProperty
+    @get:InputFile abstract val packages:RegularFileProperty
+    @get:OutputDirectory abstract val outputDirectory:DirectoryProperty
+    @TaskAction fun generate() {
+        val lab=outputDirectory.dir("lab").get().asFile
+        check(lab.isDirectory || lab.mkdirs())
+        listOf(cyber.get().asFile,packages.get().asFile).forEach { source ->
+            check(source.length() in 1..131072) { "Invalid bundled lab companion size" }
+            source.copyTo(File(lab,source.name),overwrite=true)
+        }
+    }
+}
+val generateLabAssets by tasks.registering(GenerateLabAssets::class) {
+    cyber.set(rootProject.layout.projectDirectory.file("companions/cyber/meshlit_cyber.py"))
+    packages.set(rootProject.layout.projectDirectory.file("companions/cyber/meshlit_packages.py"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/labAssets"))
+}
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(generateLabAssets,GenerateLabAssets::outputDirectory)
+}
+androidComponents.beforeVariants(androidComponents.selector().withBuildType("productionCandidate")) { variant ->
+    checkNotNull(variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]).enable = true
 }

@@ -9,6 +9,8 @@ import com.meshlit.network.termux.AndroidTermuxBridge
 import com.meshlit.network.termux.TermuxBridge
 import com.meshlit.network.termux.TermuxRunResult
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -78,26 +80,26 @@ class TermuxRunCommandDispatcher(
      * change.
      */
     private val allowlist = setOf(
-        "$termuxPrefix/bin/echo",
-        "$termuxPrefix/bin/cat",
-        "$termuxPrefix/bin/head",
-        "$termuxPrefix/bin/tail",
-        "$termuxPrefix/bin/wc",
-        "$termuxPrefix/bin/ls",
-        "$termuxPrefix/bin/stat",
-        "$termuxPrefix/bin/pwd",
-        "$termuxPrefix/bin/date",
-        "$termuxPrefix/bin/uptime",
-        "$termuxPrefix/bin/id",
-        "$termuxPrefix/bin/df",
-        "$termuxPrefix/bin/uname",
-        "$termuxPrefix/bin/env",
-        "$termuxPrefix/bin/which",
-        "$termuxPrefix/bin/whoami",
-        "$termuxPrefix/bin/du",
-        "$termuxPrefix/bin/free",
-        "$termuxPrefix/bin/true",
-        "$termuxPrefix/bin/false",
+        "${termuxPrefix}bin/echo",
+        "${termuxPrefix}bin/cat",
+        "${termuxPrefix}bin/head",
+        "${termuxPrefix}bin/tail",
+        "${termuxPrefix}bin/wc",
+        "${termuxPrefix}bin/ls",
+        "${termuxPrefix}bin/stat",
+        "${termuxPrefix}bin/pwd",
+        "${termuxPrefix}bin/date",
+        "${termuxPrefix}bin/uptime",
+        "${termuxPrefix}bin/id",
+        "${termuxPrefix}bin/df",
+        "${termuxPrefix}bin/uname",
+        "${termuxPrefix}bin/env",
+        "${termuxPrefix}bin/which",
+        "${termuxPrefix}bin/whoami",
+        "${termuxPrefix}bin/du",
+        "${termuxPrefix}bin/free",
+        "${termuxPrefix}bin/true",
+        "${termuxPrefix}bin/false",
     )
 
     /**
@@ -207,14 +209,21 @@ class TermuxRunCommandDispatcher(
         // 5. Run.
         val startedAt = System.currentTimeMillis()
         val result: TermuxRunResult = try {
-            bridge.runCommand(
+            withTimeoutOrNull(timeoutMs) { bridge.runCommand(
                 executable = executable,
                 arguments = arguments,
                 workingDirectory = workingDirectory,
                 stdin = stdin,
                 timeoutMs = timeoutMs,
                 background = false,
+            ) } ?: TermuxRunResult(
+                handleId = "", executable = executable, arguments = arguments,
+                exitCode = null, stdout = "", stderr = "Command timed out",
+                durationMs = System.currentTimeMillis() - startedAt,
+                status = TermuxRunResult.Status.TIMEOUT,
             )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             TermuxRunResult(
                 handleId = "",
@@ -262,6 +271,10 @@ class TermuxRunCommandDispatcher(
     )
 
     private fun errorResult(code: String, message: String?): McpEvent.ToolResult {
+        if (code !in setOf("command_denied", "approval_denied")) {
+            auditSink.append("agent_termux_run_command", emptyList(), null, 0,
+                code, "", "")
+        }
         val body = buildJsonObject {
             put("error", JsonPrimitive(code))
             if (message != null) put("message", JsonPrimitive(message))
@@ -291,7 +304,7 @@ class TermuxRunCommandDispatcher(
             Regex("eyJ[A-Za-z0-9_\\-]+\\.[A-Za-z0-9_\\-]+\\.[A-Za-z0-9_\\-]+"), // JWT
         )
         for (re in patterns) {
-            out = re.replace(out) { match -> "${match.groupValues[1]}***" }
+            out = re.replace(out) { match -> "${match.groupValues.getOrElse(1) { "" }}***" }
         }
         return out
     }

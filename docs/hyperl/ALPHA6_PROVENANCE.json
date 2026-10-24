@@ -1,0 +1,93 @@
+{
+  "format": "hyperl-android-port/1",
+  "upstream": "https://github.com/sabbirimon/HyperL",
+  "upstreamCommit": "c03a8590d959f5480c54efb4e3c3f87af6532e39",
+  "license": "LicenseRef-HyperL-Community-1.0 with preserved earlier Apache grants",
+  "modifications": "Android namespace; API 26 NIO; Java 8 IO; bounded SAF input stream and verify adapter. No desktop Python runtime.",
+  "files": [
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/HyperL.kt",
+      "upstreamSha256": "b8ff5d421374d918a2be107d761ab8c8aa456df66091445b2b2f12cc2ee3e9c3",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/HyperL.kt",
+      "sha256": "9f72d1d64d6655de55b2f036128943caca2ffb3d80c6f5c553f5407bc3abf0ca"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/HyperLAdmission.kt",
+      "upstreamSha256": "4b5873940ebb59162e5b7cc45d9442a32f76006200e802bc4b2533f8be16764a",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/HyperLAdmission.kt",
+      "sha256": "b6f8e2762059e9fb671f7ce3928662a0a2f373f1e9c123f0bd046de9ba392ed7"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/HyperLCodec.kt",
+      "upstreamSha256": "08fff49144a34c2282216a6d91dde1a26a0989a756a3abfa31e0744c158f2604",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/HyperLCodec.kt",
+      "sha256": "6dc9e952fbd439fd15787f59f44442397f6796e960f28d91d12343fe8da16dfb"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/HyperLLibrary.kt",
+      "upstreamSha256": "ed4c028f2be2ab32d6b9066af8c2973b2a7723fe82830b2d5c664069b8835b98",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/HyperLLibrary.kt",
+      "sha256": "512cbfbee765efa12ba952bf3a24f19af22686607c6be89ef5620fd923d953c6"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/HyperLContract.kt",
+      "upstreamSha256": "36ce250a73f5da5061ce8f7d833ce546b9c92704ae42fba08c1362e341e66787",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/HyperLContract.kt",
+      "sha256": "21d2c012e01c9a784a5351e0b41a8d06b55ac419fbbbe968ef627ef584c70260"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/HyperLSourceEmitter.kt",
+      "upstreamSha256": "5a232bae4ac65f5bc39b1beba217a02f3aba9bb5521d2f09b8e51f1ccead2d7e",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/HyperLSourceEmitter.kt",
+      "sha256": "f17d6df5990a09aa5a2c4589f008fdafb04990d237256f5696e1c4199d1dce75"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/PortableEmitter.kt",
+      "upstreamSha256": "ea7e017b61a6f769b507a6ff2267f58f58ddc1db414062689f696d7e6da9b0cd",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/PortableEmitter.kt",
+      "sha256": "6e70afd3704f8c52927bf646281fcd041b52e5d024ee43f04f9b8b11a339a38c"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/PreciseReduction.kt",
+      "upstreamSha256": "e949b0b298f191c2b5c4ff2721915d39460818f000a38ed5f26933a286a9fe4b",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/PreciseReduction.kt",
+      "sha256": "83d74033889e25a203f61ff4684b7ef7936d8e568ab58118c9865436d4e65a8c"
+    },
+    {
+      "upstreamPath": "src/main/kotlin/org/hyperl/LargeData.kt",
+      "upstreamSha256": "cbcb6fe2dba8170b64d98d614bb95693ba6edbc36cb5199fb1c4fde567813cc1",
+      "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/LargeData.kt",
+      "sha256": "76ef2e6f0eeca067d380e9e40a499ffc1e5bf403f99ebd14656b7bb1407d7c91"
+    },
+    {
+      "upstreamPath": "native/cpu.c",
+      "upstreamSha256": "d558603c9ca893f50a5a554f2bd26b02bd43aa6aacd9d69506865dcc82db0d72",
+      "path": "core-hyperl/src/main/cpp/cpu.c",
+      "sha256": "d558603c9ca893f50a5a554f2bd26b02bd43aa6aacd9d69506865dcc82db0d72"
+    },
+    {
+      "upstreamPath": "native/include/hyperl.h",
+      "upstreamSha256": "ad6629f834778508e2f18b4ab8f473c46903c7240ee7d1ee0ec17609785da41d",
+      "path": "core-hyperl/src/main/cpp/include/hyperl.h",
+      "sha256": "ad6629f834778508e2f18b4ab8f473c46903c7240ee7d1ee0ec17609785da41d"
+    },
+    {
+      "upstreamPath": "native/include/hyperl_contract.h",
+      "upstreamSha256": "c5ab6184c3e067fc567c72ce793f8eaf2870551a94aaea7d3fbedcd14bc01a81",
+      "path": "core-hyperl/src/main/cpp/include/hyperl_contract.h",
+      "sha256": "c5ab6184c3e067fc567c72ce793f8eaf2870551a94aaea7d3fbedcd14bc01a81"
+    },
+    {
+      "upstreamPath": "native/cpu_test.c",
+      "upstreamSha256": "31e9e4297803d70effccb88821edbe241f845afef4e19c9bdc62bca8f8a625bb",
+      "path": "core-hyperl/src/main/cpp/cpu_test.c",
+      "sha256": "31e9e4297803d70effccb88821edbe241f845afef4e19c9bdc62bca8f8a625bb"
+    },
+    {
+      "upstreamPath": "native/cpu_contract_stress.c",
+      "upstreamSha256": "fbda46a6a18d567db211e619b9cd34876141daa10e1c8f865f75299fa27435af",
+      "path": "core-hyperl/src/main/cpp/cpu_contract_stress.c",
+      "sha256": "fbda46a6a18d567db211e619b9cd34876141daa10e1c8f865f75299fa27435af"
+    }
+  ]
+}

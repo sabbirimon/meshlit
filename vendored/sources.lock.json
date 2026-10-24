@@ -1,0 +1,32 @@
+{
+  "reviewed_at": "2026-10-09",
+  "sources": {
+    "runanywhere-llama": {
+      "url": "https://github.com/RunanywhereAI/llama.cpp.git",
+      "revision": "4df29be4f4c3673f428170fda944a5b19f743bb8",
+      "license": "MIT"
+    },
+    "on-device-browser-agent": {
+      "url": "https://github.com/RunanywhereAI/on-device-browser-agent.git",
+      "revision": "f2617ee017a707013927134714d98b47480b07b4",
+      "license": "Apache-2.0; retains Nanobrowser NOTICE"
+    },
+    "runanywhere-kotlin": {
+      "url": "https://github.com/RunanywhereAI/runanywhere-sdks.git",
+      "revision": "acc341c8eae9078a5ab99102bad0ca8bb0377fc7",
+      "license": "See the pinned source's component licenses; SDK reference only"
+    },
+    "colibri": {
+      "url": "https://github.com/JustVugg/colibri.git",
+      "revision": "bf2442915d6e3dd4cdfd2eb9c2a3d2aa44a25850",
+      "license": "Apache-2.0; model licences separate",
+      "integration": "explicit external-host source companion; no engine binaries or weights in APK"
+    },
+    "ggwave": {
+      "url": "https://github.com/ggerganov/ggwave.git",
+      "revision": "060aec73dd7123ccac200442f75bdc7369795ffe",
+      "license": "MIT; Reed-Solomon MIT notice retained",
+      "integration": "minimal native source in core-gibberlink; no ElevenLabs/GibberLink demo source or paid service used"
+    }
+  }
+}

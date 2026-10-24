@@ -113,54 +113,9 @@ class LlamaCppPipelineStage(
         position: Int,
         tokenIdx: Long,
     ): MeshlitResult<ActivationPacket> {
-        if (!loaded) {
-            return MeshlitResult.Failure(
-                com.meshlit.core.common.MeshlitError.Native(
-                    "pipeline.stage_not_loaded",
-                ),
-            )
-        }
-        val outBuf = FloatArray(embeddingDim)
-        val stepResult = try {
-            val inBuf = inbound?.hiddenState ?: FloatArray(embeddingDim)
-            // For now we return a typed "not implemented" failure
-            // because the JNI `.cpp` layer-filter is a separate
-            // sub-task. The wire + protocol is testable without
-            // the native impl.
-            val rc = simulatePipelineStep(inBuf, position)
-            if (rc != 0) {
-                return MeshlitResult.Failure(
-                    com.meshlit.core.common.MeshlitError.Native(
-                        "pipeline.step_failed:$rc",
-                    ),
-                )
-            }
-            // Echo the inbound state back as the outbound state.
-            // When the native impl lands, this becomes the
-            // output of `nativePipelineStep`.
-            outBuf
-        } catch (t: Throwable) {
-            return MeshlitResult.Failure(
-                com.meshlit.core.common.MeshlitError.Native(
-                    "pipeline.step_threw:${t.message ?: t.javaClass.simpleName}",
-                ),
-            )
-        }
-        val outbound = ActivationPacket(
-            packetVersion = 1,
-            stageIndex = stageIndex(),
-            tokenIdx = tokenIdx,
-            positionInSequence = position,
-            layerEnd = layerEnd,
-            hiddenState = stepResult,
-            kvCacheKeys = ByteArray(0),
-            kvCacheValues = ByteArray(0),
-            finishedToken = if (role is StageRole.LastStage) tokenIdx.toInt() else 0,
-            isFinished = role is StageRole.LastStage,
-            crc32 = 0L,
-        )
-        outChannel.send(outbound)
-        return MeshlitResult.Success(outbound)
+        if (!loaded) return MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Native("pipeline.stage_not_loaded"))
+        return MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Native(
+            "pipeline.legacy_jni_not_implemented: use the authenticated native RPC layer runtime"))
     }
 
     /**
@@ -205,21 +160,6 @@ class LlamaCppPipelineStage(
      */
     private fun resolveShardPath(shard: ShardRef): String =
         "/data/data/com.meshlit/files/shards/${shard.modelId}/${shard.sha256}/shard-${shard.layerStart}-${shard.layerEnd}.gguf"
-
-    /**
-     * Stand-in for the JNI step call. Returns 0 on success. The
-     * real implementation delegates to
-     * `engine.nativePipelineStep(handle, inBuf, position, outBuf)`.
-     * Until the .cpp layer-filter ships, this just echoes the
-     * inbound state — the wire protocol is fully exercised.
-     */
-    private fun simulatePipelineStep(inBuf: FloatArray, position: Int): Int {
-        // Echo the input into the output buffer (handled by the
-        // caller above). Step returns 0 unless the embedding dim
-        // is wrong, which is a programming error.
-        if (inBuf.size != embeddingDim) return -1
-        return 0
-    }
 
     companion object {
         /**

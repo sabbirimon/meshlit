@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "Safe local-first baseline",
+  "appearance": {
+    "mode": "SYSTEM",
+    "accent": "INDIGO",
+    "dynamicColors": true,
+    "animations": true,
+    "fontScale": 1.0
+  },
+  "power": {
+    "minimumBattery": 15,
+    "pauseLowBatteryDownloads": true,
+    "unmeteredDownloadsOnly": false,
+    "chargingForNewLoads": false
+  },
+  "nativeThreadLimit": 4,
+  "defaultLocalBackend": "RUNANYWHERE",
+  "modelOptions": [],
+  "onlineProfiles": [],
+  "firewall": {"rules": [], "defaultAction": "DENY"}
+}

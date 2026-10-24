@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -72,7 +73,7 @@ fun MeshlitLeadBar(
     // BootstrapScreen) tell the user where the lead ends
     // and the content begins.
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().statusBarsPadding(),
         color = MeshlitSurface,
         shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
         tonalElevation = 2.dp,

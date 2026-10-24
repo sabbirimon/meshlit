@@ -138,6 +138,7 @@ fun AgentScreen(
     onOpenModels: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val contextResources=androidx.compose.ui.platform.LocalResources.current
     val app = remember { koinInject<MeshlitApplication>() }
     val inferenceCoordinator: InferenceCoordinator = koinInject()
     val settingsRepository: SettingsRepository = koinInject()
@@ -199,9 +200,9 @@ fun AgentScreen(
         if (uri != null) {
             val attached = AgentExporter.attachImage(context, uri)
             exportToast = if (attached != null) {
-                context.getString(R.string.agent_export_done, attached.lastPathSegment ?: "image")
+                contextResources.getString(R.string.agent_export_done, attached.lastPathSegment ?: "image")
             } else {
-                context.getString(R.string.agent_export_failed, "image")
+                contextResources.getString(R.string.agent_export_failed, "image")
             }
         }
     }
@@ -210,10 +211,10 @@ fun AgentScreen(
         val intent = AgentExporter.shareIntent(uri, mime).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        val chooser = Intent.createChooser(intent, context.getString(R.string.agent_share_chooser))
+        val chooser = Intent.createChooser(intent, contextResources.getString(R.string.agent_share_chooser))
             .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
         runCatching { context.startActivity(chooser) }.onFailure {
-            exportToast = context.getString(R.string.agent_export_failed, it.message ?: "")
+            exportToast = contextResources.getString(R.string.agent_export_failed, it.message ?: "")
         }
     }
 
@@ -376,12 +377,12 @@ fun AgentScreen(
                 onSaveFile = {
                     val uri = AgentExporter.writeTranscript(context, messages)
                     if (uri != null) {
-                        exportToast = context.getString(
+                        exportToast = contextResources.getString(
                             R.string.agent_export_done,
                             uri.lastPathSegment ?: "transcript.md",
                         )
                     } else {
-                        exportToast = context.getString(R.string.agent_export_failed, "io")
+                        exportToast = contextResources.getString(R.string.agent_export_failed, "io")
                     }
                     exportSheetVisible = false
                 },
@@ -390,19 +391,19 @@ fun AgentScreen(
                     if (uri != null) {
                         shareUri(uri, "text/markdown")
                     } else {
-                        exportToast = context.getString(R.string.agent_export_failed, "io")
+                        exportToast = contextResources.getString(R.string.agent_export_failed, "io")
                     }
                     exportSheetVisible = false
                 },
                 onSaveCode = {
                     val uri = AgentExporter.writeCodeBlocksFile(context, messages)
                     if (uri != null) {
-                        exportToast = context.getString(
+                        exportToast = contextResources.getString(
                             R.string.agent_export_done,
                             uri.lastPathSegment ?: "code.txt",
                         )
                     } else {
-                        exportToast = context.getString(R.string.agent_export_failed, "io")
+                        exportToast = contextResources.getString(R.string.agent_export_failed, "io")
                     }
                     exportSheetVisible = false
                 },

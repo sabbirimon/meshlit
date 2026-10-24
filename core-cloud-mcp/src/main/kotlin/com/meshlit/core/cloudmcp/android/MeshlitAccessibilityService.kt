@@ -44,10 +44,6 @@ import java.io.ByteArrayOutputStream
 class MeshlitAccessibilityService : AccessibilityService() {
 
     private val snapshotStore = AndroidSnapshotStore()
-    private val bridge: AndroidUiAutomatorBridge? by lazy {
-        runCatching { AndroidUiAutomatorBridge(this, getUiDevice()) }.getOrNull()
-    }
-
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -65,6 +61,7 @@ class MeshlitAccessibilityService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        instance = null
         snapshotStore.clear()
         Log.i(TAG, "AccessibilityService unbound")
         return super.onUnbind(intent)
@@ -106,74 +103,58 @@ class MeshlitAccessibilityService : AccessibilityService() {
      * the dispatch coroutine so the UI thread is never blocked.
      */
     fun dispatch(request: AutomationRequest): AutomationResponse {
-        val b = bridge ?: return AutomationResponse.UnitResponse(
-            ok = false,
-            error = "service not bound",
-        )
-        return when (request) {
+        fun result(ok:Boolean,error:String)=AutomationResponse.UnitResponse(ok,if(ok) null else error)
+        if(request !is AutomationRequest.OpenApp && request !is AutomationRequest.ListApps &&
+            request.targetPackage.isNotBlank() && request.targetPackage!=foregroundPackage())
+            return result(false,"Foreground target changed; take a fresh snapshot")
+        return when(request) {
             is AutomationRequest.Snapshot -> {
-                val root = rootInActiveWindow?.toAndroidNode()
-                    ?: return AutomationResponse.UnitResponse(
-                        ok = false,
-                        error = "no active window",
-                    )
-                AutomationResponse.SnapshotResponse(
-                    AndroidSnapshot(
-                        packageName = root.className?.substringBefore('.') ?: "",
-                        windowClass = root.className ?: "",
-                        capturedAtMs = System.currentTimeMillis(),
-                        nodes = listOf(root),
-                    ),
-                )
+                val root=rootInActiveWindow ?: return result(false,"no active window")
+                try { AutomationResponse.SnapshotResponse(AndroidSnapshot(root.packageName?.toString().orEmpty(),
+                    root.className?.toString().orEmpty(),System.currentTimeMillis(),listOf(root.toAndroidNode()))) }
+                finally {root.recycle()}
             }
             is AutomationRequest.ClickRequest -> {
-                val ok = b.click(
-                    text = request.text,
-                    contentDescription = request.contentDescription,
-                    resourceId = request.resourceId,
-                )
-                AutomationResponse.UnitResponse(
-                    ok = ok,
-                    error = if (ok) null else "no matching node",
-                )
+                if(listOfNotNull(request.text,request.contentDescription,request.resourceId).size!=1)
+                    return result(false,"Choose exactly one descriptor")
+                val node=findActive { (request.text!=null && it.text?.toString()==request.text) ||
+                    (request.contentDescription!=null && it.contentDescription?.toString()==request.contentDescription) ||
+                    (request.resourceId!=null && it.viewIdResourceName==request.resourceId) }
+                try {result(node?.performAction(AccessibilityNodeInfo.ACTION_CLICK)==true,"Node unavailable or not clickable")}
+                finally {node?.recycle()}
             }
             is AutomationRequest.TypeRequest -> {
-                val ok = b.typeText(request.text)
-                AutomationResponse.UnitResponse(
-                    ok = ok,
-                    error = if (ok) null else "no focused EditText",
-                )
+                val root=rootInActiveWindow
+                val node=root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                root?.recycle()
+                try {
+                    if(node?.isPassword==true) return result(false,"Password input requires a separate human workflow")
+                    val args=android.os.Bundle().apply{putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,request.text.take(8192))}
+                    result(node?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,args)==true,"No editable focused node")
+                } finally {node?.recycle()}
             }
-            is AutomationRequest.BackRequest -> {
-                b.back()
-                AutomationResponse.UnitResponse(ok = true)
-            }
-            is AutomationRequest.HomeRequest -> {
-                b.home()
-                AutomationResponse.UnitResponse(ok = true)
-            }
+            is AutomationRequest.BackRequest -> result(performGlobalAction(GLOBAL_ACTION_BACK),"Back unavailable")
+            is AutomationRequest.HomeRequest -> result(performGlobalAction(GLOBAL_ACTION_HOME),"Home unavailable")
             is AutomationRequest.OpenApp -> {
-                val ok = b.openApp(request.packageName)
-                AutomationResponse.UnitResponse(
-                    ok = ok,
-                    error = if (ok) null else "no launcher activity for ${request.packageName}",
-                )
+                val intent=packageManager.getLaunchIntentForPackage(request.packageName)
+                if(intent==null) result(false,"No launcher activity")
+                else {startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));result(true,"")}
             }
-            is AutomationRequest.ListApps -> {
-                AutomationResponse.ListAppsResponse(
-                    packages = b.listApps(request.query, request.includeSystem),
-                )
-            }
+            is AutomationRequest.ListApps -> AutomationResponse.ListAppsResponse(packageManager.getInstalledApplications(0)
+                .filter {request.includeSystem || it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM==0}
+                .filter {request.query.isNullOrBlank() || it.packageName.contains(request.query,true) || packageManager.getApplicationLabel(it).contains(request.query,true)}
+                .take(256).map{it.packageName})
             is AutomationRequest.WaitForRequest -> {
-                val node = b.waitFor(
-                    text = request.text,
-                    resourceId = request.resourceId,
-                    timeoutMs = request.timeoutMs,
-                )
-                AutomationResponse.UnitResponse(
-                    ok = node != null,
-                    error = if (node != null) null else "timeout",
-                )
+                val deadline=android.os.SystemClock.elapsedRealtime()+request.timeoutMs.coerceIn(0,30_000)
+                var found=false
+                do {
+                    val node=findActive { (request.text!=null && it.text?.toString()==request.text) ||
+                        (request.resourceId!=null && it.viewIdResourceName==request.resourceId) }
+                    found=node!=null;node?.recycle()
+                    if(found) break
+                    Thread.sleep(100)
+                } while(android.os.SystemClock.elapsedRealtime()<deadline)
+                result(found,"timeout")
             }
             is AutomationRequest.ScreenshotRequest -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -199,15 +180,16 @@ class MeshlitAccessibilityService : AccessibilityService() {
         return listOf(root)
     }
 
-    private fun AccessibilityNodeInfo.toAndroidNode(): AndroidNode {
+    private fun AccessibilityNodeInfo.toAndroidNode(depth:Int=0,budget:IntArray=intArrayOf(512)): AndroidNode {
+        budget[0]--
         val bounds = android.graphics.Rect().also { getBoundsInScreen(it) }
-        val childList = (0 until childCount).mapNotNull { i ->
-            getChild(i)?.toAndroidNode()
+        val childList = if(depth>=32 || budget[0]<=0) emptyList() else (0 until childCount.coerceAtMost(128)).mapNotNull { i ->
+            if(budget[0]<=0) null else getChild(i)?.let{child -> try{child.toAndroidNode(depth+1,budget)}finally{child.recycle()}}
         }
         return AndroidNode(
             className = className?.toString(),
-            text = text?.toString(),
-            contentDescription = contentDescription?.toString(),
+            text = if(isPassword) null else text?.toString()?.take(2048),
+            contentDescription = if(isPassword) null else contentDescription?.toString()?.take(2048),
             resourceId = viewIdResourceName,
             bounds = bounds,
             isClickable = isClickable,
@@ -217,26 +199,23 @@ class MeshlitAccessibilityService : AccessibilityService() {
         )
     }
 
-    /**
-     * Resolve the [UiDevice] singleton. UI Automator exposes
-     * `UiDevice.getInstance(Instrumentation)` for tests; the
-     * production use case for the AccessibilityService uses
-     * a similar surface but bound to the service context.
-     *
-     * The bridge is built lazily on first dispatch — see
-     * [LocalBinder.dispatch] — because the device singleton
-     * requires a bound Instrumentation, which is only
-     * present after the service connects.
-     */
-    private fun getUiDevice(): androidx.test.uiautomator.UiDevice =
-        runCatching {
-            @Suppress("UNCHECKED_CAST")
-            Class.forName("androidx.test.uiautomator.UiDevice")
-                .getMethod("getInstance", android.app.Instrumentation::class.java)
-                .invoke(null, null) as? androidx.test.uiautomator.UiDevice
-        }.getOrNull() ?: throw IllegalStateException(
-            "UiDevice unavailable — service not bound to test instrumentation",
-        )
+    /** Production accessibility traversal: bounded, detached result owned by caller. */
+    private fun findActive(predicate:(AccessibilityNodeInfo)->Boolean):AccessibilityNodeInfo? {
+        val root=rootInActiveWindow ?: return null
+        var visited=0
+        fun visit(node:AccessibilityNodeInfo,depth:Int):AccessibilityNodeInfo? {
+            if(++visited>512 || depth>32) return null
+            if(predicate(node)) return AccessibilityNodeInfo.obtain(node)
+            for(i in 0 until node.childCount.coerceAtMost(128)) {
+                val child=node.getChild(i) ?: continue
+                val found=try{visit(child,depth+1)}finally{child.recycle()}
+                if(found!=null) return found
+            }
+            return null
+        }
+        return try{visit(root,0)}finally{root.recycle()}
+    }
+    fun foregroundPackage():String=rootInActiveWindow?.let{root -> try{root.packageName?.toString().orEmpty()}finally{root.recycle()}}.orEmpty()
 
     /**
      * Capture a PNG screenshot of the foreground. API 33+ uses

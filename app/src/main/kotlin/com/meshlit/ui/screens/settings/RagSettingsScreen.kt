@@ -2,13 +2,18 @@ package com.meshlit.ui.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,31 +36,36 @@ import com.meshlit.ui.screens.cloud.AgentLoopMode
  * repo — see `core-orchestration`). The mode flows into the
  * Cloud Hub, Agent Terminal, and the Settings hub search.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class,androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun RagSettingsScreen(
     initialRagMode: RagMode,
     initialLoopMode: AgentLoopMode,
     onRagModeChange: (RagMode) -> Unit,
     onLoopModeChange: (AgentLoopMode) -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     var ragMode by remember { mutableStateOf(initialRagMode) }
     var loopMode by remember { mutableStateOf(initialLoopMode) }
 
-    Scaffold { innerPadding ->
+    Scaffold(topBar={if(onBack!=null) TopAppBar(title={Text("RAG settings")},navigationIcon={TextButton(onClick=onBack){Text("Back")}})}) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
+            KnowledgeLibraryPanel()
             Section(title = stringResource(R.string.cloud_settings_rag_title)) {
                 Text(
                     text = stringResource(R.string.cloud_settings_rag_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
+                Text("These legacy backend preferences apply only to compatible connected flows. They do not upload the knowledge library or enable remote indexing. Use the explicit library grants above for chat retrieval.",style=MaterialTheme.typography.bodySmall)
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -87,7 +97,7 @@ fun RagSettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {

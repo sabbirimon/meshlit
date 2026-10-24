@@ -6,6 +6,7 @@ import com.meshlit.core.discovery.LocalPeerDescriptor
 import com.meshlit.core.discovery.PeerAdvertisement
 import com.meshlit.core.trust.TrustStore
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -68,12 +69,13 @@ class PeerRepository(
      * scanning flag, the local IP / cluster fingerprint
      * providers, or the transport toggle state.
      */
-    @Volatile
-    private var uiStateFlow: StateFlow<ScanUiState>? = null
-
-    val uiState: StateFlow<ScanUiState>
-        get() = uiStateFlow
-            ?: error("PeerRepository.start() must be called before reading uiState")
+    private val mutableUiState = MutableStateFlow(ScanUiState(false,
+        PeerCategory.entries.associateWith { emptyList() }, 0, emptyList(), transportsEnabled = initialTransports))
+    val uiState: StateFlow<ScanUiState> = mutableUiState.asStateFlow()
+    private var uiStateJob: kotlinx.coroutines.Job? = null
+    val bleStatus get() = coordinator.bleStatus()
+    private val refresh = MutableStateFlow(0L)
+    fun refreshAvailability() { coordinator.refreshAvailability(); refresh.value++ }
 
     private var started = false
 
@@ -96,7 +98,7 @@ class PeerRepository(
         // UI before the screen mounted, drop it from the
         // coordinator before subscriptions attach so we don't
         // race with a fresh advertisement.
-        initialTransports.let { enabled ->
+        _transportsEnabled.value.let { enabled ->
             coordinator.transports.map { it.name }.forEach { name ->
                 if (name !in enabled) {
                     coordinator.setTransportEnabled(name, enabled = false)
@@ -107,11 +109,14 @@ class PeerRepository(
         // StateFlow is cheap; the snapshot only re-derives when
         // peers map, scanning flag, transport toggle, or USB
         // tether state changes.
-        uiStateFlow = combine(
+        if (uiStateJob?.isActive == true) return
+        uiStateJob = scope.launch {
+        combine(
             coordinator.peers,
             _scanning,
             _transportsEnabled,
-        ) { peers, scanning, transports ->
+            refresh,
+        ) { peers, scanning, transports, _ ->
             val ips = localIPPrefixProvider()
             val fps = clusterFingerprintsProvider()
             val classified = peers.values
@@ -134,18 +139,8 @@ class PeerRepository(
                 usbTether = usbTetherProvider(),
                 transportsEnabled = transports,
             )
-        }.stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = ScanUiState(
-                scanning = false,
-                grouped = PeerCategory.entries.associateWith { emptyList() },
-                total = 0,
-                localIps = localIPPrefixProvider(),
-                usbTether = usbTetherProvider(),
-                transportsEnabled = initialTransports,
-            ),
-        )
+        }.collect { mutableUiState.value = it }
+        }
     }
 
     fun stop() {
@@ -161,6 +156,8 @@ class PeerRepository(
      * machinery so the rest of the system sees it identically.
      */
     fun ingest(adv: PeerAdvertisement) = coordinator.ingest(adv)
+
+    fun evict(nodeId: String) = coordinator.evict(nodeId)
 
     /**
      * Revoke this peer's trust fingerprint and evict them from the
@@ -180,6 +177,7 @@ class PeerRepository(
      * crash the UI.
      */
     fun setTransportEnabled(name: String, enabled: Boolean) {
+        if (name !in initialTransports) return
         coordinator.setTransportEnabled(name, enabled)
         _transportsEnabled.value = if (enabled) {
             _transportsEnabled.value + name

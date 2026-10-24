@@ -156,16 +156,25 @@ data class InferenceRequest(
     val seed: Long = -1L,
     val onToken: suspend (String) -> Unit,
     val onComplete: suspend (InferenceResult) -> Unit = {},
+    /** Checked under the coordinator lock to prevent generating with a replaced model. */
+    val expectedModelPath:String?=null,
+    /** Explicit prefix-cache reuse; currently only the native CPU/RPC adapter supports this. */
+    val reuseContext:Boolean=false,
+    /** Coordinator denies network/cluster/unknown engines under its dispatch lock. */
+    val onDeviceOnly:Boolean=false,
+    /** Private tool sessions must not broadcast prompts/results to chat/history subscribers. */
+    val publishEvents:Boolean=true,
 )
 
-/** Inference outcome. */
+/** Inference outcome. Null usage means the runtime did not provide authoritative counts. */
 data class InferenceResult(
-    val promptTokens: Int,
-    val generatedTokens: Int,
+    val promptTokens: Int?,
+    val generatedTokens: Int?,
     val totalDurationMs: Long,
-    val tokensPerSecond: Float,
+    val tokensPerSecond: Float?,
     val finishReason: FinishReason,
     val finalText: String,
+    val cachedPromptTokens:Int?=null,
 )
 
 enum class FinishReason(val tag: String) {

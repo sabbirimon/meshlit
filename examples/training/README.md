@@ -1,4 +1,8 @@
 # Distributed training config examples
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
+Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 Three ready-to-use `DistributedConfig` files that match the
 §0 pros/cons table in

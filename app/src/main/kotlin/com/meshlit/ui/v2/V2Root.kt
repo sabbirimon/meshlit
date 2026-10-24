@@ -52,23 +52,7 @@ fun V2Root(
     modifier: Modifier = Modifier,
     startRoute: String = "devices",
 ) {
-    MaterialTheme(colorScheme = v2DarkColorScheme()) {
-        // Box (not Surface) so the MeshlitDynamicBackdrop
-        // can paint behind the chrome. The backdrop itself
-        // lays down a MeshlitInk base + two animated
-        // radial blobs (violet + aqua/coral mix) + a final
-        // 0.85 ink overlay so text keeps WCAG AA contrast.
-        // Net effect: the background hue shifts subtly over
-        // 32 s like Gemini's home screen, but stays dark
-        // enough for the v2 light-on-dark text to read.
-        Box(modifier = modifier.fillMaxSize()) {
-            MeshlitDynamicBackdrop(modifier = Modifier.fillMaxSize())
-            MeshlitAppV2(
-                startRoute = startRoute,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-    }
+    com.meshlit.ui.modern.ModernMeshlitApp()
 }
 
 /**

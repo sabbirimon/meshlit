@@ -1,0 +1,18 @@
+{
+  "id": "Qwen2.5-1.5B-Instruct-Q4_K_M",
+  "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+  "publisher": "Qwen",
+  "revision": "91cad51170dc346986eccefdc2dd33a9da36ead9",
+  "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+  "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+  "sizeBytes": 1117320736,
+  "license": "Apache-2.0",
+  "quantization": "Q4_K_M",
+  "parameters": "1.5B",
+  "capabilities": [
+    "text",
+    "chat",
+    "code"
+  ],
+  "packagedContextTokens": 4096
+}

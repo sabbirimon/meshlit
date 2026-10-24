@@ -201,20 +201,43 @@ class TerminalSession(
      * `run` command streams tokens into the active group until the
      * inference call returns.
      */
+    private val commandMutex = kotlinx.coroutines.sync.Mutex()
+
     suspend fun execute(raw: String) {
+        commandMutex.lock()
+        try { executeLocked(raw) } finally { commandMutex.unlock() }
+    }
+
+    private suspend fun executeLocked(raw: String) {
         val line = raw.trim()
         if (line.isEmpty()) return
 
-        val parts = line.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val parts = runCatching {
+            if (line.substringBefore(' ').lowercase(Locale.US) in setOf("runtime", "vm", "net", "artifact"))
+                com.meshlit.core.sandbox.tokenizeCommand(line)
+            else line.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        }.getOrElse {
+            startGroup(line)
+            appendLineInternal(TerminalLine("error: ${it.message}", kind = TerminalLine.Kind.ERROR))
+            finishGroup()
+            return
+        }
         if (parts.isEmpty()) return
         val cmd = parts[0].lowercase(Locale.US)
         val args = parts.drop(1)
 
         startGroup(line)
+        _isRunning.value = true
         appendLineInternal(TerminalLine(text = line, kind = TerminalLine.Kind.INPUT))
 
         try {
             when (cmd) {
+                "runtime", "vm", "net", "artifact" -> {
+                    val runtime = org.koin.core.context.GlobalContext.get().get<com.meshlit.sandbox.RuntimeTerminal>()
+                    runtime.execute(cmd, args).forEach {
+                        appendLineInternal(TerminalLine(it, kind = TerminalLine.Kind.STDOUT))
+                    }
+                }
                 "help", "?" -> cmdHelp()
                 "clear" -> {
                     clear()
@@ -239,6 +262,8 @@ class TerminalSession(
                     ),
                 )
             }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             appendLineInternal(
                 TerminalLine(
@@ -248,11 +273,13 @@ class TerminalSession(
             )
             log.warn("terminal.cmd_fail", "command failed: $cmd", mapOf("err" to (t.message ?: "")))
         } finally {
+            _isRunning.value = false
             finishGroup()
         }
     }
 
     private fun cmdHelp() {
+        runtimeHelp()
         val rows = listOf(
             "help" to com.meshlit.R.string.terminal_cmd_help_desc,
             "status" to com.meshlit.R.string.terminal_cmd_status_desc,
@@ -286,6 +313,11 @@ class TerminalSession(
                 ),
             )
         }
+    }
+
+    private fun runtimeHelp() {
+        val runtime = org.koin.core.context.GlobalContext.get().get<com.meshlit.sandbox.RuntimeTerminal>()
+        runtime.help().forEach { appendLineInternal(TerminalLine(it, kind = TerminalLine.Kind.INFO)) }
     }
 
     private fun appendKeyValue(key: String, value: String, valueKind: TerminalLine.Kind = TerminalLine.Kind.STDOUT) {

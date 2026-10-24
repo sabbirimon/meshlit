@@ -24,14 +24,6 @@
 name: Pages
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-    paths:
-      - "docs/**"
-      - "robots.txt"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 # Avoid concurrent deploys fighting for the live URL.

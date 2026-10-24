@@ -96,56 +96,11 @@ class PipelineCoordinator(
      * `isFinished = true` or the caller's coroutine is cancelled.
      */
     suspend fun run(prompt: String): MeshlitResult<String> {
-        return try {
-            // 1. Send the start packet to the FirstStage and
-            //    wait for ack.
-            val ack = sendStartPacket(prompt)
-            if (!ack.ok) {
-                return MeshlitResult.Failure(
-                    com.meshlit.core.common.MeshlitError.Native(
-                        "pipeline.start_rejected:${ack.reason ?: "unknown"}",
-                    ),
-                )
-            }
-
-            // 2. Spawn the orchestrator: subscribe to the LastStage
-            //    and pump tokens through _tokens.
-            val lastJob = scope.launch {
-                lastStageTransport.incoming().collect { pkt ->
-                    if (pkt.isFinished) {
-                        _tokens.tryEmit(
-                            TokenEvent(
-                                tokenId = pkt.finishedToken,
-                                text = pkt.layerEnd.toString(),  // placeholder: real detoken in the LastStage
-                                isFinal = true,
-                            ),
-                        )
-                    } else {
-                        _tokens.tryEmit(
-                            TokenEvent(
-                                tokenId = pkt.finishedToken,
-                                text = pkt.layerEnd.toString(),
-                                isFinal = false,
-                            ),
-                        )
-                    }
-                }
-            }
-
-            // 3. Block until the first final token arrives.
-            val first = withTimeoutOrNull(PIPELINE_TIMEOUT_MS) {
-                _tokens.first { it.isFinal }
-            }
-            lastJob.cancel()
-            if (first == null) {
-                return MeshlitResult.Failure(
-                    com.meshlit.core.common.MeshlitError.Native("pipeline.timeout"),
-                )
-            }
-            MeshlitResult.Success(first.tokenId.toString())
-        } finally {
-            close()
-        }
+        // The legacy packet schema has no verified detokenization/output contract.
+        // Returning layer numbers or token IDs as generated text fabricates inference.
+        close()
+        return MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Native(
+            "pipeline.legacy_execution_unavailable: use the verified native RPC layer runtime"))
     }
 
     /**
@@ -198,9 +153,8 @@ class PipelineCoordinator(
     /**
      * One token event exposed to the consumer of [tokens]. The
      * `tokenId` is the integer the LastStage sampled; `text` is the
-     * detokenized string (placeholders in the v1 orchestrator —
-     * the real detoken happens at the LastStage prior to the
-     * outbound send). `isFinal` is true on the last token of the
+     * reserved detokenized string. Legacy execution is disabled until
+     * a verified tokenizer/native output contract exists. `isFinal` is true on the last token of the
      * generation.
      */
     data class TokenEvent(

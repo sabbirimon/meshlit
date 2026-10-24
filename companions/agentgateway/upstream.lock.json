@@ -1,0 +1,16 @@
+{
+  "project": "https://github.com/agentgateway/agentgateway",
+  "license": "Apache-2.0",
+  "release": "v1.6.0",
+  "reviewedOn": "2026-10-07",
+  "binaries": {
+    "agentgateway-linux-amd64": {
+      "url": "https://github.com/agentgateway/agentgateway/releases/download/v1.6.0/agentgateway-linux-amd64",
+      "sha256": "496ed27e6a96b55a9ad7cabe5c2be7172511f44a3cb113e533d22bf93a7f079d"
+    },
+    "agentgateway-linux-arm64": {
+      "url": "https://github.com/agentgateway/agentgateway/releases/download/v1.6.0/agentgateway-linux-arm64",
+      "sha256": "b59ecac31103bb317d1377fd42b0cb25cd9a21f8c3f1d9ee14c3ff05f3f91abf"
+    }
+  }
+}

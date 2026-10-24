@@ -86,4 +86,29 @@ stitch.zip
 # Imported GGUF copies the user drops into the app at runtime. Tracked
 # elsewhere as a release artefact.
 app/imported-models/
-vendored/
+# Keep only dependency pins/documentation/notices; upstream clones stay local.
+vendored/*
+!vendored/README.md
+!vendored/sources.lock.json
+!vendored/licenses/
+
+# Optional source trees and Python companion environments
+vendored/runanywhere-llama/
+vendored/on-device-browser-agent/
+companions/crawler/.venv/
+
+# Kotlin local compiler state
+.kotlin/
+
+# HarmonyOS NEXT tooling outputs and local signing/SDK configuration
+**/.hvigor/
+**/oh_modules/
+ohosApp/hvigor/node_modules/
+ohosApp/signing-config*.json5
+*.p12
+*.p7b
+*.hap
+*.app
+
+# JVM crash dumps can contain memory-resident secrets and are never source.
+*.hprof

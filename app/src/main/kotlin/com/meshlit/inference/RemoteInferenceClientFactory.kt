@@ -17,7 +17,9 @@ import java.util.concurrent.TimeUnit
  * 040 (default from API 33) which would break the user-mandated
  * `minSdk = 23` floor. OkHttp is pure-Java and works on Android 6+.
  */
-class RemoteInferenceClientFactory {
+class RemoteInferenceClientFactory(private val tokenProvider: (String) -> String? = { url ->
+    runCatching { com.meshlit.di.koinInject<com.meshlit.peering.PeerSessionStore>().tokenFor(url) }.getOrNull()
+}) {
 
     private val log = logger("RemoteInferenceClientFactory")
 
@@ -27,10 +29,14 @@ class RemoteInferenceClientFactory {
         .writeTimeout(SOCKET_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .callTimeout(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .retryOnConnectionFailure(true)
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
 
     fun build(baseUrl: String): RemoteInferenceClient =
-        RemoteInferenceClient(baseUrl = baseUrl, client = client)
+        RemoteInferenceClient(baseUrl = baseUrl, client = client, token = tokenProvider(baseUrl))
+
+    fun cancelCalls() { client.dispatcher.cancelAll() }
 
     fun close() {
         try {

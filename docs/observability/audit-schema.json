@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sabbirimon/meshlit-v2/blob/main/docs/observability/audit-schema.json",
+  "title": "Meshlit metadata audit record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "timeMs",
+    "source",
+    "action",
+    "actor",
+    "outcome",
+    "measurements"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timeMs": {
+      "type": "integer"
+    },
+    "source": {
+      "enum": [
+        "APP",
+        "INFERENCE",
+        "MODELS",
+        "TASKS",
+        "AGENT",
+        "NETWORK",
+        "CLUSTER",
+        "DEVICE",
+        "SETTINGS"
+      ]
+    },
+    "action": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]{0,95}$"
+    },
+    "actor": {
+      "enum": [
+        "HUMAN",
+        "AGENT",
+        "SYSTEM"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "STARTED",
+        "SUCCEEDED",
+        "FAILED",
+        "CANCELLED",
+        "DENIED",
+        "OBSERVED"
+      ]
+    },
+    "targetHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "duration_ms": {
+          "type": "number"
+        },
+        "input_tokens": {
+          "type": "number"
+        },
+        "output_tokens": {
+          "type": "number"
+        },
+        "cache_tokens": {
+          "type": "number"
+        },
+        "bytes": {
+          "type": "number"
+        },
+        "total_bytes": {
+          "type": "number"
+        },
+        "ram_available_bytes": {
+          "type": "number"
+        },
+        "ram_total_bytes": {
+          "type": "number"
+        },
+        "heap_bytes": {
+          "type": "number"
+        },
+        "storage_free_bytes": {
+          "type": "number"
+        },
+        "battery_percent": {
+          "type": "number"
+        },
+        "battery_celsius": {
+          "type": "number"
+        },
+        "thermal_status": {
+          "type": "number"
+        },
+        "network_rx_bytes": {
+          "type": "number"
+        },
+        "network_tx_bytes": {
+          "type": "number"
+        },
+        "active_transfers": {
+          "type": "number"
+        },
+        "installed_models": {
+          "type": "number"
+        },
+        "active_jobs": {
+          "type": "number"
+        },
+        "task_count": {
+          "type": "number"
+        },
+        "worker_active": {
+          "type": "number"
+        },
+        "coordinator_active": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}

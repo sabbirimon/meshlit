@@ -55,8 +55,8 @@ object TracerHolder {
             scope = span.makeCurrent()
             block(span)
         } catch (t: Throwable) {
-            span.recordException(t)
-            span.setStatus(StatusCode.ERROR, t.message ?: t.javaClass.simpleName)
+            span.setAttribute("error", 1L)
+            span.setStatus(StatusCode.ERROR)
             throw t
         } finally {
             scope?.close()

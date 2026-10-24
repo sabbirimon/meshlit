@@ -45,6 +45,7 @@ object AnimatedGradient {
         config: MeshlitThemeConfig,
         animated: CustomPalette.AnimatedGradient,
     ): Float {
+        if (!config.animationsEnabled) return 0f
         val cycleMillis = (animated.cycleSeconds.coerceIn(4, 60) * 1000L)
         val transition = rememberInfiniteTransition(label = "anim-gradient-phase")
         val phase by transition.animateFloat(
@@ -97,7 +98,7 @@ object AnimatedGradient {
             start = Offset(startFraction * 1000f, startFraction * 1000f),
             end = Offset(endFraction * 1000f, endFraction * 1000f),
         )
-        return AnimatedGradientBrush(brush = brush, stops = stops)
+        return AnimatedGradientBrush(brush = brush, stops = stops, phaseFraction = phaseFraction)
     }
 }
 
@@ -110,6 +111,7 @@ object AnimatedGradient {
 data class AnimatedGradientBrush(
     val brush: Brush,
     val stops: List<Color>,
+    val phaseFraction: Float = 0f,
 )
 
 /**
@@ -120,7 +122,7 @@ fun AnimatedGradientBrush.colorAt(t: Float): Color {
     val colors = stops
     if (colors.isEmpty()) return Color.Transparent
     if (colors.size == 1) return colors.first()
-    val clamped = t.coerceIn(0f, 1f)
+    val clamped = ((t + phaseFraction) % 1f).coerceIn(0f, 1f)
     val scaled = clamped * (colors.size - 1)
     val idx = scaled.toInt().coerceAtMost(colors.size - 2)
     val frac = scaled - idx

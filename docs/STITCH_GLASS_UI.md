@@ -1,4 +1,8 @@
 # Stitch Glass UI — Design System Skill
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 This is the canonical design document for the iOS-glass aesthetic that
 every Meshlit screen, component, and animation must follow. The values

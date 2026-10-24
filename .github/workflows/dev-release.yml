@@ -1,107 +1,53 @@
-# Meshlit dev release — build a debug APK from the dev branch and
-# attach it to a GitHub release tagged `dev-v<version>`.
-#
-# Two trigger modes:
-#   1. Manual: `Actions → Dev Release → Run workflow` (uses the
-#      current dev branch HEAD).
-#   2. Tag push: `git tag dev-v0.2.0 && git push origin dev-v0.2.0`
-#      (creates a release pinned to that exact commit).
-#
-# The job:
-#   - Checks out the dev branch (or the tag if a tag was pushed).
-#   - Sets up JDK 17 (the project compiles against Java 11 source
-#     level; AGP 8.7 requires JDK 17 to run).
-#   - Runs `./gradlew :app:assembleDebug` to produce
-#     `app/build/outputs/apk/debug/app-debug.apk`.
-#   - Reads `versionName` from `app/build.gradle.kts` so the APK
-#     file name + release title reflect the source-of-truth
-#     version.
-#   - Creates (or updates) a GitHub release with the APK attached.
-#
-# Outputs:
-#   - `app-debug-v<version>.apk` (attached to the release).
-#   - `release-notes.md` (auto-generated from the merged commits
-#     since the previous dev-v tag).
-#
-# Required secrets / permissions:
-#   - `GITHUB_TOKEN` (built-in, scope = `contents: write`).
+# Owner-triggered experimental APK release; Play submission is a separate gate.
 name: Dev Release
-
 on:
   workflow_dispatch:
     inputs:
-      release_type:
-        description: "release title suffix"
-        type: choice
+      tag:
+        description: Existing or new beta tag (must start with dev-v)
+        type: string
         required: true
-        default: "dev"
-        options:
-          - dev
-          - nightly
-          - rc
   push:
-    tags:
-      - 'dev-v*'
-
+    tags: ['dev-v*']
 permissions:
   contents: write
-
 jobs:
   build:
-    name: Build debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.ref }}
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.0.1
         with:
           distribution: temurin
-          java-version: 17
-      - name: Cache Gradle
-        uses: actions/cache@v4
+          java-version: '21'
+      - uses: android-actions/setup-android@v4.0.4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-      - name: Read versionName from build.gradle.kts
-        id: read-version
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Android platform
         run: |
-          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "version-name=${VERSION}" >> $GITHUB_OUTPUT
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
-      - name: Rename APK with version
+          sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
+          test -f "$ANDROID_HOME/platforms/android-37.0/android.jar"
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          VERSION=${{ steps.read-version.outputs.version }}
-          cp app/build/outputs/apk/debug/app-debug.apk \
-             app/build/outputs/apk/debug/app-debug-v${VERSION}.apk
-      - name: Generate release notes
-        if: startsWith(github.ref, 'refs/tags/')
+          [[ "$RELEASE_TAG" =~ ^dev-v[0-9][A-Za-z0-9._-]*$ ]] || exit 1
+      - name: Prepare real starter model
+        run: python3 scripts/prepare-bundled-model.py
+      - name: Build and check beta APKs
+        run: ./gradlew :app:assembleMeshlitV2Debug :app:testMeshlitV2DebugUnitTest :app:lintMeshlitV2Debug --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process
+      - name: Prepare release assets
         run: |
-          PREV_TAG=$(git tag --sort=-creatordate | grep '^dev-v' | sed -n '2p' || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-          fi
-          git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" > release-notes.md || true
-          echo "## Full Changelog" >> release-notes.md
-          echo "" >> release-notes.md
-          echo "https://github.com/sabbirimon/meshlit/compare/${PREV_TAG}...${GITHUB_REF_NAME}" >> release-notes.md
-      - name: Create / update GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "Meshlit ${{ steps.read-version.outputs.version }} (${{ github.event.inputs.release_type || 'dev' }})"
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          body_path: ${{ startsWith(github.ref, 'refs/tags/') && 'release-notes.md' || '' }}
-          files: |
-            app/build/outputs/apk/debug/app-debug-v${{ steps.read-version.outputs.version }}.apk
-          fail_on_unmatched_files: false
+          mkdir -p release-assets
+          cp app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk release-assets/Meshlit-v2-beta-arm64-v8a.apk
+          cp app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-x86_64-debug.apk release-assets/Meshlit-v2-beta-x86_64.apk
+          cd release-assets
+          sha256sum *.apk > SHA256SUMS.txt
+      - name: Publish experimental prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --prerelease --title "Meshlit beta $RELEASE_TAG" --notes 'Debug-signed experimental V2 APKs. Optional native companions are included only if built separately. See README and docs/PLAY_DISTRIBUTION.md for capabilities and unresolved release gates.' release-assets/*.apk release-assets/SHA256SUMS.txt

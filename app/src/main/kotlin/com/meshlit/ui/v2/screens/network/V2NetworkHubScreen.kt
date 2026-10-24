@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -98,7 +99,7 @@ fun V2NetworkHubScreen() {
             },
         )
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().navigationBarsPadding(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -375,7 +376,7 @@ private fun StatRow(label: String, value: String) {
             text = label,
             style = MaterialTheme.typography.bodySmall,
             color = MeshlitTextTertiaryV2,
-            modifier = Modifier.width(110.dp),
+            modifier = Modifier.weight(1f),
         )
         Text(
             text = value,
@@ -383,6 +384,7 @@ private fun StatRow(label: String, value: String) {
                 fontWeight = FontWeight.Medium,
             ),
             color = MeshlitTextPrimaryV2,
+            modifier = Modifier.weight(1.6f),
         )
     }
 }

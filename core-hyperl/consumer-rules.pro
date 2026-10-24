@@ -1,0 +1,3 @@
+-keep class com.meshlit.core.hyperl.NativeBridge { *; }
+-keep interface com.meshlit.core.hyperl.NativeCancellation { *; }
+-keepclassmembers class * implements com.meshlit.core.hyperl.NativeCancellation { public boolean cancelled(); }

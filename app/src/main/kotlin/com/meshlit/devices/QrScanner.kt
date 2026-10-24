@@ -44,24 +44,38 @@ object QrScanner {
      */
     suspend fun scan(context: Context): ScanResult {
         val activity = context.findActivity() ?: return ScanResult.MissingActivity
+        return scan(activity)
+    }
+
+    /**
+     * Activity-overload for callers that already have an [Activity]
+     * in hand (e.g. a `LaunchedEffect` inside a `ComponentActivity`).
+     * Avoids the [MissingActivity] path entirely, which previously
+     * bit callers that passed an `applicationContext` from a
+     * `ViewModel` or non-Activity scope.
+     */
+    suspend fun scan(activity: Activity): ScanResult {
         return try {
             val options = GmsBarcodeScannerOptions.Builder()
                 .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
                 .allowManualInput()
                 .build()
             val client = GmsBarcodeScanning.getClient(activity, options)
-            val raw = suspendCancellableCoroutine<String?> { cont ->
+            suspendCancellableCoroutine<ScanResult> { cont ->
                 val task = client.startScan()
                     .addOnSuccessListener { value ->
-                        if (cont.isActive) cont.resume(value.rawValue)
+                        if (cont.isActive) cont.resume(value.rawValue?.takeIf(String::isNotBlank)?.let { ScanResult.Success(it.trim()) } ?: ScanResult.Failed(-1, "Scanner returned no QR data"))
                     }
                     .addOnFailureListener { err ->
-                        if (cont.isActive) cont.resume(null)
+                        if (cont.isActive) cont.resume(when ((err as? ApiException)?.statusCode) {
+                            17 -> ScanResult.PlayServicesMissing
+                            18 -> ScanResult.Cancelled
+                            else -> ScanResult.Failed((err as? ApiException)?.statusCode ?: -1, err.message ?: err.javaClass.simpleName)
+                        })
                     }
+                    .addOnCanceledListener { if (cont.isActive) cont.resume(ScanResult.Cancelled) }
                 cont.invokeOnCancellation { /* nothing — task has no cancel */ }
             }
-            if (raw.isNullOrBlank()) ScanResult.Cancelled
-            else ScanResult.Success(raw.trim())
         } catch (api: ApiException) {
             when (api.statusCode) {
                 18 -> ScanResult.Cancelled

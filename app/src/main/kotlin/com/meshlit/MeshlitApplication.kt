@@ -93,8 +93,8 @@ class MeshlitApplication : android.app.Application() {
      * `settingsRepository.displayNameFlow` instead.
      */
     val displayName: String
-        get() = settingsRepository.displayNameFlowNow()
-            .ifBlank { get<DeviceInfo>().displayName }
+        get() = if (settingsRepository.privateContributorNameNow()) "Private contributor"
+            else settingsRepository.displayNameFlowNow().ifBlank { get<DeviceInfo>().displayName }
     val localIpAddress: String get() = get<DeviceInfo>().localIpAddress
     val httpServerPort: Int get() = 8080
     val nodeIdHex: String get() = stableNodeIdRef.get()
@@ -108,6 +108,22 @@ class MeshlitApplication : android.app.Application() {
     val peerRegistry: com.meshlit.inference.PeerRegistry get() = get()
     val clusterDispatch: com.meshlit.inference.ClusterDispatch get() = get()
     val discoveryCoordinator: com.meshlit.core.discovery.DiscoveryCoordinator get() = get()
+    private val discoveryRevision = java.util.concurrent.atomic.AtomicLong()
+    fun refreshDiscovery() {
+        val revision=discoveryRevision.incrementAndGet()
+        appScope.launch {
+            while (nodeIdHex.isBlank()) kotlinx.coroutines.delay(50L)
+            if (revision != discoveryRevision.get()) return@launch
+            val repo:com.meshlit.disco.PeerRepository=get()
+            val mode=get<com.meshlit.disco.DiscoveryModeStore>().mode.value
+            if (mode == com.meshlit.disco.DiscoveryMode.OFF ||
+                (mode == com.meshlit.disco.DiscoveryMode.AUTO && !MainActivity.foregroundActive)) { repo.stop();return@launch }
+            val self=com.meshlit.core.discovery.LocalPeerDescriptor(nodeIdHex,localIpAddress,httpServerPort,capabilityTier.name,
+                com.meshlit.core.trust.PeerCrypto.fingerprint(get<com.meshlit.peering.DeviceIdentity>().get(nodeIdHex).publicKey), displayName,
+                android.os.Build.MANUFACTURER.orEmpty(), android.os.Build.MODEL.orEmpty())
+            if (revision == discoveryRevision.get()) repo.start(this,self)
+        }
+    }
     val meshlitFirewall: com.meshlit.core.firewall.MeshlitFirewall get() = get()
     val inferenceCoordinator: InferenceCoordinator get() = get()
     val voiceEngine: RunAnywhereVoiceEngine get() = get()
@@ -253,17 +269,24 @@ class MeshlitApplication : android.app.Application() {
         val settingsRepository: SettingsRepository = get()
         val tracingController: TracingController = get()
         settingsRepository.startTracingCache(appScope)
-        startHooksFeed(appScope, settingsRepository)
-
         // Single background launch owning every remaining bootstrap step.
         // Order matters where there's a dependency; otherwise the steps
         // are independent and the launch{} block runs them concurrently
         // with `awaitAll` after the sequential prefix.
         appScope.launch {
+            com.meshlit.legal.LegalAgreementStore(this@MeshlitApplication).awaitAccepted()
+            if(!BuildProfile.coreCandidate) {
+            appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { get<com.meshlit.ssh.SshConnections>().devicePublicKey() }
+                    .onFailure { log.error("app.ssh.identity.fail", "Device SSH identity preparation failed", it) }
+            }
+            appScope.launch(kotlinx.coroutines.Dispatchers.IO) { get<com.meshlit.observability.AuditTelemetry>().start() }
+            startHooksFeed(appScope, settingsRepository)
             try {
                 get<com.meshlit.agent.AgentCapabilityRegistrar>().start()
             } catch (t: Throwable) {
                 log.error("app.agent_reg.fail", "AgentCapabilityRegistrar.start failed", t)
+            }
             }
             try {
                 inferenceCoordinator.runAnywhereEngine().initialize(this@MeshlitApplication)
@@ -273,11 +296,17 @@ class MeshlitApplication : android.app.Application() {
                 inferenceCoordinator.markInitialized()
             }
 
+            // A managed installed model loads after SDK initialization and library reconciliation.
+            launch { get<com.meshlit.models.ModelLibrary>().loadAtBoot() }
+
+            if(BuildProfile.coreCandidate) {
+                runSystemProbe()
+                return@launch
+            }
             // Independent subsystems run concurrently after the prefix.
             coroutineScope {
                 val jobs = listOf(
                     async { runSystemProbe() },
-                    async { extractBundledModel() },
                     async { bootMcp() },
                     async { runBootstrap() },
                     async { registerUsbTetherCallback() },
@@ -285,39 +314,10 @@ class MeshlitApplication : android.app.Application() {
                 jobs.joinAll()
             }
 
-            // PeerRepository needs the bootstrap-completed nodeId.
-            try {
-                val repo: com.meshlit.disco.PeerRepository = get()
-                while (nodeIdHex.isBlank()) kotlinx.coroutines.delay(50L)
-                val self = com.meshlit.core.discovery.LocalPeerDescriptor(
-                    nodeId = nodeIdHex,
-                    host = localIpAddress,
-                    port = httpServerPort,
-                    tierTag = capabilityTier.name,
-                    fingerprint = "",
-                )
-                repo.start(this, self)
-            } catch (t: Throwable) {
-                log.error("app.peer_repo.fail", "PeerRepository start failed", t)
-            }
+            // Default AUTO discovers while the app is visible; MainActivity refreshes on resume/pause.
+            refreshDiscovery()
 
-            // Tracing config flow — stays subscribed for the process lifetime.
-            try {
-                combine(
-                    settingsRepository.tracingModeFlow,
-                    settingsRepository.tracingOtelEndpointFlow,
-                    settingsRepository.tracingOtelHeadersFlow,
-                ) { mode, endpoint, headers -> Triple(mode, endpoint, headers) }
-                    .collect { (mode, endpoint, headers) ->
-                        tracingController.reconfigure(
-                            mode = mode.toCoreTracingMode(),
-                            otlpEndpoint = endpoint,
-                            otlpHeaders = parseOtelHeaders(headers),
-                        )
-                    }
-            } catch (t: Throwable) {
-                log.error("app.tracing.flow.fail", "Tracing reconfigure flow crashed", t)
-            }
+
         }
     }
 
@@ -358,7 +358,7 @@ class MeshlitApplication : android.app.Application() {
                 override fun onAvailable(network: android.net.Network) {
                     val caps = connectivity.getNetworkCapabilities(network) ?: return
                     val mtu = try {
-                        connectivity.getLinkProperties(network)?.mtu ?: 1500
+                        if (Build.VERSION.SDK_INT >= 29) connectivity.getLinkProperties(network)?.mtu ?: 1500 else 1500
                     } catch (t: Throwable) {
                         1500
                     }
@@ -481,7 +481,7 @@ class MeshlitApplication : android.app.Application() {
                 is MeshlitResult.Success -> {
                     val snap = res.value
                     snapshotHolder.publish(snap)
-                    setStableNodeId(snap.nodeId)
+                    setStableNodeId(get<com.meshlit.peering.DeviceIdentity>().restoredNodeId() ?: snap.nodeId)
                     log.info(
                         "app.bootstrap.ok",
                         "dynamic foundation bootstrap complete",

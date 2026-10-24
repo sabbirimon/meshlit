@@ -1,256 +1,89 @@
-# PLAN — working state + roadmap
+# Meshlit implementation and qualification plan
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
-> Local-only scratch log. Not committed to the repo — see
-> `.gitignore`. Companion to `REQUESTS.md`.
->
-> Format:
->
-> ```
-> ## <topic>
-> **Status:** pending | in-progress | done | blocked | wontfix
-> **Files:** <list>
-> **Verification:** <commands + expected outcome>
-> ```
+[Current paused checkpoint and ordered resumption gates](docs/PAUSED_CHECKPOINT_2026-10-24.md) · [Build/run](BUILD.md) · [Agent handoff](docs/SESSION_HANDOFF.md). Source publication does not resume application qualification.
 
----
 
-## Branch / build state
+## Execution record — 2026-10-24 continuation
 
-```
-Branch:  dev
-Remote:  origin/dev
-Ahead:   6 commits (not pushed)
-HEAD:    ca7a613  Add RA-style UI components + wire into Agent + Catalog screens (0.2.3)
-Working: dirty — 142 entries (51 modified tracked + 91 untracked)
-Build:   ✅ :app:assembleDebug  (BUILD SUCCESSFUL in 9s, 444 actionable)
-Install: ✅ R9KN2009CZJ  (Success)
-Device:  SM-A207F + R9KN2009CZJ both on adb
-```
+**Paused by owner for HyperL-first delivery.** Preserve Meshlit source/docs; do not
+continue APK builds, installs or voice qualification until resumed. The interrupted
+final build is recorded in PROGRESS.md and is not a passed validation gate.
 
-The 6 unpushed commits already on `dev`:
-1. `ca7a613`  Add RA-style UI components + wire into Agent + Catalog
-2. `e5c6b63`  Add RunAnywhere brand gradient + Figtree / Maple Mono typography
-3. `48b324a`  Add Phase Cloud 2 — Search/Web/Tools adapters + Browser automation
-4. `a4c7328`  Add Cloud-Hosted MCP Agent + Multi-Cloud Control Center
-5. `0c88890`  feat(nav): make loaded-model chip tappable from Agent and Jobs
-6. `08e0542`  feat(models): re-skin picker with RaListCard + ModelTrailingAction
+Carry out the ranked backlog without treating new menus as completed backends. The current implementation slice covers model reliability, origin-preserving navigation, shared persistent RAG, Studio model recommendations and HyperL admission/measurement. Each fix and failed device case is recorded in [PROGRESS.md](PROGRESS.md). Run changed contracts, then both APK/lint gates, then qualify on reserved Samsung. Keep physical multi-device, reverse relay, group delivery, operational cloud/training and monetary settlement acceptance separate.
 
-The current working tree (142 dirty) splits cleanly into 5 phase
-commits — see `PLAN — Commits` below.
+The slice now also includes live turn-taking voice, captions, mute/interruption,
+audio cleanup and eight shared defensive references. Stabilize the reviewed
+source, run both flavor build/lint gates, then test Samsung controls, real offline
+speech and knowledge ingestion. Keep online testing deferred and Xiaomi untouched.
+The isolated SmolVLM probe is evidence for a possible CPU adapter, not a delivered
+offline Chat feature. Full-duplex and cloud realtime voice remain future adapters.
 
----
+## Priority order — 2026-10-24
 
-## Today — what landed in the working tree (NOT yet committed)
+The owner requested major-impact or complex work first. Follow the [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md): reliable model/media chat first, physical multi-device execution/recovery next, then Internet relay/group chat, Studio agent parity and separately qualified operational/reward backends.
 
-These are the changes I made during this session that should land
-in their own logical phase commit. None are committed yet.
+## Android and Studio workspace continuation — 2026-10-23
 
-### Phase A — UI bug fixes (small, low-risk)
+The [older Android Studio request audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) now preserves untransferred requests as explicit gates. This iteration adds an embedded pairing radar, relay join-code countdown with automatic rotation, clearer direct/VPN/relay/web connection choices, narrower phone typography, responsive Settings shortcuts and direct Security Lab → VM/packages navigation. Rebuild, physical UI inspection, pairing and release checks still govern delivery.
 
-**Status:** ready to commit
-**Files:**
-- `app/src/main/kotlin/com/meshlit/ui/components/MeshlitHeader.kt`
-  — `TierPill` `width(IntrinsicSize.Min)` + `maxLines=1` + `softWrap=false`
-- `app/src/main/kotlin/com/meshlit/ui/components/MeshlitBottomBar.kt`
-  — item width 72→80dp, auto-scroll target `index-2`→`index-1`
-- `app/src/main/kotlin/com/meshlit/ui/components/SuggestionChipPill.kt`
-  — `maxLines=1`, `softWrap=false`, ellipsis
-- `app/src/main/kotlin/com/meshlit/ui/theme/DynamicTheme.kt`
-  — opaque `surfaceContainerLowest..Highest`, `surfaceTint`,
-    `scrim = 0xCC000000`
-- `app/src/main/kotlin/com/meshlit/ui/screens/settings/ModelFilterRow.kt`
-  — opaque selected chip colour
-**Verification:**
-- `./gradlew :app:assembleDebug` ✅
-- adb install + manual check (Devices screen chips opaque,
-  LITE badge horizontal)
+[Detailed redesign and acceptance plan](docs/REDESIGN_PLAN_2026-10-23.md). Android source now has discovery Auto/On/Off, reviewed pairing, radar, device dashboard, menu ordering, Resources, Security & privacy, Chat target controls and bounded parallel agent prompt jobs. Studio source adds a saved-device dashboard, session revoke control and headless capability status. Current single-peer chat, Studio layer sharding and container/server daemon remain separate implementation gates. Validate the new Samsung APK, Xiaomi install, hostile enrollment/revocation and multi-device compute before a public release.
 
-### Phase B — Agent screen redesign
+## Paused Android/desktop peering continuation — 2026-10-12
 
-**Status:** ready to commit
-**Files:**
-- `app/src/main/kotlin/com/meshlit/agent/AgentScreen.kt`
-  — new `CompactToolbar`, `ModelPickerInline`, `SuggestionTile`,
-    `ModeIconChip`, `IconToggleButton`; removed `ModelPickerBar`,
-    `ModeBar`, `ActiveModelPill`; flat chat canvas; capped token-
-    count text; ChatGPT-style empty state
-- `app/src/main/res/values/strings.xml` — added `ra_summarize`
-**Verification:**
-- `./gradlew :app:assembleDebug` ✅
-- APK installs ✅
-- Visual: blocked by Phase C bug below
+[Future build plan](docs/PEERING_UI_BUILD_PLAN.md) · [Exact handoff and validation](docs/PEERING_UI_HANDOFF_2026-10-12.md). Implementation is partial and paused at the owner's request; resume from the saved working tree. Both platforms are in scope. Android Studio is the reference, not the target.
 
-### Phase C — Import surface (device + URL + HF + GitHub)
+## Rewards and responsiveness continuation — 2026-10-23
 
-**Status:** ready to commit
-**Files:**
-- `app/src/main/kotlin/com/meshlit/ui/screens/settings/ImportModelCard.kt`
-  (new) — 4 paths: SAF device picker, HTTPS URL, `owner/repo`+file,
-    GitHub URL or `owner/repo/path` + ref
-- `app/src/main/kotlin/com/meshlit/models/ModelCatalog.kt`
-  - `suspend fun importFromSaf(...)`
-  - `data class HfResolved`
-  - `suspend fun resolveHfFile(...)`
-  - `suspend fun resolveGithubFile(...)`
-  - `private fun translateGithubUrl(...)`
-- `app/src/main/res/values/strings.xml`
-  — 13 new `ra_import_card_*` strings incl. `ra_import_card_gh_*`
-**Verification:**
-- `./gradlew :app:assembleDebug` ✅
-- APK installs ✅
-- Manual: tap "From this device" → SAF picker → grant → file
-  copied to `filesDir/imported-models/`
-- Manual: paste a GitHub URL → resolves to raw URL → download
+The owner resumed Android and Studio review. Local signed receipts remain the only implemented reward path; historical idle/referral bonuses require trusted host evidence and abuse controls before implementation. The current source reduces repeated receipt verification and long-reply redraw work. Next gate: collect baseline and changed timings on a physical Android host and the installed Intel Studio build, then profile the remaining inference, startup and UI costs before claiming an end-to-end speedup. See [progress](PROGRESS.md).
 
-### Phase G — Power / Battery / Thermal Monitor
+## Pairing and compute continuation — 2026-10-23
 
-**Status:** ready to commit
-**Files:**
-- `app/src/main/kotlin/com/meshlit/power/PowerMonitorController.kt`
-  (new) — thin wrapper around `BatteryManager` + `PowerManager`.
-  Subscribes to `Intent.ACTION_BATTERY_CHANGED`. Polls thermal
-  status at 2 Hz. Exposes `PowerSnapshot` data class plus a
-  rolling `history: StateFlow<FloatArray>` sparkline stream.
-- `app/src/main/kotlin/com/meshlit/ui/components/power/Gauges.kt`
-  (new) — `CircularGauge` (Canvas donut + arc, sweep-gradient
-  at mid-range) and `MiniSparkline` (Canvas line + filled
-  gradient). Custom rather than Vico.
-- `app/src/main/kotlin/com/meshlit/ui/screens/power/PowerMonitorScreen.kt`
-  (new) — three side-by-side gauges (battery level / temp /
-  thermal), live text readouts card, sparkline history, "Keep
-  screen on while charging" toggle
-  (`view.keepScreenOn = enabled && charging`), and OSS
-  recommendations card (Castro + Battery Historian).
-- `app/src/main/kotlin/com/meshlit/ui/nav/TopLevelDestination.kt`
-  — new `Power` enum entry, added to `drawerOnly`.
-- `app/src/main/kotlin/com/meshlit/ui/components/MeshlitBottomBar.kt`
-  — `shortLabel` branch for `Power -> "Power"`.
-- `app/src/main/kotlin/com/meshlit/ui/MeshlitApp.kt` — wires
-  `PowerMonitorScreen` into the NavHost.
-- `app/src/main/kotlin/com/meshlit/ui/screens/ScreenStubs.kt` —
-  title/body when-expressions extended for `Power`.
-- `app/src/main/kotlin/com/meshlit/ui/screens/help/UiTourScreen.kt`
-  — blurb + use-case strings for `Power`.
-- `app/src/main/res/values/strings.xml` — added `screen_power`.
-**Verification:**
-- `./gradlew :app:assembleDebug` ✅ (BUILD SUCCESSFUL in 26s)
-- `adb -s R9KN2009CZJ install -r app-debug.apk` ✅ (Success)
-- Manual: hamburger → Power → gauge row + readouts + history
-  render; OSS links open browser.
+Android worker QR and manual approval now query a live worker through certificate-pinned TLS before storing it. Cluster groups may contain LAN and directly reachable Internet/VPN workers; automatic admission checks live offers, memory, thermal state and model fit at load. The new assessment score is an operational heuristic, not a measured speed or security grade. The existing HTTP membership relay still cannot carry native layer RPC; a bounded, authenticated reverse tunnel is required before built-in relay mode can serve workers behind NAT. Native ARM64 binaries are packaged in both debug APK flavors; two-phone execution remains a separate device gate. Studio adds bounded custom HyperL graph JSON on its verified native CPU backend; GPU/NPU and broader Android feature parity require individual backends and qualification.
 
----
+## Reward metering and monetary boundary — 2026-10-23
 
-## Open follow-ups (always pending)
+[Reward metering and settlement plan](docs/REWARD_METERING_AND_SETTLEMENT.md) defines native usage units for inference, layers, compute, storage, relay and availability, then reciprocal signed evidence, fraud checks, offline reconciliation and a balanced settlement journal. Existing self-signed local receipts remain nontransferable. Purchases, rental, payouts and exchange require independently verified service, jurisdiction-specific legal review and a qualified payment path; no conversion rate or spendable balance is implemented.
 
-### Phase D — Bottom nav tap bug fix
 
-**Status:** pending (blocks visual verification of Phase B + C
-on device)
-**Files:**
-- `app/src/main/kotlin/com/meshlit/ui/components/MeshlitBottomBar.kt`
-  — switch from custom LazyRow to M3 `NavigationBar` OR fix
-    `Modifier.requiredWidth` on `BottomBarItem`
-**Verification:**
-- `./gradlew :app:assembleDebug` ✅
-- `adb install -r ...`
-- Manual: tap each bottom nav tab, screen changes
-- `uiautomator dump` should show non-zero bounds for each tab
+Updated 2026-10-10. [Current progress](PROGRESS.md), [sequential gates](BUILD_MILESTONES.md), [requests](REQUESTS.md), [open work](TODO.md) and [documentation index](docs/DOCUMENTATION_STATUS.md) share the current tracking model. Older plans are retained under docs/history.
 
-### Phase E — Models picker UI redesign per reference
+## Goals and channels
 
-**Status:** pending (R-14 reference applied to Agent so far)
-**Files:**
-- `app/src/main/kotlin/com/meshlit/ui/screens/settings/ModelsScreen.kt`
-  — apply "Top pick" / "Loaded" / "Smart" / "Thinks" / "Fast"
-    badges per `Screenshots/UI suggestion/model ui part , i want this .jpeg`
-  — "Add from Hugging Face" CTA row
-  — "Get" button with download glyph + delete icon
-  — file size + NPU/LlamaCPP chip on each card
-**Verification:**
-- `./gradlew :app:assembleDebug`
-- Manual: Devices → Models → catalog grid renders recommendation
-  cards with badges
+Build a capable private AI workspace for desktop/server and Android, with real local inference, permitted tools, owner-approved heterogeneous devices and genuine model-layer execution. Production candidates and Experimental features stay separate. The Android Core Candidate is a restricted candidate, not a production certification. Intel Studio is Experimental; a dashboard or library dependency never establishes a working backend.
 
-### Phase F — SmolLM2 stuck at 0% investigation
+No single project-wide phase number or completion percentage is used. The workstreams below have separate implementation and qualification gates. Historical phase numbers identify their original design snapshots only.
 
-**Status:** pending (#26)
-**Files:**
-- `app/src/main/kotlin/com/meshlit/models/ModelCatalog.kt`
-  — possibly the `onProgress` callback never fires for sub-MB
-    chunks; or HTTP redirect 301→302→200 chain is being
-    followed serially without progress
-**Verification:**
-- Reproduce: tap "Download SmolLM2-360M-Q8" on a fresh install,
-  observe progress bar
-- Expected: progress increments within 5s of start; reaches 100%
-  in <2 minutes on Wi-Fi
+| Workstream | Current state | Next gate |
+| --- | --- | --- |
+| Local core engine | Intel bundled Qwen/CPU baseline and verified AVX2; lazy load, context/thread/batch/KV controls, memory admission and idle unload; both recovered installer launchers pass | Clean-machine installation, long-run lifecycle/leak/crash/quality cases; wider model and hardware qualification |
+| Shared sharding | Portable GGUF and CPU worker admission shared by Android/desktop; capacity-bounded integer/manual layer proportions and weak-worker exclusion pass contracts | Desktop live-worker RPC controller, paired independent devices, measured allocation/latency/memory, oversized-model and peer-loss tests |
+| Desktop management | Seven categories, distinct Basic/Advanced menus, bounded global/settings/chat/model/node search, real local monitoring, human shell, SSH/status listener and HyperL CPU | HF download/cancel/storage failures, actual process Stop, interactive SSH; finish pending category backends |
+| Android reliability | Build44 passed its scoped gates; build45 source is saved with final build/lint and physical voice/RAG checks incomplete | Resume only on owner instruction, then qualify final source on available Samsung; preserve app data and phone ownership |
+| Governed agents and fleet | Android typed controls/grants/audit and optional gateways are references; desktop shared agent dispatch remains pending | One common authority/controller layer, durable redacted audit, scopes/budgets/revocation/Stop, then MCP/A2A/hooks and controlled automation |
+| Platform and release | Intel DMG/PKG recovered-payload qualification; source/review pushed; all eight public asset digests verified | Experimental release published with matching digests; Developer ID/notarization and independent OS/device acceptance precede production |
 
----
+## Proposed stabilization priority — awaiting implementation decision
 
-## Suggested commit order (today's pile)
+The owner selected detailed plan refinement before implementation. The [stabilization plan](docs/desktop/STABILIZATION_PLAN.md) defines S0–S6 acceptance gates; the [build guide](docs/desktop/STABILIZATION_BUILD_GUIDE.md) maps existing commands to evidence and identifies missing future harnesses. This documentation does not promote any runtime capability.
 
-```
-git add app/src/main/kotlin/com/meshlit/ui/components/MeshlitHeader.kt
-git add app/src/main/kotlin/com/meshlit/ui/components/MeshlitBottomBar.kt
-git add app/src/main/kotlin/com/meshlit/ui/components/SuggestionChipPill.kt
-git add app/src/main/kotlin/com/meshlit/ui/theme/DynamicTheme.kt
-git add app/src/main/kotlin/com/meshlit/ui/screens/settings/ModelFilterRow.kt
-git commit -m "fix(ui): opaque dropdowns, horizontal LITE badge, no-wrap chips"
+1. S0: freeze source, inputs, device inventory and repeatable baseline measurements.
+2. S1–S3: durable offline chat/engine lifecycle, reliable model import/download and accurate monitoring with real process-control acceptance.
+3. S4: shared action authority, protected credential references, durable audit and revocation; extend the session key-provider boundary introduced in S1.
+4. S5: pair two independent compatible physical devices, execute positive model-layer contributions on both, measure capacity/performance and qualify safe worker-loss failure/retry.
+5. S6: make separate local-desktop and cluster-Experimental release decisions, and admit bounded agent adapters only for already qualified actions. Local release assessment may proceed after S4; cluster acceptance requires S5.
 
-git add app/src/main/kotlin/com/meshlit/agent/AgentScreen.kt
-git add app/src/main/res/values/strings.xml
-git commit -m "feat(agent): icon-only toolbar + ChatGPT-style empty state"
+Broader agent workflows, voice/personality, RAG, VM/container/Kubernetes, OS firewall/capture, cloud billing, new accelerators/platforms and transparent cluster failover remain in the existing backlog. The detailed plan defines stop conditions, device dependencies and evidence requirements without promising a calendar deadline or production certification.
 
-git add app/src/main/kotlin/com/meshlit/ui/screens/settings/ImportModelCard.kt
-git add app/src/main/kotlin/com/meshlit/models/ModelCatalog.kt
-git add app/src/main/res/values/strings.xml
-git commit -m "feat(import): import models/agents/tools from device, URL, HF, GitHub"
+## Core distributed acceptance
 
-git add app/src/main/kotlin/com/meshlit/power/PowerMonitorController.kt
-git add app/src/main/kotlin/com/meshlit/ui/components/power/Gauges.kt
-git add app/src/main/kotlin/com/meshlit/ui/screens/power/PowerMonitorScreen.kt
-git add app/src/main/kotlin/com/meshlit/ui/nav/TopLevelDestination.kt
-git add app/src/main/kotlin/com/meshlit/ui/components/MeshlitBottomBar.kt
-git add app/src/main/kotlin/com/meshlit/ui/MeshlitApp.kt
-git add app/src/main/kotlin/com/meshlit/ui/screens/ScreenStubs.kt
-git add app/src/main/kotlin/com/meshlit/ui/screens/help/UiTourScreen.kt
-git add app/src/main/res/values/strings.xml
-git commit -m "feat(power): battery / thermal / voltage monitor with gauges + OSS recs"
+Require at least two independent approved workers, positive model-layer contribution, exact model/revision agreement, actual native allocation and output, and a single-device comparison. Measure first-token latency, authoritative native tokens, transfer bytes, resident/KV memory, thermal and battery where supported. Internet/P2P controls are separate from native model transport. Do not sum nominal RAM or device counts into a throughput estimate.
 
-# Phase D bug fix as separate commit (different concern)
-# Phase E Models picker UI as separate commit
-# Phase F SmolLM2 investigation as separate commit
-```
+Replicated journal acknowledgements, fencing/quorum, idempotent claims and portable compatible KV recovery must precede automatic coordinator failover. Existing local encrypted checkpoints and retries do not establish fleet self-healing. Training needs a real licensed dataset, actual host job and evaluated adapter; a file import is not successful training.
 
----
+## Update rule
 
-## Things I noticed but didn't fix (open questions)
-
-1. **`core-terminal/`** — vendored Ghostty swap per TODO #179 vs
-   just an empty scaffold? Read first 30 lines of `build.gradle.kts`
-   to decide before committing
-2. **`vendored/`** — fonts + gradient (commit with Phase B) vs
-   full Ghostty source (commit separately or never)?
-3. **`Screenshots/`** — keep in repo with brief README, or
-   `.gitignore` (already ignored — never committed)?
-4. **Scaffolded empty modules** — `core-gpu/`, `core-advanced-engines/`,
-   `feature-advanced/`, `feature-ghosty/` — keep and register, or
-   delete? Each one is a place-holder; if not used by Phase A-F,
-   `git rm --cached` and `.gitignore` is fine.
-
----
-
-## Verification checklist (after every commit)
-
-```bash
-./gradlew :app:assembleDebug
-# Must remain green
-
-# Specific tests
-./gradlew :core-observability:test :core-net:test   # after Phase Obs-1
-./gradlew :app:lintDebug                            # after any UI work
-./gradlew :core-inference:test :core-trust:test     # after Phase Cluster+Trust
-
-# Pre-push
-./gradlew :app:assembleDebug && git push origin dev
-```
+For every change record request/feature IDs, source, commands and failures, model/device/backend, actual observations, remaining gates and artifacts/digests. Update the appropriate workstream, not every historical phase. Run scripts/update-doc-tracking.py --check and scripts/validate-feature-map.py before committing documentation. All 41 desktop/server requested areas remain individually tracked in docs/DESKTOP_FEATURE_TRACKER.md and docs/desktop-features.json.

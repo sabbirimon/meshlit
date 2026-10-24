@@ -64,14 +64,21 @@ class PeerRegistry(
      * Reactive list enriched with trust tiers. Pre-Phase-3 peers have
      * no policy and are therefore LOCAL_SANDBOXED (least privilege).
      */
-    val trustedPeers: Flow<List<TrustedPeer>> = peers.map { ips ->
-        ips.map { ip ->
-            val policy = trustStore?.policyFor(NodeId(ip))
-            TrustedPeer(
-                nodeId = policy?.nodeId ?: ip,
-                ip = ip,
-                tier = policy?.trustTier ?: TrustTier.LOCAL_SANDBOXED,
-            )
+    val trustedPeers: Flow<List<TrustedPeer>> = dataStore.data.map { prefs ->
+        parseList(prefs[KEY]).map { ip ->
+            val node = prefs[stringPreferencesKey("forward_node.$ip")] ?: ip
+            val policy = trustStore?.policyFor(NodeId(node))?.takeUnless { it.isTokenExpired() }
+            TrustedPeer(node, ip, if (policy?.publicKeyFingerprint != null && "brain" in policy.allowedRoles)
+                policy.trustTier else TrustTier.LOCAL_SANDBOXED)
+        }
+    }
+
+    suspend fun bindIdentity(ip: String, nodeId: String) {
+        val normalized = normalize(ip) ?: error("Forwarding supports IPv4 addresses")
+        require(trustStore?.policyFor(NodeId(nodeId))?.publicKeyFingerprint != null)
+        dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("forward_node.$normalized")] = nodeId
+            prefs[KEY] = (parseList(prefs[KEY]) + normalized).distinct().joinToString(SEPARATOR)
         }
     }
 
@@ -104,6 +111,7 @@ class PeerRegistry(
         val normalized = normalize(ip) ?: return
         dataStore.edit { prefs ->
             val current = parseList(prefs[KEY]).toMutableList()
+            prefs.remove(stringPreferencesKey("forward_node.$normalized"))
             if (current.remove(normalized)) {
                 prefs[KEY] = current.joinToString(SEPARATOR)
                 log.info("remove.ok", "peer removed", mapOf("ip" to normalized, "size" to current.size))

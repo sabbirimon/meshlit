@@ -1,5 +1,7 @@
 // Top-level build file. Project-level config lives in module build.gradle.kts.
 plugins {
+    id("org.jetbrains.kotlin.multiplatform") version "2.4.10" apply false
+    id("org.jetbrains.compose") version "1.10.2" apply false
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.android) apply false

@@ -23,7 +23,7 @@ class DeviceInfo {
      * shows a placeholder and the user can paste the address
      * manually.
      */
-    val localIpAddress: String by lazy { resolveLocalIpv4() }
+    val localIpAddress: String get() = resolveLocalIpv4()
 
     private fun resolveLocalIpv4(): String = runCatching {
         val interfaces = NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()

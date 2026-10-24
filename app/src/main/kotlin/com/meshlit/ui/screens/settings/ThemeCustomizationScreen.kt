@@ -342,6 +342,7 @@ private fun BasePaletteRow(
  */
 @Composable
 private fun palettePreviewColor(palette: BasePalette): Color = when (palette) {
+    BasePalette.GRAPHITE -> Color(0xFF17181B)
     BasePalette.MIDNIGHT -> Color(0xFF0A0E1A)
     BasePalette.DUSK -> Color(0xFF23192E)
     BasePalette.DAWN -> Color(0xFF332620)

@@ -1,0 +1,18 @@
+{
+  "appVersion": "2.0.40",
+  "bundleVersion": "40.1",
+  "payloadFilesAndLinks": 263,
+  "pkgMatchesSignedAppIncludingExecuteBits": true,
+  "dmgMatchesSignedAppIncludingExecuteBits": true,
+  "sealedNativeHashesVerified": true,
+  "fullBundledModelSha256Verified": true,
+  "dmgExtraction": "7-Zip 26.04 file-based HFS+; no OS mount proof",
+  "toolArchiveSha256": "bee04358cbcbc7106273cee0e8d72916db2696c48067a3538c34d8cd6fd16578",
+  "pkgAdHocSignatureStrictVerificationPassed": true,
+  "dmgAdHocSignatureStrictVerificationPassed": true,
+  "hdiutilVerifyPassed": true,
+  "macOsMountAttempt": "Device not configured; file-based extraction and exact payload comparison used",
+  "developerIdSigned": false,
+  "notarized": false,
+  "cleanMachineInstallAccepted": false
+}

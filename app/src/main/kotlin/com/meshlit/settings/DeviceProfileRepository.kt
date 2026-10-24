@@ -191,7 +191,7 @@ class DeviceProfileRepository(private val context: Context) {
             abis = android.os.Build.SUPPORTED_ABIS?.toList() ?: listOf(android.os.Build.CPU_ABI),
             primaryAbi = android.os.Build.SUPPORTED_ABIS?.firstOrNull() ?: android.os.Build.CPU_ABI,
             socFamily = SocFamily.OTHER,
-            socModel = android.os.Build.SOC_MODEL,
+            socModel = if (android.os.Build.VERSION.SDK_INT >= 31) android.os.Build.SOC_MODEL else android.os.Build.HARDWARE,
             gpuFamily = GpuFamily.UNKNOWN,
             hasNpu = false,
             npuName = null,

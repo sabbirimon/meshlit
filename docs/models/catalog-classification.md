@@ -1,4 +1,8 @@
 # Model catalog — classification matrix
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 Every entry in [`ModelCatalog.kt`](../../app/src/main/kotlin/com/meshlit/models/ModelCatalog.kt)
 carries three classification fields that drive the picker UI:

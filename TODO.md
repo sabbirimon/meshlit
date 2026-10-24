@@ -1,214 +1,119 @@
-# Meshlit — Active TODO List
+# Meshlit current implementation and acceptance queue
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
-This is the live, user-facing task list. Puku should keep this in sync
-with what the user has asked for in the current session. Tasks here
-are also registered with the in-session `TaskList`, but `TODO.md`
-is the persistent source of truth across context resets.
+[Current saved checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) contains the ranked next gates and [build/run handoff](docs/PAUSED_CHECKPOINT_2026-10-24.md#buildrun-and-agent-handoff). This source push does not complete the unchecked acceptance items.
 
-## In progress
 
-- [ ] **#183** — **Personality / weight-tuning / templates** —
-  multiple personalities and skills added to the same open
-  weights. Per-model persona preset (system prompt), per-skill
-  template (e.g. summarizer, code-reviewer), and a weight-tuning
-  override that re-points the loaded model to a tuned LoRA / merge
-  without forcing a re-download. Backed by a new
-  `PersonalityRepository` in `core-inference` and a `PersonaPicker`
-  Composable in the toolbar (alongside the dispatch picker on
-  Jobs, alongside the mode picker on Agent).
-- [ ] **#179** — Add a **ghostty-org/ghostty**-backed terminal
-  screen — a power-user shell over the local sandbox + a VT100/
-  ANSI compat layer. The existing `core-terminal` module is a
-  hand-rolled VT parser; the user wants to swap it for the
-  upstream Ghostty terminal renderer (MIT-licensed, Zig core with
-  Android NDK bindings). Need to verify the licence compatibility
-  with the project's Apache 2.0 + verify the NDK build matrix,
-  then replace `core-terminal/vt/Parser.kt` etc. with the
-  vendored SDK.
+## Current continuation — 2026-10-24
 
-## Backlog (open user requests)
+**Paused by owner: ship HyperL first.** The queue below is preserved for resumption.
 
-_(see Open low-priority items below)_
+- [x] Live / One turn voice, mute, tap interruption, audio focus, phrase captions and speech-memory admission source.
+- [x] Correct review findings in silence handling, capture/transcription state, short-turn endpoint, caption truncation and AudioTrack cleanup.
+- [x] Shared eight-reference defensive skill catalog; Android MCP/local chat integration and Android/Studio read-copy panels.
+- [ ] Qualify updated physical microphone conversation, captions, interruption, mute, End/background and speech coexistence on Samsung.
+- [ ] Integrate and qualify offline photo Chat; isolated SmolVLM probe took 82.686 s and omitted color. Online testing is deferred to the owner.
+- [ ] Full-duplex acoustic interruption and online realtime speech adapters; no completion claim from current turn-taking voice.
 
-## Recently landed
+- [x] Shared bounded persistent knowledge corpus and failure/grant tests.
+- [x] Android encrypted import/search/remove and chat grounding source path.
+- [x] Studio encrypted vault and opt-in chat grounding source path.
+- [x] HyperL selected-backend estimate and repeat CPU measurement source path.
+- [ ] Qualify latest Android/Studio UI, source attribution, native Qwen and actual offline spoken conversation.
+- [ ] Re-run contract tests after catalog/template/remote changes; both flavor build/lint before APK delivery.
+- [ ] Complete physical layer execution/recovery, multi-member encrypted delivery and reverse native relay; source additions above do not close them.
+- [ ] Qualify real provider vision, training, operational runtimes/cloud billing and monetary rewards with the required hosts/accounts.
 
-- [x] **#200–#210 / Obs-1** — **Phase Observability 1** shipped.
-  Adds a global tracer (Off / Local / Otel) wired through
-  `core-observability/TracingController`, with per-source toggles
-  for network / inference / agent spans. Inference runs through
-  `InferenceTracingObserver`; agent calls through
-  `AgentTracingObserver`; HTTP calls through
-  `core-net/NetworkObserver` (an OkHttp `EventListener`). Meshlit
-  Capture `VpnService` writes libpcap-format files under
-  `filesDir/exports/captures/` (IPv4/IPv6 + TCP/UDP metadata,
-  96-byte payload preview). New **Help** destination (drawer-only)
-  hosts the **User Manual** (every feature documented with
-  intent / use case / config steps / troubleshooting),
-  **UI Tour** (first-visit overlay + per-screen recap) and
-  **Feedback** (Bug / Feature, GitHub Issues URL builder, last
-  200 log lines attached). Drawer **Sync** quick action now calls
-  `catalogEngine.refresh(...)`; **Boost** toggles the inference
-  thread priority via `SettingsRepository.inferenceBoostEnabledFlow`;
-  **About** now opens the manual. **LogScreen** supports source
-  filtering (App / Network / Inference / Agent / System) and
-  exports `.txt` + `.jsonl`. **NetworkMonitorScreen** is the new
-  four-tab surface (Meshlit HTTP / Device packets / External
-  capture / Tools — PCAPdroid + Termux). New `:core-observability`
-  + `:core-net` Gradle modules, OpenTelemetry 1.43.0 + OTLP/gRPC
-  exporter + logging exporter, `BIND_VPN_SERVICE` and
-  `FOREGROUND_SERVICE_SPECIAL_USE` permissions. **Files**:
-  `core-observability/.../{TracingController, OtelBootstrap,
-  SinkSpanProcessor, TracerHolder, LogSource}.kt`;
-  `core-net/.../{NetworkObserver}.kt`;
-  `core-net/.../capture/{MeshlitCaptureVpnService, PcapWriter,
-  PcapParser, PacketParser}.kt`;
-  `app/.../ui/screens/help/{HelpHubScreen, UserManualScreen,
-  UiTourScreen, TourOverlay, FeedbackScreen}.kt`;
-  `app/.../ui/screens/network/NetworkMonitorScreen.kt`;
-  `app/.../observability/{LogBuffer, LogExporter}.kt`;
-  `app/.../quickactions/{SyncViewModel, BoostViewModel}.kt`;
-  `app/.../network/{pcapdroid/PcapdroidBridge, termux/TermuxBridge}.kt`.
-- [x] **#181** — Redesign **Jobs UI** so it stops swallowing
-  vertical real-estate. Dispatch picker moved into the top bar
-  (Local / Remote / **Cluster** tabs), single-line toolbar with
-  compact model picker + start/stop + status pill + identity
-  badge, full-width chat surface in the middle, chat-style input
-  row at the bottom. Cluster mode resolves the first trusted
-  peer via `ClusterDispatch.firstPeer()` and routes through the
-  same `RemoteEvent` SSE pipeline as Remote. **Files**:
-  `JobsScreen.kt`, `InferenceDispatchMode.kt`,
-  `ClusterDispatch.kt`, `MeshlitApplication.kt`,
-  `MeshlitHeader.kt`.
-- [x] **#180** — **Stop button beside model dropdown on Jobs** now
-  works. Previous version had `enabled = !isRunning` which
-  blocked the button while inference was live, so users couldn't
-  cancel a generation. Fixed by removing the `enabled` guard
-  (`onClick = { if (isLive) onStop() else onStart() }`). Located
-  inside `CompactToolbar`'s `IconButton` block.
-- [x] **#176** — **Copy / Save / Share / Export** affordances on
-  every LLM output bubble. Long-press still supports copy via
-  `SelectionContainer`; the new affordance is a small toolbar row
-  that fires the full four actions and writes files to
-  `filesDir/exports/meshlit-output-<ts>.txt`. Wired into Jobs
-  (`ExchangeBubble`) and Agent (`AgentBubble`).
-- [x] **#175** — Models management: **NPU / llama.cpp / Easy /
-  Fast / Balanced / Heavy** chips, plus **download speed, file
-  size, ETA** to the `DownloadStatusPanel`. The panel now shows
-  `% complete`, `MB downloaded / MB total`, `2.0 MB/s`, and
-  `ETA 1m 30s` side-by-side.
-- [x] **#174** — Fix bundled model loader by mirroring the GGUF
-  into the RunAnywhere SDK's canonical path
-  (`{filesDir}/RunAnywhere/Models/LlamaCpp/{id}/{id}.gguf`).
-  Verified: Jobs screen now shows "Ready / smollm2-360m-instruct-q8_0".
-- [x] **#185** — Located existing nearby-devices / host-client
-  discovery UI (Devices screen + `NearbyDiscoveryPanel`).
-- [x] **#186** — Firewall feature: composite `MeshlitFirewall`
-  (phase-3 CIDR/node/tier + port/protocol/direction layer),
-  per-port `PortLayerPolicy`, multi-port exposure catalogue
-  (`MeshlitExposedPort` 8080/8090/8100/8110/8120), port-layer
-  gate wired into `InferenceHttpServer`, settings persistence
-  via `SettingsRepository.firewallFlow`.
-- [x] **#187** — Google Play Services Code Scanner for QR
-  pairing. Replaced "delegate to any installed barcode scanner"
-  with `GmsBarcodeScanning.getClient(activity).startScan()` —
-  Play Services' bundled scanner UI handles its own camera
-  surface (no `CAMERA` permission, no CameraX dep, no
-  PreviewView). Includes typed `ScanResult` sealed class
-  (Success / Cancelled / PlayServicesMissing / Failed) so the
-  Devices sheet can surface a clear error instead of failing
-  silently. Wired into `QrPairingSheet`'s scan button.
-- [x] **#188** — Designed the on-device agent capability surface
-  (camera, mic, GPS, network state, dialer, SMS, storage).
-  Each capability owns a master toggle, a runtime permission,
-  and a per-target allowlist. Risk class (LOW/MEDIUM/HIGH)
-  drives the confirmation dialog copy.
-- [x] **#189** — `AgentCapabilityRegistry` (pure-data state
-  holder in `:core-cloud-mcp/agent/`) + `AgentCapabilityRegistryHolder`
-  (wires it to `SettingsRepository` flows on a background
-  scope). `MeshlitApplication.agentCapabilities` is the app-
-  level entry point.
-- [x] **#190** — `agent_call_dial` tool + dispatcher. Opens the
-  system dialer with a pre-filled number; the user still has to
-  hit the green button. No `CALL_PHONE` permission required.
-- [x] **#191** — `agent_sms_send` tool + dispatcher. Uses
-  `SmsManager` (multipart via `divideMessage` when body exceeds
-  the single-part limit). Re-checks the per-recipient allowlist
-  defensively at dispatch time.
-- [x] **#192** — `agent_camera_capture` tool + dispatcher. Uses
-  CameraX `ImageCapture` bound to a synthetic `LifecycleOwner`;
-  captures a single JPEG and returns base64 bytes. Requires
-  `CAMERA` runtime grant. Added `androidx.camera:*:1.4.1` deps.
-- [x] **#193** — `agent_data_state` tool + dispatcher. Returns
-  Wi-Fi / cellular / ethernet / VPN / metered state via
-  `ConnectivityManager`; Wi-Fi path also returns SSID + link
-  speed + RSSI. No permission needed.
-- [x] **#194** — `agent_storage_list` / `agent_storage_read` /
-  `agent_storage_write` tools + dispatcher. Uses Storage
-  Access Framework (`DocumentsContract`) — user grants a tree
-  via `ACTION_OPEN_DOCUMENT_TREE`, the persistable URI is
-  stored in the allowlist. Path-traversal rejected. Intermediate
-  directories auto-created.
-- [x] **#195** — `agent_location_get` tool + dispatcher. Uses
-  `FusedLocationProviderClient.lastLocation` (no fresh fix).
-  Surfaces `no-fix` / `stale` / `ok` states plus lat/lon/
-  accuracy/altitude/bearing/speed/fixTime/provider. Requires
-  `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION`.
-- [x] **#196** — `agent_mic_listen` tool + dispatcher. Uses
-  `MediaRecorder` in opus/ogg, default 5 s cap (500 ms–30 s).
-  Returns base64 audio bytes. Requires `RECORD_AUDIO` runtime
-  grant.
-- [x] **#197** — Settings → Cloud → Agent capabilities screen.
-  One card per [AgentCapability] with master toggle, permission
-  grant button, and per-target allowlist editor (SMS recipients,
-  storage tree URIs via `OpenDocumentTree`).
-- [x] **#198** — Agent-loop integration: `AgentCapabilityRegistrar`
-  subscribes to the registry and pushes `agent_*` tools into
-  `cloudCoordinator.toolRegistry` whenever the user flips a
-  capability on. `AgentCapabilityRouter.DispatcherFacade` lets
-  `core-cloud-mcp` route calls without depending on app code.
-- [x] **#199** — Redesigned **side menu / drawer** as a 3-column
-  tile grid. Every destination (15 entries) now renders as a
-  square tile with icon-on-top + label-below, selected state
-  highlighted via `primaryContainer`. Replaces the v1 list-of-
-  rows layout which didn't scale past 5 items. Hero banner +
-  quick-action tiles + screens grid + capability-tier footer
-  unchanged. **File**: `app/.../ui/components/MeshlitDrawer.kt`.
+## Current priority — 2026-10-24
 
-## In progress — UI redesign
+See the ordered [high-impact backlog](docs/HIGH_IMPACT_BACKLOG_2026-10-24.md). Photo-to-chat lifecycle and the Kandari-inspired compact Android UI are implemented in source; device and real-provider acceptance are tracked separately. The older build41/install and draft-release notes below are historical gates: build43 beta.4 was published, with the Core Candidate CI timeout still open.
 
-_(no open redesign items — see Recently landed)_
+## Current device and security gates — 2026-10-23
 
-## Open low-priority items from earlier sessions
+- [ ] Reconcile and qualify the older Android Studio requests using [the source audit](docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md); prioritize voice input, model transfer, Auto Pilot repair, safe imports, persona/adapter selection and distributed LoRA by real backend evidence.
 
-_(all three open items below resolved in Obs-1 sweep — see
-Recently landed → "Catalog/Devices low-priority sweep" for
-details)_
+- [ ] Install and exercise the current build41 APK on Xiaomi; the verified ARM64 file is in its Downloads folder.
+- [ ] Run the Samsung UI, model load/generation, discovery and approved-device revocation acceptance checks.
+- [ ] Prove two-device direct chat and hostile pairing denial; prove layer sharding with coordinator plus two live workers.
+- [ ] Build authenticated multi-member Mesh chat, desktop worker/agent/MCP backends and a real server/container runtime before claiming parity.
+- [ ] Publish release assets only after on-device and signing/package gates; keep the existing prerelease draft until then.
 
-- [x] **Devices screen Add Cluster feature** — deferred. The
-  Cluster dispatch mode is an in-memory "first trusted peer"
-  resolver (`ClusterDispatch.firstPeer()`), not a separately-
-  registered endpoint. There's no cluster-registration API to
-  call from the Add sheet — adding a fake tab would mislead
-  users. Resolved as: documented in the manual
-  (`ManualSections.Cluster`) so the user knows Cluster mode is
-  driven by the Devices list, not by a manual Add.
-- [x] **Catalog screen management** — done. New
-  `CatalogDetailsSheet` shows every row's metadata (id, family,
-  architecture, quant, size class, license, origin, language,
-  strengths) plus the current download status. Loaded and
-  in-progress rows open the sheet on tap; the Failed state adds
-  a Retry button to the sheet.
-- [x] **Devices screen custom endpoint textbox** — done. The
-  URL field is now the *first* field in `AddEndpointSheet` with
-  a `supportingText` hint: "First field — paste the server URL.
-  Most reliable on dev devices." Stays discoverable on first
-  launch without forcing a separate screen.
+## Paused Android/desktop peering continuation — 2026-10-12
 
-## How to keep the list healthy
+[Future build plan](docs/PEERING_UI_BUILD_PLAN.md) · [Exact handoff and validation](docs/PEERING_UI_HANDOFF_2026-10-12.md). Implementation is partial and paused at the owner's request; resume from the saved working tree. Both platforms are in scope. Android Studio is the reference, not the target.
 
-1. When the user asks for a new feature, append a numbered item
-   here **and** `TaskCreate` it.
-2. When a task is done, mark it done in this file **and**
-   `TaskUpdate` it.
-3. When the user sends a course correction that supersedes a
-   task, update the existing entry rather than creating a new one.
+## Rewards and performance follow-up — 2026-10-23
+
+- [x] Review the older Android reward plan and keep the implemented ledger tied to completed, measured hosted inference.
+- [x] Remove redundant Android/Desktop receipt verification and reduce large Studio reply redraw frequency.
+- [x] Improve Android and Studio rewards screens with clearer balance, history, backup and empty states.
+- [ ] Benchmark Android hosted-job completion and Studio long-reply rendering on actual devices; profile further changes against those measurements.
+- [ ] Connect Studio hosting to rewards only after its real hosted-job lifecycle supplies measured native output tokens and failure/forwarding evidence.
+
+## Pairing, remote workers and custom compute — 2026-10-23
+
+- [x] Verify both QR and manual worker approval against live pinned TLS identity, token and capability revision; add token rotation.
+- [x] Select mixed LAN/VPN/direct Internet worker groups and expose live resource/admission risk assessment to users and delegated agents.
+- [x] Add bounded custom HyperL graph editing to Studio's actual native CPU executor.
+- [x] Build and package pinned ARM64 native layer executables in both debug APK flavors; verify both APK entries.
+- [ ] Run genuine two-phone model-layer execution, worker-loss and oversized-model cases on independent devices.
+- [ ] Implement an end-to-end authenticated reverse layer tunnel through the built-in relay for NAT traversal; measure relay behavior and worker loss.
+- [ ] Audit each missing Studio setting against its Android backend and implement/qualify the corresponding desktop operation; do not count menu entries as parity.
+
+## Reward metering and monetary design — 2026-10-23
+
+- [x] Define service-specific usage units, reciprocal receipt evidence, offline reconciliation, fraud controls, settlement stages and regulatory gates in [the metering plan](docs/REWARD_METERING_AND_SETTLEMENT.md).
+- [ ] Instrument authoritative native usage for each sellable service and prove cancellation/loss/forwarding cannot earn rewards.
+- [ ] Build reciprocal signed receipts, anti-replay/idempotent reconciliation and independent fraud checks before any spendable balance.
+- [ ] Complete jurisdiction-specific legal/payment review and processor integration before purchase, rental, payouts or exchange.
+
+
+Updated 2026-10-10. This list tracks current user requests; older task IDs and phase claims are preserved in docs/history/TODO-before-studio-2026-10-10.md. A checked item is qualified only within the scope named here.
+
+## Landed and locally checked
+
+- [x] Capacity-aware shared CPU sharding admission, complete integer/manual layer proportions and weak optional-worker exclusion.
+- [x] Intel SSE4.2/verified AVX2 engine selection, context/thread/batch/f16-q8_0 key-cache controls, memory admission, lazy human loading and idle unload.
+- [x] Bundled Qwen2.5 1.5B starter; real recovered DMG/PKG generation, authentication denial and owned listener unload.
+- [x] Seven compact desktop management groups, distinct Basic/Advanced menus and bounded global/settings/chat/saved-model/node search.
+- [x] Real local monitor sampling/charts/process rows, bounded human batch terminal, scoped SSH source/contracts and native HyperL CPU recipe checks.
+- [x] Current Full Android V1/V2 assemblies/lints and 521 valid JVM executions; existing warnings retained. Nine crawler contracts pass separately.
+- [x] Source pushed and draft PR #2 updated; installer publication tracked independently in docs/RELEASE_EVIDENCE.md.
+
+## Proposed stabilization milestone — planning complete, implementation not started
+
+[Detailed acceptance plan](docs/desktop/STABILIZATION_PLAN.md) · [Build guide](docs/desktop/STABILIZATION_BUILD_GUIDE.md). These unchecked gates supersede the broad queue as the proposed next priority; prior evidence remains scoped to its original build.
+
+- [ ] S0: freeze baseline inputs, measurements and disposable acceptance fixtures.
+- [ ] S1: durable protected sessions and interrupted-turn recovery; engine Stop/reload; 20-cycle/two-hour lifecycle acceptance.
+- [ ] S2: real import/download/verify/activate, resume validation, cancellation and storage failures.
+- [ ] S3: timestamped/stale monitor data, bounded charts and real disposable-process Stop.
+- [ ] S4: common action scopes, secret references, durable redacted audit, expiry/revocation and denied-action cases.
+- [ ] S5: two independent devices with actual layer contribution, measured allocation/output/timing, peer loss and explicit safe retry.
+- [ ] S6: installed-app workflows, separate local/cluster release gates and qualified bounded agent adapters.
+
+## Immediate acceptance
+
+- [x] Intel Experimental release published; all eight GitHub asset names/sizes/states/SHA-256 digests match local files.
+- [ ] Clean-machine Intel installation/Gatekeeper acceptance, lifecycle/leak/crash/cancel/idle stress and wider model quality tests.
+- [ ] Real HF verified download/cancel/storage failure acceptance; resume/gated entitlement work is separate.
+- [ ] Actual desktop process-stop and remote interactive SSH/Ghostty acceptance.
+- [ ] Reconnect owner-approved Samsung; test current Android build, then Xiaomi and Windows device categories.
+
+## Core and desktop/server implementation
+
+- [ ] Desktop live-worker RPC controller and explicit worker enrollment; independent-device/oversized model/memory/latency/peer-loss proof.
+- [ ] Replicated task/session journal, fencing/quorum and compatible distributed KV recovery.
+- [ ] Common desktop authority, durable audit and real agents/MCP/A2A/hooks/runners.
+- [ ] Optional long-term memory/personality and both offline/online voice adapters, including separate Dolphin speech/chat qualification.
+- [ ] Durable chats and document/RAG workspaces; exact sources and independent embedding backends.
+- [ ] Native Ollama tags/pull/show/create/ps/keep_alive lifecycle and versioned LM Studio APIs; current compatible hosts are not complete app parity.
+- [ ] OS firewall/packet capture, qualified VM/container/Kubernetes controllers and governed agent operations.
+- [ ] Cloud credential vault/billing, measured power/electricity/hardware costs, bounded repair/reset/rollback and signed updates.
+- [ ] Windows/Linux/Apple Silicon hardware packages, actual NEXT DevEco/HAP/device and iOS implementation/qualification.
+- [ ] Production-channel privacy, signing/notarization, dependency review, clean-target and physical fleet gates.
+
+All detailed categories, statuses, source anchors and missing controls: docs/DESKTOP_FEATURE_TRACKER.md. Do not mark an entire category done from a menu, unit fixture, same-host trial or dependency.

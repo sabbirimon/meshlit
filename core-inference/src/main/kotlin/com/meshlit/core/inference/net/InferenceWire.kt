@@ -61,9 +61,9 @@ data class InferTokenEvent(
 @Serializable
 data class InferDoneEvent(
     val finishReason: String,
-    val generatedTokens: Int,
+    val generatedTokens: Int?,
     val totalDurationMs: Long,
-    val tokensPerSecond: Float = 0f,
+    val tokensPerSecond: Float? = null,
 )
 
 /** SSE event payload `event: error`. */

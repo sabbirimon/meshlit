@@ -10,7 +10,7 @@
 #
 # Override behaviour via repo variables:
 #   MESHLIT_DEVICE_SERIAL   the device's adb serial
-#                           (default: R9KN2009CZJ)
+#                           (required; no real device serial is committed)
 #   MESHLIT_PACKAGE         the apk's applicationId
 #                           (default: com.meshlit.debug)
 #   MESHLIT_RUN_UI          "true" to run the @ui spec (needs a
@@ -23,13 +23,6 @@
 name: Playwright E2E
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'tests/e2e/**'
-      - 'app/**'
-      - 'core-inference/**'
-      - 'core-net/**'
   workflow_dispatch:
     inputs:
       grep:
@@ -43,10 +36,16 @@ jobs:
     timeout-minutes: 30
 
     env:
-      MESHLIT_DEVICE: ${{ vars.MESHLIT_DEVICE_SERIAL || 'R9KN2009CZJ' }}
+      MESHLIT_DEVICE: ${{ vars.MESHLIT_DEVICE_SERIAL }}
+      GREP_FILTER: ${{ inputs.grep || '@smoke' }}
+      MESHLIT_RUN_UI: ${{ vars.MESHLIT_RUN_UI || 'false' }}
       MESHLIT_PACKAGE: ${{ vars.MESHLIT_PACKAGE || 'com.meshlit.debug' }}
 
     steps:
+      - name: Require an explicitly selected owned device
+        run: |
+          test -n "$MESHLIT_DEVICE" || { echo "Set MESHLIT_DEVICE_SERIAL for this owned runner"; exit 1; }
+          adb -s "$MESHLIT_DEVICE" get-state
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -75,14 +74,14 @@ jobs:
         working-directory: tests/e2e
         run: |
           set -euo pipefail
-          GREP_FILTER='${{ github.event.inputs.grep || github.event.inputs.grep || "@smoke" }}'
+          args=(--grep "$GREP_FILTER")
           # The @ui spec crashes with `wm size` mismatches on some
           # emulators; gate it on the workflow input.
           if [ "${MESHLIT_RUN_UI:-false}" != "true" ]; then
-            GREP_FILTER="${GREP_FILTER} --grep-invert '@ui'"
+            args+=(--grep-invert '@ui')
           fi
           echo "Effective --grep: ${GREP_FILTER}"
-          npx playwright test ${GREP_FILTER}
+          npx playwright test "${args[@]}"
 
       - name: Upload Playwright report
         if: always()

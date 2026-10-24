@@ -79,30 +79,15 @@ class P2pRingAverager(
         val received = deliverGradient(successor, chunk, topology)
 
         return when (received) {
-            is MeshlitResult.Failure -> {
-                log.warn(
-                    "cluster.trainer.p2p.delivery_failed",
-                    "ring delivery failed; using local gradient",
-                    mapOf("step" to step, "err" to received.error.tag),
-                )
-                MeshlitResult.Success(
-                    AveragedGradient(
-                        step = step,
-                        values = localGradient,
-                        sourceKind = AveragerKind.P2P_RING,
-                        loss = localGradient.size * 0.001f,
-                        droppedPackets = 0,
-                    )
-                )
-            }
+            is MeshlitResult.Failure -> received
             is MeshlitResult.Success -> {
-                val averaged = sanitize(received.value, localGradient)
+                val averaged = sanitize(received.value, localGradient) ?: return MeshlitResult.Failure(MeshlitError.Invalid("cluster.trainer.p2p.invalid_gradient"))
                 MeshlitResult.Success(
                     AveragedGradient(
                         step = step,
                         values = averaged,
                         sourceKind = AveragerKind.P2P_RING,
-                        loss = averaged.size * 0.001f,
+                        loss = null,
                         droppedPackets = if (nanGuard?.isDiverged() == true) 1 else 0,
                     )
                 )
@@ -110,22 +95,17 @@ class P2pRingAverager(
         }
     }
 
-    private fun sanitize(received: FloatArray, local: FloatArray): FloatArray {
-        // NaNGuard — drop poisoned received gradients, fall back to local.
-        val clean = nanGuard?.checkAndDrop(received)
-        return if (clean == null || clean.size != local.size) {
-            nanGuard?.setLastDivergenceReason("size_mismatch_or_nan")
-            local
-        } else {
-            averageTwo(clean, local)
-        }
+    private fun sanitize(received:FloatArray,local:FloatArray):FloatArray? {
+        if(received.size!=local.size || received.any{!it.isFinite()} || local.any{!it.isFinite()}) return null
+        val clean = if(nanGuard==null) received else nanGuard.checkAndDrop(received)
+        return clean?.let{averageTwo(it,local)}
     }
 
     private fun averageTwo(local: FloatArray, received: FloatArray): FloatArray {
         if (local.size != received.size) return local
         val out = FloatArray(local.size)
         for (i in local.indices) {
-            out[i] = (local[i] + received[i]) * 0.5f
+            out[i] = local[i] * 0.5f + received[i] * 0.5f
         }
         return out
     }

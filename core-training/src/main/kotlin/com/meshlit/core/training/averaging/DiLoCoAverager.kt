@@ -63,6 +63,10 @@ class DiLoCoAverager(
             )
         }
 
+        if(participants.size!=1 || participants.single().peerId!=localPeerId) return MeshlitResult.Failure(
+            MeshlitError.Invalid("training_exchange_unavailable: DiLoCo peer deltas are not implemented")
+        )
+        if(localGradient.any{!it.isFinite()}) return MeshlitResult.Failure(MeshlitError.Invalid("cluster.trainer.diloco.diverged"))
         // Inner-step counter increments; outer step fires every
         // `innerSteps`.
         stepCounter += 1
@@ -77,28 +81,15 @@ class DiLoCoAverager(
                     step = step,
                     values = localGradient,
                     sourceKind = AveragerKind.DILOCO,
-                    loss = localGradient.size * 0.001f,
+                    loss = null,
                     droppedPackets = 0,
                 )
             )
         }
 
         // Outer step: ring-averaged Nesterov update.
-        val n = participants.size.toDouble()
-        val sum = FloatArray(localGradient.size)
-        // The local gradient is its own contribution.
-        for (i in localGradient.indices) sum[i] = localGradient[i]
-
-        // Pull every other peer's delta and add it. In v0 the
-        // synthetic pipeline mirrors the P2P ring — the sum is
-        // divided by n to get the average.
-        for (participant in participants) {
-            if (participant.peerId == localPeerId) continue
-            val peerDelta = localGradient  // synthetic stand-in
-            for (i in sum.indices) sum[i] += peerDelta[i]
-        }
-        val averageDelta = FloatArray(localGradient.size)
-        for (i in averageDelta.indices) averageDelta[i] = (sum[i] / n).toFloat()
+        // Single participant contributes only its actual supplied delta. Never clone peer deltas.
+        val averageDelta = localGradient.copyOf()
 
         // Nesterov smoothing: outer_state_t = outer_state_{t-1}
         //                          + outerLr * (averageDelta + 0.9 * (avg - last))
@@ -115,7 +106,7 @@ class DiLoCoAverager(
         }
         lastOuterDelta = averageDelta
 
-        val clean = nanGuard?.checkAndDrop(out) ?: out
+        val clean = if(out.any{!it.isFinite()}) null else if(nanGuard==null) out else nanGuard.checkAndDrop(out)
         if (clean == null) {
             nanGuard?.setLastDivergenceReason("diloco_outer_diverged")
             return MeshlitResult.Failure(
@@ -128,7 +119,7 @@ class DiLoCoAverager(
                 step = step,
                 values = clean,
                 sourceKind = AveragerKind.DILOCO,
-                loss = clean.size * 0.001f,
+                loss = null,
                 droppedPackets = if (nanGuard?.isDiverged() == true) 1 else 0,
             )
         )

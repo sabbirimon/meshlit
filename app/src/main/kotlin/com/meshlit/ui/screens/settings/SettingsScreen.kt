@@ -56,7 +56,7 @@ import com.meshlit.di.koinInject
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
+private fun LegacySettingsScreen(
     onOpenCategory: (SettingsCategory) -> Unit,
     onOpenDrawer: () -> Unit = {},
     omitHeader: Boolean = false,
@@ -188,4 +188,7 @@ enum class SettingsCategory(
     ABOUT("About", "Version, licenses, third-party", Icons.Default.Info),
     DEVELOPER("Developer", "Logs, sample rate, debug", Icons.Default.Build),
     HOOKS("Hooks", "User-authored scripts fired by the agent loop", Icons.Outlined.Code);
+}
+@Composable fun SettingsScreen(onOpenCategory: (SettingsCategory)->Unit, onOpenDrawer:()->Unit={}, omitHeader:Boolean=false) {
+    com.meshlit.ui.modern.ModernSettingsScreen(onExit=onOpenDrawer)
 }

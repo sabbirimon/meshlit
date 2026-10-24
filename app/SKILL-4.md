@@ -4,6 +4,10 @@ description: The role-based trust-tier security model for cluster nodes — how 
 ---
 
 # Cluster Trust Tiers
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
+Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 The single biggest risk in this project isn't the AI/inference code — it's
 treating a phone reachable over the open internet (any WAN/cellular node)

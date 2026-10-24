@@ -4,6 +4,10 @@ description: Rules and gotchas for running long-lived background work on Android
 ---
 
 # Android Foreground Services for Long-Running Cluster Nodes
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
+Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 Every cluster node (inference host, MCP tool server, monitor) needs to keep
 running while the app is backgrounded or the screen is off. On modern

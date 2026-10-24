@@ -4,6 +4,10 @@ description: How to integrate llama.cpp via the Android NDK for on-device GGUF m
 ---
 
 # llama.cpp on Android (NDK)
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
+Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 The inference engine for every "Brain" role node in the cluster. This is
 native C++ code cross-compiled for Android, not a managed-code library —

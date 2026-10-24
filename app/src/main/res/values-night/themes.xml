@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.Meshlit" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.Meshlit.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/brand_violet</item>
         <item name="colorPrimaryVariant">@color/brand_violet_dim</item>
         <item name="colorOnPrimary">@color/brand_text_primary</item>
@@ -13,4 +13,5 @@
         <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
         <item name="android:navigationBarColor">@color/brand_midnight</item>
     </style>
+    <style name="Theme.Meshlit" parent="Theme.Meshlit.Base" />
 </resources>

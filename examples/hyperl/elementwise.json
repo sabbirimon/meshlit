@@ -1,0 +1,9 @@
+{
+  "format": "hyperl/1",
+  "inputs": ["x", "w"],
+  "instructions": [
+    {"output": "product", "operation": "multiply", "inputs": ["x", "w"]},
+    {"output": "positive", "operation": "relu", "inputs": ["product"]}
+  ],
+  "output": "positive"
+}

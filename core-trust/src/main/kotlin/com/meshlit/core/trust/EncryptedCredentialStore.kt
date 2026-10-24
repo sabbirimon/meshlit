@@ -11,8 +11,9 @@ import androidx.security.crypto.MasterKey
  *
  * The master key is hardware-backed on devices with a TEE or
  * StrongBox. On older devices the key lives in software but is
- * still bound to the app's signing certificate, so credential
- * bytes cannot be read by another app or by `adb backup`.
+ * scoped to the app installation/UID. Hardware backing depends
+ * on the device; encrypted preferences and permissions must be
+ * excluded from automatic backup/transfer because the key does not transfer.
  *
  * Usage:
  * ```
@@ -45,6 +46,11 @@ open class EncryptedCredentialStore(
 
     fun put(key: String, value: String) {
         prefs.edit().putString(key, value).apply()
+    }
+
+    /** Use on an IO dispatcher before acknowledging durable jobs/checkpoints. */
+    fun putCommitted(key:String,value:String) {
+        check(prefs.edit().putString(key,value).commit()) { "Encrypted storage commit failed" }
     }
 
     fun get(key: String): String? = prefs.getString(key, null)

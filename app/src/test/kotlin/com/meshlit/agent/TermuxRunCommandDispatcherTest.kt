@@ -216,10 +216,9 @@ class TermuxRunCommandDispatcherTest {
             "timeout_ms" to 50,
             "approved" to true,
         ))
-        // The fake bridge `awaitCancellation()` doesn't actually trip
-        // the real Android timeout — that's enforced by the production
-        // AndroidTermuxBridge. Here we assert that the bridge call
-        // happened with the right timeout window.
+        assertFalse(result.ok)
+        assertTrue(result.body.contains("TIMEOUT"))
+        assertEquals("TIMEOUT", auditSink.events.last().outcome)
         assertEquals(1, bridge.calls.size)
         assertEquals(listOf("999"), bridge.calls.single().second)
     }

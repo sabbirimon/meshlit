@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(meshlit_hyperl LANGUAGES C)
+add_library(meshlit_hyperl SHARED cpu.c android_jni.c)
+target_include_directories(meshlit_hyperl PRIVATE include)
+set_target_properties(meshlit_hyperl PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON)
+target_compile_options(meshlit_hyperl PRIVATE -Wall -Wextra -Werror -ffp-contract=off -fvisibility=hidden)
+target_link_options(meshlit_hyperl PRIVATE -Wl,-z,max-page-size=16384)

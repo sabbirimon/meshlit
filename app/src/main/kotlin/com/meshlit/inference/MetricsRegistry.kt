@@ -83,8 +83,8 @@ class MetricsRegistry {
         when (outcome) {
             is JobOutcome.Success -> {
                 _successJobs.incrementAndGet()
-                _totalTokens.addAndGet(outcome.tokens.toLong())
-                if (outcome.tokensPerSecond > 0f) {
+                outcome.tokens?.let{_totalTokens.addAndGet(it.toLong())}
+                if (outcome.tokensPerSecond != null && outcome.tokensPerSecond > 0f) {
                     // Store as integer millitokens/sec so AtomicLong works.
                     _tokensPerSecondSum.addAndGet((outcome.tokensPerSecond * 1000f).toLong())
                     _rateSamples.incrementAndGet()
@@ -163,7 +163,7 @@ class MetricsRegistry {
     data class JobToken(val startedAtMs: Long) : com.meshlit.core.inference.net.JobLifecycle.Token
 
     sealed class JobOutcome {
-        data class Success(val tokens: Int, val tokensPerSecond: Float) : JobOutcome()
+        data class Success(val tokens: Int?, val tokensPerSecond: Float?) : JobOutcome()
         data class Failure(val tag: String, val message: String) : JobOutcome()
     }
 

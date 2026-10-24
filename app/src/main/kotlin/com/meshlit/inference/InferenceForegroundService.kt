@@ -1,5 +1,6 @@
 package com.meshlit.inference
 
+import kotlinx.coroutines.flow.asStateFlow
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -104,6 +105,7 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
 
     override fun onCreate() {
         super.onCreate()
+        mutableHosting.value = HostingStatus.Starting
         val koin = getKoin()
         // Use the app-scoped coordinator so every screen (Agent, Jobs,
         // Terminal) talks to the same engine instance. Previously this
@@ -139,7 +141,7 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
                 metrics = metrics,
                 loadedShardsProvider = { coordinator.loadedShards.value },
             )
-            val jobLifecycle = AppJobLifecycle(metrics)
+            val jobLifecycle = AppJobLifecycle(metrics, koin.get())
             // Wire the cluster-shard surface on the same port. ShardServer
             // answers /v1/capabilities, /v1/shards/{modelId}/{shardId},
             // /v1/manifest/{modelId}; peer's InferenceHttpServer.serve()
@@ -163,6 +165,11 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
                 // user has explicitly opened the port they're
                 // trying to hit.
                 meshFirewall = meshFirewall,
+                pairingAuthority = koin.get<com.meshlit.core.trust.PairingAuthority>(),
+                identityProof = { nonce ->
+                    val identity = koin.get<com.meshlit.peering.DeviceIdentity>().get(koin.get<MeshlitApplication>().nodeIdHex)
+                    com.meshlit.core.trust.PeerCrypto.json.encodeToString(com.meshlit.core.trust.IdentityProof.serializer(), com.meshlit.core.trust.PeerCrypto.prove(identity, nonce))
+                },
             )
             peerRegistry = reg
             clientFactory = factory
@@ -213,7 +220,9 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
             scope.launch {
                 try {
                     server.start()
+                    mutableHosting.value = HostingStatus.Active
                 } catch (t: Throwable) {
+                    mutableHosting.value = HostingStatus.Failed(t.message ?: "Hosting failed")
                     log.warn(
                         "fgs.http.bind.fail",
                         "NanoHTTPD failed to bind (port in use by another build?)",
@@ -332,52 +341,9 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
      * button will re-evaluate next time.
      */
     private suspend fun autoLoadDefaultModel() {
-        val app = koinInject<MeshlitApplication>()
-        val settingsRepo: SettingsRepository = app.settingsRepository
-        val customPath = settingsRepo.customModelPathSync()
-        if (customPath.isNullOrBlank()) {
-            // Bundled-model path. Wait up to 30s for extraction to land.
-            val deadline = System.currentTimeMillis() + 30_000L
-            while (app.bundledModelPath() == null && System.currentTimeMillis() < deadline) {
-                kotlinx.coroutines.delay(500L)
-            }
-        }
-        val customPathNow = settingsRepo.customModelPathSync()
-        val bundledFile = app.bundledModelPath()
-        val target = when {
-            !customPathNow.isNullOrBlank() -> {
-                val f = java.io.File(customPathNow)
-                if (f.exists() && f.length() > 0L) f else null
-            }
-            bundledFile != null && bundledFile.exists() && bundledFile.length() > 0L -> bundledFile
-            else -> null
-        }
-        if (target == null) {
-            log.info("fgs.auto_load.skip", "no model to auto-load")
-            return
-        }
-        // Don't double-load if the coordinator is already in Ready state
-        // (e.g. the user bound and unbound, then we come back up).
-        if (coordinator.state.value is com.meshlit.core.inference.CoordinatorState.Ready) {
-            log.info("fgs.auto_load.skip", "coordinator already Ready")
-            return
-        }
-        log.info(
-            "fgs.auto_load.start",
-            "auto-loading model on FGS startup",
-            mapOf("path" to target.absolutePath, "source" to if (customPathNow.isNullOrBlank()) "bundled" else "custom"),
-        )
-        val result = coordinator.loadModel(
-            modelPath = target.absolutePath,
-            contextSize = 4096,
-            gpuLayers = 0,
-            hints = com.meshlit.core.inference.BackendHints.CpuOnly,
-        )
-        if (result is com.meshlit.core.common.MeshlitResult.Success) {
-            log.info("fgs.auto_load.ok", "auto-load ok")
-        } else if (result is com.meshlit.core.common.MeshlitResult.Failure) {
-            log.warn("fgs.auto_load.fail", "auto-load failed: ${result.error.tag}")
-        }
+        // Use the same persisted opt-in/selection and load lock as the main app.
+        // Binding a legacy service must not override startup-off or reload a model.
+        koinInject<com.meshlit.models.ModelLibrary>().loadAtBoot()
     }
 
     override fun onDestroy() {
@@ -396,8 +362,8 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
         clientFactory = null
         peerRegistry = null
 
-        coordinator.shutdown()
-        scope.launch { coordinator.unloadModel() }
+        mutableHosting.value = HostingStatus.Stopped
+        // The application coordinator also serves local chat; stopping hosting leaves it usable.
         scope.cancel()
         super.onDestroy()
     }
@@ -454,6 +420,9 @@ class InferenceForegroundService : Service(), org.koin.core.component.KoinCompon
     }
 
     companion object {
+        private val mutableHosting = kotlinx.coroutines.flow.MutableStateFlow<HostingStatus>(HostingStatus.Stopped)
+        val hostingState = mutableHosting.asStateFlow()
+
         const val NOTIFICATION_ID = 1001
 
         /** Default port for the raw-TCP activation transport. Picked

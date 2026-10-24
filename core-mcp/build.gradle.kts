@@ -11,12 +11,15 @@ android {
 
 dependencies {
     implementation(project(":core-common"))
+    implementation(project(":core-trust"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.okhttp.core)
     implementation(libs.nanohttpd.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

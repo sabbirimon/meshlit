@@ -43,17 +43,15 @@ interface Averager {
 
 /**
  * Output of an [Averager.average] call. Carries the averaged gradient
- * plus diagnostic data the UI can render (loss placeholder, magnitude,
+ * plus available diagnostics (optional measured loss, magnitude,
  * source strategy, dropped-packet count).
  */
 data class AveragedGradient(
     val step: Long,
     val values: FloatArray,
     val sourceKind: AveragerKind,
-    /** Synthetic placeholder the UI displays as "loss" until real
-     *  autograd lands. Mirrors the field that ClusterTrainer already
-     *  populates. */
-    val loss: Float,
+    /** Unknown unless a real backend supplies a measured loss. */
+    val loss: Float? = null,
     /** How many NaN/Inf packets the guards dropped this step.
      *  Zero for healthy runs; non-zero triggers the divergence
      *  threshold in NaNGuard. */

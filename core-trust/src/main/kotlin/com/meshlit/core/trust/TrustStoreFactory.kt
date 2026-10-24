@@ -21,62 +21,40 @@ import java.util.concurrent.ConcurrentHashMap
  * Thread-safety: backed by a [ConcurrentHashMap]; the file is rewritten
  * under a per-instance lock so concurrent upserts don't interleave.
  */
-class FileBackedTrustStore(
-    private val storeDir: File,
-    private val fileName: String = "trust_store.json",
-) : TrustStore {
-
+class FileBackedTrustStore(private val storeDir: File, private val fileName: String = "trust_store.json") : TrustStore {
     private val lock = Any()
-    private val map: ConcurrentHashMap<String, DeviceTrustPolicy> = ConcurrentHashMap()
-
+    private val current = java.util.concurrent.atomic.AtomicReference<Map<String, DeviceTrustPolicy>>(emptyMap())
     init {
         storeDir.mkdirs()
-        loadFromDisk()
-    }
-
-    override fun policyFor(nodeId: NodeId): DeviceTrustPolicy? = map[nodeId.value]
-
-    override fun upsert(policy: DeviceTrustPolicy): MeshlitResult<Unit> = synchronized(lock) {
-        map[policy.nodeId] = policy
-        persist()
-        MeshlitResult.Success(Unit)
-    }
-
-    override fun revoke(nodeId: NodeId): MeshlitResult<Unit> = synchronized(lock) {
-        if (map.remove(nodeId.value) != null) {
-            persist()
-        }
-        MeshlitResult.Success(Unit)
-    }
-
-    override fun list(): List<DeviceTrustPolicy> = map.values.toList()
-
-    // ---- internals -----------------------------------------------------
-
-    private fun persist() {
-        val out = File(storeDir, fileName)
-        val tmp = File(storeDir, "$fileName.tmp")
-        try {
-            tmp.writeText(JsonCodec.encodePolicies(map.values.toList()))
-            if (out.exists()) out.delete()
-            if (!tmp.renameTo(out)) {
-                // Fallback: write to final directly.
-                out.writeText(tmp.readText())
-                tmp.delete()
-            }
-        } catch (t: Throwable) {
-            tmp.delete()
-            throw t
-        }
-    }
-
-    private fun loadFromDisk() {
         val file = File(storeDir, fileName)
-        if (!file.exists() || file.length() == 0L) return
-        val text = runCatching { file.readText() }.getOrNull() ?: return
-        val parsed = runCatching { JsonCodec.decodePolicies(text) }.getOrNull() ?: return
-        map.clear()
-        parsed.forEach { map[it.nodeId] = it }
+        if (file.exists() && file.length() <= 1024 * 1024) {
+            runCatching { JsonCodec.decodePolicies(file.readText()) }.getOrNull()?.let { policies ->
+                current.set(policies.associateBy { it.nodeId })
+            }
+        }
+    }
+    override fun policyFor(nodeId: NodeId) = current.get()[nodeId.value]
+    override fun list() = current.get().values.toList()
+    override fun upsert(policy: DeviceTrustPolicy): MeshlitResult<Unit> = synchronized(lock) {
+        save(current.get() + (policy.nodeId to policy))
+    }
+    override fun revoke(nodeId: NodeId): MeshlitResult<Unit> = synchronized(lock) {
+        save(current.get() - nodeId.value)
+    }
+    private fun save(next: Map<String, DeviceTrustPolicy>): MeshlitResult<Unit> {
+        val out = File(storeDir, fileName); val tmp = File(storeDir, "$fileName.tmp")
+        return try {
+            java.io.FileOutputStream(tmp).use { stream ->
+                stream.write(JsonCodec.encodePolicies(next.values.toList()).toByteArray(Charsets.UTF_8))
+                stream.fd.sync()
+            }
+            check(tmp.renameTo(out)) { "Could not replace trust store" }
+            current.set(next)
+            MeshlitResult.Success(Unit)
+        } catch (e: Exception) {
+            tmp.delete()
+            MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Resource("trust.persist_failed", e))
+        }
     }
 }
 

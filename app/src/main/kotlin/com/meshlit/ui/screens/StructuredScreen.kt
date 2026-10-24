@@ -77,6 +77,7 @@ fun StructuredScreen(
     omitHeader: Boolean = false,
 ) {
     val context = LocalContext.current
+    val contextResources=androidx.compose.ui.platform.LocalResources.current
     val app = koinInject<MeshlitApplication>()
     val engine = app.structuredEngine
     val scope = rememberCoroutineScope()
@@ -125,7 +126,7 @@ fun StructuredScreen(
                             }
                         }
                         is RunAnywhereStructuredEngine.ToolRunView.Failed -> {
-                            statusMessage = context.getString(R.string.structured_failed) +
+                            statusMessage = contextResources.getString(R.string.structured_failed) +
                                 ": " + result.message
                         }
                     }
@@ -164,7 +165,7 @@ fun StructuredScreen(
                                 validationReason = event.errorMessage
                             }
                             is RunAnywhereStructuredEngine.StructuredStreamView.Failed ->
-                                statusMessage = context.getString(R.string.structured_failed) +
+                                statusMessage = contextResources.getString(R.string.structured_failed) +
                                     ": " + event.message
                         }
                     }

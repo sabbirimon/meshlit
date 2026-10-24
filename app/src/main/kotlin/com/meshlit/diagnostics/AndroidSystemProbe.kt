@@ -81,7 +81,7 @@ class AndroidSystemProbe(private val application: Application) : SystemProbe {
             abis = abis,
             primaryAbi = primaryAbi,
             socFamily = socFamily,
-            socModel = Build.SOC_MODEL,
+            socModel = if (Build.VERSION.SDK_INT >= 31) Build.SOC_MODEL else Build.HARDWARE,
             gpuFamily = gpuFamily,
             hasNpu = hasNpu,
             npuName = npuName,

@@ -70,7 +70,7 @@ import androidx.compose.material.icons.filled.Storage
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModelsScreen(
+fun LegacyModelsScreen(
     onBack: () -> Unit,
     omitHeader: Boolean = false,
 ) {
@@ -625,3 +625,7 @@ private fun familyIcon(entry: ModelSelectionEntry): androidx.compose.ui.graphics
         entry.family.contains("Llama", ignoreCase = true) -> Icons.Filled.Memory
         else -> Icons.Filled.Storage
     }
+@Composable
+fun ModelsScreen(onBack: () -> Unit, omitHeader: Boolean = false) {
+    com.meshlit.ui.modern.ModernModelsScreen(if(omitHeader) null else onBack)
+}

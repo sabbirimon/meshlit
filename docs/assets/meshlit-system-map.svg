@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 650" role="img" aria-labelledby="title description">
+  <title id="title">Meshlit system map</title>
+  <desc id="description">Human controls feed the Android workspace. The workspace connects to local GGUF inference, approved agent tools, paired devices and experimental HyperL CPU recipes. Online providers require explicit configuration. The phone layer pipeline remains experimental.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1"><stop stop-color="#101522"/><stop offset="1" stop-color="#152536"/></linearGradient>
+    <linearGradient id="accent" x2="1" y2="0"><stop stop-color="#66d3ce"/><stop offset="1" stop-color="#f8a666"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#05090f" flood-opacity=".35"/></filter>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4 0 8" fill="none" stroke="#8aa4b8" stroke-width="1.5"/></marker>
+    <style>
+      text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      .title{font-size:38px;font-weight:750;fill:#f4f7f8}
+      .lead{font-size:17px;fill:#b5c7d1}
+      .card{fill:#1d2a38;stroke:#3d5261;stroke-width:1.5}
+      .head{font-size:21px;font-weight:700;fill:#f5f7f8}
+      .body{font-size:15px;fill:#c3d0d9}
+      .eyebrow{font-size:12px;font-weight:750;letter-spacing:2px;fill:#77d9d2}
+      .line{fill:none;stroke:#8aa4b8;stroke-width:2.5;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1280" height="650" fill="url(#background)"/>
+  <rect x="42" y="38" width="80" height="5" rx="2.5" fill="url(#accent)"/>
+  <text x="42" y="92" class="title">Meshlit, from phone to approved peers</text>
+  <text x="42" y="125" class="lead">Local AI and agent workflows first. Network, tools and experimental compute stay under explicit control.</text>
+
+  <path d="M265 312H325" class="line"/>
+  <path d="M635 312H690V221H731" class="line"/>
+  <path d="M635 312H731" class="line"/>
+  <path d="M635 312H690V403H731" class="line"/>
+  <path d="M635 312H690V515H731" class="line"/>
+
+  <g filter="url(#shadow)"><rect x="42" y="220" width="223" height="184" rx="22" class="card"/>
+    <text x="68" y="257" class="eyebrow">CONTROL</text>
+    <text x="68" y="295" class="head">You decide</text>
+    <text x="68" y="326" class="body">Models and permissions</text>
+    <text x="68" y="352" class="body">Pairing and credentials</text>
+    <text x="68" y="378" class="body">Stop and revoke</text>
+  </g>
+  <g filter="url(#shadow)"><rect x="325" y="190" width="310" height="244" rx="24" fill="#213640" stroke="#70d7cf" stroke-width="2"/>
+    <rect x="349" y="214" width="84" height="5" rx="2.5" fill="url(#accent)"/>
+    <text x="350" y="264" class="eyebrow">ANDROID WORKSPACE</text>
+    <text x="350" y="308" class="head" style="font-size:27px">Meshlit app</text>
+    <text x="350" y="343" class="body">Chat · Models · Agents</text>
+    <text x="350" y="369" class="body">Tasks · Files · Studio</text>
+    <text x="350" y="405" class="body" style="fill:#7edfd7">Kotlin + Jetpack Compose</text>
+  </g>
+
+  <g filter="url(#shadow)"><rect x="731" y="170" width="505" height="101" rx="20" class="card"/>
+    <circle cx="761" cy="204" r="6" fill="#75dac7"/>
+    <text x="781" y="211" class="head">Local models</text>
+    <text x="761" y="242" class="body">GGUF · RunAnywhere · llama.cpp · offline chat</text>
+  </g>
+  <g filter="url(#shadow)"><rect x="731" y="283" width="505" height="101" rx="20" class="card"/>
+    <circle cx="761" cy="317" r="6" fill="#80afea"/>
+    <text x="781" y="324" class="head">Agent tools and services</text>
+    <text x="761" y="355" class="body">Scoped MCP · durable jobs · opt-in online providers</text>
+  </g>
+  <g filter="url(#shadow)"><rect x="731" y="396" width="505" height="101" rx="20" class="card"/>
+    <circle cx="761" cy="430" r="6" fill="#f4ae77"/>
+    <text x="781" y="437" class="head">Paired device research</text>
+    <text x="761" y="468" class="body">Authenticated peers · experimental phone layer pipeline</text>
+  </g>
+  <g filter="url(#shadow)"><rect x="731" y="509" width="505" height="101" rx="20" class="card"/>
+    <circle cx="761" cy="543" r="6" fill="#c4a3ef"/>
+    <text x="781" y="550" class="head">HyperL workbench</text>
+    <text x="761" y="581" class="body">Separately licensed, bounded CPU recipes and datasets</text>
+  </g>
+  <text x="42" y="595" class="body">Encrypted local audit metadata · explicit network grants · measured evidence in PROGRESS.md</text>
+</svg>

@@ -13,7 +13,7 @@ dependencies {
     // artifacts). Pin the four we actually need:
     //   api       — interfaces the rest of the app codes against
     //   sdk       — TracerProvider / SpanProcessor implementations
-    //   otlp      — gRPC push to Grafana / Tempo
+    //   otlp      — HTTP trace/metric push to explicit collector
     //   logging   — in-process span dump (Local mode)
     api(libs.opentelemetry.api)
     implementation(libs.opentelemetry.sdk)

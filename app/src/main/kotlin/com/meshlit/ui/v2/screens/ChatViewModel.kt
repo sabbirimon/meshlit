@@ -393,8 +393,8 @@ sealed interface ChatMessage {
     data class Assistant(
         val text: String,
         val finishReason: FinishReason?,
-        val generatedTokens: Int = 0,
-        val tokensPerSecond: Float = 0f,
+        val generatedTokens: Int? = null,
+        val tokensPerSecond: Float? = null,
         val durationMs: Long = 0L,
         val errorTag: String? = null,
         val hint: String? = null,
@@ -405,8 +405,9 @@ sealed interface ChatMessage {
         val tokensLabel: String
             get() = when {
                 isError -> "error"
+                generatedTokens == null -> "Usage unavailable · ${durationMs}ms"
                 generatedTokens <= 0 -> ""
-                else -> "$generatedTokens tok · ${"%.1f".format(tokensPerSecond)} tok/s · ${durationMs}ms"
+                else -> "$generatedTokens tok · ${tokensPerSecond?.let{"%.1f".format(it)} ?: "Unknown"} tok/s · ${durationMs}ms"
             }
     }
 }

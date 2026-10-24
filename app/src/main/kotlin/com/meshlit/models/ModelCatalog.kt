@@ -274,6 +274,8 @@ object ModelCatalog {
         approxSizeMb: Long = 0L,
         onProgress: (Long) -> Unit = {},
         onProgressWithBytes: ((percent: Long, bytesDownloaded: Long, totalBytes: Long) -> Unit)? = null,
+        expectedSha256: String? = null,
+        onProgressWithPhase: ((com.meshlit.core.inference.models.ModelDownload.Progress) -> Unit)? = null,
     ): DownloadOutcome = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "imported-models").apply { mkdirs() }
         val ext = when {
@@ -284,159 +286,23 @@ object ModelCatalog {
         }
         val dest = File(dir, "${id}$ext")
         val tmp = File(dir, "${id}$ext.part")
-        val client = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.MINUTES)
-            .followRedirects(true)
-            .followSslRedirects(true)
-            // OkHttp 4.x doesn't set a User-Agent by default; some
-            // CDNs (Hugging Face, GitHub LFS) return 403 for the
-            // `okhttp/x.y.z` UA. We send Meshlit/<version> instead
-            // so anonymous downloads keep working.
-            .addInterceptor { chain ->
-                val req = chain.request().newBuilder()
-                    .header(
-                        "User-Agent",
-                        "Meshlit/${com.meshlit.BuildConfig.VERSION_NAME} (Android)",
-                    )
-                    .build()
-                chain.proceed(req)
-            }
-            .build()
-        // Read the user-supplied Hugging Face tokens (if any) once
-        // per call. Tokens are never logged — only the *presence*
-        // of each credential kind is recorded in the request log line.
-        val hfToken: String = runCatching {
-            com.meshlit.settings.SettingsRepository(context).huggingFaceTokenNow()
-        }.getOrDefault("")
-        val hfProToken: String = runCatching {
-            com.meshlit.settings.SettingsRepository(context).huggingFaceProTokenNow()
-        }.getOrDefault("")
-        val hfOrgSlug: String = runCatching {
-            com.meshlit.settings.SettingsRepository(context).huggingFaceOrgSlugNow()
-        }.getOrDefault("")
-        val isHfUrl = url.contains("huggingface.co", ignoreCase = true)
-        log.info(
-            "model.download.url.start",
-            id,
-            mapOf(
-                "url" to url,
-                "hasHfToken" to (hfToken.isNotEmpty()).toString(),
-                "hasHfProToken" to (hfProToken.isNotEmpty()).toString(),
-                "urlHost" to runCatching { java.net.URI(url).host ?: "?" }.getOrDefault("?"),
-            ),
-        )
+        require(id.matches(Regex("[A-Za-z0-9._-]{1,180}"))) { "Invalid model identifier" }
         try {
-            val requestBuilder = Request.Builder()
-                .url(url)
-                .header(
-                    "User-Agent",
-                    "Meshlit/${com.meshlit.BuildConfig.VERSION_NAME} (Android)",
-                )
-                .header("Accept", "application/octet-stream,*/*")
-            // Hugging Face gates gated repos behind `Authorization:
-            // Bearer <hf_token>`. We pass the user token only when
-            // the URL points at the HF domain — passing it elsewhere
-            // is harmless but unnecessary.
-            //
-            // Paid / Enterprise accounts: HF also honours the
-            // `X-HuggingFace-Organization` header. We send the
-            // user's personal token (free-tier) AND the org token
-            // (paid-tier) when both are present. If only the org
-            // token is set, we still send `Authorization: Bearer
-            // <org_token>` so an Enterprise-only user can
-            // authenticate. Empty values are skipped.
-            if (isHfUrl) {
-                when {
-                    hfToken.isNotEmpty() && hfProToken.isNotEmpty() -> {
-                        // Both set — prefer the personal token for the
-                        // Authorization header (HF treats org token as
-                        // org-scope identifier, not a substitute for
-                        // user auth).
-                        requestBuilder.header("Authorization", "Bearer $hfToken")
-                        requestBuilder.header("X-HuggingFace-Organization", hfOrgSlug)
-                        requestBuilder.header("X-HuggingFace-Pro-Token", hfProToken)
-                    }
-                    hfToken.isNotEmpty() -> {
-                        requestBuilder.header("Authorization", "Bearer $hfToken")
-                    }
-                    hfProToken.isNotEmpty() -> {
-                        requestBuilder.header("Authorization", "Bearer $hfProToken")
-                        if (hfOrgSlug.isNotEmpty()) {
-                            requestBuilder.header("X-HuggingFace-Organization", hfOrgSlug)
-                        }
-                    }
-                }
+            val token = ModelCredentials(context).token()
+            val installed = artifactDownloader.download(url, dest, token, expectedSha256) { progress ->
+                onProgressWithPhase?.invoke(progress)
+                val percent = if (progress.phase == "Installed") 100L else (progress.percent ?: 0).toLong()
+                onProgress(percent)
+                onProgressWithBytes?.invoke(percent, progress.bytes, progress.total)
             }
-            val response = client.newCall(requestBuilder.build()).execute()
-            if (!response.isSuccessful) {
-                val tag = "http_${response.code}"
-                val msg = "HTTP ${response.code} from server"
-                log.warn("model.download.url.fail", msg, mapOf("id" to id))
-                return@withContext DownloadOutcome(null, tag, msg)
-            }
-            val body = response.body ?: return@withContext DownloadOutcome(
-                null,
-                "empty_body",
-                "Server returned no body",
-            )
-            val total = body.contentLength().takeIf { it > 0 } ?: approxSizeMb * 1024L * 1024L
-            body.byteStream().use { input ->
-                tmp.outputStream().use { output ->
-                    val buf = ByteArray(64 * 1024)
-                    var read: Int
-                    var copied = 0L
-                    while (input.read(buf).also { read = it } != -1) {
-                        ensureActive()
-                        output.write(buf, 0, read)
-                        copied += read
-                        if (total > 0L && copied % (256 * 1024) == 0L) {
-                            val pct = copied * 100 / total
-                            onProgress(pct)
-                            onProgressWithBytes?.invoke(pct, copied, total)
-                        }
-                    }
-                }
-            }
-            // 1 MiB sanity check — anything smaller is almost
-            // certainly an HTML error page that masqueraded as a
-            // GGUF. The curated catalog used 1 MiB; we keep that
-            // threshold for free-form URLs.
-            if (tmp.length() < 1024L * 1024L) {
-                log.warn("model.download.url.too_small", "wrote ${tmp.length()} bytes", mapOf("id" to id))
-                tmp.delete()
-                return@withContext DownloadOutcome(
-                    null,
-                    "too_small",
-                    "Incomplete download (${tmp.length()} bytes)",
-                )
-            }
-            if (dest.exists()) dest.delete()
-            if (!tmp.renameTo(dest)) {
-                log.warn("model.download.url.rename_failed", "could not rename", mapOf("id" to id))
-                tmp.delete()
-                return@withContext DownloadOutcome(null, "rename_failed", "Could not finalize download")
-            }
-            onProgress(100L)
-            onProgressWithBytes?.invoke(100L, dest.length(), total)
-            log.info("model.download.url.done", id, mapOf("bytes" to dest.length()))
-            DownloadOutcome(dest, null, null)
-        } catch (t: Throwable) {
-            runCatching { tmp.delete() }
-            val (tag, msg) = when (t) {
-                is UnknownHostException -> "no_network" to "No internet — check Wi-Fi and retry"
-                is SocketTimeoutException -> "timeout" to "Server timed out — retry"
-                is SSLException -> "ssl" to "Server certificate rejected"
-                is IOException -> "io_${t.javaClass.simpleName}" to "Network error: ${t.message ?: t.javaClass.simpleName}"
-                else -> {
-                    log.warn("model.download.url.error", "${t.message}", mapOf("id" to id))
-                    "unknown" to "${t.javaClass.simpleName}: ${t.message ?: "unknown error"}"
-                }
-            }
-            log.warn("model.download.url.error", msg, mapOf("id" to id, "tag" to tag))
-            DownloadOutcome(null, tag, msg)
+            DownloadOutcome(installed, null, null)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            DownloadOutcome(null, "download_failed", error.message ?: "Model download failed")
         }
     }
+
+    private val artifactDownloader = com.meshlit.core.inference.models.ModelDownload()
 
     /**
      * Stable id derivation for an arbitrary URL. We hash the URL so
