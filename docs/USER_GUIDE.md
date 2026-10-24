@@ -4,7 +4,11 @@ Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-23 for the experimental build 42 source. The Chat reply below was captured on Samsung build 42; the other phone captures are build 41 or earlier. The app packages an offline version under Settings → Guide and tutorial. Reading progress is not execution evidence.
+Updated 2026-10-24 for the consolidated Meshlit repository. The Chat reply below was captured on Samsung build42, and the photo composer on Samsung build44. The model library and settings captures are earlier API 35 emulator images. The app packages an offline version under Settings → Guide and tutorial. Reading progress is not execution evidence.
+
+**Get started:** [download a beta build](https://github.com/sabbirimon/meshlit/releases) → [install and verify](#visual-map-and-installation) → [first-run walkthrough](#first-run-walkthrough) → [models and local chat](#local-models-downloads-and-import). Use [agent and tool controls](#tasks-agents-and-human-controls) or [device pairing](#phone-clusters-mixed-devices-and-pairing) only after the local path works. [HyperL libraries](#hyperl-local-libraries), [privacy and audit](#audit-telemetry-and-exports), and [troubleshooting](#configuration-transfer-logs-and-troubleshooting) have separate setup and limits.
+
+![Meshlit system map with local models, approved agent tools, paired devices and the HyperL workbench](assets/meshlit-system-map.svg)
 
 ## Start here: what Meshlit does
 
@@ -14,11 +18,60 @@ The drawer starts with four shortcuts: Models, Devices, Agents and Device manage
 
 Implementation status matters. Desktop layer workers have real execution evidence. Oversized-model execution across physical phones, replicated task/session failover and portable distributed KV recovery remain acceptance/implementation gates. This guide explains actual controls and labels future work explicitly. It contains no simulated devices, costs or performance charts.
 
+### Current source walkthrough · 2026-10-24
+
+The latest saved source adds a compact Chat dock, a wider composer, clearer
+model recommendations, a persistent text knowledge library and updated voice
+controls. Its final build45 lint and physical device qualification did not
+finish. The steps below describe the controls in source; the screenshots that
+follow show the last retained real captures from earlier builds.
+
+1. **Start offline.** In **Models**, review the device's reported memory and
+   storage, then load the bundled Qwen2.5 0.5B starter or an installed verified
+   GGUF. A completed transfer is not a loaded model. In **Chat**, choose Local
+   and ask a short question. Check the displayed reply and runtime status.
+2. **Use a stronger model when the phone fits it.** The recommendation panel
+   shows separate download size, storage reserve and memory estimates for
+   pinned Qwen candidates. Download, wait for checksum validation, then tap
+   **Load installed model**. A model card should say **Loaded / ready for chat**
+   only after the runtime accepts it. Qwen3 supports `/think` and `/no_think`;
+   response quality and speed vary by device and prompt.
+3. **Attach a photo.** In Chat, tap **+**, select or capture an image, type the
+   question and choose a vision-capable provider. **Send** stays disabled until
+   that provider is configured. The bundled local text model does not read
+   photos. The separate native vision probe in [progress](../PROGRESS.md) does
+   not establish in-app offline photo chat.
+4. **Keep tools explicit.** Local model web/phone tools begin off. Save the
+   required agent and app scopes, enable only the tool class needed for that
+   conversation, and review every visible step. Accessibility, browser
+   navigation and cloud credentials each have their own permissions. **Stop**
+   cancels the active action; a model's completion text is not proof an outside
+   app changed.
+5. **Add personal knowledge carefully.** Open **Settings → RAG settings →
+   Knowledge library**, import a supported text file and inspect excerpts.
+   Enable local-chat access separately. Remote/routed and agent access require
+   additional grants. Search is bounded lexical retrieval; it does not train
+   the model or parse arbitrary PDF/Office files.
+6. **Try voice as an experimental path.** Choose Live or One turn, start
+   capture, and use mute, End or tap-to-interrupt as needed. The source tracks
+   Listening and Transcribing separately. The last physical offline speech
+   run recognized and synthesized audio but failed its following local-model
+   reply; a complete spoken conversation remains a device acceptance gate.
+7. **Pair only known devices.** Use **Devices** and the pairing flow to inspect
+   a worker's address, identity and reported capacity before approval. The app
+   probes reachable workers over pinned TLS. A saved address or successful
+   capability query does not establish oversized-model execution across
+   phones; see [cluster setup](#phone-clusters-mixed-devices-and-pairing).
+8. **Open HyperL separately.** The [HyperL workbench](#hyperl-local-libraries)
+   offers bounded CPU recipes and datasets under its own terms. Its timing
+   view uses a warm-up and five runs. It does not accelerate the local LLM or
+   prove GPU/NPU execution.
+
 ## Visual map and installation
 
-The first Chat and Settings captures below are from build 41 running on a Xiaomi M2101K7AI (Android 12). The second Chat capture shows a real Qwen2.5 0.5B answer on Samsung SM-A207F running build 42. The Models capture is from an earlier Android preview. These do not prove a physical layer cluster.
+The Chat reply below shows a real Qwen2.5 0.5B answer on Samsung SM-A207F running build42. The photo composer is a real Samsung build44 capture. Models and Settings are earlier API 35 emulator captures. These do not prove a physical layer cluster.
 
-![Build 41 Chat home on Xiaomi with the model picker and composer](assets/screenshots/build41-xiaomi-chat.png)
+![Earlier API 35 emulator Chat home with the model picker and composer](assets/screenshots/chat.png)
 
 **Chat:** the model name is at the top, and the composer is at the bottom. The **+** menu opens files and chat options.
 
@@ -30,9 +83,13 @@ The first Chat and Settings captures below are from build 41 running on a Xiaomi
 
 **Models:** the library card, import action and bundled starter live here. The card's **Loaded** state means this capture's runtime accepted the model; your device must report its own state.
 
-![Build 41 Settings on Xiaomi with search and Basic and Advanced tabs](assets/screenshots/build41-xiaomi-settings.png)
+![Earlier API 35 emulator Settings with search and category controls](assets/screenshots/settings.png)
 
 **Settings:** search for a named control. Switch to **Advanced** for network, cluster, agent and runtime controls. A result marked unavailable needs its stated backend or permission; a menu entry alone does not activate it.
+
+![Samsung build44 photo composer with a selected image, the keyboard open and vision setup required](assets/screenshots/build44-samsung-photo-keyboard.png)
+
+**Photo chat:** the selected image and question remain together while you set up a vision-capable provider. The bundled text model cannot answer this photo locally.
 
 For the GitHub experimental Android release, install the APK matching your device's ABI. The ARM64 split is intended for modern ARM64 phones and includes the native layer server and worker; the universal APK is larger and also contains those ARM64 executables. V1 and V2 debug flavors have separate app IDs and data. A newer build can update the same flavor only when its signing certificate matches. Keep the previous APK and a backup of identity/receipts before replacing an installation. Android may ask you to approve this file's install source. The GitHub beta is debug-signed; it is not a Google Play production release. The Play Review package is a separate restricted candidate.
 

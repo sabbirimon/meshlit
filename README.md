@@ -93,44 +93,40 @@ and the remaining cluster/integration gates.
 ## A calmer mobile workspace
 
 New installations default to Studio's graphite surfaces, ember accent, thin
-headers, compact icon menus and actionable Models/Agents/Style cards. Existing
-saved themes are preserved. Dynamic colors, light/dark/scheduled modes, saved
-fonts, language and accessibility scaling remain configurable. These earlier
-Android screenshots show the previous palette; current device validation is
-tracked in the evidence ledger.
+headers and compact controls. Existing saved themes are preserved. Dynamic
+colors, light/dark/scheduled modes, saved fonts, language and accessibility
+scaling remain configurable.
 
-<table><tr>
-<td><img src="docs/assets/screenshots/chat.png" width="250" alt="Real Meshlit Android emulator chat screen with centered welcome and rounded composer"></td>
-<td><img src="docs/assets/screenshots/models.png" width="250" alt="Real Meshlit Android models screen with loaded bundled model and import controls"></td>
-<td><img src="docs/assets/screenshots/settings.png" width="250" alt="Real Meshlit Android searchable settings screen"></td>
-</tr></table>
+<table>
+<tr><th>Local model chat · Samsung build42</th><th>Photo composer · Samsung build44</th><th>Model library · API 35 emulator</th></tr>
+<tr>
+<td><img src="docs/assets/screenshots/build42-samsung-qwen-chat.png" width="245" alt="Real Samsung phone capture showing an on-device Qwen chat reply and measured 10.4 second response"></td>
+<td><img src="docs/assets/screenshots/build44-samsung-photo-keyboard.png" width="245" alt="Real Samsung phone capture showing a photo attachment, open keyboard and explicit request to configure a vision model"></td>
+<td><img src="docs/assets/screenshots/models.png" width="245" alt="Real API 35 emulator capture showing Meshlit's model library, import action and a loaded bundled model"></td>
+</tr>
+</table>
 
-Screenshots are historical real API 35 x86_64 emulator captures from before the
-latest sidebar and reply-reader changes. Settings comes from an earlier reference
-checkpoint. They demonstrate those layouts, not current phone performance or
-distributed inference. Retained legacy tools still need individual UX work. Third-party brands,
-OS keyboards and pickers retain their own identities; Google assets are not copied.
+These are real captures from the named builds, not renders of the latest source.
+The photo screen requires a configured vision provider; it does not show offline
+photo understanding. The emulator model screen predates the latest mobile theme.
+
+| Measured checkpoint | Observation | Evidence |
+| --- | --- | --- |
+| Local chat on Samsung build42 | A displayed Qwen reply took 10.4 s; token speed was unavailable | [Phone capture](docs/assets/screenshots/build42-samsung-qwen-chat.png) |
+| Samsung build44 device reading | 3.5 GiB RAM, 8 CPU cores, ARM64 | [Progress record](PROGRESS.md) |
+| In-app Qwen3 download on Samsung build44 | 396,705,472 bytes; file SHA-256 matched the pinned model | [Progress record](PROGRESS.md) |
+| October 24 source contract run | Shared 8, desktop 37, cloud MCP 67, inference 284 and app 231 tests per flavor passed; one desktop skip | [Progress record](PROGRESS.md) |
+
+The measurements describe those checkpoints. Current CI and physical device
+qualification are separate gates; retained legacy tools still need individual
+UX work. Third-party brands, OS keyboards and pickers retain their own identities.
 
 ## How the pieces connect
 
-```mermaid
-flowchart LR
-    H[Human controls] --> C[Typed commands and policy]
-    A[Approved AI agents] --> C
-    C --> M[Models and inference]
-    C --> T[Durable tasks and jobs]
-    C --> X[Scoped tools / cloud / files]
-    M --> L[Local RunAnywhere / llama.cpp]
-    M --> P[Experimental native layer pipeline]
-    P --> W[Approved workers]
-    M --> O[Explicit online providers]
-    C --> J[Encrypted audit metadata]
-    L --> J
-    P --> J
-    J --> E[JSONL / CSV export]
-    J --> OT[Optional OTLP collector]
-    OT --> G[Grafana / Tempo / metrics backend]
-```
+![Meshlit system map: human controls lead to the Android workspace, local models, scoped agent tools, paired devices and the separate HyperL CPU workbench](docs/assets/meshlit-system-map.svg)
+
+The [user guide](docs/USER_GUIDE.md) walks through these paths. [HyperL](HYPERL.md)
+has its own licence and CPU recipe scope; it is not the Android LLM engine.
 
 This is a component map, not proof that every adapter or future platform is
 complete. See [architecture](docs/architecture/current-state.md),

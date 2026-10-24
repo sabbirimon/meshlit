@@ -142,7 +142,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 local AI agents, on-device models and experimental distributed inference",
-      "contentSha256WithoutTrackingBlock": "f7388462875a3be84d533d4b3d2d7385ed8487dc9edaf3cd560d3e70e26632cf"
+      "contentSha256WithoutTrackingBlock": "869c64fce45a788da3bb342a6f8de72bec185ce209c6e2d529533f76560920bb"
     },
     {
       "path": "REQUESTS.md",
@@ -681,7 +681,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "f8a3231965028ccd4e5216a3ee60a746d810ffe4d6b20f7de27574f897187f16"
+      "contentSha256WithoutTrackingBlock": "e18dba00770611578e16e3f8506f99413062be36618d63d9e346fc1ad47ecec9"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",
