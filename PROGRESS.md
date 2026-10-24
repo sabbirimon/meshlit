@@ -6,7 +6,9 @@ Scope: cross-platform tracking; feature and device gates remain separate. Phase 
 
 ## Source-save and publication handoff — 2026-10-24
 
-The owner subsequently requested saving and pushing the paused Meshlit source and documentation to its existing branch/PR #4. [The current checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) lists the source additions, failed/incomplete evidence, ranked remaining work and build/run links. This publication preserves the reviewed source without resuming application builds, phone operations or release work. The older pause entry below records the state at interruption; its no-push statement is historical.
+The owner subsequently requested saving and pushing the paused Meshlit source and documentation. The review branch is now `feature/peering-ui-2026-10-12`; PR #5 replaces PR #4 after the branch rename. [The current checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) lists the source additions, failed/incomplete evidence, ranked remaining work and build/run links. This publication preserves the reviewed source without resuming application builds or phone operations. The older pause entry below records the state at interruption; its no-push statement is historical.
+
+The previous PR run exposed `OnlineMediaClientTest.cancelledVisionCannotReturnAnAnswer`: OkHttp surfaced a cancelled request as `IOException`, which escaped the coroutine cancellation contract. `OnlineMediaClient.exchange` now rechecks coroutine activity when `call.execute()` throws `IOException`, preserving a real I/O error while reporting cancellation as cancellation. The targeted `OnlineMediaClientTest` suite passed locally with JDK 21 and the installed Android SDK (`:core-inference:testDebugUnitTest`); the full PR build remains the publication gate. The owner also requested consolidating the current source and release files under `sabbirimon/meshlit`; repository and release migration is in progress.
 
 
 ## Meshlit checkpoint — 2026-10-24, paused for HyperL priority

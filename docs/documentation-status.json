@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "a34625ab5bb2ba699d16c5ac79af95ed6d9f46c920c8111fb1538eb31356289c"
+      "contentSha256WithoutTrackingBlock": "92a1371dde11f15d13d46b4d94d35e2178f02f41e0702ada3a3a0bfc01d2c573"
     },
     {
       "path": "README.md",
