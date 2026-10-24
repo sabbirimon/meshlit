@@ -38,7 +38,6 @@ the separate HyperL desktop workbench have independent delivery and test gates.
 The references inform hierarchy, restraint and interaction rather than copied
 brands/assets: [Grok Bot design](https://x.ai/news/designing-grok-bot),
 [Claude desktop workspace](https://claude.com/blog/claude-code-desktop-redesign),
-[ChatGPT appearance controls](https://help.openai.com/en/articles/11958281-updating-your-visual-experience-on-chatgpt),
 and the owner's attached dark, light, card and glass examples.
 
 ## Older build navigation parity

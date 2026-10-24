@@ -197,7 +197,7 @@ communication; no physical NIC, RDMA, hardware timestamp or HFT qualification is
 claimed from same-host HTTP RTT. Mixed devices prioritize stability; compatible
 islands need measured total benefit before turbo activation.
 
-HyperL began on `codex/hyperl-experimental`, based on `77ac214`. The owner merged
+HyperL began on `cdb06b6`, based on `77ac214`. The owner merged
 its CPU/reference/source-emitter source through PR #1 at `851576b`; it remains
 experimental within `core-gpu`. Standalone packaging, app workflows, native runtime
 loaders and hardware/performance qualification remain future work. Open-source/free

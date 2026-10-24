@@ -107,7 +107,7 @@ AGI and superintelligence are future interoperability requirements, not present 
 
 ## Separation and delivery order
 
-The owner merged HyperL experimental source from `codex/hyperl-experimental` into
+The owner merged HyperL experimental source from `cdb06b6` into
 `main` via PR #1 at `851576b`. Keep its CPU/reference and source-emitter boundary
 explicit; native accelerator execution and an app workflow remain unimplemented.
 Next implement native compiler/runtime qualification, then local GPU/NPU backends,

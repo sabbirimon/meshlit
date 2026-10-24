@@ -167,9 +167,8 @@ and repository guide synchronized. Do not claim replicated recovery/IaC from UI.
 
 ## Audit and publication continuation (2026-10-07)
 
-The owner requested Codex contributor credit. For Codex-assisted commits, append
-`Co-authored-by: Codex <noreply@openai.com>`. Preserve the human commit identity
-and published history; README credit does not guarantee GitHub sidebar attribution.
+Preserve the human commit identity and published history. The owner now requests
+project-focused wording in new documentation and branch names.
 
 Read docs/AUDIT_TELEMETRY.md and the latest PROGRESS.md. Opt-in audit metadata,
 JSONL/CSV export and OTLP/HTTP traces/metrics are distinct from vendor SDK telemetry.

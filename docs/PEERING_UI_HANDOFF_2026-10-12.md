@@ -10,9 +10,9 @@ No reminder or scheduled automation was created.
 
 ## Correct project and source boundaries
 
-- Target: `/Users/code/Documents/Codex/meshlit-v2-dev` — both Android and desktop.
+- Target: `/path/to/workspace/meshlit-v2-dev` — both Android and desktop.
 - Reference: `/Users/code/AndroidStudioProjects/mllm` — another agent owns ongoing work there.
-- Earlier repair/test copy: `/Users/code/Documents/Codex/mllm-repair`.
+- Earlier repair/test copy: `/path/to/workspace/mllm-repair`.
 - Local baseline: `e7a07c9`. At the initial pause, changes were uncommitted and no push or release had occurred.
 
 The initial request was misinterpreted: the first repair was applied to the
@@ -73,7 +73,7 @@ Latest command:
   have **not** been validated after these changes.
 - No current physical two-device evidence. Owner selected manual checklist verification.
 
-Log: `/Users/code/Documents/Codex/repair-tools/documents-foundation-checks.log`.
+Log: `/path/to/workspace/repair-tools/documents-foundation-checks.log`.
 Earlier attempts failed on uncached Kotlin plugins, missing SDK configuration and
 new-module JVM metadata; those setup issues were addressed before the interrupted run.
 The 154-test/build result from the earlier Android Studio repair must not be
@@ -110,7 +110,7 @@ checks, platform limitations, licence gates or existing advanced destinations.
 ## GitHub checkpoint requested after pausing
 
 The owner requested a copy on a separate GitHub branch, keeping main unchanged.
-Checkpoint branch: `codex/paused-peering-ui-2026-10-12` in
+Checkpoint branch: `feature/peering-ui-2026-10-12` in
 `sabbirimon/meshlit-v2`. This checkpoint preserves incomplete source and the
 future build plan; it is not a merge, release or successful desktop/app qualification.
 Continue from this branch after the owner resumes work.

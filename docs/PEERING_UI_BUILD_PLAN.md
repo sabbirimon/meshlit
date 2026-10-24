@@ -5,7 +5,7 @@ Scope: Android/shared reference; desktop ports have separate acceptance. Phase l
 <!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-12. Implementation is paused. Target is
-`/Users/code/Documents/Codex/meshlit-v2-dev`; Android Studio `mllm` is a reference
+`/path/to/workspace/meshlit-v2-dev`; Android Studio `mllm` is a reference
 owned by another agent. See [the exact handoff](PEERING_UI_HANDOFF_2026-10-12.md).
 These are acceptance gates for this workstream, not a global project phase or
 completion percentage. Do not start any gate until the owner resumes work.

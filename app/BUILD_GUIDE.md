@@ -870,7 +870,7 @@ Humans are the final gate.
 ### 2.9.7 The 2026 reality check
 
 Almost every AI tool is already part of an agent system. Claude
-Code, ChatGPT, Cursor, LangChain agents, the OpenAI Python SDK,
+Code, Cursor, LangChain agents, the OpenAI Python SDK,
 the Anthropic SDK — all of these can call APIs. **If Meshlit
 exposes a clean OpenAI-compatible API at the gateway, agents will
 use it without us doing anything special.** The "AI uses Meshlit"

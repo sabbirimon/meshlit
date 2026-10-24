@@ -20,7 +20,7 @@
 | 7   | previous session    | feat     | Tag Qwen3-30B as requiring HF auth                          | done   |
 | 8   | previous session    | bug      | Make error popup more visible: highlight key + colored bg   | done   |
 | 9   | this session (a)    | UI/bug   | Fix dropdown / popup text + bg opacity across app            | done   |
-| 10  | this session (b)    | UI/feat  | Redesign Agent screen like DeepSeek / ChatGPT / RunAnywhere | done   |
+| 10  | this session (b)    | UI/feat  | Redesign Agent screen like DeepSeek / modern chat apps / RunAnywhere | done   |
 | 11  | this session (c)    | feat     | Import models from device + URL + HuggingFace                | done   |
 | 12  | this session (d)    | feat     | Import codebases / models / agents / tools from GitHub      | done   |
 | 13  | this session (e)    | feat     | File management (use OSS, don't build from zero)             | done (was already shipped) |
@@ -167,14 +167,14 @@ should enough, no need to full lebel where space is short, on agent
 section redesign whole section like deepseek or chatcpt app syle
 inface model or run anywhere style, also fix ui and color"
 **Why:** User frustrated with current UI density; wants
-RunAnywhere visual language + DeepSeek/ChatGPT chat layout.
+RunAnywhere visual language + DeepSeek-inspired chat layout.
 **Status:** done (Agent empty + toolbar + bubbles); bottom-nav
 bug open
 **Files touched:**
 - `app/src/main/kotlin/com/meshlit/agent/AgentScreen.kt`
   - new `CompactToolbar` (single row of icon-only 36dp chips)
   - new `ModelPickerInline` (replaces the full-width card)
-  - new `SuggestionTile` (ChatGPT 96×108 rounded tile)
+  - new `SuggestionTile` (96×108 rounded suggestion tile)
   - removed `ActiveModelPill` (was duplicating model name)
   - removed `ModelPickerBar` (was duplicating toolbar)
   - removed `ModeBar` (was a stacked horizontal row of long
@@ -277,7 +277,7 @@ DocumentsUI for the actual tree picker.
 improvemnnt folder, plz check and try to match them"
 "folder name interface  ui reference"
 **Why:** User wants the new screens to track the visual language
-of the references (RunAnywhere dark + orange, ChatGPT minimal
+of the references (RunAnywhere dark + orange, minimal
 home, Claude clean white chat, etc).
 **Status:** in-progress (cross-cutting; applied to Agent today,
 Models picker still pending)
@@ -292,10 +292,10 @@ Models picker still pending)
   image attachments + clean input bar at bottom — agent input
   bar already matches
 - `Screenshots/UI suggestion/interface  ui reference/images (14).jpeg`
-  → **applied:** ChatGPT home centered greeting + 4-action grid
+  → **applied:** centered greeting + 4-action grid
   — `EmptyAgent` now mirrors this
 - `Screenshots/UI suggestion/interface  ui reference/a4fc0e1664...`
-  → **applied:** ChatGPT hero — 3D mascot illustration + 2-line
+  → **applied:** hero — 3D mascot illustration + 2-line
   title + 3 rounded action tiles below — matches `EmptyAgent`
 - `Screenshots/runanywhere settings photos for examin/*`
   → dark + orange palette references, used in

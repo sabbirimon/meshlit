@@ -71,7 +71,7 @@
   "currentSourceCheckpoint": {
     "date": "2026-10-24",
     "state": "saved-source; application qualification paused for HyperL-first delivery",
-    "branch": "codex/paused-peering-ui-2026-10-12",
+    "branch": "feature/peering-ui-2026-10-12",
     "review": "https://github.com/sabbirimon/meshlit-v2/pull/4",
     "document": "docs/PAUSED_CHECKPOINT_2026-10-24.md",
     "build45Qualified": false

@@ -8,7 +8,7 @@ Updated 2026-10-10. Source review and release assets have separate states.
 
 ## Intel Studio build 40.1
 
-Application/native packaging source: 12bd20a; source/evidence checkpoint 630cba2 pushed to codex/hyperl-production-library. Draft PR: https://github.com/sabbirimon/meshlit-v2/pull/2.
+Application/native packaging source: 12bd20a; source/evidence checkpoint 630cba2 is included in review commit e7a07c9. Draft PR: https://github.com/sabbirimon/meshlit-v2/pull/2.
 
 Tag: v2.0.0-macos-intel-build40.1. Release ID: 408390281. Current state: **published public prerelease**. All eight names/sizes/uploaded states/GitHub SHA-256 digests match the local files. Release/tag source is c1f2d60ffeff043ef2da210c552ccaf73b65ea8a, with the later documentation and test-fixture correction; Intel application bytes remain from 12bd20a. [Download](https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-macos-intel-build40.1). Structured proof: desktop/evidence/github-studio-release-check.json. The release target was updated while still a draft; no published tag was rewritten.
 

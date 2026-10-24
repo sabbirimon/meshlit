@@ -6,9 +6,9 @@ Scope: Android/shared reference; desktop ports have separate acceptance. Phase l
 
 Source reviewed read-only: `/Users/code/AndroidStudioProjects/mllm`.
 Both checkouts started at `ff0cd771c12f3daa63cb8fe45e1476245ab7b01b`.
-The source has untracked agent instructions, copied Codex deliverables and
+The source has untracked agent instructions, copied deliverables and
 other files; its tracked status was clean when checked. Do not copy the
-`Codes from chatgpt-codex` directory back recursively or overwrite Opus's work.
+older generated-code directory back recursively or overwrite Opus's work.
 
 ## Plans and instructions reviewed
 

@@ -200,9 +200,9 @@ Source and unit evidence: Android V1/V2 debug assemblies, Studio build/tests, Gi
 Current source adds the rotating discovery sweep to Device radar and the Devices pairing page, colored saved/live markers, an opt-in relay member map, live countdown and expiry rotation for six-digit relay join codes, clearer direct/VPN/relay/web entry points, responsive settings shortcuts, tighter typography and smaller Chat action icons. "Mark as preferred" is a saved list preference only: the request router does not consume it. The offline guide and old Android Studio request audit state that limitation. The final rebuilt APK, physical radar animation, join-code expiry, both flavor lints and production signing are separate checks until recorded below.
 
 Updated 2026-10-23. Historical 2026-10-07 validation ran 2026-10-06 UTC. Historical baseline `ff0cd771c12f3daa63cb8fe45e1476245ab7b01b`.
-Current checkout: `/Users/code/Documents/Codex/meshlit-v2-dev`; branch `codex/paused-peering-ui-2026-10-12`.
-Earlier review branch: `codex/hyperl-production-library`; previous publication branch
-`codex/meshlit-ui-pipeline-openclaw`. Owner IMON authorized source publication
+Current checkout: `/path/to/workspace/meshlit-v2-dev`; branch `feature/peering-ui-2026-10-12`.
+Earlier review commit: `e7a07c9`; previous publication commit:
+`baa8bcd`. Owner IMON authorized source publication
 to `sabbirimon/meshlit-v2` on 2026-10-07, followed by GitHub beta APK release assets
 and a separate Play review build. No force push or Play submission is authorized.
 Historical upstream records in `docs/history/` are not current test evidence.
@@ -242,7 +242,7 @@ emulator observations, host runtime proof and physical-phone proof are separate.
 
 ## Peering, wallet and UI continuation — 2026-10-12 (paused)
 
-Owner clarified the target as `/Users/code/Documents/Codex/meshlit-v2-dev`, for both Android and desktop; Android Studio `mllm` remains another agent's reference checkout. Portable security, discovery/settings fixes, Android peering routes and desktop wallet/connection/UI source are in progress and uncommitted. Owner requested a pause and future build plan. See [handoff](docs/PEERING_UI_HANDOFF_2026-10-12.md) and [future acceptance gates](docs/PEERING_UI_BUILD_PLAN.md).
+Owner clarified the target as `/path/to/workspace/meshlit-v2-dev`, for both Android and desktop; Android Studio `mllm` remains another agent's reference checkout. Portable security, discovery/settings fixes, Android peering routes and desktop wallet/connection/UI source are in progress and uncommitted. Owner requested a pause and future build plan. See [handoff](docs/PEERING_UI_HANDOFF_2026-10-12.md) and [future acceptance gates](docs/PEERING_UI_BUILD_PLAN.md).
 
 Current Documents-checkout evidence: core-trust 12 tests and core-discovery 20 tests report zero failures/errors. The combined run was interrupted during desktop Kotlin compilation (exit 130); no current desktop/app/full-lint qualification is claimed. The earlier 154-test Android Studio repair is separate evidence. No push/release or scheduled continuation.
 
@@ -376,7 +376,7 @@ Subsequent owner-authorized **single-phone GPU experiment** passes on Samsung
 Galaxy A20s SM-A207F, Android 11/API 30, Adreno 506 / Vulkan 1.1.128. HyperL's
 separate native ADB-shell runner executes eleven finite-output cases matching
 its CPU reference and two expected overflow rejections; temporary device files
-are removed. [Hardware/build record](https://github.com/sabbirimon/HyperL/blob/codex/production-library/docs/ANDROID_VULKAN.md).
+are removed. [Hardware/build record](https://github.com/sabbirimon/HyperL/blob/67b30e09741f4bba1672a891644fc73abb1f9855/docs/ANDROID_VULKAN.md).
 At that earlier checkpoint no Meshlit APK had been installed/run and no app
 JNI/GPU backend was wired. The subsequent app installations and tests are recorded
 above. Portable source hashes remain unchanged. Sustained lifecycle/thermal and
@@ -470,9 +470,9 @@ Source stays Apache-2.0; third-party notices remain. Repository metadata/topics 
 published. Source is pushed to `sabbirimon/meshlit-v2/main`; destination history
 is preserved as an ancestor. The About line and banners say “Many nodes. One mind.”
 Hosted CI passes at `2e37dcd` (run 37536692867), using the actual
-`android-37.0` SDK package. Codex by OpenAI is credited in README/AUTHORS and new
-commit co-author trailers; GitHub sidebar account association is independently
-controlled by GitHub. Ranking is not guaranteed;
+`android-37.0` SDK package. Historical commit trailers remain in Git history;
+GitHub sidebar account association is independently controlled by GitHub.
+Ranking is not guaranteed;
 no external promotional posts or invented adoption is claimed. Beta release
 assets are published at [https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-beta.1](https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-beta.1) as prerelease **v2.0.0-beta.1**,
 targeting `ad2d3a86f5060ace52c1b46c7a5501253dcc01f7`. All eight uploaded assets have matching GitHub SHA-256 digests:
@@ -810,7 +810,7 @@ Meshlit is intended as dynamic AI software across hosts/environments; phones are
 client. Current Android APKs remain Android applications. Hardware/OS installers,
 privileged backends, GPU/NPU/FPGA execution and native transport integration require
 actual implementation and qualification. HyperL originally lived on
-`codex/hyperl-experimental` based on `77ac214`. The owner merged its experimental
+`cdb06b6` based on `77ac214`. The owner merged its experimental
 source into `main` through PR #1 at `851576b`. The earlier `cecd2d9` APKs predate
 that merge; subsequent merged-source artifacts include the CPU library in
 `core-gpu`, without an app workflow or native accelerator loader.
@@ -852,7 +852,7 @@ Final check logs: `continuation-current-final-build2.log` (combined pre-fix sour
 and `federated-protocol-final-build2.log` (final affected source). Failed/interrupted
 attempts remain in the local work directory and are not success evidence. Final
 source did not change after validation except documentation. The separate HyperL
-branch `cdb06b6` passed 27 core-gpu checks, including actual host Clang execution;
+source commit `cdb06b6` passed 27 core-gpu checks, including actual host Clang execution;
 that pre-merge validation does not qualify GPU/NPU/RISC-V/kernel hardware. The
 owner subsequently merged its source into `main` through PR #1 at `851576b`.
 
@@ -966,7 +966,7 @@ keys, model assets or earlier retained fallback installers were deleted.
 
 ## Paused source backup — 2026-10-12
 
-Owner authorized a GitHub checkpoint on `codex/paused-peering-ui-2026-10-12`, separate from main. This saves the incomplete Android/desktop continuation and future build plan; it does not qualify or release the current changes. See docs/PEERING_UI_HANDOFF_2026-10-12.md.
+Owner authorized a GitHub checkpoint on `feature/peering-ui-2026-10-12`, separate from main. This saves the incomplete Android/desktop continuation and future build plan; it does not qualify or release the current changes. See docs/PEERING_UI_HANDOFF_2026-10-12.md.
 
 ## Android device inventory and pairing — 2026-10-23
 

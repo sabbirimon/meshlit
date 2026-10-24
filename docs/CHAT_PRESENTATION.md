@@ -4,7 +4,7 @@ Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Requested 2026-10-08. The owner's Claude/ChatGPT/Gemini screenshots are visual
+Requested 2026-10-08. The owner's reference screenshots are visual
 references from another phone, not Meshlit runtime or provider-account evidence.
 The connected Samsung's earlier screen showed joined numbered sections, a large
 bottom navigation strip and crowded composer controls.

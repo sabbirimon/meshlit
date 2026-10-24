@@ -73,7 +73,7 @@ in their own logical phase commit. None are committed yet.
   — new `CompactToolbar`, `ModelPickerInline`, `SuggestionTile`,
     `ModeIconChip`, `IconToggleButton`; removed `ModelPickerBar`,
     `ModeBar`, `ActiveModelPill`; flat chat canvas; capped token-
-    count text; ChatGPT-style empty state
+    count text; chat-style empty state
 - `app/src/main/res/values/strings.xml` — added `ra_summarize`
 **Verification:**
 - `./gradlew :app:assembleDebug` ✅
@@ -199,7 +199,7 @@ git commit -m "fix(ui): opaque dropdowns, horizontal LITE badge, no-wrap chips"
 
 git add app/src/main/kotlin/com/meshlit/agent/AgentScreen.kt
 git add app/src/main/res/values/strings.xml
-git commit -m "feat(agent): icon-only toolbar + ChatGPT-style empty state"
+git commit -m "feat(agent): icon-only toolbar + chat-style empty state"
 
 git add app/src/main/kotlin/com/meshlit/ui/screens/settings/ImportModelCard.kt
 git add app/src/main/kotlin/com/meshlit/models/ModelCatalog.kt

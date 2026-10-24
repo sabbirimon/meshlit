@@ -222,7 +222,7 @@
     {
       "id": "app-integrations",
       "area": "App and developer integrations",
-      "requested": "Claude Code, Codex CLI, OpenClaw, Cline, Hermes, IDE clients and third-party plugin connectors",
+      "requested": "Claude Code, AI coding CLIs, OpenClaw, Cline, Hermes, IDE clients and third-party plugin connectors",
       "status": "Planned",
       "boundary": "Interoperability via configured provider/MCP adapters; naming an app does not imply installed/integrated support.",
       "source": "docs/DESKTOP_STUDIO_PLAN.md"

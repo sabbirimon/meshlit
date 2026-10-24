@@ -10,7 +10,7 @@ to save and push Meshlit progress and documentation. This checkpoint does not
 resume voice work, build an APK, install an app or publish a release.
 
 - Repository: `sabbirimon/meshlit-v2`.
-- Branch: `codex/paused-peering-ui-2026-10-12`; existing [PR #4](https://github.com/sabbirimon/meshlit-v2/pull/4) targets `dev`.
+- Branch: `feature/peering-ui-2026-10-12`; existing the review branch targets `dev`.
 - Previous committed baseline: `05acb04` (build44 source). Build45 is the pending source version; its final validation is incomplete.
 - Standalone [HyperL](https://github.com/sabbirimon/HyperL) continues separately. Its new compute, quantum and Android probe work is not silently imported into Meshlit or counted as Meshlit device evidence.
 
