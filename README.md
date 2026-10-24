@@ -55,6 +55,21 @@ net environmental saving. Power use, battery health, repair, workload efficiency
 and device lifetime all matter. Hardware testers can help measure those factors
 alongside performance, so this goal has evidence behind it.
 
+### Where this could lead
+
+- **Personal and learning tools:** better local models, speech and accessible
+  interfaces could help people study, write and organize work on the devices
+  they already have.
+- **Cooperative devices:** approved phones, desktops and small edge nodes could
+  share suitable tasks while keeping identity, permissions and failure visible.
+  Physical phone model sharding and durable recovery still need proof.
+- **Responsible fleets:** organizations could test private model management,
+  audit and bounded agent workflows across varied hardware. Fleet governance,
+  support and production qualification are open work.
+
+The [roadmap](BUILD_MILESTONES.md) and [evidence record](PROGRESS.md) distinguish
+these directions from features already measured on devices.
+
 <p>
 <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache_2.0-36b5bc?style=flat-square"></a>
 <img alt="Android 7 and later" src="https://img.shields.io/badge/Android-7%2B-62bf86?style=flat-square">
