@@ -8,6 +8,8 @@ Meshlit's priority is verifiable local inference and genuine phone layer executi
 Good contributions include reproducible Android/model reports, native worker and
 recovery contracts, accessibility improvements and real owner-controlled adapter
 checks. Read AGENTS.md, AGENT_BUILD.md, PROGRESS.md and BUILD_MILESTONES.md first.
+Setup questions, feature ideas and usability feedback are also welcome. Describe
+the device or use case and the behavior you expected; code is not required.
 
 ## Help test on real hardware
 
