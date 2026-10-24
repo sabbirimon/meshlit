@@ -141,8 +141,8 @@
       "path": "README.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
-      "title": "Meshlit v2 \u2014 adaptive AI workspace and experimental distributed compute",
-      "contentSha256WithoutTrackingBlock": "202414a2a16c57e36946a571b155fcf99c2b0a065a26c6477404d971bcd86f5a"
+      "title": "Meshlit \u2014 local AI agents, on-device models and experimental distributed inference",
+      "contentSha256WithoutTrackingBlock": "f7388462875a3be84d533d4b3d2d7385ed8487dc9edaf3cd560d3e70e26632cf"
     },
     {
       "path": "REQUESTS.md",
@@ -590,7 +590,7 @@
       "class": "protected",
       "scope": "licence, attribution or versioned agreement",
       "title": "docs/PRIVACY_POLICY.md",
-      "contentSha256WithoutTrackingBlock": "e09713a651198c196d20f934a423d54b6bbd8e8b4fd37160ba7633712d7e91b4"
+      "contentSha256WithoutTrackingBlock": "d4fca4e8be862d05bebd9d2eb8276ac858906e5de5a801f5c8f8147a7a6deee4"
     },
     {
       "path": "docs/REDESIGN_PLAN_2026-10-23.md",
@@ -653,7 +653,7 @@
       "class": "protected",
       "scope": "licence, attribution or versioned agreement",
       "title": "docs/TERMS_OF_USE.md",
-      "contentSha256WithoutTrackingBlock": "3129d80d8d3c17a25c53f4723e894ea3d438cac5ff2aba258df2a4fdd7a8ce1c"
+      "contentSha256WithoutTrackingBlock": "e35019b9dcaeb9aa0f2f681c4e07373fe66db40d8ca4d06f17721d7a558ba24c"
     },
     {
       "path": "docs/UI_AUDIT.md",

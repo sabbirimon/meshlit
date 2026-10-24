@@ -33,7 +33,7 @@ object ImonIpGeoLookup {
             connection.readTimeout = 5_000
             connection.instanceFollowRedirects = false
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("User-Agent", "MeshlitAndroid/2.0 (+https://github.com/sabbirimon/meshlit-v2)")
+            connection.setRequestProperty("User-Agent", "MeshlitAndroid/2.0 (+https://github.com/sabbirimon/meshlit)")
             require(connection.responseCode == 200) { "IMON lookup returned HTTP ${connection.responseCode}." }
             val body = StringBuilder()
             connection.inputStream.bufferedReader().use { reader ->

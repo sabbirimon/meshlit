@@ -11,7 +11,7 @@ cdb06b654e837604094c1ea9ac269d0f22c88e3b, owner-merged into Meshlit main at
 851576bdd0c9daaea71f32f5daac8720671c6453.
 The four foundation files/tests retain hyperl/1 CPU semantics with a new
 org.hyperl namespace; standalone targets/tooling extend those interfaces.
-Meshlit: https://github.com/sabbirimon/meshlit-v2
+Meshlit: https://github.com/sabbirimon/meshlit
 
 Runtime distribution dependencies:
 Kotlin standard library 2.4.10 — Apache-2.0, JetBrains and contributors.

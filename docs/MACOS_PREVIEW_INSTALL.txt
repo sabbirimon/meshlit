@@ -55,7 +55,7 @@ the installers on the same GitHub release. The Java GPL/Classpath exception does
 not change Meshlit's own Apache-2.0 application licence. Other Android-only
 components listed by repository-wide notices are not bundled in this client.
 
-Source: https://github.com/sabbirimon/meshlit-v2
+Source: https://github.com/sabbirimon/meshlit
 Contact: sabbirimon@gmail.com
 
 Management groups settings by type. Global search covers settings, current chat,

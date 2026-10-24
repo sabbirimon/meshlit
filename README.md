@@ -4,16 +4,25 @@
 <img src="docs/assets/meshlit-v2-hero.svg" alt="Meshlit by IMON — Android local AI, agent tools and experimental phone LLM clusters" width="100%">
 </picture></p>
 
-# Meshlit v2 — adaptive AI workspace and experimental distributed compute
+# Meshlit — local AI agents, on-device models and experimental distributed inference
 <!-- meshlit-document-tracking:start -->
 Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-**Current checkpoint (2026-10-24):** [saved source, pending validation and resumption guide](docs/PAUSED_CHECKPOINT_2026-10-24.md). Meshlit application work remains paused while HyperL ships; build45 is not a qualified release.
+**Current checkpoint (2026-10-24):** [saved source, pending validation and resumption guide](docs/PAUSED_CHECKPOINT_2026-10-24.md). Build45 is not a qualified release; use the published beta assets for existing test builds.
 
 
-**Many nodes. One mind.** AI runtime, agent gateway and distributed-compute research.
+**Many nodes. One mind.** Meshlit brings local AI chat, owner-controlled AI agents,
+GGUF model management and explicit device pairing to Android. Its Kotlin and
+Jetpack Compose app uses RunAnywhere and llama.cpp; an experimental Intel Mac
+Studio preview and optional host companions extend the workspace. Agent tools,
+MCP connections, offline model use and federated inference are documented with
+their current validation limits below.
+
+This repository is the home for current Meshlit source and beta releases. The
+earlier `meshlit-v2` repository remains available for its original pull requests
+and release provenance.
 Installable applications: Android and an Experimental Intel Mac desktop preview. Optional source companions: operator-owned hosts.
 
 **A project by IMON** · [@sabbirimon](https://github.com/sabbirimon)
@@ -34,9 +43,9 @@ areas; unsupported platforms and accelerators are not advertised as ready.
 <img alt="Kotlin and Jetpack Compose" src="https://img.shields.io/badge/UI-Kotlin_%2B_Compose-9186f2?style=flat-square">
 <img alt="GGUF model runtime" src="https://img.shields.io/badge/Models-GGUF_%2F_llama.cpp-54a9ec?style=flat-square">
 <img alt="Experimental development build" src="https://img.shields.io/badge/Status-Experimental-e5ab54?style=flat-square">
-<a href="https://github.com/sabbirimon/meshlit-v2/actions/workflows/ci.yml"><img alt="Live CI status" src="https://github.com/sabbirimon/meshlit-v2/actions/workflows/ci.yml/badge.svg"></a>
-<a href="https://github.com/sabbirimon/meshlit-v2/stargazers"><img alt="Live GitHub stars" src="https://img.shields.io/github/stars/sabbirimon/meshlit-v2?style=flat-square&color=71c9dd"></a>
-<a href="https://github.com/sabbirimon/meshlit-v2/commits/main"><img alt="Last source commit" src="https://img.shields.io/github/last-commit/sabbirimon/meshlit-v2?style=flat-square&color=ae95ef"></a>
+<a href="https://github.com/sabbirimon/meshlit/actions/workflows/ci.yml"><img alt="Live CI status" src="https://github.com/sabbirimon/meshlit/actions/workflows/ci.yml/badge.svg"></a>
+<a href="https://github.com/sabbirimon/meshlit/stargazers"><img alt="Live GitHub stars" src="https://img.shields.io/github/stars/sabbirimon/meshlit?style=flat-square&color=71c9dd"></a>
+<a href="https://github.com/sabbirimon/meshlit/commits/main"><img alt="Last source commit" src="https://img.shields.io/github/last-commit/sabbirimon/meshlit?style=flat-square&color=ae95ef"></a>
 </p>
 
 [Start building](#build-and-run) · [App guide](docs/USER_GUIDE.md) ·
@@ -138,8 +147,8 @@ OS and available backends. Tool versions are pinned in
 [libs.versions.toml](gradle/libs.versions.toml); do not downgrade them to match old guides.
 
 ```sh
-git clone https://github.com/sabbirimon/meshlit-v2.git
-cd meshlit-v2
+git clone https://github.com/sabbirimon/meshlit.git
+cd meshlit
 # Configure JAVA_HOME and ANDROID_HOME for your installed JDK/SDK.
 sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
 python3 scripts/prepare-bundled-model.py
@@ -231,7 +240,7 @@ human-controlled. Crawling respects access controls and robots restrictions.
 Useful contributions include reproducible device/model reports, backend failure
 contracts, UI accessibility fixes, actual paired-host tests and clear documentation.
 Start with [CONTRIBUTING.md](CONTRIBUTING.md), [build handoff](AGENT_BUILD.md) and
-[open issues](https://github.com/sabbirimon/meshlit-v2/issues). Include evidence,
+[open issues](https://github.com/sabbirimon/meshlit/issues). Include evidence,
 avoid secrets, and label proposed versus measured capability.
 
 ## For AI coding agents and evaluators
@@ -274,13 +283,15 @@ licenses are recorded in [sources.lock.json](vendored/sources.lock.json).
 Stryker supplied product inspiration; GPL source/assets were not copied into this
 Apache-2.0 implementation. No upstream project endorsement is implied.
 
-Searchable project scope: **Android local LLM**, **GGUF model management**,
-**on-device AI**, **experimental phone layer sharding**, **edge AI clusters**,
-**agent tools**, **OpenTelemetry auditing** and **human-controlled automation**.
+Project areas include Android local LLM chat, private and offline AI, GGUF model
+management, AI agent tools, MCP connections, on-device inference, paired-device
+workflows, experimental distributed inference, voice, and opt-in OpenTelemetry
+auditing. Hardware support and live cluster execution depend on the evidence
+and limits listed above.
 
 ## Beta downloads, agreements and store preparation
 
-[GitHub beta releases](https://github.com/sabbirimon/meshlit-v2/releases) carry
+[GitHub beta releases](https://github.com/sabbirimon/meshlit/releases) carry
 separate ARM64 phone and x86_64 emulator APKs, checksums and testing notes. They
 are debug-signed experimental builds. The optional Play review APK/AAB narrows
 sensitive capabilities and is **not approved or ready for store submission**.

@@ -1,6 +1,6 @@
 MESHLIT — TERMS OF USE
 Version 2026-10-09.2 · Effective 9 October 2026
-Maintainer: IMON · Project: https://github.com/sabbirimon/meshlit-v2
+Maintainer: IMON · Project: https://github.com/sabbirimon/meshlit
 
 1. The software and this agreement
 Meshlit is Android software for local AI, model management, tools and cooperative devices. Experimental and Core Candidate packages have separate app data and agreement records. Core Candidate is not a production qualification or a separate minimal binary. Before first use, you must explicitly accept these Terms and the Privacy policy. Updated document versions require acceptance again. You may decline and exit without starting the app's background bootstrap. Acceptance is recorded on this installation; it does not enable optional permissions or telemetry.
@@ -28,6 +28,6 @@ Read the Privacy policy for local storage, optional sharing, credentials, diagno
 Optional online models, cloud vendors, SMS, mobile data and power may incur charges under your own accounts. Estimates and catalogs are not invoices. No throughput, model quality, search ranking, compatibility, continuous availability or recovery guarantee is made. The maintainer may change or discontinue features; offline source remains subject to its license. Review release notes and back up important user files independently.
 
 8. Stop using the app and contact
-You may stop using or uninstall Meshlit. Revoke external tokens, cloud resources, SSH grants and paired devices separately; uninstalling the app does not revoke an external account or delete remote data. For project support, non-sensitive privacy questions or a request for a private contact channel, use https://github.com/sabbirimon/meshlit-v2/issues. Do not put personal data or credentials in a public issue. A dedicated private support/privacy contact must be configured before public store submission.
+You may stop using or uninstall Meshlit. Revoke external tokens, cloud resources, SSH grants and paired devices separately; uninstalling the app does not revoke an external account or delete remote data. For project support, non-sensitive privacy questions or a request for a private contact channel, use https://github.com/sabbirimon/meshlit/issues. Do not put personal data or credentials in a public issue. A dedicated private support/privacy contact must be configured before public store submission.
 
 Optional P2P, cryptography and GibberLink: Only pair with intended, authorized peers and protect shared pairing keys. Incoming peer/audio data is untrusted and does not grant execution permission. Receivers control each command scope. Direct Internet connectivity depends on NAT/firewall conditions; no universal reachability, remote cancellation, certified cryptography or distributed-model performance is promised. GibberLink audio is publicly decodable nearby. Cryptographic utility keys must be securely generated, exchanged and retained by you; losing a key can make ciphertext unrecoverable. These tools do not replace device security or professional security review.

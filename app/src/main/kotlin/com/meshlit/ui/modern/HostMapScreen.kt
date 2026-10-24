@@ -212,7 +212,7 @@ private data class SelfMapFocus(val latitude:Double,val longitude:Double,val req
             settings.allowContentAccess=false
             settings.domStorageEnabled=false
             settings.setSupportZoom(false)
-            settings.userAgentString="MeshlitAndroid/2.0 (+https://github.com/sabbirimon/meshlit-v2) ${settings.userAgentString}"
+            settings.userAgentString="MeshlitAndroid/2.0 (+https://github.com/sabbirimon/meshlit) ${settings.userAgentString}"
             webViewClient=object:WebViewClient() {
                 override fun onPageFinished(view:WebView?,url:String?) {
                     super.onPageFinished(view,url)
