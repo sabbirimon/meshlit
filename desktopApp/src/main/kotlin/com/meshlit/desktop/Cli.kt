@@ -1,11 +1,30 @@
 package com.meshlit.desktop
 import com.meshlit.workspace.*
+import kotlinx.serialization.json.*
 
 fun main(args: Array<String>) = runCli(args)
 
 internal fun runCli(args: Array<String>) {
+    if (args.contentEquals(arrayOf("--status"))) {
+        val nodes = runCatching { NodeStore().load() }
+        println(buildJsonObject {
+            put("edition", "desktop-host-client")
+            put("localOs", System.getProperty("os.name"))
+            put("architecture", System.getProperty("os.arch"))
+            put("logicalProcessors", Runtime.getRuntime().availableProcessors())
+            val count = nodes.getOrNull()?.size
+            if (count == null) put("savedEndpointCount", JsonNull) else put("savedEndpointCount", count)
+            put("savedEndpointReadError", nodes.isFailure)
+            put("remoteOnlineStatus", "unknown")
+            put("workerEnrollment", false)
+            put("layerSharding", false)
+            put("clusterControl", false)
+            put("containerRuntime", false)
+        })
+        return
+    }
     if (args.isEmpty() || args[0] == "--help") {
-        println("Meshlit experimental host client\nUsage: cli <https://host/v1> models\n       cli <https://host/v1> chat <model-id> [max-output-tokens]\nToken: MESHLIT_CLIENT_TOKEN environment variable. Prompt: stdin (max 128 KiB).\nHTTP is allowed only on literal loopback. Packaged Intel Mac local model check: MeshlitPreview --local-check <output.json>.")
+        println("Meshlit experimental host client\nUsage: cli --status\n       cli <https://host/v1> models\n       cli <https://host/v1> chat <model-id> [max-output-tokens]\nToken: MESHLIT_CLIENT_TOKEN environment variable. Prompt: stdin (max 128 KiB).\nHTTP is allowed only on literal loopback. Packaged Intel Mac local model check: MeshlitPreview --local-check <output.json>.")
         return
     }
     try {

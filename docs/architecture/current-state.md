@@ -1,10 +1,10 @@
 # Current architecture and evidence boundaries
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-07. Working branch `codex/meshlit-ui-pipeline-openclaw`, baseline
+Updated 2026-10-07. Source commit `baa8bcd`, baseline
 `ff0cd771c12f3daa63cb8fe45e1476245ab7b01b`. The upstream architecture text is
 preserved at `../history/current-state-upstream-baseline.md`; its phase, module,
 model, SSH and native-support assertions are historical.

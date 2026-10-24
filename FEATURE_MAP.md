@@ -1,10 +1,10 @@
 # Meshlit structured feature and architecture map
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-09. This is the map of the separate Codex implementation, not the
+Updated 2026-10-09. This is the map of the separate Meshlit implementation, not the
 old Android checkout. `PROGRESS.md` records evidence; `PLAN.md` records unfinished
 acceptance. Machine-readable companion: `docs/feature-map.json`.
 

@@ -18,6 +18,7 @@ datastore = "1.1.1"
 okhttp = "5.3.2"
 nanohttpd = "2.3.1"
 zxing = "3.5.3"
+easyQrScan = "0.4.0"
 
 # Security — Android Keystore-backed EncryptedSharedPreferences
 # for cloud-provider tokens. Pulled in by core-trust +
@@ -155,6 +156,7 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 nanohttpd-core = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+easyqrscan-scanner = { group = "io.github.kalinjul.easyqrscan", name = "scanner", version.ref = "easyQrScan" }
 
 # Security — Android Keystore-backed EncryptedSharedPreferences
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }

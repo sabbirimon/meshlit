@@ -144,6 +144,7 @@
       "status": "host-proof",
       "sources": [
         "app/src/main/kotlin/com/meshlit/pipeline/PipelineHost.kt",
+        "app/src/main/kotlin/com/meshlit/pipeline/WorkerAssessment.kt",
         "core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/RpcPipelineEngine.kt",
         "scripts/prove-layer-rpc.py"
       ],
@@ -157,6 +158,7 @@
       "status": "implemented",
       "sources": [
         "app/src/main/kotlin/com/meshlit/pipeline/LayerPairingQr.kt",
+        "app/src/main/kotlin/com/meshlit/pipeline/PipelineMcpTools.kt",
         "app/src/main/kotlin/com/meshlit/devices/QrScanner.kt"
       ],
       "authority": [
@@ -1149,6 +1151,7 @@
     "core-net",
     "core-observability",
     "core-orchestration",
+    "core-peer-security",
     "core-probe",
     "core-registry",
     "core-role",

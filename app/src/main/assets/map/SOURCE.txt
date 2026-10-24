@@ -1,0 +1,4 @@
+Leaflet 1.9.4: https://leafletjs.com/download/ (BSD-2-Clause; see LEAFLET_LICENSE.txt)
+Natural Earth 1:110m land, version 4.0.0: https://www.naturalearthdata.com/downloads/110m-physical-vectors/
+Downloaded from https://naturalearth.s3.amazonaws.com/110m_physical/ne_110m_land.zip and converted from its shapefile to GeoJSON using pyshp. Natural Earth data is public domain: https://www.naturalearthdata.com/about/terms-of-use/
+The app loads these map assets offline. It makes no map tile requests. Host coordinates are shown only when supplied to this view by Meshlit's consented relay/member state.

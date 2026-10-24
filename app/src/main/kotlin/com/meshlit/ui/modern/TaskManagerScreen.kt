@@ -25,7 +25,7 @@ import java.util.Date
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun TaskManagerScreen(onBack:()->Unit){
+@Composable fun TaskManagerScreen(onBack:()->Unit,onOperations:(()->Unit)?=null){
     val backend=koinInject<AgentBackend>();val board=backend.taskBoard;val scope=rememberCoroutineScope()
     val tasks by board.tasks.collectAsStateWithLifecycle()
     val humanJobs by backend.humanController.jobs.collectAsStateWithLifecycle()
@@ -48,7 +48,8 @@ import java.util.UUID
             item{Text(if(page==0) "${tasks.count{it.phase !in setOf(TaskPhase.DONE,TaskPhase.CANCELLED)}} open · ${tasks.count{it.phase==TaskPhase.DONE}} done · ${tasks.size}/200 records"
                 else "${jobs.count{!it.second.terminal}} active · ${jobs.size} recorded operations",style=MaterialTheme.typography.titleMedium)
                 Text(if(page==0) "Planning records you control. Marking Done does not claim that a model or agent executed the task."
-                else "Real model and agent jobs. Stop cancels work; completed actions are not undone.",style=MaterialTheme.typography.bodySmall)}
+                else "Real model and agent jobs. Stop requests cancellation; completed actions are not undone. Pause/resume is unavailable for these jobs; retry is a new attempt.",style=MaterialTheme.typography.bodySmall)
+                if(page==1 && onOperations!=null) OutlinedButton(onClick=onOperations){Text("Whole-app emergency stop")}}
             item{OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),singleLine=true,label={Text(if(page==0) "Search title, notes or tags" else "Search operation, ID or error")},leadingIcon={Icon(Icons.Default.Search,null)})}
             error?.let{item{ErrorCard(it){error=null}}}
             if(page==0){

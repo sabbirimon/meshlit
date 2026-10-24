@@ -1,6 +1,6 @@
 # Meshlit shared workspace redesign
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -38,7 +38,6 @@ the separate HyperL desktop workbench have independent delivery and test gates.
 The references inform hierarchy, restraint and interaction rather than copied
 brands/assets: [Grok Bot design](https://x.ai/news/designing-grok-bot),
 [Claude desktop workspace](https://claude.com/blog/claude-code-desktop-redesign),
-[ChatGPT appearance controls](https://help.openai.com/en/articles/11958281-updating-your-visual-experience-on-chatgpt),
 and the owner's attached dark, light, card and glass examples.
 
 ## Older build navigation parity

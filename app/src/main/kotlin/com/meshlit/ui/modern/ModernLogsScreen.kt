@@ -19,11 +19,11 @@ import com.meshlit.ui.theme.ChatTokens as T
 import kotlinx.coroutines.*
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun ModernLogsScreen(onBack:()->Unit) {
+@Composable fun ModernLogsScreen(onBack:()->Unit,initialSource:LogSource?=null,title:String="Logs and export") {
     val buffer=koinInject<LogBuffer>();val entries by buffer.entries.collectAsStateWithLifecycle()
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf("")};var level by remember{mutableStateOf(LogBuffer.Level.INFO)}
-    var source by remember{mutableStateOf<LogSource?>(null)};var export by remember{mutableStateOf<Pair<LogExporter.Format,List<LogBuffer.Entry>>?>(null)}
+    var source by remember(initialSource){mutableStateOf(initialSource)};var export by remember{mutableStateOf<Pair<LogExporter.Format,List<LogBuffer.Entry>>?>(null)}
     var result by remember{mutableStateOf<String?>(null)}
     var clearConfirm by remember{mutableStateOf(false)}
     if(clearConfirm) AlertDialog(onDismissRequest={clearConfirm=false},title={Text("Clear local log buffer?")},text={Text("This clears the in-memory buffer. Existing exports and Android logcat remain. Export useful diagnostics first.")},confirmButton={TextButton(onClick={buffer.clear();clearConfirm=false}){Text("Clear")}},dismissButton={TextButton(onClick={clearConfirm=false}){Text("Cancel")}})
@@ -37,7 +37,7 @@ import kotlinx.coroutines.*
     }
     val txt=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain"),::save)
     val json=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-ndjson"),::save)
-    Scaffold(topBar={TopAppBar(title={Text("Logs and export")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
+    Scaffold(topBar={TopAppBar(title={Text(title)},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.small)){
             item{OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),label={Text("Search tag or message")},singleLine=true)}
             item{FlowRow(horizontalArrangement=Arrangement.spacedBy(T.small)){LogBuffer.Level.entries.forEach{value ->

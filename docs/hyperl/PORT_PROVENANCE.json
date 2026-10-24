@@ -1,7 +1,7 @@
 {
   "format": "hyperl-port-provenance/1",
   "upstream": "https://github.com/sabbirimon/HyperL",
-  "branch": "codex/production-library",
+  "sourceCommit": "67b30e09741f4bba1672a891644fc73abb1f9855",
   "applicationVersion": "0.1.0-alpha.5",
   "license": "Apache-2.0",
   "normalization": "Replace the package declaration only: com.meshlit.core.gpu -> org.hyperl",

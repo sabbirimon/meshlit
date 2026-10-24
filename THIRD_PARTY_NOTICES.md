@@ -41,3 +41,7 @@ remote images are not executed or automatically fetched.
 ### Apache MINA SSHD 2.20.0
 
 `core-ssh` uses sshd-core and sshd-common for the optional API 26+ embedded SSH node transport. Copyright The Apache Software Foundation; Apache License 2.0. Upstream: https://github.com/apache/mina-sshd. Licence and NOTICE copies are retained in app assets under `node-ssh`. This dependency does not certify Android or guest-runtime support.
+
+### Offline host map
+
+The Android host map bundles unmodified Leaflet 1.9.4 JavaScript/CSS, BSD-2-Clause, copyright Volodymyr Agafonkin and contributors. Its licence is in `app/src/main/assets/map/LEAFLET_LICENSE.txt`. Land geometry comes from Natural Earth 1:110m land version 4.0.0, public domain, converted from the published shapefile to GeoJSON. Source URLs and processing are recorded in `app/src/main/assets/map/SOURCE.txt`. The offline layer makes no network requests. When the owner enables the optional street layer, tiles load from OpenStreetMap with visible contributor attribution and Meshlit's identifying user agent.

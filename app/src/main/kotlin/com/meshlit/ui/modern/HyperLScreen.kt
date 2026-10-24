@@ -52,7 +52,8 @@ import java.io.File
         if(!enabled || !idle)return
         val job=scope.launch(start=CoroutineStart.LAZY) {
             output="Running…"
-            try{output=work()}catch(e:CancellationException){output="Stopped. Check the dataset list for a completed operation; an interrupted document export may need removal.";throw e}
+            try{output=work()}catch(e:TimeoutCancellationException){output="Time limit reached. No completed measurement is reported; check dataset state before retrying."}
+            catch(e:CancellationException){output="Stopped. Check the dataset list for a completed operation; an interrupted document export may need removal.";throw e}
             catch(e:Exception){output="Failed: ${e.message.orEmpty().take(1024)}"}
             finally{running=null}
         };running=job;job.start()
@@ -87,11 +88,15 @@ import java.io.File
             item{OutlinedTextField(inputs,{if(it.length<=65536)inputs=it},Modifier.fillMaxWidth().testTag("hyperl-inputs"),label={Text("Input vectors JSON")},minLines=3,maxLines=8,enabled=idle)}
             item{OutlinedTextField(budget,{if(it.length<=4)budget=it},modifier=Modifier.testTag("hyperl-budget"),label={Text("Array budget · MiB (1–1024)")},singleLine=true,enabled=idle)}
             item{FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                OutlinedButton(enabled=allowed,onClick={start{withContext(Dispatchers.Default){val p=controller.plan(program,inputs,budget.toLong()*1024*1024);"Valid graph · estimated ${p.estimatedBytes} bytes · available ${p.headroomBytes} · admitted ${p.admitted}. Native JNI snapshots receive a further admission check."}}}){Text("Validate")}
+                OutlinedButton(enabled=allowed,onClick={start{withContext(Dispatchers.Default){val p=controller.plan(program,inputs,budget.toLong()*1024*1024,choice);"${choice.name} · valid graph · estimated ${p.estimatedBytes} bytes · available ${p.headroomBytes} · admitted ${p.admitted}. Native mode includes JNI snapshots; admission is checked again before execution."}}}){Text("Validate")}
                 Button(enabled=allowed,onClick={start{val r=controller.execute(program,inputs,budget.toLong()*1024*1024,choice)
                     "${r.backend} · ${r.values.size} outputs · ${"%.3f".format(r.wallMs)} ms total\n"+HyperLCodec.json.encodeToString(r.values.take(256))+if(r.values.size>256)"\nPreview limited to 256 values" else ""
                 }}){Text("Run CPU")}
                 OutlinedButton(enabled=!idle,onClick={running?.cancel()}){Text("Stop")}
+                OutlinedButton(enabled=allowed,onClick={start{
+                    val r=controller.benchmark(program,inputs,budget.toLong()*1024*1024,choice)
+                    "${r.backend} · 1 warm-up + ${r.samplesMs.size} measured runs\nMedian ${"%.3f".format(r.medianMs)} ms · p95 ${"%.3f".format(r.p95Ms)} ms\nSamples: ${r.samplesMs.joinToString{ "%.3f".format(it) }} ms\n${r.outputCount} outputs · repeated output hashes match\nOutput SHA-256 ${r.outputSha256}\nGraph SHA-256 ${r.graphSha256}\n${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.SDK_INT} · ${Build.SUPPORTED_ABIS.firstOrNull()}\nExecution includes admission/JNI copies; editor parsing and output hashing are outside samples. Small-run p95 is the slowest sample, not a sustained-throughput benchmark."
+                }}){Text("Measure CPU")}
                 OutlinedButton(enabled=allowed,onClick={start{"precise-sum/1 · ${choice.name}\n${controller.precise(inputs,budget.toLong()*1024*1024,choice)}"}},modifier=Modifier.testTag("hyperl-precise")){Text("Precise sum")}
             };Text("Precise sum uses one input vector and compensated double accumulation. Normal graph sums keep their original ordered float semantics.",style=MaterialTheme.typography.bodySmall)}
             item{Text("2 · Source export",style=MaterialTheme.typography.titleLarge)

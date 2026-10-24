@@ -1,6 +1,6 @@
 # HyperL alpha.6 in Meshlit
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -79,3 +79,9 @@ This UI does not register a new agent/MCP tool or change the local chat engine.
 The new Android build and tests do not imply full neural networks, NPU/CUDA/ROCm,
 transparent KV migration or automatic cluster healing. See the supplied-paper
 [review](../architecture/EVALUATION_REVIEW_2026_10_09.md) for measured follow-up gates.
+
+## Measurement and admission continuation — 2026-10-24
+
+Current source adds **Measure CPU** beside Run CPU. It executes the chosen real backend once to warm up, then five times under the same ten-second deadline, one-operation capacity and emergency-stop gate. It reports measured samples, median and p95, output count, graph/output SHA-256 and device/ABI. Every repeated output hash must match. With five samples p95 is the slowest sample; it is not a long-running percentile or cross-device benchmark. Parsing and hashing are outside the measured samples; runtime admission and JNI copies remain included. No automatic backend switch or GPU/NPU speed claim is made.
+
+Validate now includes JNI input/output snapshots when Native C99 is selected, matching the additional execution admission check. Estimates still do not reserve memory. App reference/admission tests passed in the first continuation run; final build and actual Android native measurement remain pending. See ../../PROGRESS.md for the evolving validation record. Imported HyperL module bytes and separate licence terms are unchanged by these app-wrapper edits.

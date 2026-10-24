@@ -6,16 +6,19 @@
 
 # Meshlit v2 — adaptive AI workspace and experimental distributed compute
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+**Current checkpoint (2026-10-24):** [saved source, pending validation and resumption guide](docs/PAUSED_CHECKPOINT_2026-10-24.md). Meshlit application work remains paused while HyperL ships; build45 is not a qualified release.
+
 
 **Many nodes. One mind.** AI runtime, agent gateway and distributed-compute research.
 Installable applications: Android and an Experimental Intel Mac desktop preview. Optional source companions: operator-owned hosts.
 
 **A project by IMON** · [@sabbirimon](https://github.com/sabbirimon)
 
-AI-assisted contributor: **Codex by OpenAI, Claude**. See [authors and attribution](AUTHORS.md).
+See [authors and attribution](AUTHORS.md).
 
 **Run local language models on Android. Connect owner-approved devices. Give humans
 and agents observable tools, durable tasks and explicit controls.** Meshlit is an
@@ -46,7 +49,7 @@ areas; unsupported platforms and accelerators are not advertised as ready.
 
 | Area | Source behavior | Evidence and practical boundary |
 | --- | --- | --- |
-| Local AI chat | Real bundled SmolLM2 135M Instruct Q4_K_M; saved chats, model selector, native Markdown/tables/code, full response reader, output-token controls and keyboard-aware composer | Real emulator load and generation observed. The 101 MiB starter tests installation; it is not a strong general-purpose agent or vision model |
+| Local AI chat | Real bundled Qwen2.5 0.5B Instruct Q4_K_M; saved chats, model selector, native Markdown/tables/code, full response reader, output-token controls and keyboard-aware composer | Real emulator load and generation observed. The approximately 469 MiB starter supports installation checks; it is not a strong general-purpose agent or vision model |
 | Model management | RunAnywhere/verified HTTPS downloads, pinned Hugging Face artifacts, resumable transfers, multi-file import, validation, load/unload and startup policy | Download completion is separate from validated installation and usable generation; account access to gated weights remains required |
 | Phone layer sharding | Native CPU coordinator/workers, memory-aware layer placement and pinned authenticated TLS tunnels | Real two-worker **desktop** execution exists. Oversized-model execution across physical phones remains an acceptance gate |
 | Context and KV cache | Native context/thread/cache controls and encrypted local CPU KV checkpoints | Backend capabilities differ; distributed/portable KV recovery and replicated failover remain unfinished |

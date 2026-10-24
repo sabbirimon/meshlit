@@ -11,11 +11,11 @@ import com.meshlit.ui.theme.ChatTokens as T
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 
-@Composable fun HuggingFacePanel(library:ModelLibrary) {
+@Composable fun HuggingFacePanel(library:ModelLibrary,initiallyExpanded:Boolean=false) {
     val context=androidx.compose.ui.platform.LocalContext.current
     val credentials=remember{ModelCredentials(context)}
     val client=remember{HuggingFaceClient()};val scope=rememberCoroutineScope()
-    var expanded by remember{mutableStateOf(false)};var tab by remember{mutableStateOf(0)}
+    var expanded by remember{mutableStateOf(initiallyExpanded)};var tab by remember{mutableStateOf(0)}
     var query by remember{mutableStateOf("")};var repoId by remember{mutableStateOf("")}
     var results by remember{mutableStateOf<List<String>>(emptyList())}
     var repository by remember{mutableStateOf<HubRepository?>(null)}

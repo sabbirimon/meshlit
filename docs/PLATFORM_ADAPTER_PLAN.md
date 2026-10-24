@@ -1,6 +1,6 @@
 # Meshlit: adaptive AI platform and native backend plan
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -107,7 +107,7 @@ AGI and superintelligence are future interoperability requirements, not present 
 
 ## Separation and delivery order
 
-The owner merged HyperL experimental source from `codex/hyperl-experimental` into
+The owner merged HyperL experimental source from `cdb06b6` into
 `main` via PR #1 at `851576b`. Keep its CPU/reference and source-emitter boundary
 explicit; native accelerator execution and an app workflow remain unimplemented.
 Next implement native compiler/runtime qualification, then local GPU/NPU backends,

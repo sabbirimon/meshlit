@@ -1,6 +1,6 @@
 # Layer execution, heterogeneous devices and recovery
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -31,6 +31,19 @@ revision matching, 30-second offer freshness, thermal exclusion, two-worker
 minimum and conservative memory estimates. Device labels do not grant compute.
 The app currently activates the local coordinator that owns the selected GGUF,
 queries manually paired worker offers and derives split weights automatically.
+Manual and QR worker approval both require a live pinned-TLS capability response;
+the coordinator assigns each approved worker to a selected group. A group may
+mix LAN and reachable Internet/VPN addresses. The worker QR contains a private
+token; stopping the worker and rotating it revokes old QR credentials. The first
+12 hex digits of the certificate pin are shown as a short visual identity code
+for out-of-band comparison; that code alone neither discovers nor authorizes a
+worker. An offline LAN, hotspot or preconfigured virtual network needs no relay.
+A live
+assessment reports the worker's offered resource fields and capability-query RTT,
+with a heuristic operational risk score. RTT is not an inference benchmark or
+bandwidth measurement. The existing HTTP membership relay does not transport
+native layer RPC, so NAT-only workers require a VPN until an authenticated reverse
+layer tunnel is implemented and tested.
 Remote coordinator activation, shared election membership, leases, automatic
 peer discovery, hardware reservation and transparent failover are NOT implemented.
 Do not describe the current planner as a distributed consensus protocol.

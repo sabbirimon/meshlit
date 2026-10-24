@@ -7,8 +7,8 @@ import com.meshlit.core.trust.TrustTier
  * Bucket a discovered peer into one of four categories the user
  * sees on the v2 Scan screen.
  *
- *  - [LOCAL]: same /24 subnet (or link-local) → fastest path,
- *    implicitly trusted for cluster traffic.
+ *  - [LOCAL]: same /24 subnet (or link-local) → potentially fast path;
+ *    still unverified until identity and approval checks pass.
  *  - [CLUSTER]: known cluster — fingerprint matches a previously
  *    paired peer or the local `clusterFingerprints` set.
  *  - [GROUP]: same SSID or VPN — reachable but untrusted
@@ -24,7 +24,7 @@ enum class PeerCategory(
     val tint: androidx.compose.ui.graphics.Color,
     val subtitle: String,
 ) {
-    LOCAL("Local subnet", androidx.compose.ui.graphics.Color(0xFF4DD9C0), "Same /24 — direct, fast, trusted"),
+    LOCAL("Local subnet", androidx.compose.ui.graphics.Color(0xFF4DD9C0), "Same /24 — verify before trusting"),
     CLUSTER("Cluster", androidx.compose.ui.graphics.Color(0xFF7C6FF2), "Paired fingerprint — cluster trusted"),
     GROUP("Group / VPN", androidx.compose.ui.graphics.Color(0xFFE8C56F), "Same SSID or VPN — sandboxed by default"),
     INTERNET("Internet", androidx.compose.ui.graphics.Color(0xFFE8735F), "Public — per-port allowlist"),

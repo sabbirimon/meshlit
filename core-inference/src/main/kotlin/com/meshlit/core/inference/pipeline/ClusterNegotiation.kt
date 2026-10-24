@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
     val runtimeRevision:String,val workerAllowed:Boolean,val coordinatorAllowed:Boolean=false,
     val coordinatorModelSha256:String?=null,val thermalStatus:Int=0,val observedAtMs:Long=System.currentTimeMillis(),
     val deviceClass:String="phone",val backend:String="CPU",val cpuThreads:Int=2,
+    val workerStartedAtMs:Long?=null,
 )
 data class NegotiatedCluster(val coordinatorId:String,val workers:List<NodeOffer>,val weights:List<Int>,val memoryBudgetBytes:Long,val estimatedWorkerBytes:List<Long> = emptyList(),val estimatedKvBytes:Long=0,val estimatedCoordinatorBytes:Long=0)
 

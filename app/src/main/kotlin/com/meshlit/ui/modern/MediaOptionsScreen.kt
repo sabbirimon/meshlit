@@ -9,8 +9,8 @@ import androidx.compose.ui.unit.dp
     var page by remember{mutableStateOf<String?>(null)}
     BackHandler(page!=null){page=null}
     if(page=="studio"){MediaGenerationScreen{page=null};return}
-    if(page!=null){Column(Modifier.fillMaxSize()){TextButton(onClick={page=null}){Text("Back to media")};Box(Modifier.weight(1f)){if(page=="vision") com.meshlit.ui.screens.VisionScreen({page=null},omitHeader=true) else com.meshlit.ui.screens.VoiceScreen({page=null},omitHeader=true)}};return}
-    Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    if(page!=null){Column(Modifier.fillMaxSize().safeDrawingPadding()){TextButton(onClick={page=null}){Text("Back to media")};Box(Modifier.weight(1f)){if(page=="vision") com.meshlit.ui.screens.VisionScreen({page=null},omitHeader=true) else com.meshlit.ui.screens.VoiceScreen({page=null},omitHeader=true)}};return}
+    Column(Modifier.fillMaxSize().safeDrawingPadding().padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         TextButton(onClick=onBack){Text("Back to settings")};Text("Camera, vision and audio",style=MaterialTheme.typography.headlineSmall)
         Text("Use actual phone-camera thumbnail capture or selected images, and the existing microphone/WAV/STT/TTS controls. A successful capture is separate from model readiness; missing SDK media backends and models must report unavailable.")
         Button(onClick={page="studio"}){Text("Online vision and media generation")}

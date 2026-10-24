@@ -24,7 +24,7 @@ interface JobLifecycle {
 
     /** Outcome of a single inference job. */
     sealed class Outcome {
-        data class Success(val generatedTokens: Int?, val tokensPerSecond: Float?) : Outcome()
+        data class Success(val generatedTokens: Int?, val tokensPerSecond: Float?, val executedLocally: Boolean = true) : Outcome()
         data class Failure(val tag: String, val message: String) : Outcome()
     }
 

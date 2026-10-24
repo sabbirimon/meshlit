@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -36,6 +39,37 @@ import androidx.compose.ui.unit.dp
                     Text(caption, style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
+        }
+    }
+}
+
+/** Keep important routes visible even when their full settings list is below the fold. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable internal fun SettingsQuickAccess(onSelect: (String) -> Unit) {
+    val context = LocalContext.current
+    val ids by MenuShortcutStore.ids(context).collectAsState()
+    val entries = ids.mapNotNull { id -> SettingsDestinations.all.firstOrNull { it.id == id } }
+    if (entries.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Quick access", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+            TextButton(onClick = { onSelect("menu-layout") }, modifier = Modifier.testTag("settings-edit-menu")) { Text("Edit menu") }
+        }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val availableWidth = maxWidth
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            entries.forEach { entry ->
+                val shortLabel = when (entry.id) {
+                    "network" -> "Network & pairing"
+                    "monitor" -> "Diagnostics"
+                    "commands" -> "Terminal commands"
+                    else -> entry.title
+                }
+                AssistChip(onClick = { onSelect(entry.id) }, label = { Text(shortLabel, maxLines = 2) },
+                    leadingIcon = { Icon(settingsIcon(entry.id), null, Modifier.size(18.dp)) },
+                    modifier = Modifier.widthIn(max = availableWidth).testTag("settings-quick-${entry.id}"))
+            }
+        }
         }
     }
 }

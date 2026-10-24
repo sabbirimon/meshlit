@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.*
+import kotlinx.coroutines.*
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import java.nio.file.*
 import java.nio.file.attribute.PosixFileAttributeView
 import java.nio.file.attribute.PosixFilePermissions
@@ -16,11 +18,13 @@ import java.util.UUID
 
 enum class DeviceCategory(val label: String) { PHONE("Phone"), DESKTOP("Desktop"), CLUSTER("Cluster"), OTHER("Other") }
 data class SavedNode(val id: String, val name: String, val category: DeviceCategory,
-                     val endpoint: String, val protocol: HostProtocol) {
+                     val endpoint: String, val protocol: HostProtocol, val lastConnectedAtMs: Long? = null, val lastResult: String? = null) {
     fun validate() {
         UUID.fromString(id)
         require(name.length in 1..100 && name == name.trim() && name.none(Char::isISOControl))
         HostEndpoint.parse(endpoint, protocol)
+        require(lastConnectedAtMs == null || lastConnectedAtMs >= 0)
+        require(lastResult == null || lastResult in setOf("ok","auth","timeout","network","response","tls","http"))
     }
 }
 
@@ -33,13 +37,14 @@ class NodeStore(private val directory: Path = Path.of(System.getProperty("meshli
         require(!Files.isSymbolicLink(directory) && Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS))
         require(Files.size(file) <= 262144)
         val root = boundedJson(Files.readString(file))
-        require(root["version"]?.jsonPrimitive?.int == 1)
+        require(root["version"]?.jsonPrimitive?.int in 1..2)
         val nodes = root["nodes"]!!.jsonArray
         require(nodes.size <= 64)
         return nodes.map { entry -> entry.jsonObject.let { node -> SavedNode(
             node["id"]!!.jsonPrimitive.content, node["name"]!!.jsonPrimitive.content,
             DeviceCategory.valueOf(node["category"]!!.jsonPrimitive.content),
-            node["endpoint"]!!.jsonPrimitive.content, HostProtocol.valueOf(node["protocol"]!!.jsonPrimitive.content)
+            node["endpoint"]!!.jsonPrimitive.content, HostProtocol.valueOf(node["protocol"]!!.jsonPrimitive.content),
+            node["lastConnectedAtMs"]?.jsonPrimitive?.longOrNull, node["lastResult"]?.takeUnless { it == JsonNull }?.jsonPrimitive?.content
         ).also { it.validate() } } }.also { require(it.map(SavedNode::id).distinct().size == it.size) }
     }
     fun save(nodes: List<SavedNode>) {
@@ -53,10 +58,11 @@ class NodeStore(private val directory: Path = Path.of(System.getProperty("meshli
         }
         privatePermissions(directory, "rwx------")
         val text = buildJsonObject {
-            put("version", 1)
+            put("version", 2)
             putJsonArray("nodes") { nodes.forEach { node -> add(buildJsonObject {
                 put("id", node.id); put("name", node.name); put("category", node.category.name)
-                put("endpoint", node.endpoint); put("protocol", node.protocol.name)
+                put("endpoint", HostEndpoint.parse(node.endpoint, node.protocol).base.toString()); put("protocol", node.protocol.name)
+                node.lastConnectedAtMs?.let { put("lastConnectedAtMs",it) }; node.lastResult?.let { put("lastResult",it) }
             }) } }
         }.toString()
         val temporary = Files.createTempFile(directory, "nodes-", ".tmp")
@@ -75,10 +81,33 @@ class NodeStore(private val directory: Path = Path.of(System.getProperty("meshli
     val initial = remember { runCatching { store.load() } }
     var nodes by remember { mutableStateOf(initial.getOrDefault(emptyList())) }
     var failure by remember { mutableStateOf(initial.isFailure) }
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
+    var diagnostic by remember { mutableStateOf<String?>(null) }
+    var testToken by remember { mutableStateOf("") }
+    var tokenOrigin by remember { mutableStateOf<String?>(null) }
     var name by remember { mutableStateOf("") }
     var endpoint by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(DeviceCategory.PHONE) }
     var protocol by remember { mutableStateOf(HostProtocol.OPENAI) }
+    fun test(text: String, kind: HostProtocol, node: SavedNode? = null) {
+        val parsed = runCatching { HostEndpoint.parse(text.trim(), kind) }.getOrElse { diagnostic = it.message ?: "Invalid host address"; return }
+        val key = if (tokenOrigin == parsed.base.toString()) testToken else ""
+        if ((!parsed.loopback || kind != HostProtocol.OPENAI) && key.isBlank()) { diagnostic = "Authentication required for ${parsed.base}. Enter a key bound to this address, or Select & authenticate."; return }
+        checking = true; diagnostic = null
+        scope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) { HostClient(parsed, key).use { it.health() } }
+                diagnostic = when (result) { is HostConnectionResult.Ready -> "${result.models.size} models reachable · ${parsed.base}"; is HostConnectionResult.Failed -> result.message }
+                if (node != null) {
+                    val updated = nodes.map { if (it.id == node.id) it.copy(lastConnectedAtMs = (result as? HostConnectionResult.Ready)?.observedAtMs ?: it.lastConnectedAtMs, lastResult = if (result is HostConnectionResult.Ready) "ok" else (result as HostConnectionResult.Failed).code) else it }
+                    withContext(Dispatchers.IO) { store.save(updated) }; nodes = updated
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (e: Exception) { diagnostic = "Cannot complete or save the connection check" }
+            finally { checking = false }
+        }
+    }
     Column(Modifier.fillMaxWidth().padding(4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Nodes · phones, desktops & clusters", style = MaterialTheme.typography.h6)
         Text("Add the inference API address shown by your device or cluster. Select it, enter that host's client token in Settings, enable access and Connect. Saving an address grants no network or command permission.")
@@ -88,7 +117,9 @@ class NodeStore(private val directory: Path = Path.of(System.getProperty("meshli
             Surface(elevation = 1.dp) { Column(Modifier.fillMaxWidth().padding(12.dp)) {
                 Text("${node.name} · ${node.category.label}")
                 Text(node.endpoint, style = MaterialTheme.typography.caption)
+                node.lastResult?.let { Text("Last check: $it${node.lastConnectedAtMs?.let { at -> " · " + java.time.Instant.ofEpochMilli(at) }.orEmpty()}", style = MaterialTheme.typography.caption) }
                 Row {
+                    TextButton({ test(node.endpoint, node.protocol, node) }, enabled = !checking) { Text("Test connection") }
                     TextButton({ onSelect(node) }) { Text("Select & authenticate") }
                     TextButton({
                         runCatching { store.save(nodes.filterNot { it.id == node.id }) }.onSuccess {
@@ -109,13 +140,16 @@ class NodeStore(private val directory: Path = Path.of(System.getProperty("meshli
         OutlinedTextField(name, { name = it.take(100) }, label = { Text("Device name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Row { DeviceCategory.entries.forEach { item -> TextButton({ category = item }) { Text((if (category == item) "✓ " else "") + item.label) } } }
         Row { HostProtocol.entries.forEach { item -> TextButton({ protocol = item }) { Text((if (protocol == item) "✓ " else "") + item.label) } } }
-        OutlinedTextField(endpoint, { endpoint = it.take(2048) }, label = { Text("https://device:port${protocol.basePath}") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(endpoint, { endpoint = it.take(2048); testToken = ""; tokenOrigin = null; diagnostic = null }, label = { Text("https://device:port${protocol.basePath}") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(testToken, { testToken = it.take(8192); tokenOrigin = runCatching { HostEndpoint.parse(endpoint.trim(), protocol).base.toString() }.getOrNull() }, label = { Text("Test key for this endpoint · session only") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedButton({ test(endpoint,protocol) }, enabled = !checking && endpoint.isNotBlank()) { Text(if(checking) "Checking…" else "Test connection") }
+        diagnostic?.let { Text(it, style = MaterialTheme.typography.caption) }
         TextButton({
             val pasted = clipboard.getText()?.text?.trim().orEmpty()
-            runCatching { HostEndpoint.parse(pasted, protocol) }.onSuccess { endpoint = pasted; failure = false }.onFailure { failure = true }
+            runCatching { HostEndpoint.parse(pasted, protocol) }.onSuccess { endpoint = HostEndpoint.parse(pasted,protocol).base.toString(); testToken = ""; tokenOrigin = null; failure = false }.onFailure { failure = true }
         }) { Text("Paste API address") }
         Button({
-            val node = SavedNode(UUID.randomUUID().toString(), name.trim(), category, endpoint.trim(), protocol)
+            val node = SavedNode(UUID.randomUUID().toString(), name.trim(), category, runCatching { HostEndpoint.parse(endpoint.trim(),protocol).base.toString() }.getOrDefault(endpoint.trim()), protocol)
             runCatching { store.save(nodes + node) }.onSuccess {
                 nodes = nodes + node; name = ""; endpoint = ""; failure = false
             }.onFailure { failure = true }

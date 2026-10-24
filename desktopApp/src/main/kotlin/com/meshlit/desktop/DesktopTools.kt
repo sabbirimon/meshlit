@@ -45,14 +45,14 @@ import javax.swing.JOptionPane
 }
 internal fun desktopGroup(id: String) = when (id) {
     "discover", "models", "providers", "tokens", "guardrails", "dolphin", "behavior", "router", "training", "media", "colibri", "acceleration", "personalization", "engine" -> "Models & inference"
-    "nodes", "device", "health", "memory", "monitor", "power", "external", "network", "p2p", "peers", "remotecommands", "sharding" -> "Devices & clusters"
+    "nodes", "device-dashboard", "radar", "meshchat", "device", "health", "memory", "monitor", "power", "external", "network", "p2p", "peers", "remotecommands", "sharding" -> "Devices & clusters"
     "agents", "hooks", "gateway", "runners", "gibberlink", "openclaw", "automation" -> "Agents & integrations"
-    "ssh", "crypto", "securitylab", "firewall", "packets", "permissions", "audit" -> "Security & access"
+    "ssh", "crypto", "securityprivacy", "securitylab", "firewall", "packets", "permissions", "audit" -> "Security & access"
     "terminal", "commands", "containers", "kubernetes", "hyperl", "runtime", "packages", "operations", "recovery", "logs", "termux" -> "Runtime & operations"
     "files", "ide", "tasks", "configuration", "search", "cloud", "crawler" -> "Workspace & services"
     else -> "Preferences & help"
 }
-internal val BASIC_DESKTOP_SECTIONS = setOf("management", "terminal", "models", "discover", "providers", "appearance", "tokens", "nodes", "health", "search", "help", "legal", "about")
+internal val BASIC_DESKTOP_SECTIONS = setOf("rag", "crypto", "management", "terminal", "models", "discover", "providers", "appearance", "tokens", "nodes", "device-dashboard", "securityprivacy", "health", "search", "help", "legal", "about")
 
 internal fun hostReadings(): List<Pair<String, String>> {
     fun bytes(value: Long?) = value?.takeIf { it >= 0 }?.let { "%.2f GiB".format(it / 1073741824.0) } ?: "Unavailable"

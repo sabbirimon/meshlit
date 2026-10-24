@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.coroutines.flow.first
 
 /**
  * Shape + invariants tests for [BluetoothLeDiscoveryTransport].
@@ -66,5 +67,30 @@ class BluetoothLeDiscoveryTransportTest {
         // peers must advertise `transport = "ble"`, not "nsd".
         assertEquals("ble", decoded.transport)
         assertNotEquals("nsd", decoded.transport)
+    }
+
+    /**
+     * Status flow. The `status` StateFlow is a public surface
+     * callers (the v2 Scan screen) read to render a "BLE
+     * unavailable" badge. We don't exercise the full
+     * start/stop here (that needs Robolectric + a shadow
+     * BluetoothAdapter) — we just assert the default starting
+     * value so a regression in the field name doesn't slip
+     * through.
+     */
+    @Test
+    fun status_flow_starts_as_Starting() = kotlinx.coroutines.runBlocking {
+        val transport = object : DiscoveryTransport("test") {
+            override fun start(scope: kotlinx.coroutines.CoroutineScope, self: LocalPeerDescriptor) =
+                kotlinx.coroutines.Job().also { it.complete() }
+            override fun stop() {}
+        }
+        assertEquals(TransportStatus.Starting, transport.status.first())
+    }
+
+    @Test
+    fun status_MissingPermission_carries_permission_string() {
+        val s = TransportStatus.MissingPermission("android.permission.BLUETOOTH_SCAN")
+        assertEquals("android.permission.BLUETOOTH_SCAN", s.permission)
     }
 }

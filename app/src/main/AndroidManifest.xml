@@ -129,6 +129,9 @@
 
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
     <application android:extractNativeLibs="true"
         android:name=".MeshlitApplication"
         android:allowBackup="true"
@@ -249,6 +252,10 @@
     <service android:name=".pipeline.PipelineService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled model layer computation with paired devices" /></service>
         <service android:name=".control.WebBridgeService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Owner-enabled authenticated device enrollment and command API" />
+        </service>
+        <service android:name=".peering.NfcPairingService" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter><action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" /></intent-filter>
+            <meta-data android:name="android.nfc.cardemulation.host_apdu_service" android:resource="@xml/nfc_pairing_service" />
         </service>
     </application>
 

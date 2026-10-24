@@ -7,6 +7,7 @@ plugins {
 java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 kotlin { jvmToolchain(21); compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 dependencies {
+    implementation(project(":core-peer-security"))
     implementation(project(":shared-workspace"))
     implementation(project(":desktop-hyperl"))
     implementation(project(":desktop-ssh"))
@@ -15,6 +16,7 @@ dependencies {
     implementation(compose.material)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.zxing.core)
     implementation("com.github.oshi:oshi-core:7.7.0")
     testImplementation(kotlin("test"))
     testImplementation(libs.junit)

@@ -83,29 +83,29 @@ val MeshlitTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
         letterSpacing = 0.sp,
     ),
     headlineMedium = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
         letterSpacing = 0.sp,
     ),
     headlineSmall = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.Medium,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
+        fontSize = 21.sp,
+        lineHeight = 28.sp,
         letterSpacing = 0.sp,
     ),
     titleLarge = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.Medium,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        fontSize = 19.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.sp,
     ),
     titleMedium = TextStyle(
@@ -125,8 +125,8 @@ val MeshlitTypography = Typography(
     bodyLarge = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontSize = 15.sp,
+        lineHeight = 23.sp,
         letterSpacing = 0.sp,
     ),
     bodyMedium = TextStyle(

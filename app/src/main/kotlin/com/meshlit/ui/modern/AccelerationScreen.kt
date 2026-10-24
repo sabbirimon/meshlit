@@ -17,7 +17,7 @@ import com.meshlit.core.inference.models.*
     val snapshot=remember{DeviceRuntimeProbe.read(context)};var error by remember{mutableStateOf<String?>(null)}
     val glEs=remember{context.getSystemService(ActivityManager::class.java).deviceConfigurationInfo.glEsVersion}
     val vulkan=remember{context.packageManager.hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)}
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item{TextButton(onClick=onBack){Text("Back to settings")};Text("Acceleration",style=MaterialTheme.typography.headlineSmall)
             Text("${snapshot.abi} · ${snapshot.cpuCores} logical CPU cores · ${snapshot.soc.ifBlank{"SoC not reported"}}")
             Text("Android advertises OpenGL ES $glEs · Vulkan hardware feature: $vulkan. These are graphics capabilities, not proof of LLM GPU support.")}

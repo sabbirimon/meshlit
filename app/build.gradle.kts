@@ -49,8 +49,8 @@ android {
         // /v1/health `version` field distinguishes the cluster
         // build from the pre-cluster baseline, and the GitHub
         // dev release gets a fresh version tag.
-        versionCode = 40
-        versionName = "0.2.6-colibri-studio"
+        versionCode = 42
+        versionName = "0.2.8-cluster-studio"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -89,10 +89,10 @@ android {
         create("meshlitV2") {
             dimension = "ui"
             applicationIdSuffix = ".v2"
-            // Build no. 1 of the new UI. Bump versionCode by 1
+            // Keep this preview version in step with the release evidence.
             // so Play Store and F-Droid see a fresh artifact.
-            versionName = "2.0.0-v2build40"
-            versionCode = 40
+            versionName = "2.0.0-v2build45"
+            versionCode = 45
             buildConfigField("boolean", "USE_NEW_UI", "true")
             resValue("string", "app_name", "Meshlit v2")
         }
@@ -261,6 +261,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.security.crypto)
     implementation(project(":shared-workspace"))
     // Project modules (app consumes the orchestration facade)
     implementation(project(":core-orchestration"))
@@ -345,13 +346,11 @@ dependencies {
     implementation(libs.nanohttpd.core)
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
 
-    // QR pairing code generation (we render our own Meshlit pairing
-    // QR on the Devices screen) + Google Play Services Code Scanner
-    // (we scan peers' QR codes via Play Services' bundled scanner
-    // UI). The scanner ships as a small stub that downloads the
-    // module from Play Services on first launch — no CAMERA
-    // permission needed in the manifest, no CameraX dep.
+    // Render identity QRs locally and scan live camera frames with
+    // EasyQRScan's in-app CameraX/ML Kit surface. The older Play
+    // Services scanner remains for legacy worker/Devices surfaces.
     implementation(libs.zxing.core)
+    implementation(libs.easyqrscan.scanner)
     implementation(libs.play.services.code.scanner)
 
     // CameraX — `agent_camera_capture` tool. Lifecycle-aware

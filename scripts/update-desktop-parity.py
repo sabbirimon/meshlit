@@ -63,8 +63,10 @@ it does not provide a separate advanced layout within every destination.
 `CategoryScreen.categorySections` likewise returns all indexed entries for Advanced
 and only non-advanced entries for Simple. A category with no advanced-only entries
 can therefore look the same. The V2 category wrapper delegates to that screen.
-This source inspection explains a possible cause; no new physical-phone UI test
-was performed for this comparison and no Android screen has been changed here.
+On Samsung build41, the Basic/Advanced state changed, but the shared Quick access
+panel filled the first screen so the filtered list was out of view. The current
+source moves search and mode tabs above Quick access, and shows Quick access only
+in Basic. That final layout still needs a new APK device check.
 
 Desktop now has a curated Basic menu and grouped Advanced menu. Port-pending
 items remain explicitly labelled; Basic/Advanced never changes authority.
@@ -102,6 +104,6 @@ the older feature-map, not whether the feature worked on that phone.
 
 if __name__=='__main__':
     text,old,current=generate()
-    assert len(current)==49, 'Review new Android destinations before regenerating parity'
+    assert len(current)==61 and set(old)<=set(current), 'Review new or removed Android destinations before regenerating parity'
     (ROOT/'docs/ANDROID_DESKTOP_PARITY.md').write_text(text)
     print(f'Wrote parity: {len(old)} old / {len(current)} current menus; source inventory only.')

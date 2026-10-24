@@ -21,7 +21,7 @@ import kotlinx.serialization.json.Json
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun CloudManagementScreen(back:()->Unit){
+@Composable fun CloudManagementScreen(back:()->Unit,onHuggingFace:(()->Unit)?=null){
     val repository=koinInject<CloudManagement>();val backend=koinInject<AgentBackend>()
     val state by repository.state.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
     var ready by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)};var busy by remember{mutableStateOf(false)}
@@ -33,14 +33,25 @@ import java.util.UUID
     BackHandler{back()}
     fun run(action:suspend()->Unit){scope.launch{busy=true;error=null;try{action()}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message ?: "Cloud operation failed"}finally{busy=false}}}
     LaunchedEffect(repository){try{repository.ready.await();ready=true}catch(e:CancellationException){throw e}catch(_:Exception){error="Encrypted cloud storage could not be opened; no profiles were reset"}}
-    Scaffold(topBar={TopAppBar(title={Text("Cloud and credentials")},navigationIcon={IconButton(onClick=back){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
+    Scaffold(topBar={TopAppBar(title={Text("Cloud management dashboard")},navigationIcon={IconButton(onClick=back){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
+            if(onHuggingFace!=null) item{OutlinedButton(onClick=onHuggingFace,modifier=Modifier.fillMaxWidth()){Text("Hugging Face account, downloads and inference")}}
             item{FlowRow(horizontalArrangement=Arrangement.spacedBy(T.small)){listOf("Dashboard","Providers","Credentials","Agent settings").forEach{label->FilterChip(tab==label,{tab=label;profile=null;environment=null;secretName="";secretValue=""},label={Text(label)})}}}
             if(busy || !ready) item{LinearProgressIndicator(Modifier.fillMaxWidth())}
             error?.let{item{ErrorCard(it){error=null}}}
             when(tab){
                 "Dashboard"->{
                     item{Text("Resources and costs",style=MaterialTheme.typography.headlineSmall);Text("Explicit refresh only. Results identify the source and fetch time. Inventory may be paginated; missing costs stay unknown. Provisioning, deletion, budgets and deployment are not implemented by these read adapters.")}
+                    item{Card{Column(Modifier.padding(T.large),verticalArrangement=Arrangement.spacedBy(T.small)){
+                        Text("Cost metric coverage",style=MaterialTheme.typography.titleMedium)
+                        Text("AWS · month-to-date Cost Explorer amount (through yesterday UTC, when authorized)")
+                        Text("Azure · ActualCost query (when authorized)")
+                        Text("DigitalOcean · balance and month-to-date usage")
+                        Text("OpenRouter · key usage and limits; currency depends on provider response")
+                        Text("GCP · billing association only; spend unavailable without a billing export")
+                        Text("Hugging Face and custom providers · live spend unavailable")
+                        Text("Other clouds · connect a scoped read-only custom HTTPS API for raw data; normalized costs need a provider adapter. No currency totals are synthesized from unrelated responses.",style=MaterialTheme.typography.bodySmall)
+                    }}}
                     if(state.profiles.isEmpty()) item{Text("Create an encrypted credential environment and configure a provider to see real resources.")}
                     items(state.profiles,key={it.id}){p->Card{Column(Modifier.padding(T.large),verticalArrangement=Arrangement.spacedBy(T.small)){
                         Text("${p.name} · ${p.vendor}",style=MaterialTheme.typography.titleMedium)

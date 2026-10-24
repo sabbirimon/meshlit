@@ -7,6 +7,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import okio.ByteString.Companion.decodeBase64
 import okio.ByteString.Companion.toByteString
 import java.util.concurrent.TimeUnit
@@ -30,6 +31,7 @@ class OnlineMediaClient(private val client:OkHttpClient=OkHttpClient.Builder().c
         val call=client.newCall(request)
         val watcher=launch(Dispatchers.IO){try{awaitCancellation()}finally{call.cancel()}}
         try {call.execute().use{r->check(r.isSuccessful){"Media provider HTTP ${r.code}; verify model, API access and billing"};consume(r)}}
+        catch (error:IOException) {currentCoroutineContext().ensureActive();throw error}
         finally{watcher.cancel()}
     }}
     private fun json(response:Response,limit:Long=12L*1024*1024):JsonObject {
@@ -61,8 +63,9 @@ class OnlineMediaClient(private val client:OkHttpClient=OkHttpClient.Builder().c
         return result["text"]?.jsonPrimitive?.content?.trim()?.takeIf{it.isNotEmpty() && it.length<=12000}
             ?: error("Provider returned no usable transcript")
     }
-    suspend fun vision(p:OnlineProfile,key:String,jpeg:ByteArray,prompt:String):String {
-        prompt(prompt);require(jpeg.size in 4..2*1024*1024 && jpeg[0]==(-1).toByte() && jpeg[1]==(-40).toByte())
+    suspend fun vision(p:OnlineProfile,key:String,jpeg:ByteArray,prompt:String):String = visionReply(p,key,jpeg,prompt).text
+    suspend fun visionReply(p:OnlineProfile,key:String,jpeg:ByteArray,prompt:String):OnlineReply {
+        model(p.model);prompt(prompt);require(jpeg.size in 4..2*1024*1024 && jpeg[0]==(-1).toByte() && jpeg[1]==(-40).toByte())
         val payload=buildJsonObject {
             put("model",p.model);put(if(p.protocol==OnlineProtocol.OPENAI) "max_completion_tokens" else "max_tokens",512)
             put("messages",buildJsonArray{add(buildJsonObject{put("role","user");put("content",buildJsonArray{
@@ -71,8 +74,11 @@ class OnlineMediaClient(private val client:OkHttpClient=OkHttpClient.Builder().c
             })})})
         }
         val data=exchange(post(p,key,"chat/completions",payload)){json(it,4L*1024*1024)}
-        return data["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
-            ?.takeIf{it.isNotBlank()} ?: error("Provider returned no vision text; verify vision model support")
+        val text=data["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
+            ?.takeIf{it.isNotBlank() && it.length<=64000} ?: error("Provider returned no usable vision text; verify vision model support")
+        val usage=data["usage"] as? JsonObject
+        fun count(name:String)=(usage?.get(name) as? JsonPrimitive)?.longOrNull?.takeIf{it>=0}
+        return OnlineReply(text,count("prompt_tokens"),count("completion_tokens"))
     }
     suspend fun startVideo(p:OnlineProfile,key:String,model:String,prompt:String,seconds:Int=4):RemoteVideoJob {
         model(model);prompt(prompt);require(seconds in setOf(4,8,12))

@@ -1,6 +1,6 @@
 # Meshlit agent instructions
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -167,9 +167,8 @@ and repository guide synchronized. Do not claim replicated recovery/IaC from UI.
 
 ## Audit and publication continuation (2026-10-07)
 
-The owner requested Codex contributor credit. For Codex-assisted commits, append
-`Co-authored-by: Codex <noreply@openai.com>`. Preserve the human commit identity
-and published history; README credit does not guarantee GitHub sidebar attribution.
+Preserve the human commit identity and published history. The owner now requests
+project-focused wording in new documentation and branch names.
 
 Read docs/AUDIT_TELEMETRY.md and the latest PROGRESS.md. Opt-in audit metadata,
 JSONL/CSV export and OTLP/HTTP traces/metrics are distinct from vendor SDK telemetry.

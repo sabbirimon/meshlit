@@ -5,7 +5,7 @@ import com.meshlit.core.inference.RunAnywhereCatalogEngine
 /** Curated published GGUF sources. Sizes are estimates, not measured downloads.
  * The host registers selected source URLs with RunAnywhere. Native architecture
  * and quantization compatibility are determined by the loader, not this catalog.
- * Only the manifest-pinned 135M asset is bundled in current builds. */
+ * The APK starter is selected by the verified bundled-model.json manifest. */
 object RunAnywhereCatalog {
 
     /**

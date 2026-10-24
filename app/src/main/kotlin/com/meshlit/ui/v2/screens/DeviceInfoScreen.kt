@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -47,11 +49,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -198,7 +202,7 @@ private fun DeviceInfoReadyView(
     onForceRebootstrap: () -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().navigationBarsPadding(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -284,13 +288,14 @@ private fun SectionCard(
 private fun KeyValueRow(label: String, value: String, mono: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = MeshlitTextSecondaryV2,
+            modifier = Modifier.weight(1f),
         )
         Text(
             text = value,
@@ -299,21 +304,24 @@ private fun KeyValueRow(label: String, value: String, mono: Boolean = false) {
                 fontFamily = if (mono) FontFamily.Monospace else FontFamily.Default,
             ),
             color = MeshlitTextPrimaryV2,
+            modifier = Modifier.weight(1.3f),
+            textAlign = TextAlign.End,
         )
     }
 }
 
 @Composable
 private fun Pill(text: String, tint: Color) {
+    val readableTint = if (tint.luminance() < 0.35f) MeshlitTextSecondaryV2 else tint
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = tint.copy(alpha = 0.18f),
+        color = readableTint.copy(alpha = 0.18f),
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = tint,
+            color = readableTint,
         )
     }
 }
@@ -420,10 +428,7 @@ private fun IdentityCard(
         }
         KeyValueRow(label = "Local IP", value = localIp.ifBlank { "(offline)" })
         KeyValueRow(label = "HTTP port", value = httpPort.toString(), mono = true)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Pill(text = "Tier: $capabilityTierName", tint = MeshlitPulseViolet)
             Pill(text = "Build: V2", tint = MeshlitPulseAqua)
         }
@@ -446,17 +451,14 @@ private fun HardwareCard(
     diskSeries: List<com.meshlit.core.probe.LiveHardwareMonitor.SamplePoint>,
 ) {
     SectionCard(title = "Hardware") {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = "Resource Monitor · 60s window · 1 Hz",
                 style = MaterialTheme.typography.labelSmall,
                 color = MeshlitTextTertiaryV2,
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // The "Live" pill pulses when the monitor is running
                 // so the user gets a clear cue that values update
                 // without them having to tap anything.
@@ -464,7 +466,7 @@ private fun HardwareCard(
                     shape = RoundedCornerShape(50),
                     color = if (isLive) MeshlitPulseViolet.copy(alpha = 0.18f)
                             else MeshlitSurfaceHigh,
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier,
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -490,6 +492,7 @@ private fun HardwareCard(
                 }
                 OutlinedButton(
                     onClick = onToggleLive,
+                    modifier = Modifier.widthIn(min = 88.dp),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         horizontal = 12.dp, vertical = 4.dp,
                     ),
@@ -514,7 +517,7 @@ private fun HardwareCard(
             // 25/50/75/100% so the user can read absolute values at
             // a glance.
             ResourceMonitorRow(
-                label = "CPU",
+                label = "App CPU",
                 unit = "%",
                 series = cpuSeries,
                 currentPct = (hardware.cpu.score ?: 0f),
@@ -641,7 +644,7 @@ private fun ResourceMonitorRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom,
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.titleSmall.copy(
@@ -655,14 +658,15 @@ private fun ResourceMonitorRow(
                     color = MeshlitTextTertiaryV2,
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            Column(modifier = Modifier.weight(1.6f), horizontalAlignment = Alignment.End) {
                 Text(
                     text = currentRaw,
-                    style = MaterialTheme.typography.headlineSmall.copy(
+                    style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                     ),
                     color = color,
+                    textAlign = TextAlign.End,
                 )
                 if (secondaryLine != null) {
                     Text(
@@ -820,15 +824,16 @@ private fun ScoreRow(
     val pct = ((sample.score ?: 0f) * 100).toInt()
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = MeshlitTextSecondaryV2,
+            modifier = Modifier.weight(1f),
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.weight(2f), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = if (sample.score == null) "—"
                     else "${pct}% · ${sample.rawValue}$suffix",
@@ -837,6 +842,8 @@ private fun ScoreRow(
                     fontFamily = FontFamily.Monospace,
                 ),
                 color = MeshlitTextPrimaryV2,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End,
             )
         }
     }
@@ -1017,12 +1024,8 @@ private fun ServicesCard(services: List<ServiceDescriptor>) {
             )
         } else {
             services.forEach { svc ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = svc.name,
                             style = MaterialTheme.typography.bodyMedium.copy(
@@ -1040,6 +1043,15 @@ private fun ServicesCard(services: List<ServiceDescriptor>) {
                         text = healthLabel(svc.health),
                         tint = healthTint(svc.health),
                     )
+                    val healthReason = when (val health = svc.health) {
+                        is HealthState.Degraded -> health.reason
+                        is HealthState.Unreachable -> health.reason
+                        else -> null
+                    }
+                    if (!healthReason.isNullOrBlank()) {
+                        Text(healthReason, style = MaterialTheme.typography.bodySmall,
+                            color = MeshlitTextSecondaryV2)
+                    }
                 }
             }
         }
@@ -1048,8 +1060,8 @@ private fun ServicesCard(services: List<ServiceDescriptor>) {
 
 private fun healthLabel(state: HealthState): String = when (state) {
     HealthState.Healthy -> "healthy"
-    is HealthState.Degraded -> "degraded · ${state.reason}"
-    is HealthState.Unreachable -> "unreachable · ${state.reason}"
+    is HealthState.Degraded -> "degraded"
+    is HealthState.Unreachable -> "unreachable"
     HealthState.Unknown -> "unknown"
 }
 

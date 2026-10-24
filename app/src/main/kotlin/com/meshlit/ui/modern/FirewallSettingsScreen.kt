@@ -21,7 +21,7 @@ import java.util.UUID
     var network by remember{mutableStateOf("Probing…")}
     LaunchedEffect(Unit){while(isActive){val manager=context.getSystemService(ConnectivityManager::class.java);val caps=manager.activeNetwork?.let{manager.getNetworkCapabilities(it)};network="Validated internet: ${caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)==true} · metered: ${manager.isActiveNetworkMetered} · VPN: ${caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN)==true}";delay(5000)}}
     fun save(next:PortLayerPolicy){scope.launch{try{repository.setFirewallPolicy(next)}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}}}
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item{TextButton(onClick=onBack){Text("Back to settings")};Text("Network rules",style=MaterialTheme.typography.headlineSmall);Text(network)
             Text("Rules gate new Meshlit inbound connections: legacy inference, HTTPS control (18792), and RPC worker TLS (50551). Existing sessions are not retroactively disconnected. This is an app listener firewall, not Android-wide VPN/iptables enforcement. Cloud, SSH and other outbound traffic are not governed by this editor.")
             Text("IPv4 private LAN ranges are required by the separate address layer; a port allow does not authorize WAN, IPv6 or a device identity. Keep endpoint authentication and pairing enabled.")}

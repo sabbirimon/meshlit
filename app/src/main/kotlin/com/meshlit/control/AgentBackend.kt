@@ -20,7 +20,7 @@ import kotlinx.serialization.json.*
 class AgentBackend(private val context:Context,private val settings:SettingsRepository,private val library:ModelLibrary,
     private val inference:InferenceCoordinator,private val cluster:PipelineHost,private val scope:CoroutineScope,
     val taskBoard:TaskBoard,private val workspace:CodeWorkspace,private val online:com.meshlit.providers.OnlineProviders,private val cloud:com.meshlit.cloud.CloudManagement,private val browser:com.meshlit.browser.BrowserSessionBroker) {
-    enum class Scope { SETTINGS, MODELS, CLUSTER, RECOVERY, TASKS, WORKSPACE, SSH, CLOUD, BROWSER }
+    enum class Scope { SETTINGS, MODELS, CLUSTER, RECOVERY, TASKS, WORKSPACE, SSH, CLOUD, BROWSER, AUDIT }
     private val operations=com.meshlit.operations.OperationsControl.get(context).gate
     private val policy=context.getSharedPreferences("typed-agent-scopes",0)
     private val json=Json{ignoreUnknownKeys=false}

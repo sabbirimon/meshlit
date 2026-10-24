@@ -76,6 +76,7 @@ fun ModernModelsScreen(onBack:(()->Unit)?=null) {
                 Text(stringResource(R.string.modern_resources,formatBytes(memory),formatBytes(storage)),style=MaterialTheme.typography.bodySmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            item { ModelRecommendationPanel(library,onError={message=it}) }
             item {
                 Row(horizontalArrangement=Arrangement.spacedBy(T.small)) {
                     OutlinedButton(onClick={ importer.launch(arrayOf("*/*")) },modifier=Modifier.weight(1f)) {

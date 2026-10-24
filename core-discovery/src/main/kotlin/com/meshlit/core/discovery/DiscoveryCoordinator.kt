@@ -44,8 +44,22 @@ class DiscoveryCoordinator(
     /** Snapshot of currently-active transports. Read-only. */
     val transports: List<DiscoveryTransport> get() = activeTransports.toList()
 
+    fun bleStatus(): kotlinx.coroutines.flow.StateFlow<TransportStatus>? =
+        initialTransports.filterIsInstance<BluetoothLeDiscoveryTransport>().firstOrNull()?.status
+
+    fun refreshAvailability() {
+        initialTransports.filterIsInstance<BluetoothLeDiscoveryTransport>().forEach { transport ->
+            transport.refreshAvailability()
+            val scope = currentScope; val self = currentSelf
+            if (transport.status.value == TransportStatus.Stopped && transport in activeTransports && scope != null && self != null) {
+                transportJobs.remove(transport.name)?.forEach { it.cancel() }
+                startTransport(transport, scope, self)
+            }
+        }
+    }
+
     fun start(scope: CoroutineScope, self: LocalPeerDescriptor) {
-        if (transportJobs.isNotEmpty()) return
+        if (currentScope != null) return
         currentScope = scope
         currentSelf = self
         activeTransports.forEach { transport -> startTransport(transport, scope, self) }
@@ -55,8 +69,7 @@ class DiscoveryCoordinator(
         activeTransports.forEach { it.stop() }
         transportJobs.values.flatten().forEach { it.cancel() }
         transportJobs.clear()
-        activeTransports.clear()
-        disabledTransports.clear()
+        // Keep enabled/disabled transport configuration for the next scan.
         currentScope = null
         currentSelf = null
         _peers.value = emptyMap()
@@ -67,20 +80,79 @@ class DiscoveryCoordinator(
      * can exercise the dedup / evict logic without spinning up
      * transports, and so callers that bypass the transport layer
      * (e.g. a QR-paired peer) can feed in peers directly.
+     *
+     * Dedup rule: if the same nodeId is seen via two transports
+     * (e.g. mDNS + BLE), the higher-priority transport wins
+     * (LAN > NSD > BLE > RELAY > WAN > MANUAL; user-driven NFC,
+     * QR-paste, and INVITE each have their own slots). Previously
+     * this case silently dropped the new entry; Phase-1 pairing-
+     * bug-fix logs the conflict and keeps the higher-priority
+     * entry so the UI can show a "seen on Wi-Fi too" badge.
      */
     fun ingest(adv: PeerAdvertisement) {
+        if (adv.nodeId == currentSelf?.nodeId || adv.nodeId.isBlank()) return
         if (adv.ttlSec <= 0) {
-            _peers.update { it - adv.nodeId }
+            _peers.update { peers ->
+                if (peers[adv.nodeId]?.transport == adv.transport) peers - adv.nodeId else peers
+            }
             return
         }
         _peers.update { current ->
             val existing = current[adv.nodeId]
-            if (existing == null || existing.transport == adv.transport) {
-                current + (adv.nodeId to adv)
-            } else {
-                current
+            when {
+                existing == null -> current + (adv.nodeId to adv)
+                existing.transport == adv.transport -> current + (adv.nodeId to adv)
+                // Cross-transport conflict. Pick the higher-
+                // priority transport (lower ordinal) so a peer
+                // reachable on both LAN and WAN shows up with
+                // the LAN endpoint.
+                priority(adv.transport) < priority(existing.transport) -> {
+                    log.info(
+                        "peer.merged",
+                        "same nodeId via two transports; keeping higher-priority",
+                        mapOf(
+                            "node" to adv.nodeId.take(16),
+                            "kept" to adv.transport,
+                            "dropped" to existing.transport,
+                        ),
+                    )
+                    current + (adv.nodeId to adv)
+                }
+                else -> {
+                    log.info(
+                        "peer.merged",
+                        "same nodeId via two transports; keeping higher-priority",
+                        mapOf(
+                            "node" to adv.nodeId.take(16),
+                            "kept" to existing.transport,
+                            "dropped" to adv.transport,
+                        ),
+                    )
+                    current
+                }
             }
         }
+    }
+
+    /**
+     * Static priority ordering for cross-transport dedup. Lower is
+     * "better". LAN endpoints are surfaced over WAN-relayed ones
+     * because they're typically lower-latency. A current NSD sighting
+     * must replace a QR import so removing the app removes its live
+     * radar dot. The QR remains in the saved device inventory. WAN-relayed
+     * peers sit in the middle; manual entries are pinned at the bottom.
+     */
+    private fun priority(transport: String): Int = when (transport) {
+        "lan" -> 0
+        "nsd" -> 1
+        "ble" -> 2
+        "nfc" -> 3
+        "qr" -> 3
+        "invite" -> 3
+        "relay" -> 3
+        "wan" -> 4
+        "manual" -> 5
+        else -> 6
     }
 
     /**
@@ -140,7 +212,8 @@ class DiscoveryCoordinator(
             }
             !enabled -> {
                 transport.stop()
-                currentJobs!!.forEach { it.cancel() }
+                currentJobs?.forEach { it.cancel() }
+                _peers.update { peers -> peers.filterValues { it.transport != name } }
                 transportJobs.remove(name)
                 activeTransports.remove(transport)
                 disabledTransports.add(transport)
@@ -157,17 +230,9 @@ class DiscoveryCoordinator(
                 // log + bail.
                 val scope = currentScope
                 val self = currentSelf
-                if (scope == null || self == null) {
-                    log.warn(
-                        "coordinator.transport.enableBeforeStart",
-                        "cannot enable before start()",
-                        mapOf("name" to name),
-                    )
-                    return
-                }
                 disabledTransports.remove(transport)
                 activeTransports.add(transport)
-                startTransport(transport, scope, self)
+                if (scope != null && self != null) startTransport(transport, scope, self)
                 log.info(
                     "coordinator.transport.enabled",
                     "transport enabled",

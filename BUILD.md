@@ -1,8 +1,11 @@
 # Meshlit build and validation
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+**Paused checkpoint — 2026-10-24:** see [source status and resumption gates](docs/PAUSED_CHECKPOINT_2026-10-24.md). The commands below are for use after work resumes; the latest build45 run did not finish lint or final device qualification.
+
 
 Read `AGENT_BUILD.md` for architecture and handoff details. Android Studio Opus checkout
 is separate: `/Users/code/AndroidStudioProjects/mllm`. This checkout has not modified it.

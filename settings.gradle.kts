@@ -35,6 +35,7 @@ rootProject.name = "meshlit"
 
 // Modules in topological order: leaves first, then app consuming them.
 include(
+    ":core-peer-security",
     ":core-common",
     ":core-config",
     ":core-flags",

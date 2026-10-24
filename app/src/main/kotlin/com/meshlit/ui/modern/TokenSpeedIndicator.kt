@@ -16,7 +16,8 @@ import java.util.Locale
 
 internal fun tokenSpeedLabel(usage:ChatTokenUsage):String = usage.tokensPerSecond?.let {
     "${String.format(Locale.ROOT,"%.1f",it)} tokens/s · ${usage.output} output tokens"
-} ?: usage.output?.let{"Speed unavailable · $it output tokens"} ?: "Speed unavailable · token count unreported"
+} ?: usage.output?.let{"$it output tokens · speed unavailable"}
+    ?: "Response ${String.format(Locale.ROOT,"%.1f",usage.elapsedMs/1000.0)}s · token speed unavailable"
 
 @Composable internal fun TokenSpeedIndicator(state:ChatState,onSettings:()->Unit) {
     val usage=state.current?.messages?.lastOrNull{it.role=="assistant"}?.usage
@@ -26,7 +27,7 @@ internal fun tokenSpeedLabel(usage:ChatTokenUsage):String = usage.tokensPerSecon
         modifier=Modifier.fillMaxWidth().heightIn(min=32.dp).testTag("chat-token-speed")) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Default.Speed,null,Modifier.size(16.dp))
-            Text(if(state.running) "Generating · ${((now-(state.generationStartedMs ?: now)).coerceAtLeast(0))/1000}s · limit ${state.activeOutputLimit ?: state.current?.options?.maxTokens ?: 1024}"
+            Text(if(state.running) "${state.operationLabel} · ${((now-(state.generationStartedMs ?: now)).coerceAtLeast(0))/1000}s · limit ${state.activeOutputLimit ?: state.current?.options?.maxTokens ?: 1024}"
                 else tokenSpeedLabel(checkNotNull(usage)),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -42,7 +43,7 @@ internal fun tokenSpeedLabel(usage:ChatTokenUsage):String = usage.tokensPerSecon
             usage.rateBasis?.let{Text(it)}
             usage.budgetReason?.let{Text(it)}
             usage.finishReason?.let{Text("Finish: $it")}
-            Text("Requested limits are not actual usage. Elapsed time includes application overhead; text chunks and characters are never counted as tokens. Rates are available after completion, not a live decode-rate estimate.")
+            Text(if(usage.output==null) "This runtime did not report output tokens, so token speed is unavailable. Requested limits are not actual usage; text chunks and characters are never counted as tokens." else "Counts come from the selected runtime or provider. End-to-end averages include input processing, network and application overhead; they are not a measured decode-only rate.")
         }
     }},confirmButton={TextButton(onClick=onClose){Text("Close")}})
 }

@@ -1,10 +1,10 @@
 # HyperL and Meshlit: owner requests and build plan
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-08. Originally isolated on `codex/hyperl-experimental`, based on
+Updated 2026-10-08. Originally isolated on `cdb06b6`, based on
 Meshlit `77ac214`; the owner merged source commit `cdb06b6` into `main` via PR #1
 at `851576b`. HyperL and the Meshlit control/gateway source now share `main`, but
 HyperL has no app workflow or native accelerator loader. Use open-source/free

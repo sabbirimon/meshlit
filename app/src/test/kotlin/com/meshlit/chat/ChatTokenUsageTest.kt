@@ -21,7 +21,7 @@ class ChatTokenUsageTest {
         assertNull(u.tokensPerSecond);assertNull(u.input);assertNull(u.output);assertNull(u.cached);assertNull(u.contextCapacity);assertEquals(0,u.elapsedMs)
         assertNull(chatTokenUsage("zero time",16,4,10,5,0,Float.POSITIVE_INFINITY,1).tokensPerSecond)
         assertNull(chatTokenUsage("zero time",16,4,10,5,0,null,1).cached)
-        assertEquals("Speed unavailable · 0 output tokens",tokenSpeedLabel(chatTokenUsage("empty",16,4,0,0,100,null,128)))
+        assertEquals("0 output tokens · speed unavailable",tokenSpeedLabel(chatTokenUsage("empty",16,4,0,0,100,null,128)))
         val large=chatTokenUsage("provider",16,4_000_000_000L,2,null,1000,null,null)
         assertEquals(4_000_000_000L,large.input)
         assertNull(chatTokenUsage("SDK unknown context",16,null,null,null,100,null,0).contextCapacity)

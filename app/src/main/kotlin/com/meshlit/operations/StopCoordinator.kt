@@ -28,9 +28,18 @@ class StopCoordinator(private val context:Context) {
         }
         if(feature==null || feature==ManagedFeature.MODEL_TRANSFERS) actions["model transfers"]={koin.get<com.meshlit.models.ModelLibrary>().pauseAll()}
         if(!com.meshlit.BuildProfile.coreCandidate) {
-        if(feature==null || feature==ManagedFeature.GATEWAY) actions["gateway"]={koin.get<com.meshlit.gateway.GatewayHost>().stop()}
+        if(feature==null || feature==ManagedFeature.GATEWAY) actions["gateway"]={
+            koin.get<com.meshlit.gateway.GatewayHost>().stop()
+            context.stopService(android.content.Intent(context,com.meshlit.core.cloudmcp.CloudMcpForegroundService::class.java))
+        }
         if(feature==null || feature==ManagedFeature.AUTOMATION) {
-            actions["remote control"]={koin.get<com.meshlit.control.WebBridgeHost>().stop();koin.get<com.meshlit.openclaw.OpenClawHost>().stopSharing()}
+            actions["remote control"]={
+                koin.get<com.meshlit.openclaw.AndroidControl>().setEnabled(false)
+                koin.get<com.meshlit.settings.SettingsRepository>().setAndroidAutomationEnabled(false)
+                koin.get<com.meshlit.openclaw.OpenClawNode>().disconnect()
+                koin.get<com.meshlit.control.WebBridgeHost>().stop()
+                koin.get<com.meshlit.openclaw.OpenClawHost>().stopSharing()
+            }
             actions["command jobs"]={val backend=koin.get<com.meshlit.control.AgentBackend>();for(controller in listOf(backend.controller,backend.humanController)){controller.ready.await();controller.jobs.value.filter{!it.terminal}.forEach{controller.cancel(it.command.requestId)}}}
         }
         if(feature==null || feature==ManagedFeature.BROWSER) actions["browser autonomy"]={koin.get<com.meshlit.browser.BrowserSessionBroker>().stop()}

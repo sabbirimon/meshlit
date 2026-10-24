@@ -26,8 +26,8 @@ import java.util.UUID
     var catalogQuery by remember{mutableStateOf("")}
     var inputRate by remember{mutableStateOf("")};var outputRate by remember{mutableStateOf("")}
     fun edit(profile:OnlineProfile){editing=profile;key="";discovered=emptyList();prices=emptyList();inputRate=profile.inputPricePerMillion?.toString().orEmpty();outputRate=profile.outputPricePerMillion?.toString().orEmpty()}
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item{TextButton(onClick=onBack){Text("Back to settings")};Text("Online models",style=MaterialTheme.typography.headlineSmall)
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        item{TextButton(onClick=onBack){Text("Back")};Text("Online models",style=MaterialTheme.typography.headlineSmall)
             Text("Requests send conversation content to the selected provider. Keys are encrypted locally. Local failures never trigger a cloud request. API access and billing are separate from consumer chat subscriptions.")}
         items(profiles,key={it.id}){profile->Card{Column(Modifier.padding(16.dp)){Text(profile.name,style=MaterialTheme.typography.titleMedium);Text("${profile.model.ifBlank{"Model not selected"}} · ${if(profile.enabled) "Enabled" else "Disabled"}");Text(profile.endpoint,style=MaterialTheme.typography.bodySmall)
             Row{TextButton(onClick={edit(profile)}){Text("Edit")};TextButton(onClick={providers.remove(profile.id)}){Text("Remove profile and key")}}}}}

@@ -24,6 +24,9 @@ data class PeerAdvertisement(
     val fingerprint: String,
     val ttlSec: Int = 60,
     val transport: String = "nsd",
+    val displayName: String = "",
+    val manufacturer: String = "",
+    val model: String = "",
 ) {
     fun trustTierOrDefault(): TrustTier = TrustTier.fromTag(tier) ?: TrustTier.LOCAL_SANDBOXED
     fun nodeIdTyped(): NodeId = NodeId(nodeId)

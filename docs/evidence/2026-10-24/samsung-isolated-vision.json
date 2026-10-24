@@ -1,0 +1,45 @@
+{
+  "device": "Samsung SM-A207F",
+  "mode": "isolated native CPU probe, not in-app Chat",
+  "model": "SmolVLM-256M Q8",
+  "fixture": "red square on white",
+  "success": true,
+  "load_seconds": 2.074,
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": " The shape is a square."
+        }
+      }
+    ],
+    "created": 1792798286,
+    "model": "files/vision-qualification/model.gguf",
+    "system_fingerprint": "b1-4df29be",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 7,
+      "prompt_tokens": 150,
+      "total_tokens": 157,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    },
+    "id": "chatcmpl-HMZelakW5MKY8YQaH3fKdvTpscZL71Gx",
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 150,
+      "prompt_ms": 81910.22,
+      "prompt_per_token_ms": 546.0681333333333,
+      "prompt_per_second": 1.8312733136353436,
+      "predicted_n": 7,
+      "predicted_ms": 435.75,
+      "predicted_per_token_ms": 72.625,
+      "predicted_per_second": 13.769363166953529
+    }
+  },
+  "request_seconds": 82.686
+}

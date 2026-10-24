@@ -59,6 +59,10 @@ class NodeSshHost(private val context:Context,private val runtime:RuntimeHost,pr
         .filter { runCatching { NodeSshBind(it).validate() }.isSuccess }.distinct().sorted()
 
     suspend fun start(bind:NodeSshBind) {
+        // SSHD's default authorized-keys implementation initializes its desktop
+        // home-directory path even though Meshlit replaces that authenticator.
+        // Android has no user.home, so provide an app-private path first.
+        NodeSshServer.setAndroidHome(context.filesDir.toPath())
         check(com.meshlit.legal.LegalAgreementStore(context).accepted()) { "Read and accept the app notices first" }
         gate.requireAllowed(ManagedFeature.SSH);bind.validate()
         require(bind.address in addresses()) { "Select an address currently owned by this node" }
@@ -90,6 +94,8 @@ class NodeSshHost(private val context:Context,private val runtime:RuntimeHost,pr
                     }
                 } catch(e:CancellationException) { started.completeExceptionally(e) }
                 catch(e:Exception) { mutable.value=mutable.value.copy(phase="Failed",error="SSH failed: ${e.javaClass.simpleName}");started.completeExceptionally(e) }
+                catch(e:LinkageError) { val failure=IllegalStateException("SSH runtime unavailable: ${e.javaClass.simpleName}",e)
+                    mutable.value=mutable.value.copy(phase="Failed",error=failure.message);started.completeExceptionally(failure) }
                 finally {
                     enabled=false
                     withContext(NonCancellable+Dispatchers.IO) { runCatching { server.stop() };context.stopService(Intent(context,NodeSshService::class.java)) }

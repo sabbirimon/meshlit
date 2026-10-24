@@ -21,6 +21,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":shared-workspace"))
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(project(":core-common"))
     implementation(project(":core-trust"))

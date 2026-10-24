@@ -15,6 +15,7 @@ kotlin {
 dependencies {
     implementation("com.github.mwiede:jsch:2.28.7")
     implementation("org.apache.sshd:sshd-core:2.20.0")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.86")
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     compileOnly("androidx.annotation:annotation:1.9.1")

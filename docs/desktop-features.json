@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-10",
+  "updated": "2026-10-23",
   "scope": "desktop-and-server",
   "features": [
     {
@@ -80,7 +80,7 @@
       "area": "Devices and categories",
       "requested": "Phone/desktop/server/NAS/IoT categories, add/connect, actual capability probe, trust, device roles and enrollment",
       "status": "Partial source",
-      "boundary": "Saved HTTPS API references and selected-host authentication; labels are not verified transformer capability.",
+      "boundary": "Saved HTTPS API references, last verified contact dashboard and selected-host authentication; labels and old contact do not establish current online status or compute trust.",
       "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Nodes.kt"
     },
     {
@@ -222,7 +222,7 @@
     {
       "id": "app-integrations",
       "area": "App and developer integrations",
-      "requested": "Claude Code, Codex CLI, OpenClaw, Cline, Hermes, IDE clients and third-party plugin connectors",
+      "requested": "Claude Code, AI coding CLIs, OpenClaw, Cline, Hermes, IDE clients and third-party plugin connectors",
       "status": "Planned",
       "boundary": "Interoperability via configured provider/MCP adapters; naming an app does not imply installed/integrated support.",
       "source": "docs/DESKTOP_STUDIO_PLAN.md"

@@ -1,6 +1,6 @@
 # Desktop recovery, self-healing and reset
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 

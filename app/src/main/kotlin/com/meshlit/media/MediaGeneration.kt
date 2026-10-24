@@ -17,7 +17,7 @@ import java.io.ByteArrayOutputStream
 import java.util.UUID
 
 @Serializable data class SavedVideo(val profileId:String,val endpoint:String,val job:RemoteVideoJob)
-data class MediaResult(val file:File?=null,val mime:String?=null,val text:String?=null)
+data class MediaResult(val file:File?=null,val mime:String?=null,val text:String?=null,val usage:OnlineReply?=null)
 
 class MediaGeneration(private val context:Context,private val providers:OnlineProviders) {
     private val operations=com.meshlit.operations.OperationsControl.get(context).gate
@@ -35,12 +35,14 @@ class MediaGeneration(private val context:Context,private val providers:OnlinePr
         return File(directory,"${UUID.randomUUID()}.$extension")
     }
     private fun save(items:List<SavedVideo>){store.put("videos",Json.encodeToString(items));_videos.value=items}
-    suspend fun generate(profileId:String,kind:String,model:String,prompt:String,voice:String="coral",image:Uri?=null):MediaResult=managed {
-        val p=profile(profileId);val key=providers.resolveToken(p)
+    suspend fun generate(profileId:String,kind:String,model:String,prompt:String,voice:String="coral",image:Uri?=null,expectedProfile:OnlineProfile?=null):MediaResult=managed {
+        val p=profile(profileId)
+        require(expectedProfile==null || p==expectedProfile){"Photo provider changed. Review the selected model and send again."}
+        val key=providers.resolveToken(p)
         when(kind){
             "image"->MediaResult(client.image(p,key,model,prompt,target("png")),"image/png")
             "speech"->MediaResult(client.speech(p,key,model,prompt,voice,target("wav")),"audio/wav")
-            "vision"->MediaResult(text=client.vision(p,key,readImage(image ?: error("Select an image first")),prompt))
+            "vision"->{val reply=client.visionReply(p,key,readImage(image ?: error("Select an image first")),prompt);MediaResult(text=reply.text,usage=reply)}
             "video"->{require(_videos.value.size<20){"At most 20 saved remote video references"};val job=client.startVideo(p,key,model,prompt);save(_videos.value+SavedVideo(p.id,p.endpoint,job));MediaResult(text="Remote job ${job.id} · ${job.status}. Check status below; this is not a finished video.")}
             else->error("Unsupported media operation")
         }

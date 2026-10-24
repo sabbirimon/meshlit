@@ -117,6 +117,19 @@ class ModelLibrary(private val context: Context, private val coordinator: Infere
         catch(error:Exception) { LibraryModel(manifest.id,manifest.name,manifest.url,sizeBytes=manifest.sizeBytes,
             sha256=manifest.sha256,source="Bundled · ${manifest.license}",phase="Failed",error=error.message,bundled=true) }
         _models.update { list -> listOf(bundled)+list.filter{it.id!=manifest.id} }
+        // Retire only the previous app-owned 135M starter after the replacement
+        // passed its checksum. Preserve user imports and other model choices.
+        val legacy=saved.firstOrNull { it.id=="smollm2-135m-instruct-q4_k_m" && it.bundled }
+        val legacyFile=legacy?.path?.let(::File)
+        val ownedDir=File(context.filesDir,BundledModelInstaller.TARGET_SUBDIR)
+        if(bundled.installed && manifest.id!=legacy?.id && legacyFile?.name=="SmolLM2-135M-Instruct-Q4_K_M.gguf" &&
+            legacyFile.parentFile?.canonicalFile==ownedDir.canonicalFile && (!legacyFile.exists() || legacyFile.delete())) {
+            _models.update { list -> list.filterNot { it.id==legacy.id } }
+            val edit=prefs.edit()
+            if(prefs.getString("last-loaded","")==legacy.id) edit.remove("last-loaded")
+            if(_startupId.value==legacy.id) { edit.remove("startup-model");_startupId.value="" }
+            edit.commit()
+        }
         persist()
     }
 
@@ -125,6 +138,13 @@ class ModelLibrary(private val context: Context, private val coordinator: Infere
     fun recommend(entry:LibraryModel):Boolean {
         val plan=devicePlan()
         return DeviceRuntimePolicy.fits(plan,entry.sizeBytes,entry.metadata?.kvBytes(plan.recommendedContext,"f16"))
+    }
+    fun downloadRecommendation(id:String):String {
+        val advice=CompactModelRecommendations.assess(deviceSnapshot()).firstOrNull{it.model.id==id}
+            ?: error("Unknown model recommendation")
+        require(advice.hardwareFit){advice.reason}
+        require(freeStorage()>=advice.storageNeeded){"Free space for the model, runtime copy and storage reserve before downloading"}
+        return addHubArtifact(advice.model.artifact,ModelDownloadBackend.VERIFIED_HTTP)
     }
     fun addHubArtifact(artifact:HubArtifact,backend:ModelDownloadBackend):String {
         val id=addUrl(artifact.url,artifact.fileName.removeSuffix(".gguf"),startDownload=false)

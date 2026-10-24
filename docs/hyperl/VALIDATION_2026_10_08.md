@@ -1,6 +1,6 @@
 # HyperL local validation — 2026-10-08
 
-Isolated branch `codex/hyperl-experimental`, based on Meshlit `77ac214`. This is
+Isolated source commit `cdb06b6`, based on Meshlit `77ac214`. This is
 original source research, not an application integration or universal runtime release.
 
 Java 21, existing pinned offline Gradle dependencies, Android SDK 37, one Gradle

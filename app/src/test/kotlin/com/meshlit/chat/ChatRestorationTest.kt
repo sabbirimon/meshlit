@@ -3,6 +3,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ChatRestorationTest {
+    @Test fun photoHistoryKeepsSourceWithoutStoringPixelsOrBreakingOldMessages() {
+        val json=kotlinx.serialization.json.Json
+        val old=json.decodeFromString<ChatMessage>("""{"id":"old","role":"assistant","text":"hello"}""")
+        assertNull(old.attachmentNote);assertNull(old.source);assertNull(old.status)
+        val photo=ChatMessage(role="assistant",text="",source="Vision · model",status="Stopped · photo not answered")
+        assertEquals(photo,json.decodeFromString<ChatMessage>(json.encodeToString(ChatMessage.serializer(),photo)))
+    }
     @Test fun normalChatsKeepLongerRepliesAndHistoryWithoutNetworkTools() {
         val options=ChatOptions();assertEquals(1024,options.maxTokens);assertEquals(10,options.historyMessages)
         assertFalse(options.webTools);assertFalse(options.phoneTools);assertNull(options.onlineProfileId)

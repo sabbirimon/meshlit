@@ -5,6 +5,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ChatOptionsTest {
+    @Test fun toolGrantsDoNotForceOrdinaryChatThroughPlanner() {
+        val tools=ChatOptions(webTools=true,phoneTools=true)
+        assertFalse(shouldPlanToolCall("Hi",tools))
+        assertFalse(shouldPlanToolCall("How are you?",tools))
+        assertTrue(shouldPlanToolCall("Search the web for the latest release",tools))
+        assertTrue(shouldPlanToolCall("Open Chrome and play a video",tools))
+        assertFalse(shouldPlanToolCall("Search the web",ChatOptions()))
+    }
     @Test fun oldChatsDoNotSilentlyGainWebOrPhoneTools() {
         val old=Json.decodeFromString<ChatOptions>("{\"maxTokens\":16}")
         assertFalse(old.webTools);assertFalse(old.phoneTools);old.validate()
@@ -30,7 +38,9 @@ class ChatOptionsTest {
         ChatOptions(peerTools=true,cryptoTools=true).validate()
         ChatOptions(remoteTools=true).validate()
         ChatOptions(gibberlinkTools=true).validate()
-        for (invalid in listOf(ChatOptions(peerTools=true,remoteTools=true), ChatOptions(peerTools=true,webTools=true), ChatOptions(gibberlinkTools=true,onlineProfileId="p"), ChatOptions(nodeTools=true,memoryTools=true,localSearchTools=true,cryptoTools=true))) {
+        ChatOptions(remoteTools=true,gibberlinkTools=true).validate()
+        ChatOptions(peerTools=true,remoteTools=true,webTools=true).validate()
+        for (invalid in listOf(ChatOptions(peerTools=true,remoteTools=true,webTools=true,cryptoTools=true), ChatOptions(gibberlinkTools=true,onlineProfileId="p"), ChatOptions(nodeTools=true,memoryTools=true,localSearchTools=true,cryptoTools=true))) {
             assertThrows(IllegalArgumentException::class.java) { invalid.validate() }
         }
     }

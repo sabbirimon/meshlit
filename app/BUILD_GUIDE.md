@@ -1,6 +1,6 @@
 # Build Guide — Meshlit (Android Device Cluster & Local-Agent Orchestrator)
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -870,7 +870,7 @@ Humans are the final gate.
 ### 2.9.7 The 2026 reality check
 
 Almost every AI tool is already part of an agent system. Claude
-Code, ChatGPT, Cursor, LangChain agents, the OpenAI Python SDK,
+Code, Cursor, LangChain agents, the OpenAI Python SDK,
 the Anthropic SDK — all of these can call APIs. **If Meshlit
 exposes a clean OpenAI-compatible API at the gateway, agents will
 use it without us doing anything special.** The "AI uses Meshlit"

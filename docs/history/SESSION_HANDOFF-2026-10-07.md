@@ -4,8 +4,8 @@
 then explicitly requested APK upload. Saving/uploading is complete. Do not resume
 other implementation, builds or publication until IMON requests it.
 
-Project: `/Users/code/Documents/Codex/2026-10-06/re/outputs/meshlit`.
-Branch: `codex/meshlit-ui-pipeline-openclaw`.
+Project: `/path/to/workspace/2026-10-06/re/outputs/meshlit`.
+Source commit: `baa8bcd`.
 Remote: https://github.com/sabbirimon/meshlit-v2
 
 ## Published and verified
@@ -21,9 +21,8 @@ BetaTesting.md, release-info.json and SHA256SUMS. They are debug-signed beta/rev
 artifacts, not Play-approved releases. Files: `../meshlit-beta/`.
 
 Source, About/topics, Apache-2.0 LICENSE/NOTICE, colorful README and real screenshots
-are published. Branding: “Many nodes. One mind.” Owner: IMON. Codex by OpenAI is
-credited in README/AUTHORS and new commit trailers. Sidebar account association
-is controlled by GitHub; no Codex avatar appearance was promised or verified.
+are published. Branding: “Many nodes. One mind.” Owner: IMON. Historical commit
+trailers remain in Git history. Sidebar account association is controlled by GitHub.
 GitHub Packages is separate from APK Releases.
 
 ## Final validation

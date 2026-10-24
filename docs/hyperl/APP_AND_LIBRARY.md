@@ -1,6 +1,6 @@
 # HyperL libraries in Meshlit
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -81,7 +81,7 @@ Application-owned sensor/audio/image code must first provide finite f32 vectors;
 the screen does not capture sensors or parse images. Keep existing GGUF model
 inference in core-inference; these recipes do not replace llama.cpp.
 
-The standalone [use-case guide](https://github.com/sabbirimon/HyperL/blob/codex/production-library/docs/USE_CASES.md)
+The standalone [use-case guide](https://github.com/sabbirimon/HyperL/blob/67b30e09741f4bba1672a891644fc73abb1f9855/docs/USE_CASES.md)
 describes CLI/Python/C workflows, NumPy/CPU Torch copies, explicit macOS Metal
 selection and encrypted dataset streaming. Those desktop integrations are not
 automatically ported into the Android app. Native mobile GPU/NPU backends,
@@ -89,7 +89,7 @@ model/tensor libraries, distributed HyperL jobs and automatic storage spill need
 separate designs and hardware tests. The owner resumed single-phone GPU testing:
 the standalone native Vulkan runner passes eleven CPU-verified kernel outputs and
 two expected overflow rejections on Samsung Galaxy A20s SM-A207F / Adreno 506,
-Android 11. [Build and hardware scope](https://github.com/sabbirimon/HyperL/blob/codex/production-library/docs/ANDROID_VULKAN.md).
+Android 11. [Build and hardware scope](https://github.com/sabbirimon/HyperL/blob/67b30e09741f4bba1672a891644fc73abb1f9855/docs/ANDROID_VULKAN.md).
 This ADB-shell experiment does not run through this screen or prove an app-UID
 JNI adapter, model inference or mobile production readiness. Two-phone cluster
 acceptance remains paused. Signing, lifecycle/thermal tests and security review

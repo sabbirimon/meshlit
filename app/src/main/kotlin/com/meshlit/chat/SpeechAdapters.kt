@@ -52,20 +52,23 @@ internal fun readVoiceWav(bytes:ByteArray):PcmAudio {
 }
 /** Bounded microphone turn with a local energy/silence end detector. No audio is saved. */
 @android.annotation.SuppressLint("MissingPermission")
-internal suspend fun captureVoiceTurn():ByteArray=withContext(Dispatchers.IO) {
+internal suspend fun captureVoiceTurn(onLevel:(Double,Boolean)->Unit = { _,_ -> }):ByteArray=withContext(Dispatchers.IO) {
     val min=AudioRecord.getMinBufferSize(16000,android.media.AudioFormat.CHANNEL_IN_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT)
     require(min>0)
     val recorder=AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,16000,android.media.AudioFormat.CHANNEL_IN_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT,maxOf(min,8192))
     try {
-        check(recorder.state==AudioRecord.STATE_INITIALIZED);recorder.startRecording()
-        val result=ByteArrayOutputStream();val buffer=ByteArray(2048);var speechBytes=0;var silenceBytes=0
-        withTimeout(30_000){while(result.size()<960000){currentCoroutineContext().ensureActive()
-            val n=recorder.read(buffer,0,buffer.size,AudioRecord.READ_NON_BLOCKING);check(n>=0) { "Microphone read failed" }
+        check(recorder.state==AudioRecord.STATE_INITIALIZED);recorder.startRecording();check(recorder.recordingState==AudioRecord.RECORDSTATE_RECORDING){"Microphone could not start"}
+        val result=ByteArrayOutputStream();val buffer=ByteArray(2048);val detector=VoiceEndpointDetector()
+        withTimeoutOrNull(30_000){while(!detector.complete){currentCoroutineContext().ensureActive()
+            val n=recorder.read(buffer,0,minOf(buffer.size,detector.remaining),AudioRecord.READ_NON_BLOCKING);check(n>=0) { "Microphone read failed" }
             if(n==0){delay(20);continue};require(n%2==0);result.write(buffer,0,n)
-            if(voiceEnergy(buffer,n)>0.02){speechBytes+=n;silenceBytes=0}else silenceBytes+=n
-            if(speechBytes>=9600 && silenceBytes>=22400) break
-        }}
-        check(speechBytes>=3200) { "No speech detected before the recording limit" };result.toByteArray()
+            val level=voiceEnergy(buffer,n)
+            detector.accept(n,level)
+            onLevel(level,detector.hasSpeech)
+        };true}
+        currentCoroutineContext().ensureActive()
+        if(!detector.hasSpeech) throw NoVoiceDetected()
+        result.toByteArray()
     }finally{runCatching{recorder.stop()};recorder.release()}
 }
 internal fun voiceEnergy(bytes:ByteArray,count:Int):Double {
@@ -73,18 +76,27 @@ internal fun voiceEnergy(bytes:ByteArray,count:Int):Double {
     for(i in 0 until count step 2){val sample=((bytes[i].toInt() and 255) or (bytes[i+1].toInt() shl 8)).toShort().toDouble()/32768;energy+=sample*sample}
     return kotlin.math.sqrt(energy/(count/2))
 }
-internal suspend fun playVoice(audio:PcmAudio)=withContext(Dispatchers.IO) {
+internal suspend fun playVoice(audio:PcmAudio,onLevel:(Double)->Unit = {})=withContext(Dispatchers.IO) {
     audio.validate()
     val min=AudioTrack.getMinBufferSize(audio.rate,android.media.AudioFormat.CHANNEL_OUT_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT);require(min>0)
     val track=AudioTrack(AudioManager.STREAM_MUSIC,audio.rate,android.media.AudioFormat.CHANNEL_OUT_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT,maxOf(min,8192),AudioTrack.MODE_STREAM)
     try {
         check(track.state==AudioTrack.STATE_INITIALIZED);track.play();var offset=0
-        withTimeout(185_000){while(offset<audio.bytes.size){currentCoroutineContext().ensureActive()
+        val meter=launch {
+            while(isActive) {
+                val position=(track.playbackHeadPosition.toLong()*2).coerceIn(0,audio.bytes.size.toLong()).toInt()
+                val end=minOf(position+1024,audio.bytes.size)
+                if(end-position>=2) onLevel(voiceEnergy(audio.bytes.copyOfRange(position,end),end-position))
+                delay(50)
+            }
+        }
+        try { withTimeout(185_000){while(offset<audio.bytes.size){currentCoroutineContext().ensureActive()
             val n=track.write(audio.bytes,offset,minOf(8192,audio.bytes.size-offset),AudioTrack.WRITE_NON_BLOCKING);check(n>=0) { "Audio playback write failed" }
             if(n==0) delay(10) else offset+=n
         }
         while(track.playbackHeadPosition.toLong()<audio.bytes.size/2){currentCoroutineContext().ensureActive();delay(20)}}
-    }finally{runCatching{track.pause();track.flush()};track.release()}
+        }finally{withContext(NonCancellable){meter.cancelAndJoin()}}
+    }finally{onLevel(0.0);runCatching{track.pause();track.flush()};track.release()}
 }
 internal class ProviderSpeechAdapter(context:Context,private val providers:OnlineProviders) {
     private val gate=OperationsControl.get(context).gate

@@ -1,12 +1,19 @@
 # Meshlit current session handoff
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current handoff — 2026-10-24
+
+**Application work remains paused for HyperL-first delivery.** Use [the saved checkpoint](PAUSED_CHECKPOINT_2026-10-24.md) for implemented work, validation gaps, ordered next gates and build/run links. Current checkout: `/path/to/workspace/meshlit-v2-dev`; branch: `feature/peering-ui-2026-10-12`; the review branch targets `dev`. The owner authorizes this source/documentation push, not a new Meshlit build or release. Keep standalone HyperL changes in its own repository.
+
+## Historical handoff — 2026-10-10
+
+
 Updated 2026-10-10, Asia/Dhaka. Current work is authorized by the owner; the old stopped-session handoff is preserved in history/SESSION_HANDOFF-2026-10-07.md.
 
-Repository: /Users/code/Documents/Codex/2026-10-06/re/outputs/meshlit. Review branch: codex/hyperl-production-library. Publication remote: sabbirimon/meshlit-v2. Draft review: https://github.com/sabbirimon/meshlit-v2/pull/2. Do not force-push, merge or submit to Play without the applicable owner instruction.
+Repository: /path/to/workspace/2026-10-06/re/outputs/meshlit. Review commit: e7a07c9. Publication remote: sabbirimon/meshlit-v2. Draft review: https://github.com/sabbirimon/meshlit-v2/pull/2. Do not force-push, merge or submit to Play without the applicable owner instruction.
 
 ## Latest owner direction — plan first
 

@@ -1,10 +1,10 @@
 # Memory, personality, recovery and speech adapters
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-08. These are optional additions to the current chat controller.
+Updated 2026-10-24. These are optional additions to the current chat controller.
 They do not restore the historical Android Studio UI or response pipeline.
 
 ## Learn preferences over time
@@ -59,6 +59,37 @@ into online speech while its text inference stays local. Conversely, an explicit
 selected online LLM can use offline speech input/output; recognized text then goes
 to that LLM provider under the chat's existing online selection.
 
+### Live conversation controls (build45 source)
+
+Opening the microphone panel does not start recording. **Start live** begins a
+bounded conversation; **One turn** listens once, replies and stops. Live mode
+listens again after each completed reply. **Mute mic** cancels an active capture
+and waits for **Unmute** before listening again. It does not stop an answer already
+being spoken. **Interrupt** cancels the current thinking or speaking turn, waits
+for its cleanup and then listens again. **End conversation** stops the session.
+Closing the panel, backgrounding the app, losing audio focus or emergency stop
+also ends it. A session is limited to ten replies or five minutes.
+
+The visible activity ring follows real microphone PCM or synthesized PCM energy.
+Android TTS exposes playback state rather than PCM energy; its visual is a state
+indicator. No animation is a latency or quality measurement. The timer and reply
+count describe this session only. The speech admission check uses current free
+RAM and pack sizes; it can refuse to load speech alongside an already loaded LLM.
+
+**Voice settings → Audio conversation captions** enables the recognized user
+text and reply subtitles. Synthesized replies are split into phrases of at most
+240 characters; each phrase is displayed during its playback. These are phrase
+captions, not word-aligned timestamps. The full text remains in ordinary chat.
+Playback removes Markdown formatting and substitutes a brief note for code blocks.
+Spoken requests ask the selected LLM for concise conversational replies without
+changing its identity, saved tool grants or provider policy.
+
+The current pipeline still alternates listening, thinking and speaking. Automatic
+acoustic interruption, simultaneous full-duplex audio and native Gemini/OpenAI
+Realtime sessions are separate unimplemented adapters. Offline voice model quality
+depends on the installed packs and phone resources. Online provider qualification
+is deferred to the owner; credentials are entered in Meshlit, never in a report.
+
 | Adapter | Input/output | Network and requirements |
 | --- | --- | --- |
 | Whisper ONNX pack | Speech → text | App-local installed English speech weights; no Android recognition service or network fallback |
@@ -85,11 +116,12 @@ implemented and are not shown as working presets. Unsupported models/voices fail
 Start requires Android microphone permission. Maximum session: ten turns or five
 minutes, with a thirty-second microphone turn and a simple local energy/silence
 endpoint detector. Listening pauses while the LLM thinks and the reply plays.
-Stop, backgrounding, closing the dialog, a changed conversation, or emergency stop
+End, backgrounding, closing the panel, a changed conversation, or emergency stop
 ends capture/playback and cancels owned generation. Native SDK calls may finish
 before cancellation can release the native model; controls stay locked during
 cleanup. This is bounded turn-taking, not simultaneous full-duplex audio or
-barge-in. Long spoken replies are bounded; the complete text remains in chat.
+automatic acoustic interruption. Tap-to-interrupt is available. Long spoken
+replies are bounded; the complete text remains in chat.
 
 ## Install offline speech packs
 
@@ -151,12 +183,19 @@ handling and Gemini native audio are next work, not a claim made by this HTTP
 turn-taking adapter. Claude text can use the separate offline/online speech layer;
 no native Claude speech API or voice entitlement is assumed.
 
-Samsung Galaxy A20s/Android 11 app-UID qualification passed actual prerecorded
+Historical Samsung Galaxy A20s/Android 11 app-UID qualification passed actual prerecorded
 Whisper transcription and Piper synthesis, plus real local LLM generation while
 both speech models were loaded. Speech cleanup preserved that LLM. The pinned
 SDK's float PCM is explicitly normalized to bounded signed PCM16; invalid audio
 is rejected. This does not establish microphone capture, playback quality or a
 live provider conversation. [Exact device results](DEVICE_TESTING_2026-10-08.md).
+
+On 2026-10-24, a build44 rerun recognized the reference phrase and produced
+non-silent Piper PCM, but its subsequent Qwen3 check failed with no reply. The test
+had supplied a raw completion instead of the known model's ChatML prompt; build45
+source corrects that test and records partial failures. That source correction is
+not a passed rerun. The updated live controls still require physical acceptance;
+see [current progress](../PROGRESS.md) for the latest actual results.
 
 Remaining qualification: real microphone end-to-end conversation and background/
 Stop/revocation, multilingual packs, independent speaker inventory, audio latency

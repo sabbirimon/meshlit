@@ -142,7 +142,7 @@ val coreModule = module {
     // so every `get()` call returns the same singleton.
     // -----------------------------------------------------------------
     single<DataStore<Preferences>> { androidContext().peerDataStore }
-    single { PeerRegistry(get()) }
+    single { PeerRegistry(get(), get<TrustStore>()) }
     single { ClusterDispatch(get()) }
 
     // -----------------------------------------------------------------
@@ -160,6 +160,20 @@ val coreModule = module {
     // -----------------------------------------------------------------
     // Settings / device / first-run repositories
     // -----------------------------------------------------------------
+    single { com.meshlit.peering.DeviceIdentity(androidContext()) }
+    single { com.meshlit.disco.DiscoveryModeStore(androidContext()) }
+    single<com.meshlit.core.users.UserStore> {
+        com.meshlit.core.users.FileBackedUserStore(java.io.File(androidContext().filesDir, "users")).also { store ->
+            if (store.current().createdAtMs == 0L) store.add("Owner")
+        }
+    }
+    single { com.meshlit.peering.PeerSessionStore(androidContext()) }
+    single { com.meshlit.peering.PairingHistoryStore(androidContext(), get(), get<CoroutineScope>()) }
+    single { com.meshlit.core.trust.PairingAuthority({ get<com.meshlit.peering.DeviceIdentity>().get(get<com.meshlit.MeshlitApplication>().nodeIdHex) },
+        get<TrustStore>(), onEvent = { get<com.meshlit.peering.PairingHistoryStore>().record(it) }) }
+    single { com.meshlit.peering.ContributionStore(androidContext(), get()) { get<com.meshlit.MeshlitApplication>().nodeIdHex } }
+    single { com.meshlit.peering.HostLocationStore(androidContext()) }
+    single { com.meshlit.peering.RelayManager(get(), get(), get(), get(), get()) }
     single { SettingsRepository(androidContext()) }
     single { DeviceProfileRepository(androidContext()) }
     single { FirstRunSetupRepository(androidContext()) }
@@ -191,7 +205,7 @@ val coreModule = module {
         com.meshlit.disco.PeerRepository(
             coordinator = get(),
             localIPPrefixProvider = { com.meshlit.disco.collectLocalIPv4Prefixes() },
-            clusterFingerprintsProvider = { emptySet() },
+            clusterFingerprintsProvider = { get<com.meshlit.core.trust.TrustStore>().list().filter { !it.isTokenExpired() }.mapNotNull { it.publicKeyFingerprint }.toSet() },
             trustStore = get<com.meshlit.core.trust.TrustStore>(),
             usbTetherProvider = {
                 (androidContext() as com.meshlit.MeshlitApplication)
@@ -210,7 +224,8 @@ val coreModule = module {
     // Firewall
     // -----------------------------------------------------------------
     single<MeshlitFirewall> {
-        val firewall=MeshlitFirewall(com.meshlit.core.firewall.FirewallPolicy.Default)
+        val firewall=MeshlitFirewall(com.meshlit.core.firewall.FirewallPolicy.Default,
+            MeshlitFirewall.Starter.portLayer)
         val repository=get<SettingsRepository>()
         get<CoroutineScope>().launch{repository.firewallFlow.collect{firewall.portLayer=it}}
         firewall
@@ -557,6 +572,7 @@ val coreModule = module {
     single { com.meshlit.openclaw.AndroidControl(androidContext(),get()) }
     single { com.meshlit.openclaw.PhoneAdministration(androidContext(),get(),get(),com.meshlit.operations.OperationsControl.get(androidContext()).gate) }
     single { com.meshlit.pipeline.PipelineHost(androidContext(), get(), get()) }
+    single { com.meshlit.resources.ResourceSnapshotReader(androidContext(), get(), get(), get()) }
     single { com.meshlit.ssh.SshConnections(androidContext(),get()) }
     if(android.os.Build.VERSION.SDK_INT>=26) single { com.meshlit.ssh.NodeSshHost(androidContext(),get(),get()) }
     single { com.meshlit.training.TrainingHost(androidContext(),get()) }
@@ -580,9 +596,10 @@ val coreModule = module {
     single { com.meshlit.routing.ModelRoutes(androidContext(),get(),get(),get()) }
     single { com.meshlit.chat.VoiceModels(androidContext()) }
     single { com.meshlit.chat.PersonalMemory(androidContext()) }
-    single { com.meshlit.chat.LocalChatTools(get(),com.meshlit.operations.OperationsControl.get(androidContext()).gate,{get()},{get()}) }
+    single { com.meshlit.knowledge.KnowledgeLibrary(androidContext()) }
+    single { com.meshlit.chat.LocalChatTools(get(),com.meshlit.operations.OperationsControl.get(androidContext()).gate,{get()},{get()},get()) }
     single { com.meshlit.search.AppSearchService(androidContext(),get(),{get<com.meshlit.chat.ChatController>().state.value},{get<com.meshlit.models.ModelLibrary>().models.value},{get<com.meshlit.control.WebBridgeHost>().directory.read()},get<com.meshlit.operations.OperationsControl>().gate,{get<com.meshlit.settings.SettingsRepository>()},{get<com.meshlit.control.AgentBackend>().delegated(com.meshlit.control.AgentBackend.Scope.SETTINGS)},{get<com.meshlit.gateway.GatewayHost>().remoteRoutes}) }
-    single { com.meshlit.chat.ChatController(androidContext(), get(), get(),get(),get(),get(),get(),get(),get()) }
+    single { com.meshlit.chat.ChatController(androidContext(), get(), get(),get(),get(),get(),get(),get(),get(),get(),get()) }
     single { com.meshlit.models.ModelLibrary(androidContext(), get(), get(), get()) }
     single { com.meshlit.sandbox.RuntimeHost(androidContext()) }
     single { com.meshlit.sandbox.RuntimeTerminal(androidContext(), get()) }
@@ -595,11 +612,13 @@ val coreModule = module {
             registerAll(get<com.meshlit.remote.RemoteCommandHost>().specs())
             registerAll(get<com.meshlit.p2p.PeerChatHost>().specs())
             registerAll(get<com.meshlit.chat.PersonalMemory>().specs())
+            registerAll(get<com.meshlit.knowledge.KnowledgeLibrary>().specs())
+            registerAll(com.meshlit.security.SecuritySkillTools(get<com.meshlit.operations.OperationsControl>().gate).specs())
             registerAll(get<com.meshlit.search.AppSearchService>().specs())
             registerAll(get<com.meshlit.operations.OperationTools>().specs())
             registerAll(com.meshlit.gateway.GatewayRoutingTools { get<com.meshlit.gateway.GatewayHost>() }.specs())
             registerAll(get<com.meshlit.control.AgentBackend>().specs())
-            registerAll(com.meshlit.control.EnvironmentTools(androidContext(),get(),get(),get()).specs())
+            registerAll(com.meshlit.control.EnvironmentTools(androidContext(),get(),get(),get(),get(),get(),get(),get()).specs())
             registerAll(com.meshlit.routing.RouterTools(get(),get()).specs())
             registerAll(com.meshlit.colibri.ColibriTools({ get<com.meshlit.chat.ChatController>() },get()).specs())
             registerAll(get<com.meshlit.openclaw.AndroidControl>().specs())

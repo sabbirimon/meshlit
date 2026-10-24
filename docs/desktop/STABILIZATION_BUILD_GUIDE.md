@@ -1,6 +1,6 @@
 # Stabilization build and acceptance guide
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-10: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -24,7 +24,7 @@ The model alone is about 1.12 GB. Budget for the two native builds, Java sources
 Run from the intended clean Meshlit worktree. Existing location on this Mac:
 
 ```sh
-cd /Users/code/Documents/Codex/2026-10-06/re/outputs/meshlit
+cd /path/to/workspace/2026-10-06/re/outputs/meshlit
 git status --short
 git rev-parse HEAD
 ```
@@ -49,7 +49,7 @@ xcrun --find clang
 df -h "$MESHLIT_WORK"
 ```
 
-Previously qualified portable Java on this Mac is `/Users/code/Documents/Codex/2026-10-06/re/work/meshlit-macos-build40/temurin/jdk-21.0.12.1+1/Contents/Home`. Existing reusable Gradle cache is `/Users/code/Documents/Codex/2026-10-06/re/work/gradle-home`. Check existence and provenance before reuse. Do not assume `/usr/libexec/java_home` selects the portable runtime used for distribution.
+Previously qualified portable Java on this Mac is `/path/to/workspace/2026-10-06/re/work/meshlit-macos-build40/temurin/jdk-21.0.12.1+1/Contents/Home`. Existing reusable Gradle cache is `/path/to/workspace/2026-10-06/re/work/gradle-home`. Check existence and provenance before reuse. Do not assume `/usr/libexec/java_home` selects the portable runtime used for distribution.
 
 Use this shell helper for bounded builds on the 16 GiB Intel host:
 

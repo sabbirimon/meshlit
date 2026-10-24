@@ -25,10 +25,9 @@ retains GPL-2.0-with-Classpath-Exception and component notices/source obligation
 System vendor SDKs/drivers and external libraries are not relicensed. Preserve
 complete upstream notices and applicable source/source-offer terms.
 
-Current Git history lists Sabbir Hassan Imon as human author with Codex coauthor
-credit. This is provenance evidence, not an adjudication of ownership. Review
-each import/contribution; a commit does not prove employer consent, a contributor
-agreement or patent clearance.
+Git authorship is not an adjudication of ownership. Review each import and
+contribution; a commit does not prove employer consent, a contributor agreement
+or patent clearance.
 
 The development version advances to alpha.6 to distinguish the transition from
 immutable alpha.5 assets. No new release or signing claim is made. Old assets
