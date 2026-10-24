@@ -1,0 +1,65 @@
+Meshlit Intel Mac desktop preview - application version 2.0.40, desktop Studio build40.1
+
+Choose ONE installation method:
+DMG: open the disk image and drag MeshlitPreview.app onto Applications.
+PKG: open the installer; it installs the same app in /Applications.
+Quit an existing MeshlitPreview before replacing it. Do not install both methods.
+
+This is an experimental Intel x86_64 Mac client, not an iPhone or Apple Silicon
+native build. macOS 11 or later is the configured minimum; only the Intel
+development Mac on macOS 15.8.1 has been tested. A portable Eclipse Temurin 21
+runtime is bundled; Homebrew and a separately installed Java are not needed.
+
+The app has only an ad-hoc local integrity signature. It is NOT Developer ID
+signed or Apple-notarized; the PKG is unsigned. macOS may block an Internet
+download. Verify its SHA-256 against the GitHub release before considering
+macOS Privacy & Security's approval for this specific app. Do not disable
+Gatekeeper or other system security globally. A public production distribution
+still needs Developer ID signing, notarization and clean target-Mac validation.
+
+The desktop app bundles Qwen2.5 1.5B Instruct Q4_K_M (1,117,320,736 bytes) and a
+llama.cpp CPU engine with verified Auto AVX2 selection and an SSE4.2 fallback.
+Choose Load in the header, then Send to chat offline, or Send to load automatically.
+Load verifies the pinned full model hash before starting its private authenticated
+127.0.0.1 process. No Internet request or model download is required. Unload/quit
+stops that process. Stop during generation also unloads it; click Load to resume.
+Settings -> Models -> Local offline -> Select GGUF lets you use a compatible local file.
+Discover models provides opt-in Hugging Face search and verified revision-pinned
+single-file GGUF downloads. Gated files need your legitimate account access.
+The selected file stays in place; it is not copied into a model cache.
+
+Remote host mode connects to a host you explicitly select with a separate network
+opt-in. HTTPS is required except numeric loopback. Prompts and the session bearer
+token are sent to that host. Tokens and chat history are kept in memory; closing
+the app clears them. Appearance, engine options and saved model/device references persist. Switching between local and remote
+clears the chat to avoid sending local history to another host.
+This preview does not provide the Android app's complete node/agent/voice features.
+
+Settings -> Providers -> Remote host offers LM Studio (127.0.0.1:1234/v1), Ollama
+(127.0.0.1:11434/v1) and Open WebUI (127.0.0.1:3000/api) presets. These must already
+be installed/running by you. Presets reset prior credentials/network opt-in.
+For Open WebUI use its account API key; its administrator must enable API access.
+Then allow requests and Connect / refresh models. The host may use cloud models
+or execute its configured server-side tools; review that host's configuration.
+Full native lifecycle integration/model downloads for those hosts remain planned.
+
+The PKG contains no installation scripts, background services, login items,
+drivers, shell commands or global Java installation. The starter model is included
+in the application payload; it is not downloaded by an installer script.
+Uninstall by quitting and removing /Applications/MeshlitPreview.app.
+
+Licenses and dependency notices are inside the app at Contents/Resources/licenses;
+the bundled Java runtime's complete legal notices are under Contents/runtime.
+RUNTIME_SOURCE.json identifies the matching Java source archive supplied beside
+the installers on the same GitHub release. The Java GPL/Classpath exception does
+not change Meshlit's own Apache-2.0 application licence. Other Android-only
+components listed by repository-wide notices are not bundled in this client.
+
+Source: https://github.com/sabbirimon/meshlit-v2
+Contact: sabbirimon@gmail.com
+
+Management groups settings by type. Global search covers settings, current chat,
+saved models and devices. Browser web search has its own switch and human button.
+Inference engine controls CPU threads/context/batches/f16 or q8_0 KV keys and idle unload (5 minutes
+by default). Send on an unloaded local model loads it before generation. No new
+agent, VM, OS-firewall or desktop worker enrollment is implied by these controls.

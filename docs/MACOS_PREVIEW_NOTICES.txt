@@ -1,0 +1,49 @@
+Meshlit desktop distribution notices
+
+Meshlit application and shared-workspace: Apache-2.0; see LICENSE and NOTICE.
+Kotlin, kotlinx.coroutines, kotlinx.serialization, atomicfu, JetBrains Compose
+Multiplatform and annotations: Apache-2.0. Upstream projects:
+https://github.com/JetBrains/kotlin
+https://github.com/Kotlin/kotlinx.coroutines
+https://github.com/Kotlin/kotlinx.serialization
+https://github.com/Kotlin/kotlinx-atomicfu
+https://github.com/JetBrains/compose-multiplatform
+https://github.com/JetBrains/java-annotations
+AndroidX desktop dependencies: Apache-2.0, The Android Open Source Project;
+original licence files extracted from their JARs are retained alongside this file.
+JSpecify 1.0.0: Apache-2.0, https://github.com/jspecify/jspecify
+CommonMark Java 0.30.0 and GFM tables: BSD-2-Clause; original JAR licences retained.
+https://github.com/commonmark/commonmark-java
+Skiko 0.9.37.4: Apache-2.0, https://github.com/JetBrains/skiko
+Skia and its bundled third-party graphics libraries retain their separate notices;
+see the upstream notice files retained in this directory.
+https://skia.googlesource.com/skia/
+JBR API 1.5.0: Apache-2.0; its complete licence and source
+links are retained in this directory. No JetBrains runtime is bundled.
+
+Eclipse Temurin OpenJDK runtime: GPL-2.0 with Classpath exception and additional
+component notices retained under Contents/runtime/Contents/Home/legal. The pinned
+binary/source coordinates and hashes are in RUNTIME_SOURCE.json. Corresponding
+source is downloadable beside these installers. The unmodified upstream runtime
+is reduced with jlink; no Java native sources are modified. These dependency
+licences do not relicense Meshlit's independent Apache application source.
+
+Qwen2.5 1.5B Instruct GGUF: Apache-2.0, Qwen; original publisher licence retained.
+The pinned model revision, hash and size are in models/bundled-model.json.
+llama.cpp/ggml CPU engine: MIT, upstream and third-party licence texts retained
+in LLAMA-LICENSE.txt and LLAMA-DEPENDENCY-LICENSES.txt. Pinned source:
+https://github.com/RunanywhereAI/llama.cpp/tree/4df29be4f4c3673f428170fda944a5b19f743bb8
+No native upstream sources were changed. CURL, OpenSSL and Metal are disabled.
+HyperL native CPU and JVM library: separate HyperL Community and Enterprise licence;
+retain HYPERL-LICENSE, NOTICE and LICENSE_HISTORY plus earlier Apache grants.
+Optional user-facing CPU execution requires reviewing its terms.
+Maintained JSch 2.28.7: BSD-3-Clause; Apache MINA SSHD 2.20.0: Apache-2.0.
+Retained dependency JAR notices cover the SSH desktop bridge.
+OSHI 7.7.0: MIT; original OSHI-LICENSE retained. JNA 5.19.1: Apache-2.0 option
+selected from Apache-2.0 OR LGPL-2.1-or-later; JNA-LICENSE and Apache text retained.
+https://github.com/oshi/oshi
+https://github.com/java-native-access/jna
+Ghostty: optional externally installed MIT application, not bundled or embedded.
+No Android LLM SDK, Colibri executable or ggwave runtime is linked into this desktop
+studio. Docker/Podman/Kubernetes, QEMU guests, Dolphin speech weights and third-party
+applications are not bundled. Repository notices are not installed-runtime proof.

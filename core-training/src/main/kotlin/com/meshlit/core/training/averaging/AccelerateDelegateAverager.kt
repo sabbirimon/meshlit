@@ -6,28 +6,8 @@ import com.meshlit.core.common.logger
 import com.meshlit.core.training.config.DistributedConfig
 import com.meshlit.core.training.ring.RingParticipant
 
-/**
- * Accelerate averager.
- *
- * This strategy is only valid when a desktop-class peer (laptop,
- * server, workstation) hosts the actual trainer — typically HF
- * Accelerate FSDP2 / DeepSpeed ZeRO-3. The Android phone becomes an
- * OBSERVER: it does not run real autograd, it forwards config over
- * `core-ssh`, and it streams the desktop's `/v1/cluster/...` status to
- * the same UI surface so the phone user sees loss / tok/s / thermal
- * exactly as if it were running on-device.
- *
- * The averager returns the local gradient unchanged (which is the
- * synthetic stub today). When the desktop peer becomes unreachable
- * the averager emits a `MeshlitEvent.Training.AcceleratePeerOffline`
- * and the trainer switches the local role to OBSERVER automatically
- * — reuses the existing `ClusterRole` enum plus the existing
- * `MeshlitEvent` surface.
- *
- * No new wire envelope: the desktop peer talks to the phone over
- * `core-ssh`, and the phone talks to the desktop over the same
- * `LanServicesCoordinator`-discovered host. The `/v1/cluster/...`
- * REST routes added in Phase 11.2 are the surface the desktop uses.
+/** Receives actual owner-probed desktop gradients. Missing/offline/syncing data fails explicitly.
+ * This contract does not install or execute a desktop trainer; use the optional Soup companion.
  */
 class AccelerateDelegateAverager(
     private val desktopProbe: () -> DesktopPeerStatus = { DesktopPeerStatus.Offline() },
@@ -48,43 +28,20 @@ class AccelerateDelegateAverager(
         localPort: Int,
     ): MeshlitResult<AveragedGradient> {
         val status = desktopProbe()
-        if (status is DesktopPeerStatus.Offline) {
-            log.warn(
-                "cluster.trainer.accelerate.peer_offline",
-                "desktop peer unreachable; using local gradient",
-                mapOf("peer" to (status.peerId ?: "?"), "step" to step),
-            )
-            // The trainer will detect this and downgrade the role.
-            return MeshlitResult.Success(
-                AveragedGradient(
-                    step = step,
-                    values = localGradient,
-                    sourceKind = AveragerKind.ACCELERATE,
-                    loss = localGradient.size * 0.001f,
-                    droppedPackets = 1,
-                )
-            )
-        }
-        if (status is DesktopPeerStatus.Syncing) {
-            // Desktop is alive but its /v1/cluster/plan hasn't
-            // returned. Pass through unchanged.
-            return MeshlitResult.Success(
-                AveragedGradient(
-                    step = step,
-                    values = localGradient,
-                    sourceKind = AveragerKind.ACCELERATE,
-                    loss = localGradient.size * 0.001f,
-                    droppedPackets = 0,
-                )
-            )
-        }
+        if(status is DesktopPeerStatus.Offline) return MeshlitResult.Failure(
+            MeshlitError.Resource("cluster.trainer.accelerate.peer_offline")
+        )
+        if(status is DesktopPeerStatus.Syncing) return MeshlitResult.Failure(
+            MeshlitError.Resource("cluster.trainer.accelerate.peer_syncing")
+        )
         // Online: pull the averaged gradient the desktop shipped to
         // /v1/cluster/plan/{runId}/step/{step}. The desktop has
         // already applied FSDP averaging on its side; we just
         // receive the result.
         val desktop = status as DesktopPeerStatus.Online
-        val averaged = desktop.lastAveragedGradient ?: localGradient
-        val clean = nanGuard?.checkAndDrop(averaged) ?: averaged
+        val averaged = desktop.lastAveragedGradient ?: return MeshlitResult.Failure(MeshlitError.Invalid("cluster.trainer.accelerate.gradient_missing"))
+        if(averaged.size!=localGradient.size || averaged.any{!it.isFinite()}) return MeshlitResult.Failure(MeshlitError.Invalid("cluster.trainer.accelerate.diverged"))
+        val clean = if(nanGuard==null) averaged else nanGuard.checkAndDrop(averaged)
         if (clean == null) {
             nanGuard?.setLastDivergenceReason("accelerate_desktop_diverged")
             return MeshlitResult.Failure(
@@ -96,7 +53,7 @@ class AccelerateDelegateAverager(
                 step = step,
                 values = clean,
                 sourceKind = AveragerKind.ACCELERATE,
-                loss = clean.size * 0.001f,
+                loss = desktop.lastLoss.takeIf{it.isFinite()},
                 droppedPackets = if (nanGuard?.isDiverged() == true) 1 else 0,
             )
         )

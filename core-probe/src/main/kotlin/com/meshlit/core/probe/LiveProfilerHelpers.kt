@@ -127,11 +127,11 @@ class CpuUsageBaseline {
         val starttime = fields.getOrNull(19)?.toLongOrNull() ?: 0L
         val totalTicks = utime + stime + cutime + cstime
         val nowTicks = SystemClock.elapsedRealtimeNanos() / 10_000_000L // ms → cs (10ms)
-        // starttime is in clock ticks since boot; elapsedRealtime()
-        // ms since boot. Convert ms to clock ticks (1 tick = 10 ms
-        // on USER_HZ=100, the Android default) so both counters
-        // share units.
-        val elapsedTicks = nowTicks - (starttime * 10L)
+        // Both values are already in clock ticks (USER_HZ=100 on
+        // Android). Multiplying starttime by ten makes this negative
+        // on a real phone, pins the denominator at one, and falsely
+        // displays a flat 100% CPU graph.
+        val elapsedTicks = nowTicks - starttime
         return totalTicks to elapsedTicks.coerceAtLeast(1L)
     }
 }

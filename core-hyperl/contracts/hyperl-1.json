@@ -1,0 +1,20 @@
+{
+  "contractFormat": "hyperl-contract/1",
+  "languageFormat": "hyperl/1",
+  "abiVersion": 1,
+  "runtimeRevision": "hyperl-cpu/1",
+  "identifierPattern": "[A-Za-z][A-Za-z0-9_]{0,31}",
+  "maxInputs": 8,
+  "maxSteps": 64,
+  "maxVectorElements": 262144,
+  "maxRetainedElements": 1048576,
+  "cancellationInterval": 1024,
+  "maxProgramChars": 65536,
+  "maxInputChars": 16777216,
+  "operations": {
+    "add": {"opcode": 1, "operands": 2},
+    "multiply": {"opcode": 2, "operands": 2},
+    "relu": {"opcode": 3, "operands": 1},
+    "sum": {"opcode": 4, "operands": 1}
+  }
+}

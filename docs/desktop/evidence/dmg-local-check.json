@@ -1,0 +1,14 @@
+{
+    "model": "Qwen2.5 1.5B Instruct · Q4_K_M",
+    "modelSha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "engine": "llama.cpp CPU AVX2/FMA/F16C",
+    "nativeContextVerified": 4096,
+    "loadSeconds": 4.818610515,
+    "answer": "- Protect data from loss: Backups ensure that your data is safe and can be restored if something goes wrong.\n- Prevent data corruption: Regular backups help ensure that your data remains intact and uncorrupted.\n- Facilitate recovery: If a system or file becomes corrupted, backups can be used to restore it to a working state.",
+    "outputTokens": 69,
+    "endToEndTokensPerSecond": 20.55438127316179,
+    "generationWithoutTokenRejected": true,
+    "loopbackModelMetadataPublic": true,
+    "unloadStoppedListener": true,
+    "scope": "Real bundled model generation on Intel Mac; no cloud, GPU, other-device or broad quality benchmark"
+}

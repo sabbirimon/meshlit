@@ -1,0 +1,10 @@
+{
+  "app": {
+    "bundleName": "com.meshlit.next.preview",
+    "vendor": "Sabbir Hassan Imon",
+    "versionCode": 1,
+    "versionName": "1.0.0-preview",
+    "icon": "$media:app_icon",
+    "label": "$string:app_name"
+  }
+}

@@ -83,29 +83,29 @@ val MeshlitTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = 0.sp,
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = MeshlitFigtree,
-        fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
         letterSpacing = 0.sp,
     ),
-    headlineSmall = TextStyle(
+    headlineMedium = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
         letterSpacing = 0.sp,
     ),
+    headlineSmall = TextStyle(
+        fontFamily = MeshlitFigtree,
+        fontWeight = FontWeight.Medium,
+        fontSize = 21.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp,
+    ),
     titleLarge = TextStyle(
         fontFamily = MeshlitFigtree,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 19.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.sp,
     ),
     titleMedium = TextStyle(
@@ -125,23 +125,23 @@ val MeshlitTypography = Typography(
     bodyLarge = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp,
+        fontSize = 15.sp,
+        lineHeight = 23.sp,
+        letterSpacing = 0.sp,
     ),
     bodyMedium = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.25.sp,
+        letterSpacing = 0.sp,
     ),
     bodySmall = TextStyle(
         fontFamily = MeshlitFigtree,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.4.sp,
+        letterSpacing = 0.sp,
     ),
     labelLarge = TextStyle(
         fontFamily = MeshlitFigtree,
@@ -194,4 +194,16 @@ object MeshlitMonoStyles {
         lineHeight = 16.sp,
         letterSpacing = 0.sp,
     )
+}
+
+/** Keep the established size/weight hierarchy; only replace the requested UI family. */
+fun typographyFor(font:UiFont):Typography {
+    if(font==UiFont.FIGTREE) return MeshlitTypography
+    val family=when(font){UiFont.FIGTREE->MeshlitFigtree;UiFont.SYSTEM->FontFamily.SansSerif;UiFont.SERIF->FontFamily.Serif;UiFont.MONO->MeshlitMapleMono}
+    val t=MeshlitTypography
+    return t.copy(displayLarge=t.displayLarge.copy(fontFamily=family),displayMedium=t.displayMedium.copy(fontFamily=family),displaySmall=t.displaySmall.copy(fontFamily=family),
+        headlineLarge=t.headlineLarge.copy(fontFamily=family),headlineMedium=t.headlineMedium.copy(fontFamily=family),headlineSmall=t.headlineSmall.copy(fontFamily=family),
+        titleLarge=t.titleLarge.copy(fontFamily=family),titleMedium=t.titleMedium.copy(fontFamily=family),titleSmall=t.titleSmall.copy(fontFamily=family),
+        bodyLarge=t.bodyLarge.copy(fontFamily=family),bodyMedium=t.bodyMedium.copy(fontFamily=family),bodySmall=t.bodySmall.copy(fontFamily=family),
+        labelLarge=t.labelLarge.copy(fontFamily=family),labelMedium=t.labelMedium.copy(fontFamily=family),labelSmall=t.labelSmall.copy(fontFamily=family))
 }

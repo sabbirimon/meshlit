@@ -25,7 +25,7 @@ class AgentTracingObserver(
             "agent.invoke",
             mapOf("user.length" to userMessage.length.toString()),
         ) { span ->
-            logSink.onAgent("agent", "User turn: ${userMessage.take(120)}", mapOf("length" to userMessage.length))
+            logSink.onAgent("agent", "Agent turn started", mapOf("length" to userMessage.length))
             val startedTools = mutableListOf<String>()
             val wrappedOnTool: suspend (AgentCapability) -> Unit = { capability ->
                 startedTools.add(capability.tag)
@@ -37,8 +37,8 @@ class AgentTracingObserver(
                     try {
                         onTool(capability)
                     } catch (t: Throwable) {
-                        toolSpan.recordException(t)
-                        logSink.onAgent("tool", "✗ ${capability.tag}: ${t.message}")
+                        toolSpan.setAttribute("error",1L)
+                        logSink.onAgent("tool", "Tool failed")
                         throw t
                     }
                 }

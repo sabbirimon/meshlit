@@ -103,6 +103,7 @@ fun FilesScreen(
     onOpenDrawer: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val contextResources=androidx.compose.ui.platform.LocalResources.current
     val app = remember { koinInject<MeshlitApplication>() }
 
     // Single controller instance per Composable lifetime. The
@@ -153,7 +154,7 @@ fun FilesScreen(
                 .apply()
             Toast.makeText(
                 context,
-                context.getString(R.string.files_open_external),
+                contextResources.getString(R.string.files_open_external),
                 Toast.LENGTH_SHORT,
             ).show()
         }
@@ -312,14 +313,14 @@ fun FilesScreen(
                         // Create button did nothing).
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_mkdir_created, name),
+                            contextResources.getString(R.string.files_mkdir_created, name),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "unknown"
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_mkdir_failed, msg),
+                            contextResources.getString(R.string.files_mkdir_failed, msg),
                             Toast.LENGTH_SHORT,
                         ).show()
                     }
@@ -346,14 +347,14 @@ fun FilesScreen(
                     if (result.isSuccess) {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_deleted, entry.name),
+                            contextResources.getString(R.string.files_deleted, entry.name),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "unknown"
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_delete_failed, msg),
+                            contextResources.getString(R.string.files_delete_failed, msg),
                             Toast.LENGTH_SHORT,
                         ).show()
                     }
@@ -372,14 +373,14 @@ fun FilesScreen(
                     if (result.isSuccess) {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_moved, state.currentDir),
+                            contextResources.getString(R.string.files_moved, state.currentDir),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "unknown"
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_move_failed, msg),
+                            contextResources.getString(R.string.files_move_failed, msg),
                             Toast.LENGTH_SHORT,
                         ).show()
                     }
@@ -404,14 +405,14 @@ fun FilesScreen(
                     if (result.isSuccess) {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_copied, state.currentDir),
+                            contextResources.getString(R.string.files_copied, state.currentDir),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "unknown"
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_copy_failed, msg),
+                            contextResources.getString(R.string.files_copy_failed, msg),
                             Toast.LENGTH_SHORT,
                         ).show()
                     }
@@ -430,14 +431,14 @@ fun FilesScreen(
                     if (result.isSuccess) {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_moved, state.currentDir),
+                            contextResources.getString(R.string.files_moved, state.currentDir),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } else {
                         val msg = result.exceptionOrNull()?.message ?: "unknown"
                         Toast.makeText(
                             context,
-                            context.getString(R.string.files_move_failed, msg),
+                            contextResources.getString(R.string.files_move_failed, msg),
                             Toast.LENGTH_SHORT,
                         ).show()
                     }

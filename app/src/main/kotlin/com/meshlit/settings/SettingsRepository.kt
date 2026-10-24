@@ -46,9 +46,10 @@ import kotlinx.serialization.json.Json
  * Settings panel. Other systems (theme, notifications, cluster
  * transports, etc.) read from this and write back through it.
  */
-open class SettingsRepository(private val context: Context) {
+open class SettingsRepository(private val context: Context?, private val storeOverride: DataStore<Preferences>? = null) {
 
-    private val store: DataStore<Preferences> by lazy { context.settingsDataStore }
+    private val tracingSecrets by lazy { com.meshlit.core.trust.EncryptedCredentialStore(requireNotNull(context),"tracing-secrets") }
+    private val store: DataStore<Preferences> by lazy { storeOverride ?: requireNotNull(context).settingsDataStore }
 
     val flow: Flow<MeshlitThemeConfig> = store.data.map { prefs ->
         MeshlitThemeConfig(
@@ -58,6 +59,12 @@ open class SettingsRepository(private val context: Context) {
                 ?: MeshlitThemeConfig.Default.basePalette,
             themeMode = ThemeMode.entries.firstOrNull { it.name == prefs[Keys.themeMode] }
                 ?: MeshlitThemeConfig.Default.themeMode,
+            dynamicColors = prefs[Keys.dynamicColors] ?: MeshlitThemeConfig.Default.dynamicColors,
+            uiLanguage = com.meshlit.workspace.WorkspaceLanguage.fromTag(prefs[Keys.uiLanguage]),
+            uiFont = com.meshlit.ui.theme.UiFont.entries.firstOrNull{it.name==prefs[Keys.uiFont]} ?: com.meshlit.ui.theme.UiFont.FIGTREE,
+            surfaceStyle = com.meshlit.ui.theme.SurfaceStyle.entries.firstOrNull{it.name==prefs[Keys.surfaceStyle]} ?: com.meshlit.ui.theme.SurfaceStyle.SOLID,
+            workspaceLayout = com.meshlit.ui.theme.WorkspaceLayout.entries.firstOrNull{it.name==prefs[Keys.workspaceLayout]} ?: com.meshlit.ui.theme.WorkspaceLayout.ADAPTIVE,
+            sidebarStyle = com.meshlit.ui.theme.SidebarStyle.entries.firstOrNull{it.name==prefs[Keys.sidebarStyle]} ?: com.meshlit.ui.theme.SidebarStyle.CARDS,
             fontScale = prefs[Keys.fontScale] ?: MeshlitThemeConfig.Default.fontScale,
             densityScale = prefs[Keys.densityScale] ?: MeshlitThemeConfig.Default.densityScale,
             animationsEnabled = prefs[Keys.animationsEnabled] ?: MeshlitThemeConfig.Default.animationsEnabled,
@@ -96,6 +103,15 @@ open class SettingsRepository(private val context: Context) {
             if (value.isBlank()) prefs.remove(Keys.displayName)
             else prefs[Keys.displayName] = value.trim().take(40)
         }
+    }
+
+    /** Hide the configured or hardware-derived name in peer-facing surfaces. Identity keys and IPs remain visible. */
+    open val privateContributorNameFlow: Flow<Boolean> = store.data.map { it[Keys.privateContributorName] ?: false }
+    open fun privateContributorNameNow(): Boolean = runCatching {
+        kotlinx.coroutines.runBlocking { privateContributorNameFlow.first() }
+    }.getOrDefault(false)
+    open suspend fun setPrivateContributorName(enabled: Boolean) {
+        store.edit { it[Keys.privateContributorName] = enabled }
     }
 
     /**
@@ -265,11 +281,11 @@ open class SettingsRepository(private val context: Context) {
      *  and the AccessibilityService tools are exposed. Default =
      *  false. */
     val androidAutomationEnabledFlow: Flow<Boolean> = store.data.map {
-        it[Keys.androidAutomationEnabled] ?: false
+        !com.meshlit.BuildConfig.PLAY_REVIEW && (it[Keys.androidAutomationEnabled] ?: false)
     }
 
     suspend fun setAndroidAutomationEnabled(enabled: Boolean) {
-        store.edit { it[Keys.androidAutomationEnabled] = enabled }
+        store.edit { it[Keys.androidAutomationEnabled] = enabled && !com.meshlit.BuildConfig.PLAY_REVIEW }
     }
 
     // --- Android automation allowlist + high-risk packages -------------
@@ -396,7 +412,7 @@ open class SettingsRepository(private val context: Context) {
     // flows on every change. `TracingMode.Off` (default) means no
     // spans; `Local` writes spans to the in-app LogBuffer;
     // `Otel` boots an OpenTelemetry SDK and forwards spans via
-    // OTLP/gRPC to the user's endpoint URL.
+    // OTLP/HTTP to the user's endpoint URL.
 
     /** Active tracing mode. Default Off. */
     val tracingModeFlow: Flow<TracingMode> = store.data.map { prefs ->
@@ -446,9 +462,9 @@ open class SettingsRepository(private val context: Context) {
     }
 
     /**
-     * OTLP/gRPC endpoint URL. Empty = OTel remote export disabled.
+     * OTLP/HTTP endpoint URL. Empty = OTel remote export disabled.
      * The user pastes this in Settings → Tracing; pointing at
-     * `https://otlp-gateway-<region>.grafana.cloud:443` is the
+     * `https://your-collector.example/otlp` is the
      * canonical Grafana Cloud path.
      */
     val tracingOtelEndpointFlow: Flow<String> = store.data.map {
@@ -456,6 +472,7 @@ open class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setTracingOtelEndpoint(url: String) {
+        if(url.isNotBlank()) com.meshlit.core.observability.TelemetryPrivacy.endpoint(url)
         store.edit { prefs ->
             if (url.isBlank()) prefs.remove(Keys.tracingOtelEndpoint)
             else prefs[Keys.tracingOtelEndpoint] = url.trim()
@@ -469,14 +486,22 @@ open class SettingsRepository(private val context: Context) {
      * [com.meshlit.core.observability.OtelBootstrap].
      */
     val tracingOtelHeadersFlow: Flow<String> = store.data.map {
-        it[Keys.tracingOtelHeaders] ?: ""
+        if(tracingSecrets.get("bound-endpoint")==it[Keys.tracingOtelEndpoint].orEmpty()) tracingSecrets.get("headers").orEmpty() else ""
     }
 
     suspend fun setTracingOtelHeaders(raw: String) {
-        store.edit { prefs ->
-            if (raw.isBlank()) prefs.remove(Keys.tracingOtelHeaders)
-            else prefs[Keys.tracingOtelHeaders] = raw.trim()
+        require(raw.length<=8192) { "Collector headers exceed limit" }
+        val lines=raw.lineSequence().map{it.trim()}.filter{it.isNotBlank() && !it.startsWith('#')}.toList()
+        require(lines.size<=16 && lines.all{line ->
+            val at=line.indexOf('=')
+            at>0 && line.substring(0,at).trim().matches(Regex("[A-Za-z0-9_.-]{1,64}")) &&
+                line.substring(at+1).all{it.code in 32..126}
+        }) { "Use at most 16 printable key=value headers" }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            tracingSecrets.putCommitted("headers",raw.trim())
+            tracingSecrets.putCommitted("bound-endpoint",store.data.first()[Keys.tracingOtelEndpoint].orEmpty())
         }
+        store.edit { prefs -> prefs.remove(Keys.tracingOtelHeaders);prefs[Keys.tracingHeaderRevision]=(prefs[Keys.tracingHeaderRevision] ?: 0)+1 }
     }
 
     // --- Sync (non-flow) accessors ----------------------------------------
@@ -513,6 +538,15 @@ open class SettingsRepository(private val context: Context) {
      * `onCreate` block on DataStore I/O.
      */
     fun startTracingCache(scope: CoroutineScope) {
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val legacy=store.data.first()[Keys.tracingOtelHeaders]
+            if(!legacy.isNullOrBlank()) {
+                // Preserve old data encrypted even if it needs formatting repair.
+                tracingSecrets.putCommitted("headers",legacy)
+                tracingSecrets.putCommitted("bound-endpoint",store.data.first()[Keys.tracingOtelEndpoint].orEmpty())
+                store.edit{it.remove(Keys.tracingOtelHeaders);it[Keys.tracingHeaderRevision]=(it[Keys.tracingHeaderRevision] ?: 0)+1}
+            }
+        }
         scope.launch { tracingModeFlow.collect { cachedTracingMode = it } }
         scope.launch { tracingOtelEndpointFlow.collect { cachedOtlpEndpoint = it } }
         scope.launch { tracingOtelHeadersFlow.collect { cachedOtlpHeaders = it } }
@@ -663,9 +697,9 @@ open class SettingsRepository(private val context: Context) {
      */
     val firewallFlow: Flow<PortLayerPolicy> = store.data.map { prefs ->
         val raw = prefs[Keys.firewallPolicy]
-        if (raw.isNullOrBlank()) return@map PortLayerPolicy()
-        runCatching { json.decodeFromString(PortLayerPolicy.serializer(), raw) }
-            .getOrDefault(PortLayerPolicy())
+        if (raw.isNullOrBlank()) return@map MeshlitFirewall.Starter.portLayer
+        runCatching { json.decodeFromString(PortLayerPolicy.serializer(), raw).also{it.validate()} }
+            .getOrDefault(MeshlitFirewall.Starter.portLayer)
     }
 
     /**
@@ -685,6 +719,7 @@ open class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setFirewallPolicy(policy: PortLayerPolicy) {
+        policy.validate()
         val encoded = json.encodeToString(PortLayerPolicy.serializer(), policy)
         store.edit { it[Keys.firewallPolicy] = encoded }
     }
@@ -699,7 +734,7 @@ open class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setActiveEndpoint(id: String) {
-        store.edit { it[Keys.activeEndpointId] = id }
+        store.edit { prefs -> require(id.isBlank() || decodeEndpoints(prefs[Keys.remoteEndpoints]).any { it.id == id }) { "Unknown device" }; prefs[Keys.activeEndpointId] = id }
     }
 
     /**
@@ -715,11 +750,14 @@ open class SettingsRepository(private val context: Context) {
             val merged = if (existingIdx >= 0) {
                 val prior = current[existingIdx]
                 current[existingIdx] = endpoint.copy(
-                    addedAtMs = if (prior.addedAtMs == 0L) now else prior.addedAtMs,
+                    trusted = prior.trusted && endpoint.trusted && prior.baseUrl == endpoint.baseUrl && prior.apiKey == endpoint.apiKey && prior.notes == endpoint.notes,
+                    // A legacy row without a timestamp has an unknown add date.
+                    // Reconnecting must not present today's date as its original add date.
+                    addedAtMs = prior.addedAtMs,
                     lastSeenMs = if (endpoint.lastSeenMs == 0L) prior.lastSeenMs else endpoint.lastSeenMs,
                 )
             } else {
-                endpoint.copy(addedAtMs = if (endpoint.addedAtMs == 0L) now else endpoint.addedAtMs)
+                current.add(endpoint.copy(trusted = false, addedAtMs = if (endpoint.addedAtMs == 0L) now else endpoint.addedAtMs))
             }
             prefs[Keys.remoteEndpoints] = encodeEndpoints(current)
         }
@@ -847,8 +885,38 @@ open class SettingsRepository(private val context: Context) {
         store.edit { it[Keys.basePalette] = palette.name }
     }
 
+    suspend fun setDynamicColors(enabled: Boolean) { store.edit { it[Keys.dynamicColors] = enabled } }
+
+    /** One committed edit for the reference palette; retains accessibility/font preferences. */
+    suspend fun applyReferenceAppearance() {
+        store.edit { prefs ->
+            prefs[Keys.accentHue]=AccentHue.SKY.name
+            prefs[Keys.basePalette]=BasePalette.PAPER.name
+            prefs[Keys.themeMode]=ThemeMode.LIGHT.name
+            prefs[Keys.dynamicColors]=false
+            prefs.remove(Keys.customPaletteJson)
+        }
+    }
+
     suspend fun setThemeMode(mode: ThemeMode) {
         store.edit { it[Keys.themeMode] = mode.name }
+    }
+
+    suspend fun setUiLanguage(language:com.meshlit.workspace.WorkspaceLanguage) { store.edit { it[Keys.uiLanguage]=language.tag } }
+
+    suspend fun setUiFont(font:com.meshlit.ui.theme.UiFont){store.edit{it[Keys.uiFont]=font.name}}
+    suspend fun setSurfaceStyle(style:com.meshlit.ui.theme.SurfaceStyle){store.edit{it[Keys.surfaceStyle]=style.name}}
+    suspend fun setWorkspaceLayout(layout:com.meshlit.ui.theme.WorkspaceLayout){store.edit{it[Keys.workspaceLayout]=layout.name}}
+    suspend fun setSidebarStyle(style:com.meshlit.ui.theme.SidebarStyle){store.edit{it[Keys.sidebarStyle]=style.name}}
+    suspend fun applyAppearance(preset:com.meshlit.ui.theme.AppearancePreset) {
+        store.edit { prefs ->
+            prefs[Keys.accentHue]=preset.accent.name
+            prefs[Keys.basePalette]=preset.base.name
+            prefs[Keys.themeMode]=preset.mode.name
+            prefs[Keys.dynamicColors]=false
+            prefs[Keys.surfaceStyle]=preset.surface.name
+            prefs.remove(Keys.customPaletteJson)
+        }
     }
 
     suspend fun setFontScale(scale: Float) {
@@ -890,7 +958,7 @@ open class SettingsRepository(private val context: Context) {
     }
 
     suspend fun resetToDefaults() {
-        store.edit { it.clear() }
+        store.edit { prefs -> prefs.asMap().keys.filter { it.name.startsWith("theme.") }.forEach { prefs.remove(it) } }
     }
 
     private fun decodeEndpoints(raw: String?): List<RemoteEndpoint> {
@@ -938,6 +1006,12 @@ open class SettingsRepository(private val context: Context) {
         val accentHue = stringPreferencesKey("theme.accent_hue")
         val basePalette = stringPreferencesKey("theme.base_palette")
         val themeMode = stringPreferencesKey("theme.theme_mode")
+        val dynamicColors = booleanPreferencesKey("theme.dynamic_colors")
+        val uiLanguage=stringPreferencesKey("theme.ui_language")
+        val uiFont=stringPreferencesKey("theme.ui_font")
+        val surfaceStyle=stringPreferencesKey("theme.surface_style")
+        val workspaceLayout=stringPreferencesKey("theme.workspace_layout")
+        val sidebarStyle=stringPreferencesKey("theme.sidebar_style")
         val fontScale = floatPreferencesKey("theme.font_scale")
         val densityScale = floatPreferencesKey("theme.density_scale")
         val animationsEnabled = booleanPreferencesKey("theme.animations_enabled")
@@ -945,6 +1019,7 @@ open class SettingsRepository(private val context: Context) {
         val customPaletteJson = stringPreferencesKey("theme.custom_palette_json")
         val customModelPath = stringPreferencesKey("model.custom_path")
         val displayName = stringPreferencesKey("device.display_name")
+        val privateContributorName = booleanPreferencesKey("device.private_contributor_name")
         val networkScope = stringPreferencesKey("network.scope")
         val remoteEndpoints = stringPreferencesKey("network.remote_endpoints")
         val activeEndpointId = stringPreferencesKey("network.active_endpoint_id")
@@ -971,6 +1046,7 @@ open class SettingsRepository(private val context: Context) {
         val tracingIncludeInference = booleanPreferencesKey("tracing.include_inference")
         val tracingIncludeAgent = booleanPreferencesKey("tracing.include_agent")
         val tracingOtelEndpoint = stringPreferencesKey("tracing.otel_endpoint")
+        val tracingHeaderRevision = intPreferencesKey("tracing.header_revision")
         val tracingOtelHeaders = stringPreferencesKey("tracing.otel_headers")
         val netDeviceCaptureEnabled = booleanPreferencesKey("feature.net.device_capture")
         val feedbackRepoSlug = stringPreferencesKey("feedback.repo_slug")

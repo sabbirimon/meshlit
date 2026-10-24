@@ -1,0 +1,8 @@
+{
+  "string": [
+    {
+      "name": "entry_description",
+      "value": "Experimental HarmonyOS NEXT authenticated host client. Native LLM runtime unavailable until integrated and tested."
+    }
+  ]
+}

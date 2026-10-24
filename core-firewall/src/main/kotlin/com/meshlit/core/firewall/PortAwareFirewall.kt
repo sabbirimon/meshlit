@@ -106,7 +106,14 @@ enum class PortDefaultAction { ALLOW, DENY }
 data class PortLayerPolicy(
     val rules: List<PortRule> = emptyList(),
     val defaultAction: PortDefaultAction = PortDefaultAction.DENY,
-)
+) {
+    fun validate() {
+        require(rules.size<=64 && rules.map{it.id}.distinct().size==rules.size)
+        rules.forEach{rule->require(rule.id.length in 1..100 && rule.peerFingerprint.length<=256 && rule.reason.length<=500 && rule.priority in -1000..1000)
+            when(rule.portSpec.kind){PortSpec.Kind.SINGLE->require(rule.portSpec.exact in 1..65535);PortSpec.Kind.RANGE->require(rule.portSpec.start in 1..65535 && rule.portSpec.end in rule.portSpec.start..65535);PortSpec.Kind.KNOWN->require(rule.portSpec.knownProxy!=KnownProxy.NONE);PortSpec.Kind.ANY->Unit}
+        }
+    }
+}
 
 /**
  * The composite firewall. Wraps the phase-3 [FirewallPolicy] (CIDR /
@@ -116,7 +123,7 @@ data class PortLayerPolicy(
  */
 class MeshlitFirewall(
     private val phase3Policy: FirewallPolicy,
-    var portLayer: PortLayerPolicy = PortLayerPolicy(),
+    @Volatile var portLayer: PortLayerPolicy = PortLayerPolicy(),
 ) {
     private val log = logger("MeshlitFirewall")
 
@@ -139,7 +146,9 @@ class MeshlitFirewall(
         }
 
         // Port layer — "what".
+        val snapshot=portLayer
         val portMatch = matchPortLayer(
+            policy=snapshot,
             peerFingerprint = remoteNodeId ?: "",
             port = port,
             protocol = protocol,
@@ -160,7 +169,7 @@ class MeshlitFirewall(
                 )
             }
         }
-        return when (portLayer.defaultAction) {
+        return when (snapshot.defaultAction) {
             PortDefaultAction.ALLOW -> MeshlitFirewallVerdict.Allow(
                 source = MeshlitFirewallSource.DEFAULT,
                 ruleId = "",
@@ -198,12 +207,13 @@ class MeshlitFirewall(
     }
 
     private fun matchPortLayer(
+        policy:PortLayerPolicy,
         peerFingerprint: String,
         port: Int,
         protocol: PortProtocol,
         direction: PortDirection,
     ): PortRule? {
-        val ordered = portLayer.rules.sortedByDescending { it.priority }
+        val ordered = policy.rules.sortedByDescending { it.priority }
         return ordered.firstOrNull { rule ->
             if (rule.direction != PortDirection.BOTH && rule.direction != direction) return@firstOrNull false
             if (rule.protocol != PortProtocol.ANY && rule.protocol != protocol) return@firstOrNull false

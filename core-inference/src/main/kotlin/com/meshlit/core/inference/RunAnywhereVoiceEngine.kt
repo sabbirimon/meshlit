@@ -154,6 +154,9 @@ class RunAnywhereVoiceEngine(
                 audioFormat,
                 bufferSize,
             )
+        } catch (denied: SecurityException) {
+            close(denied)
+            return@callbackFlow
         } catch (t: Throwable) {
             close(t)
             return@callbackFlow
@@ -163,7 +166,17 @@ class RunAnywhereVoiceEngine(
             close(IllegalStateException("AudioRecord failed to initialize"))
             return@callbackFlow
         }
-        recorder.startRecording()
+        try {
+            recorder.startRecording()
+        } catch (failure: SecurityException) {
+            recorder.release()
+            close(failure)
+            return@callbackFlow
+        } catch (failure: IllegalStateException) {
+            recorder.release()
+            close(failure)
+            return@callbackFlow
+        }
         log.info("runanywhere.voice.capture.started", "Mic capture started")
         val readBuffer = ByteArray(BYTES_PER_FRAME * FRAMES_PER_BUFFER)
         try {

@@ -1,0 +1,335 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-10-23",
+  "scope": "desktop-and-server",
+  "features": [
+    {
+      "id": "desktop-studio",
+      "area": "Workspace and presentation",
+      "requested": "Compact thin header, icon menus, grouped searchable dashboards, Basic/Advanced differences, hero cards, custom colour/font/language, Markdown/code/tables/charts, long reply reader",
+      "status": "Partial source",
+      "boundary": "Shared reply reader, compact seven-category management overview, globally searchable Basic/Advanced menus and saved themes exist; full reader/platform parity and pending category backends remain.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt"
+    },
+    {
+      "id": "offline-model",
+      "area": "Offline starter and local execution",
+      "requested": "Compact bundled desktop-only model; verified import, load, unload, generation and context/CPU/KV options",
+      "status": "Partial source",
+      "boundary": "Pinned Qwen plus owned CPU process, shared GGUF memory admission/native context readback, CPU/batch/f16-q8_0 key-cache controls and idle unloading. Verified CPU/OS AVX2 dispatch with SSE4.2 fallback is implemented; q4_0 is held out after a poor arithmetic smoke reply. Both recovered Intel DMG/PKG starter generation/authentication/unload checks pass; clean-target/lifecycle/quality acceptance remains.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/LocalEngine.kt"
+    },
+    {
+      "id": "model-library",
+      "area": "Model management",
+      "requested": "Hugging Face/free/paid/gated sources, size/licence/capability details, revision/checksum, import, downloads, resume, compare, load/unload, eviction",
+      "status": "Partial source",
+      "boundary": "HF single-file GGUF discovery and checksum download, persistent imported references and explicit load; no resume, entitlement verification, complete capability editor or native Ollama pull.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/ModelManager.kt"
+    },
+    {
+      "id": "provider-routing",
+      "area": "Providers and engines",
+      "requested": "Ollama, LM Studio, Jan-compatible endpoints, AnythingLLM/Open WebUI workflows, Colibri Off/On/Auto, hosted OpenAI/Claude/Gemini adapters",
+      "status": "Partial source",
+      "boundary": "Compatible /v1 and Open WebUI /api contracts; selected-host session keys. Provider-native protocols and full workflow parity pending. No third-party application source/UI wholesale copied.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/HostClient.kt"
+    },
+    {
+      "id": "dolphin-chat",
+      "area": "Dolphin chat LLMs",
+      "requested": "GGUF or configured Ollama Dolphin models, selectable local response instructions, reviewed architecture/template/licence",
+      "status": "Generic route; qualification pending",
+      "boundary": "Compatible GGUF import and host model list can select Dolphin; no Dolphin weights bundled or generation tested. Base-model licences differ.",
+      "source": "docs/desktop/DOLPHIN.md"
+    },
+    {
+      "id": "dolphin-asr",
+      "area": "DataoceanAI Dolphin speech",
+      "requested": "Separate offline ASR/VAD/LID adapter, audio/file/microphone input and clear speech-versus-chat distinction",
+      "status": "Planned",
+      "boundary": "Separate Python/runtime and pinned speech weights needed; no ASR model or successful transcript claimed.",
+      "source": "docs/desktop/DOLPHIN.md"
+    },
+    {
+      "id": "voice",
+      "area": "Live voice",
+      "requested": "Offline and online speech adapters, hands-free turn taking, selectable voices, interrupt, disclosure of recipient and microphone status",
+      "status": "Desktop port pending",
+      "boundary": "Android voice paths are reference only; speech input, LLM and speech output stay separate.",
+      "source": "docs/MEMORY_AND_VOICE.md"
+    },
+    {
+      "id": "response-policy",
+      "area": "Response policy and guardrails",
+      "requested": "Assistant, custom or model-native local system instructions; model cards for alignment; independent tool/network policy",
+      "status": "Source",
+      "boundary": "Model-native omits the app system prompt; does not change weights or hosted-provider rules. No toggle removes authentication or grants tools.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/ResponsePolicy.kt"
+    },
+    {
+      "id": "token-budgets",
+      "area": "Tokens and throughput",
+      "requested": "Output/context budgets, authoritative token speed, manual/automatic combined cluster ceiling, spend admission",
+      "status": "Partial source",
+      "boundary": "Local output budget and reported usage; distributed capacity/cluster budgeting not ported. Unknown usage stays unknown.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt"
+    },
+    {
+      "id": "devices",
+      "area": "Devices and categories",
+      "requested": "Phone/desktop/server/NAS/IoT categories, add/connect, actual capability probe, trust, device roles and enrollment",
+      "status": "Partial source",
+      "boundary": "Saved HTTPS API references, last verified contact dashboard and selected-host authentication; labels and old contact do not establish current online status or compute trust.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Nodes.kt"
+    },
+    {
+      "id": "clusters",
+      "area": "Cluster and distributed compute",
+      "requested": "LAN/off-grid/Internet/overseas P2P, approved workers, memory/storage hierarchy, placement, parallel execution, checkpoints/failover",
+      "status": "Partial shared core; desktop execution pending",
+      "boundary": "Shared whole-layer admission uses integer counts and per-worker KV/graph budgets, optional bounded manual counts and weak-worker exclusion. No new desktop RPC controller or physical cluster throughput proof.",
+      "source": "docs/layer-pipeline-and-recovery.md"
+    },
+    {
+      "id": "network",
+      "area": "Networking and VPN",
+      "requested": "Interfaces, DNS, scoped host checks, RTT, pairing, private transport, optional VPN, no-VPN direct/relay P2P",
+      "status": "Partial source",
+      "boundary": "Inference HTTPS address book only. VPN deployment, direct NAT traversal and remote device acceptance pending.",
+      "source": "docs/P2P_AND_CRYPTO.md"
+    },
+    {
+      "id": "terminal",
+      "area": "Terminal and commands",
+      "requested": "Human commands ready by default under OS account; embedded output, cancellation, full interactive terminal, optional elevated OS flow",
+      "status": "Partial source",
+      "boundary": "Built-in bounded batch shell runner plus optional external Ghostty SSH. Full embedded PTY and Windows/Linux qualification pending.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Terminal.kt"
+    },
+    {
+      "id": "ssh",
+      "area": "Bidirectional SSH and Ghostty",
+      "requested": "Pinned outbound SSH, approved-key inbound app node, interactive terminal, transfers, remote enrollment",
+      "status": "Partial source",
+      "boundary": "JSch outbound exec; inbound status-only; optional installed Ghostty/OpenSSH handoff. No shell on inbound status node or remote device qualification.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopSsh.kt"
+    },
+    {
+      "id": "hyperl",
+      "area": "Built-in HyperL",
+      "requested": "Native recipes, precision, memory accounting, datasets; eventual heterogeneous sharding and device runtime selection",
+      "status": "Partial source",
+      "boundary": "All twelve JNI CPU recipes and precise reduction passed on the Intel host. Both recovered installer JNI checks pass; no GPU/NPU/full-LLM claim.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopHyperL.kt"
+    },
+    {
+      "id": "resource-monitor",
+      "area": "Health and task manager",
+      "requested": "Live CPU/RAM/RSS, gauges/charts/history, process list/filter/sort/Stop, native memory distinction, storage, sensors",
+      "status": "Partial source",
+      "boundary": "Actual Intel OSHI CPU/RAM/process sampling passed; two-second local charts/history and scoped human process Stop. Remote sensors/costs and termination qualification pending.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/ResourceMonitor.kt"
+    },
+    {
+      "id": "power-costs",
+      "area": "Power, electricity and costs",
+      "requested": "Measured power/thermal/battery, tariffs, hardware cost, local/cluster energy, cloud bills and provenance",
+      "status": "Partial source",
+      "boundary": "Local OS battery readings when available. No invented watts, power aggregation, tariff accounting or balances.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/ResourceMonitor.kt"
+    },
+    {
+      "id": "memory-personality",
+      "area": "Long-term memory and personality",
+      "requested": "Optional encrypted recall, per-chat/profile controls, retention/delete, user/agent opt-in and provenance",
+      "status": "Desktop port pending",
+      "boundary": "Android memory implementation is not desktop parity. No claim of continual training from saved preferences.",
+      "source": "docs/MEMORY_AND_VOICE.md"
+    },
+    {
+      "id": "recovery",
+      "area": "Recovery, self-healing and reset",
+      "requested": "Bounded retry/reload, native KV snapshots, journal recovery, health diagnosis, previewed repair, rollback and selective reset",
+      "status": "Desktop port pending",
+      "boundary": "Stop/unload exists; automatic repair is not implemented. Android automatic recovery retries one local request; full system repair was planned, not proven.",
+      "source": "docs/desktop/RECOVERY.md"
+    },
+    {
+      "id": "human-agent-policy",
+      "area": "Permissions and authority",
+      "requested": "Independent human/agent/host/device/function grants, expiry, revocation, scopes, budgets, deny-by-default automation",
+      "status": "Partial source",
+      "boundary": "Human endpoint/SSH grants exist. A common desktop agent authority/dispatch layer remains pending.",
+      "source": "docs/desktop/SECURITY_AND_RUNTIME.md"
+    },
+    {
+      "id": "agents",
+      "area": "Agents and full-auto PC control",
+      "requested": "Real agent jobs, tool inventory, models, profiles, multi-agent coordination, browser/desktop control, safe interruption",
+      "status": "Desktop port pending",
+      "boundary": "Per-app/site/file/command/device scopes plus actual OS accessibility permission required. Model output alone cannot activate a feature.",
+      "source": "docs/desktop/SECURITY_AND_RUNTIME.md"
+    },
+    {
+      "id": "mcp-a2a",
+      "area": "MCP, A2A and client hub",
+      "requested": "Permission-controlled tool access across features, expiring client tokens/API keys, capability negotiation and audit",
+      "status": "Desktop port pending",
+      "boundary": "Existing Android gateways are not a desktop/server daemon. Agents should share the same real controllers as human UI.",
+      "source": "docs/CLIENT_HUB.md"
+    },
+    {
+      "id": "hooks-runners",
+      "area": "Hooks and runners",
+      "requested": "Versioned hook scripts, triggers, preview, isolated runners, time/memory/output budgets, stop/retry and logs",
+      "status": "Desktop port pending",
+      "boundary": "No script is run merely by importing a configuration or opening a dashboard.",
+      "source": "docs/desktop/SECURITY_AND_RUNTIME.md"
+    },
+    {
+      "id": "browser-search",
+      "area": "Global/chat/web search and browsing",
+      "requested": "Search menus/chat/articles/devices/files; web/agent toggles, browser control and provenance",
+      "status": "Partial source",
+      "boundary": "Global local index searches all settings/features, current chat, saved model references and saved node addresses. Optional explicit DuckDuckGo browser handoff; remote/article/RAG and agent browser adapters pending.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Search.kt"
+    },
+    {
+      "id": "files-ide",
+      "area": "Files and developer workspace",
+      "requested": "Files, archives, code/editor, AI inspection, language tools, compile/debug/run, device artifacts",
+      "status": "Partial source",
+      "boundary": "User-selected bounded UTF-8 editor, search and Save As; no full IDE/archive/RAG parity.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopTools.kt"
+    },
+    {
+      "id": "rag-workspaces",
+      "area": "Documents and RAG",
+      "requested": "Persistent workspaces, ingestion/indexing, local/online embeddings, retrieval and citations with deletion",
+      "status": "Planned",
+      "boundary": "Inspired workflow requirements; no Jan/AnythingLLM/Open WebUI backend silently bundled.",
+      "source": "docs/DESKTOP_STUDIO_PLAN.md"
+    },
+    {
+      "id": "cloud-vault-billing",
+      "area": "Cloud, credentials and billing",
+      "requested": "Provider accounts/environments, encrypted vault, purpose/endpoint/expiry binding, per-provider budgets and live/manual cost distinction",
+      "status": "Desktop port pending",
+      "boundary": "Session tokens are service-bound; they are not a persistent credential vault. Broad reuse requires independently approved consumers.",
+      "source": "docs/cloud-and-credential-management.md"
+    },
+    {
+      "id": "app-integrations",
+      "area": "App and developer integrations",
+      "requested": "Claude Code, AI coding CLIs, OpenClaw, Cline, Hermes, IDE clients and third-party plugin connectors",
+      "status": "Planned",
+      "boundary": "Interoperability via configured provider/MCP adapters; naming an app does not imply installed/integrated support.",
+      "source": "docs/DESKTOP_STUDIO_PLAN.md"
+    },
+    {
+      "id": "security-tools",
+      "area": "Security management and tools",
+      "requested": "Hashes/HMAC/AES-GCM, trusted SSH, TLS inspection, scoped network checks, security assessments, secret redaction, vulnerability inventory",
+      "status": "Partial source",
+      "boundary": "Built-in local cryptography and SSH/TLS checks; larger diagnostic/security lab and agent access pending.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopTools.kt"
+    },
+    {
+      "id": "firewall",
+      "area": "OS firewall and app network rules",
+      "requested": "Native Windows/macOS/Linux firewall adapters, strong scoped inbound/egress policy, actual rule readback, privilege failures and rollback",
+      "status": "Desktop OS backend planned",
+      "boundary": "Strict inference HTTPS/loopback policy exists; no OS firewall rules changed. Windows Defender, Linux nftables and macOS PF require separate native qualification.",
+      "source": "docs/desktop/SECURITY_AND_RUNTIME.md"
+    },
+    {
+      "id": "packet-capture",
+      "area": "Packet capture",
+      "requested": "Selected owned interface, filter, packet/time/snaplen limits, private PCAP, inspection/export, agent scope",
+      "status": "Planned",
+      "boundary": "Capture requires actual OS permissions and installed/bundled reviewed capture runtime; no automatic elevation or remote packet upload.",
+      "source": "docs/desktop/SECURITY_AND_RUNTIME.md"
+    },
+    {
+      "id": "vm-sandbox",
+      "area": "VM and sandbox",
+      "requested": "Optional QEMU guest, verified images, CPU/RAM/disk quotas, rootless tools, snapshots, no-network/host-mount defaults",
+      "status": "Desktop port pending",
+      "boundary": "No VM runtime/guest bundled or boot tested. VM isolation and container isolation must be labelled separately.",
+      "source": "docs/runtime-and-sandbox.md"
+    },
+    {
+      "id": "containers-incubator",
+      "area": "Container incubator",
+      "requested": "Docker/Podman-compatible runtime management, images/digests/licences, bounded workloads, volumes, logs, stats and lifecycle",
+      "status": "Planned",
+      "boundary": "In-app manager first; selected compatible engine required. Bundling a daemon/VM is a separate licensed, platform-qualified deliverable.",
+      "source": "docs/desktop/SECURITY_AND_RUNTIME.md"
+    },
+    {
+      "id": "kubernetes",
+      "area": "Kubernetes",
+      "requested": "Reviewed contexts/kubeconfig, namespaces/RBAC, workloads, events/logs, quotas, rollout/rollback, apply preview and scoped agents",
+      "status": "Planned",
+      "boundary": "Credentials/exec plugins are code-bearing configuration; no cluster access or deployment implied by this tracker.",
+      "source": "docs/desktop/SECURITY_AND_RUNTIME.md"
+    },
+    {
+      "id": "logs-audit",
+      "area": "Logs and audit",
+      "requested": "Live logs, actor/action/outcome filters, redaction, retention, JSONL/CSV export and optional OTLP",
+      "status": "Desktop port pending",
+      "boundary": "Android encrypted audit is reference; desktop command logs are currently panel memory, not a durable audit ledger.",
+      "source": "docs/AUDIT_TELEMETRY.md"
+    },
+    {
+      "id": "config-updates",
+      "area": "Profiles, updates and rollback",
+      "requested": "Reviewed non-secret export/import, signed channel updates, selective reset, portable configuration and build history",
+      "status": "Desktop port pending",
+      "boundary": "No silent update, rollback, trust/key transfer or full-system reset implemented on desktop.",
+      "source": "docs/desktop/RECOVERY.md"
+    },
+    {
+      "id": "gibberlink",
+      "area": "GibberLink",
+      "requested": "Agent audio packets, English transcript, human/agent Off/On/Auto, payload validation",
+      "status": "Desktop port pending",
+      "boundary": "Prior host PCM evidence is not an integrated desktop listening panel. Received text never grants tool authority.",
+      "source": "docs/GIBBERLINK.md"
+    },
+    {
+      "id": "training",
+      "area": "Training and evaluations",
+      "requested": "Remote fine-tuning, adapters, model evaluations, benchmarks, compatibility and deployment",
+      "status": "Desktop port pending",
+      "boundary": "No automatic self-training or quality guarantee. Actual host runtime/model/hardware test required.",
+      "source": "docs/local-model-behavior-and-training.md"
+    },
+    {
+      "id": "channels-platforms",
+      "area": "Desktop/server and production channels",
+      "requested": "Intel/Apple Silicon Mac, Windows, Linux, headless server/CLI; experimental separate from production candidate; DMG/PKG/MSI/DEB",
+      "status": "Partial source",
+      "boundary": "Intel Compose/JVM compile and tests; headless host CLI exists. New installers/native model checks and other OS/device qualification pending.",
+      "source": "docs/MACOS_OFFLINE.md"
+    },
+    {
+      "id": "harmonyos-ios",
+      "area": "Other platforms",
+      "requested": "HarmonyOS NEXT English default/Chinese option; iOS evaluation and native runtime qualification",
+      "status": "Separate future track",
+      "boundary": "User now prioritises desktop/server. No HarmonyOS NEXT device; no iOS release claimed.",
+      "source": "docs/MULTIPLATFORM_NEXT.md"
+    },
+    {
+      "id": "release-cleanup",
+      "area": "Delivery and storage hygiene",
+      "requested": "GitHub source/review/release, verified packages/checksums/provenance, retain recovery build; remove only known generated duplicates",
+      "status": "Experimental release verified; clean-target acceptance pending",
+      "boundary": "Intel Studio DMG/PKG payloads are verified; source/review pushed and all eight public release digests match; see RELEASE_EVIDENCE.md. About 5 GiB duplicate scratch reclaimed. User models and historical evidence must not be deleted as build junk.",
+      "source": "docs/DESKTOP_BUILD_LOG.md"
+    }
+  ]
+}

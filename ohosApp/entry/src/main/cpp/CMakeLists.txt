@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.16)
+project(meshlit_next_runtime LANGUAGES CXX)
+add_library(meshlit_runtime SHARED runtime_capabilities.cpp)
+target_compile_features(meshlit_runtime PRIVATE cxx_std_17)
+target_compile_options(meshlit_runtime PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(meshlit_runtime PUBLIC libace_napi.z.so)

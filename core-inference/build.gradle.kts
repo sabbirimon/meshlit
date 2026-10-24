@@ -11,6 +11,7 @@ android {
     // it by one API level which has a negligible install-base impact.
     defaultConfig { minSdk = 24 }
     namespace = "com.meshlit.core.inference"
+    compileOptions { isCoreLibraryDesugaringEnabled = true }
 
     // Bundled GGUFs are uncompressed inside the APK so llama.cpp can
     // mmap them directly via AAsset_openFileDescriptor.
@@ -20,6 +21,8 @@ android {
 }
 
 dependencies {
+    implementation(project(":shared-workspace"))
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(project(":core-common"))
     implementation(project(":core-trust"))
     implementation(project(":core-firewall"))

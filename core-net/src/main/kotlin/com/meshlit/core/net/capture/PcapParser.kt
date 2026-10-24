@@ -3,76 +3,72 @@ package com.meshlit.core.net.capture
 import java.io.DataInputStream
 import java.io.File
 import java.io.FileInputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
-/**
- * Reads a libpcap (.pcap) file back into memory so the in-app
- * Network Monitor screen can render a packet list for files
- * produced by:
- *
- *   - [MeshlitCaptureVpnService]
- *   - PCAPdroid (file export)
- *   - Termux `tcpdump -w`
- *   - `tshark -w`
- *
- * Only files with the classic magic `0xa1b2c3d4` are supported —
- * the big-endian nanosecond variant (`0xa1b23c4d`) is rare on
- * Android captures and we don't ship a translator.
- */
+/** Bounded classic-PCAP reader. Payloads stay local; PCAPNG needs a separate reader. */
 class PcapParser {
-
-    data class Record(
-        val timestampMs: Long,
-        val data: ByteArray,
-        val originalLength: Int,
-    ) {
-        override fun equals(other: Any?): Boolean = other is Record &&
-            timestampMs == other.timestampMs &&
-            originalLength == other.originalLength &&
-            data.contentEquals(other.data)
+    data class Record(val timestampMs: Long, val data: ByteArray, val originalLength: Int) {
+        override fun equals(other: Any?): Boolean = other is Record && timestampMs == other.timestampMs &&
+            originalLength == other.originalLength && data.contentEquals(other.data)
         override fun hashCode(): Int = timestampMs.hashCode() xor data.contentHashCode() xor originalLength
     }
-
     sealed class Result {
         data class Ok(val linktype: Int, val records: List<Record>) : Result()
         data class Invalid(val reason: String) : Result()
     }
-
+    companion object {
+        const val MAX_FILE_BYTES = 16L * 1024 * 1024
+        const val MAX_RECORDS = 10_000
+        const val MAX_PACKET_BYTES = 1_000_000
+    }
     fun parse(file: File): Result {
-        if (!file.isFile || file.length() < 24) return Result.Invalid("file too small")
-        return runCatching {
+        if (!file.isFile || file.length() < 24) return Result.Invalid("File is too small for a PCAP header")
+        if (file.length() > MAX_FILE_BYTES) return Result.Invalid("Capture exceeds the 16 MiB mobile preview limit; use desktop Wireshark")
+        return try {
             DataInputStream(FileInputStream(file)).use { input ->
                 val magic = input.readInt()
-                if (magic != PcapWriter.PCAP_MAGIC) {
-                    return Result.Invalid("not a classic pcap (magic=0x${"%08x".format(magic)})")
+                val order = when (magic) {
+                    0xa1b2c3d4.toInt(), 0xa1b23c4d.toInt() -> ByteOrder.BIG_ENDIAN
+                    0xd4c3b2a1.toInt(), 0x4d3cb2a1 -> ByteOrder.LITTLE_ENDIAN
+                    else -> return Result.Invalid("Unsupported capture format; select classic PCAP, not PCAPNG")
                 }
-                input.readShort() // version major
-                input.readShort() // version minor
-                input.readInt() // thiszone
-                input.readInt() // sigfigs
-                input.readInt() // snaplen
-                val linktype = input.readInt()
-
-                val records = ArrayList<Record>(64)
+                val nanos = magic == 0xa1b23c4d.toInt() || magic == 0x4d3cb2a1
+                val header = ByteArray(20).also { input.readFully(it) }
+                val h = ByteBuffer.wrap(header).order(order)
+                val major = h.short.toInt() and 0xffff
+                val minor = h.short.toInt() and 0xffff
+                h.int; h.int
+                val snaplen = h.int.toLong() and 0xffffffffL
+                val linktype = h.int
+                if (major != 2 || minor != 4 || snaplen !in 1L..MAX_PACKET_BYTES.toLong())
+                    return Result.Invalid("Unsupported PCAP version or snapshot length")
+                val records = ArrayList<Record>()
+                var consumed = 24L
+                val recordHeader = ByteArray(16)
                 while (true) {
-                    val tsSec = runCatching { input.readInt() }.getOrNull() ?: break
-                    val tsUsec = input.readInt()
-                    val captured = input.readInt()
-                    val original = input.readInt()
-                    if (captured < 0 || captured > 1_000_000) {
-                        return Result.Invalid("bad record length $captured")
-                    }
-                    val data = ByteArray(captured)
-                    input.readFully(data)
-                    records.add(
-                        Record(
-                            timestampMs = tsSec.toLong() * 1000L + (tsUsec / 1000L),
-                            data = data,
-                            originalLength = original,
-                        )
-                    )
+                    val first = input.read()
+                    if (first < 0) break
+                    if (records.size >= MAX_RECORDS) return Result.Invalid("Capture exceeds the 10,000-packet preview limit")
+                    recordHeader[0] = first.toByte()
+                    input.readFully(recordHeader, 1, 15)
+                    consumed += 16
+                    val rh = ByteBuffer.wrap(recordHeader).order(order)
+                    val seconds = rh.int.toLong() and 0xffffffffL
+                    val fraction = rh.int.toLong() and 0xffffffffL
+                    val captured = rh.int.toLong() and 0xffffffffL
+                    val original = rh.int.toLong() and 0xffffffffL
+                    if (fraction >= (if (nanos) 1_000_000_000L else 1_000_000L))
+                        return Result.Invalid("Invalid PCAP timestamp fraction")
+                    if (captured > snaplen || captured > MAX_PACKET_BYTES || original < captured || original > Int.MAX_VALUE)
+                        return Result.Invalid("Invalid PCAP packet length")
+                    consumed += captured
+                    if (consumed > MAX_FILE_BYTES) return Result.Invalid("Capture exceeds the mobile preview limit")
+                    val data = ByteArray(captured.toInt()).also { input.readFully(it) }
+                    records.add(Record(seconds * 1000 + fraction / (if (nanos) 1_000_000L else 1000L), data, original.toInt()))
                 }
-                Result.Ok(linktype = linktype, records = records)
+                Result.Ok(linktype, records)
             }
-        }.getOrElse { Result.Invalid(it.message ?: "read failed") }
+        } catch (_: Exception) { Result.Invalid("Capture is truncated or unreadable") }
     }
 }

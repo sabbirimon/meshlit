@@ -42,26 +42,21 @@ class RawTcpActivationServerTest {
 
     @Test
     fun `server accepts a peer dial and fires the channel callback`() {
-        val port = pickFreePort()
-        var receivedChannel: RawTcpActivationChannel? = null
-        val server = RawTcpActivationServer(port) { ch ->
-            receivedChannel = ch
+        val receivedChannel=java.util.concurrent.atomic.AtomicReference<RawTcpActivationChannel?>()
+        val accepted=java.util.concurrent.CountDownLatch(1)
+        val server = RawTcpActivationServer(0) { ch ->
+            receivedChannel.set(ch);accepted.countDown()
         }
         server.start()
         try {
-            assertTrue("server failed to bind on $port", server.boundPort > 0)
+            assertTrue("server failed to bind", server.boundPort > 0)
             // Dial the server from a JVM client. The server's
             // accept thread should fire the onChannel callback.
             val sock = Socket()
             sock.connect(InetSocketAddress("127.0.0.1", server.boundPort), 5_000)
             assertTrue("client failed to connect to ${server.boundPort}", sock.isConnected)
-            // Give the accept thread a moment to convert the
-            // socket into a channel.
-            val deadline = System.currentTimeMillis() + 5_000L
-            while (receivedChannel == null && System.currentTimeMillis() < deadline) {
-                Thread.sleep(50)
-            }
-            assertNotNull("channel callback did not fire within 5s", receivedChannel)
+            assertTrue("channel callback did not fire within 5s",accepted.await(5,java.util.concurrent.TimeUnit.SECONDS))
+            assertNotNull(receivedChannel.get())
             sock.close()
         } finally {
             server.close()
@@ -78,11 +73,18 @@ class RawTcpActivationServerTest {
         server.close()
         // After close, boundPort is 0 again.
         assertEquals(0, server.boundPort)
-        // A second server can bind the same port without IOException.
+        // Closing a ServerSocket wakes accept asynchronously. Linux may keep
+        // its listener alive until that thread exits; require bounded reuse
+        // rather than relying on the immediate scheduling seen on macOS.
         val server2 = RawTcpActivationServer(port) { /* no-op */ }
-        server2.start()
         try {
-            assertEquals(port, server2.boundPort)
+            val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(2)
+            do {
+                server2.start()
+                if (server2.boundPort == port) break
+                Thread.sleep(10)
+            } while (System.nanoTime() < deadline)
+            assertEquals("closed listener did not release its port within 2s", port, server2.boundPort)
         } finally {
             server2.close()
         }

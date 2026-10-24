@@ -1,0 +1,1 @@
+-keep class com.meshlit.core.gibberlink.GibberLinkCodec { *; }

@@ -1,0 +1,3 @@
+
+# Generated offline editor bundle retains upstream string-literal whitespace.
+app/src/main/assets/ide/editor.js whitespace=-blank-at-eol linguist-generated=true

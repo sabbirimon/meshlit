@@ -123,6 +123,9 @@ class SetupCoordinator(
      * device has an App Info screen.
      */
     private fun batteryOptimizationIntent(): Intent {
+        if (com.meshlit.BuildConfig.PLAY_REVIEW) return Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.parse("package:${context.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         // Delegate to the helper so all four layers (OEM / AOSP /
         // App Info) are tried in order. The helper doesn't expose
         // its raw intent list, so we replay it here.

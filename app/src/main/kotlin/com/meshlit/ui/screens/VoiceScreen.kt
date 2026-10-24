@@ -119,6 +119,7 @@ fun VoiceScreen(
     omitHeader: Boolean = false,
 ) {
     val context = LocalContext.current
+    val contextResources=androidx.compose.ui.platform.LocalResources.current
     val app = koinInject<MeshlitApplication>()
     val engine = app.voiceEngine
     val scope = rememberCoroutineScope()
@@ -317,7 +318,7 @@ fun VoiceScreen(
                         partialText = ""
                     }
                     is RunAnywhereVoiceEngine.TranscriptEvent.Failed -> {
-                        statusMessage = context.getString(R.string.voice_stt_failed)
+                        statusMessage = contextResources.getString(R.string.voice_stt_failed)
                     }
                 }
             }
@@ -352,7 +353,7 @@ fun VoiceScreen(
                     lastSavedPath = file.absolutePath
                     Toast.makeText(
                         context,
-                        context.getString(R.string.llm_output_saved, file.absolutePath),
+                        contextResources.getString(R.string.llm_output_saved, file.absolutePath),
                         Toast.LENGTH_SHORT,
                     ).show()
                 },
@@ -414,7 +415,7 @@ fun VoiceScreen(
             val ok = engine.synthesize(text)
             isSynthesizing = false
             if (!ok) {
-                statusMessage = context.getString(R.string.voice_tts_failed)
+                statusMessage = contextResources.getString(R.string.voice_tts_failed)
             }
         }
     }

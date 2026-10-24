@@ -1,4 +1,8 @@
 # Meshlit E2E — Playwright test harness
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 End-to-end tests for the Meshlit Android app. Drives a connected
 device (default: `R9KN2009CZJ`) via:

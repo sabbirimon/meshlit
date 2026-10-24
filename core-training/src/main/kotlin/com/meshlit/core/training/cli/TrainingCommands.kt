@@ -67,10 +67,10 @@ class TrainingCommands(
         val state = reg.state.value
         return MeshlitResult.Success(
             when (state) {
-                is ClusterTrainerRegistry.RegistryState.Idle -> "idle"
+                is ClusterTrainerRegistry.RegistryState.Idle -> "training_backend_unavailable: no Android autograd backend"
                 is ClusterTrainerRegistry.RegistryState.StrategySelected -> {
                     val s = state
-                    "running strategy=${s.strategy.name} jobId=${s.jobId} " +
+                    "selected strategy=${s.strategy.name} jobId=${s.jobId} " +
                         "averager=${s.averagerKind.name} peer=${nodeIdProvider()}"
                 }
             }
@@ -134,23 +134,10 @@ class TrainingCommands(
         }
     }
 
-    /** `training benchmark` — synthetic 1-step run on the local peer. */
-    fun benchmark(): MeshlitResult<String> {
-        val reg = registryProvider() ?: return noRegistry()
-        // v0 — no real benchmark path; we report the active averager
-        // kind and the registry's idle/running state. A follow-up
-        // wires `LocalLoraTrainer.computeLocalGradient` through the
-        // dispatcher.
-        val state = reg.state.value
-        val kind = reg.activeAveragerKind().name
-        val stateName = when (state) {
-            is ClusterTrainerRegistry.RegistryState.Idle -> "idle"
-            is ClusterTrainerRegistry.RegistryState.StrategySelected -> "selected"
-        }
-        return MeshlitResult.Success(
-            "benchmark averager=$kind state=$stateName (synthetic — see Phase 11.3)"
-        )
-    }
+    /** No synthetic training benchmark is presented as a real measurement. */
+    fun benchmark(): MeshlitResult<String> = MeshlitResult.Failure(
+        com.meshlit.core.common.MeshlitError.Invalid("training_backend_unavailable: no measured Android training backend")
+    )
 
     /** Optional helper: validate a resume token's signature. */
     fun verifyResume(token: ResumeToken): Boolean = token.isValid()

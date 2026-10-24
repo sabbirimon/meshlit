@@ -1,0 +1,21 @@
+Meshlit
+Copyright 2026 Sabbir (https://github.com/sabbirimon)
+Project owner/maintainer credit: IMON (sabbirimon).
+
+The project source is distributed under the Apache License, Version 2.0.
+The LICENSE text was restored to the canonical Apache text on 2026-10-07;
+the earlier copyright attribution is retained here.
+
+Third-party software, model weights and optional companions retain their own
+copyrights, licenses and notices. See THIRD_PARTY_NOTICES.md and the notices
+retained in app assets, vendored/licenses and companion/source documentation.
+This attribution notice does not modify those licenses or assert ownership
+of upstream dependencies.
+
+The separate core-hyperl alpha.6 module (also reused unmodified by the
+desktop-hyperl JVM adapter) contains newly covered HyperL Community
+and Enterprise License 1.0 material. Its LICENSE/NOTICE and earlier Apache grants
+are preserved separately and bundled offline. Meshlit application Apache rights
+are unchanged. See core-hyperl/MODIFICATIONS.md and THIRD_PARTY_NOTICES.md.
+
+Apache MINA SSHD 2.20.0 (optional embedded SSH transport): Copyright The Apache Software Foundation. Apache-2.0; licence/notice assets: app/src/main/assets/node-ssh. Upstream: https://github.com/apache/mina-sshd.

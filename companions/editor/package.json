@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/lang-python": "6.2.1",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/legacy-modes": "6.5.4",
+    "codemirror": "6.0.2",
+    "esbuild": "0.28.2"
+  }
+}

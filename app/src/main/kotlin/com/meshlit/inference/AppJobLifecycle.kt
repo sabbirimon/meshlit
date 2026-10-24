@@ -13,16 +13,18 @@ import com.meshlit.core.inference.net.JobLifecycle
  */
 class AppJobLifecycle(
     private val metrics: MetricsRegistry,
+    private val rewards: com.meshlit.peering.ContributionStore? = null,
 ) : JobLifecycle {
 
     override fun start(): JobLifecycle.Token {
-        return metrics.recordJobStart()
+        return ReceiptToken(metrics.recordJobStart(), java.util.UUID.randomUUID().toString())
     }
 
     override fun end(token: JobLifecycle.Token, outcome: JobLifecycle.Outcome) {
         // The token type is concrete in our impl. Other implementations
         // are free to send something else; we silently ignore it.
-        val mt = token as? MetricsRegistry.JobToken ?: return
+        val receipt = token as? ReceiptToken ?: return
+        val mt = receipt.metrics
         val wireOutcome = when (outcome) {
             is JobLifecycle.Outcome.Success -> MetricsRegistry.JobOutcome.Success(
                 tokens = outcome.generatedTokens,
@@ -34,5 +36,9 @@ class AppJobLifecycle(
             )
         }
         metrics.recordJobEnd(mt, wireOutcome)
+        if (outcome is JobLifecycle.Outcome.Success && outcome.executedLocally) {
+            outcome.generatedTokens?.takeIf { it > 0 }?.let { rewards?.record(receipt.id, it) }
+        }
     }
+    private data class ReceiptToken(val metrics: MetricsRegistry.JobToken, val id: String) : JobLifecycle.Token
 }

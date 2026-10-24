@@ -42,6 +42,7 @@ internal fun BundledModelCard(
     status: String?,
 ) {
     val context = LocalContext.current
+    val contextResources=androidx.compose.ui.platform.LocalResources.current
     val installer = remember { BundledModelInstaller() }
     val installed = remember { installer.installedFile(app) }
     val isInstalled = installed != null
@@ -76,7 +77,7 @@ internal fun BundledModelCard(
             // `Re-extract` CTA shown in the bundled model card.
             Button(
                 onClick = {
-                    onReextract(context.getString(R.string.models_reextract_in_progress))
+                    onReextract(contextResources.getString(R.string.models_reextract_in_progress))
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MeshlitAmber,

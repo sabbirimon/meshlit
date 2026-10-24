@@ -51,7 +51,9 @@ import kotlin.coroutines.coroutineContext
  *    updates (load started, model loaded, token, completion).
  */
 class InferenceCoordinator(
+    private val operationGate: com.meshlit.core.common.control.OperationGate? = null,
     private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Default,
+    private val localBehavior: () -> com.meshlit.core.inference.models.LocalModelBehavior = { com.meshlit.core.inference.models.LocalModelBehavior() },
 ) {
 
     private val log = logger("InferenceCoordinator")
@@ -100,6 +102,7 @@ class InferenceCoordinator(
     @Volatile private var lastFormat: FileFormat? = null
     val currentFormat: FileFormat? get() = lastFormat
 
+    @Volatile private var externalEngine: InferenceEngine? = null
     private val inferMutex = Mutex()
 
     /**
@@ -134,6 +137,7 @@ class InferenceCoordinator(
     @Volatile private var currentJob: Job? = null
 
     val engineTag: String get() = when {
+        externalEngine != null -> externalEngine!!.engineTag
         // Use [isInitialized] rather than [isReady] so the UI flips
         // to the real runtime the moment `MeshlitApplication.onCreate`
         // finishes SDK init, not after the first `loadModel` lands.
@@ -286,6 +290,8 @@ class InferenceCoordinator(
     /** Display name of the active runtime for the status card. */
     val runtimeDisplayName: String
         get() = when {
+            externalEngine?.engineTag == "llama-native-local" -> "llama.cpp local CPU"
+            externalEngine != null -> "llama.cpp layer pipeline"
             runAnywhereEngine.isInitialized() -> "RunAnywhere llama.cpp"
             lastRuntime?.displayName != null -> lastRuntime?.displayName!!
             engine.engineTag == "none" -> "No engine available — open Advanced → Runtimes"
@@ -378,10 +384,32 @@ class InferenceCoordinator(
         layerEnd: Int,
         manifest: com.meshlit.core.inference.net.ShardManifest?,
     ): MeshlitResult<ModelInfo> {
+        LlmModelChangeInterlock.awaitReadyForModelChange()
+        return inferMutex.withLock {
+            try {
+                loadModelUnlocked(modelPath, contextSize, gpuLayers, hints, layerStart, layerEnd, manifest)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                _state.value = CoordinatorState.Idle
+                throw cancelled
+            } catch (error: Exception) {
+                _state.value = CoordinatorState.Error(error.message ?: "Model loading failed")
+                MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Native(
+                    "coord.load:${error.message ?: error.javaClass.simpleName}", error))
+            }
+        }
+    }
+
+    private suspend fun loadModelUnlocked(
+        modelPath: String, contextSize: Int, gpuLayers: Int, hints: BackendHints,
+        layerStart: Int, layerEnd: Int,
+        manifest: com.meshlit.core.inference.net.ShardManifest?,
+    ): MeshlitResult<ModelInfo> {
+        operationGate?.requireAllowed(com.meshlit.core.common.control.ManagedFeature.INFERENCE)
         // Phase 2 — resolve the runtime for this file path. We do
         // this *before* flipping the state to Loading so a bad
         // extension results in a clean Error state instead of a
         // Loading state that never completes.
+        externalEngine?.unloadModel(); externalEngine = null
         val resolution = RuntimeRegistry.pickForPath(modelPath)
         when (resolution) {
             is RuntimeResolution.Found -> {
@@ -414,14 +442,6 @@ class InferenceCoordinator(
         }
         _state.value = CoordinatorState.Loading(modelPath, lastRuntime, lastFormat)
         _events.tryEmit(InferenceEvent.LoadStarted(modelPath))
-        // Wait for any in-flight chat generation to drain before
-        // delegating to the engine. Without this barrier the native
-        // runner races the new load and crashes mid-stream when the
-        // user swaps models from the picker. The barrier is
-        // installed by the chat activity on resume and cleared on
-        // pause — see `LlmModelChangeInterlock`. If no barrier is
-        // installed (e.g. CLI / test paths) this is a no-op.
-        LlmModelChangeInterlock.awaitReadyForModelChange()
         val request = ModelLoadRequest(
             modelPath = modelPath,
             contextSize = contextSize,
@@ -467,7 +487,43 @@ class InferenceCoordinator(
         return result
     }
 
-    suspend fun unloadModel() {
+    /** Explicit external backend: unload local weights before launching it.
+     * Once selected, a failed external runtime never silently falls back locally. */
+    suspend fun loadExternalEngine(path: String, contextSize: Int,
+        factory: suspend () -> InferenceEngine): MeshlitResult<ModelInfo> = inferMutex.withLock {
+        operationGate?.requireAllowed(com.meshlit.core.common.control.ManagedFeature.INFERENCE)
+        _state.value = CoordinatorState.Loading(path)
+        try {
+            externalEngine?.unloadModel(); externalEngine = null
+            runAnywhereEngine.unloadModel(); llamaEngine.unloadModel(); onnxEngine.unloadModel()
+            lastRuntime = null; lastFormat = FileFormat.Gguf; _loadedShards.value = emptyList()
+            val selected = factory(); externalEngine = selected
+            val result = selected.loadModel(ModelLoadRequest(path, contextSize))
+            _state.value = when(result) {
+                is MeshlitResult.Success -> CoordinatorState.Ready(result.value, null, FileFormat.Gguf)
+                is MeshlitResult.Failure -> CoordinatorState.Error(result.error.tag)
+            }
+            if(result is MeshlitResult.Failure) {selected.unloadModel(); externalEngine = null}
+            result
+        } catch(e: kotlinx.coroutines.CancellationException) {
+            withContext(kotlinx.coroutines.NonCancellable) {externalEngine?.unloadModel(); externalEngine = null}
+            _state.value = CoordinatorState.Idle; throw e
+        } catch(e: Exception) {
+            externalEngine?.unloadModel(); externalEngine = null
+            _state.value = CoordinatorState.Error(e.message ?: "Pipeline startup failed")
+            MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Native("pipeline.start:${e.message}",e))
+        }
+    }
+
+    /** Native administrative operations share the same lock as generation and replacement. */
+    suspend fun <T> withExternalEngine(tag:String,operation:suspend()->T):T=inferMutex.withLock {
+        check(_state.value is CoordinatorState.Ready && externalEngine?.engineTag==tag && externalEngine?.isReady()==true){"Load the required native runtime first"}
+        operation()
+    }
+
+    suspend fun unloadModel() = inferMutex.withLock {
+        externalEngine?.unloadModel(); externalEngine = null
+        _loadedShards.value = emptyList()
         // Unload every engine that might have a session open. Cheap
         // when nothing is loaded — each engine's unload is a no-op.
         // Phase 2.x — also unload the RunAnywhere-backed engine so
@@ -481,6 +537,7 @@ class InferenceCoordinator(
     }
 
     fun loadedModel(): ModelInfo? {
+        externalEngine?.let { return it.loadedModel() }
         // The user-facing "what's currently loaded" question is
         // answered by whichever engine actually has a model. We
         // check in priority order: RunAnywhere wins when it has a
@@ -498,7 +555,12 @@ class InferenceCoordinator(
      * stream via [InferenceRequest.onToken].
      */
     suspend fun infer(request: InferenceRequest): MeshlitResult<InferenceResult> =
+        operationGate?.run(com.meshlit.core.common.control.ManagedFeature.INFERENCE) { inferManaged(request) } ?: inferManaged(request)
+
+    private suspend fun inferManaged(request: InferenceRequest): MeshlitResult<InferenceResult> =
         inferMutex.withLock {
+            if(request.expectedModelPath!=null && loadedModel()?.modelPath!=request.expectedModelPath)
+                return@withLock MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid("model_changed: expected model is no longer loaded"))
             withContext(dispatcher) {
                 // Pick the engine that currently holds the loaded
                 // model. Falls through to NoOp if no native engine
@@ -506,6 +568,8 @@ class InferenceCoordinator(
                 // `no_engine_for_infer` failure instead of a
                 // misleading success.
                 val targetEngine = pickEngineForInfer(request)
+                if(request.onDeviceOnly && targetEngine.engineTag !in setOf("runanywhere","onnx-ort","llama-native-local"))
+                    return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid("coord.inference.on_device_required"))
                 if (!targetEngine.isReady()) {
                     return@withContext MeshlitResult.Failure(
                         com.meshlit.core.common.MeshlitError.Invalid("coord.inference.not_loaded"),
@@ -516,7 +580,7 @@ class InferenceCoordinator(
                     runtime = lastRuntime,
                     format = lastFormat,
                 )
-                _events.tryEmit(InferenceEvent.GenerationStarted(request.prompt))
+                if(request.publishEvents) _events.tryEmit(InferenceEvent.GenerationStarted(request.prompt))
                 // Run inference directly on the caller's coroutine so
                 // [cancel] (which cancels the FGS-bound job) propagates
                 // through `coroutineContext.ensureActive()` in the
@@ -526,8 +590,10 @@ class InferenceCoordinator(
                 // user as duplicated agent replies.
                 currentJob = coroutineContext[Job]
                 try {
-                    val result = targetEngine.infer(request)
-                    _events.tryEmit(InferenceEvent.GenerationFinished(result))
+                    val effectiveRequest = try { request.copy(prompt=localBehavior().decorate(request.prompt)) }
+                    catch(e:IllegalArgumentException){return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid("local_behavior: ${e.message}"))}
+                    val result = targetEngine.infer(effectiveRequest)
+                    if(request.publishEvents) _events.tryEmit(InferenceEvent.GenerationFinished(result))
                     if (targetEngine.isReady()) {
                         _state.value = CoordinatorState.Ready(
                             targetEngine.loadedModel()!!,
@@ -538,6 +604,11 @@ class InferenceCoordinator(
                     result
                 } finally {
                     currentJob = null
+                    if (targetEngine.isReady()) {
+                        _state.value = CoordinatorState.Ready(targetEngine.loadedModel()!!, lastRuntime, lastFormat)
+                    } else if (_state.value is CoordinatorState.Generating) {
+                        _state.value = CoordinatorState.Idle
+                    }
                 }
             }
         }
@@ -555,10 +626,23 @@ class InferenceCoordinator(
      *  downloaded and loaded a model via RunAnywhere.
      */
     private fun pickEngineForInfer(request: InferenceRequest): InferenceEngine {
+        externalEngine?.let { return it }
         if (runAnywhereEngine.isReady()) return runAnywhereEngine
         if (llamaEngine.isReady()) return llamaEngine
         if (onnxEngine.isReady()) return onnxEngine
         return noOpEngine
+    }
+
+    suspend fun reportExternalFailure(expected: InferenceEngine, message: String) {
+        if(externalEngine !== expected) return
+        cancel()
+        inferMutex.withLock {
+            if(externalEngine !== expected) return@withLock
+            expected.unloadModel()
+            // Keep the failed selected backend until the user explicitly loads another model.
+            _state.value = CoordinatorState.Error(message)
+            _events.tryEmit(InferenceEvent.LoadFailed(message))
+        }
     }
 
     /** Cancel the current inference. No-op when nothing is running. */

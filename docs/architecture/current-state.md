@@ -1,313 +1,161 @@
-# Current-state baseline
+# Current architecture and evidence boundaries
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
-> **Status:** Slice 1 of the improvement plan. Single source of truth for what the project actually ships today, what works, what doesn't, and where the gaps are.
->
-> **Audience:** any agent picking up a new slice. Read this before touching `:core-inference` or any other engine path.
->
-> **Update rule:** update on every phase boundary or material decision. Not on every commit.
+Updated 2026-10-07. Source commit `baa8bcd`, baseline
+`ff0cd771c12f3daa63cb8fe45e1476245ab7b01b`. The upstream architecture text is
+preserved at `../history/current-state-upstream-baseline.md`; its phase, module,
+model, SSH and native-support assertions are historical.
 
----
+## Product and runtime
 
-## 1. Top-level shape
+Android Kotlin/Compose/Koin, two build flavors with the shared modern UI. The
+structured inventory has 33 Gradle modules, 65 feature areas and 38 durable typed
+command operations. `../../FEATURE_MAP.md`, `../feature-map.json` and
+`../../PROGRESS.md` are the current navigation/implementation/evidence ledgers.
+No percentage is inferred from feature counts.
 
-**27 Gradle modules** (per `settings.gradle.kts`). One Android application module (`:app`) + 26 `core-*` / `feature-*` libraries. Module dependency graph is layered leaves-first; the application is the only module allowed to depend on every leaf.
+On-device inference uses pinned RunAnywhere 0.20.12 and its actual native backend.
+The APK includes the verified real SmolLM2 135M Instruct Q4_K_M asset, not the
+historical 360M assertion. ModelLibrary validates extraction, reconciles artifact
+state, manages SDK or verified HTTPS downloads and SAF imports, and owns startup
+selection and load locks. Context/quantization/KV controls honestly distinguish
+SDK-managed settings from optional native CPU CLI controls.
 
-Three runtime paths the user can drive:
+Optional llama.cpp local CPU and layer-RPC coordinator/workers are ABI-specific
+packaged native executables. Native worker sockets are loopback; the public worker
+transport requires pinned authenticated TLS. Offers negotiate eligibility and
+memory-weighted layer splitting. Current coordinator activation is local; durable
+consensus, shared task leases, remote KV restoration and physical oversized-model
+proof remain open gates. A complete artifact stays on the coordinator disk.
 
-1. **Local on-device inference** — bundled `smollm2-360m-instruct-q8_0.gguf` (`~368 MB`) extracted on first launch into `filesDir/bundled-models/`. The asset basename matches the RunAnywhere SDK's `DEFAULT_MODEL_ID`, so the FGS auto-loads without a rename step.
-2. **Cluster / remote inference** — embedded NanoHTTPD server on `:8080`; `RemoteInferenceClient` (Ktor 3) opens SSE to a peer; partial tokens flow into the same `CoordinatorState` as local jobs.
-3. **Cloud-hosted MCP** — `:core-cloud-mcp` provides SSE-over-HTTPS transport + JSON-RPC 2.0 envelopes + an `OpenApiSpecParser` for custom providers. NaraRouterClient streams OpenAI-compatible chat completions.
+Online chat is explicit per conversation and uses encrypted provider profiles.
+Adapters support OpenAI/compatible Chat Completions, Claude Messages and Gemini
+text generation. Public HF model/free/price discovery is separate from hosted
+inference access and billing. No paid automatic fallback or invented model list.
 
-The screen surface has **14 bottom-bar destinations + drawer-only entries** (Help, Power, Cloud). Total: 17+ screens.
+## Human and agent control
 
-## 2. Module inventory (what each layer owns)
+AgentBackend and durable encrypted typed job controllers provide idempotent
+submission, bounded queues, observable status/cancel/retry and saved scopes.
+Real task-board/workspace operations have their own persistence. Agent management
+shows actual jobs and registered MCP tools. The bootstrap fake Healthy agent
+runtime was removed; an MCP lifecycle adapter still wraps the real server.
 
-### Leaves — no dependency on other core modules
+OpenClaw has separate gateway, signed Android-node and phone-model-provider paths.
+Android autonomy/accessibility is opt-in and allowlisted; root remains human-only.
+Network/control companions enroll with invitations and owner approval. Device
+kind and requested roles do not authorize compute. Raspberry Pi, microcontroller,
+sensor and radio categories may contribute non-LLM capabilities once verified.
 
-| Module | Owns |
-|---|---|
-| `core-common` | `MeshlitError`, `MeshlitResult`, `CapabilityTier`, `HostOS` detection |
-| `core-config` | DataStore-backed configuration repository |
-| `core-flags` | Feature flag registry |
-| `core-trust` | TrustTier enum, attestation helpers, encrypted credential store |
-| `core-discovery` | NSD / Wi-Fi Aware / Tailscale / WireGuard / relay transports |
-| `core-files` | SAF-backed file vault |
-| `core-ssh` | LAN/Tailscale SSH server + client (Apache MINA SSHD) |
-| `core-firewall` | Per-port application-level accept-list + rate limit |
-| `core-guardrails` | Prompt injection / jailbreak / PII filters (local) |
-| `core-tunnel` | Tailscale / WireGuard plumbing |
-| `core-users` | Local profiles, biometric unlock, per-user quotas |
-| `core-advanced-engines` | Alternate engine slots (scaffold) |
-| `core-gpu` | GPU / NPU detection + priority helpers |
-| `core-training` | On-device LoRA / QLoRA scaffold + dataset loaders |
+ConfigurationTransfer provides strict non-secret schema-v1 settings export/import
+with preview/local preflight and partial-apply reporting. It does not carry device
+trust, OS grants, agent scopes, secrets or automatic enrollment.
 
-### Mid-tier — depends on leaves, not on `:app`
+## Device, power and tools
 
-| Module | Owns |
-|---|---|
-| `core-inference` | `InferenceEngine` interface + 5 implementations + `InferenceCoordinator` + FGS + NanoHTTPD + RemoteInferenceClient |
-| `core-mcp` | On-device MCP tool surface (registerTool wrappers) |
-| `core-cloud-mcp` | Cloud-hosted MCP agent + capability registry |
-| `core-orchestration` | Job queue, retries, timeouts (scaffold) |
-| `core-net` | `NetworkObserver` (OkHttp EventListener) + `MeshlitCaptureVpnService` + PCAP writer/parser + `PacketCaptureRegistry` |
-| `core-observability` | `TracingController` (Off/Local/Otel) + OtelBootstrap + SinkSpanProcessor + TracerHolder + LogSource |
-| `core-terminal` | Hand-rolled VT parser + session host (planned swap to ghostty-org/ghostty) |
-| `core-bootstrap` | App-start sequence helpers |
-| `core-registry` | Service registry abstractions |
-| `core-lifecycle` | Lifecycle observation helpers |
-| `core-probe` | Capability probe + device profile |
-| `core-role` | Role suggestion (Brain / Tool / Monitor) |
-| `core-agent-memory` | Phase 0 spike — layered memory architecture borrowed from (rejected) TencentDB review |
+DeviceRuntimeProbe reads real Android/API/ABI/RAM/storage/thermal/hardware state;
+DeviceRuntimePolicy admits bounded local workloads. PowerRepository reads actual
+battery/network metrics and enforces saved download/new-load policies. Costs are
+labeled estimates, with unknown sensors/usage/prices retained as unknown.
 
-### Features + app
+ExternalDevices reads USB descriptors and mounted volumes; Android prompts and
+SAF grants authorize access. Discovery does not install GPU/serial/camera drivers.
+Acceleration preferences choose supported new-model defaults and native CPU
+thread caps. Major GPU/NPU/vendor/OS plugins remain unavailable until installed
+and generation-tested, rather than being successful-looking switches.
 
-| Module | Owns |
-|---|---|
-| `feature-advanced` | Advanced screens (scaffold) |
-| `feature-ghosty` | Ghostty-style terminal screen (scaffold) |
-| `:app` | Compose UI, MainActivity, MeshlitApplication, MeshlitRuntime, FGS starters, every screen, all wire-up |
+SSH uses maintained JSch 2.28.7 with mandatory host-key pins, encrypted credentials,
+bounded exec and cancellation; not a configuration-only SSH scaffold. Listener
+firewall policy is validated/persisted and gates new legacy inference, HTTPS
+control and RPC worker connections. It is not OS-wide/outbound filtering.
 
-## 3. Runtime engines (the actual on-device inference)
+Optional terminal/Linux VM/VNC require their real runtime artifacts. Crawl4AI is
+a scoped separately installed companion. The code workspace is a real bounded
+offline editor, not a full IDE compiler/debugger. Existing voice wrappers and
+bounded image/camera input are exposed in Settings; VLM native support can report
+unavailable. Live CCTV/UVC/DSP/radio adapters are planned explicitly.
 
-`InferenceCoordinator.pickEngine()` picks one of these at startup. Order is documented in `InferenceCoordinator.kt:89`.
+## Continuation documents
 
-### `RunAnywhereInferenceEngine` — production path today
-- Wraps the RunAnywhere SDK 0.20.12 (`io.github.sanchitmonga22:runanywhere-sdk:0.20.12`).
-- Bundled native libs: `libllama.so` for arm64-v8a, armeabi-v7a, x86, x86_64 (`~34 MB` each).
-- The SDK's `libllama.so` is the actual inference engine — the Meshlit Kotlin code is a thin wrapper.
-- `engineTag = "runanywhere"`.
+- `../device-aware-model-runtime.md`: device admission and native/SDK tuning.
+- `../layer-pipeline-and-recovery.md`: genuine execution and phone recovery gates.
+- `../online-power-peripherals-and-configuration.md`: implemented source contracts.
+- `../declarative-federation-roadmap.md`: IaC-style resources and multi-cluster tasks.
+- `../media-iot-and-radio-nodes.md`: non-LLM nodes, media and two-way radio gates.
+- `../../AGENT_BUILD.md`: build/port instructions for the other agent.
 
-### `LlamaCppInferenceEngine` — **stub with declared JNI surface**
-- **State:** Kotlin-side `external fun` declarations exist for 5 symbols (`nativeInit`, `nativeLoadModel`, `nativeInfer`, `nativeUnload`, `nativeCancel`). The actual `libmeshlit_inference.so` is **not built**.
-- `core-inference/src/main/cpp/` does not exist.
-- No `externalNativeBuild` block in `core-inference/build.gradle.kts`.
-- On `loadNativeLibrary()` failure, the engine returns `isReady() == false` and is silently skipped by `pickEngine()`.
-- `engineTag = "llama.cpp"` is reserved for the path that doesn't yet ship.
-- **This is the headline gap. Slice 2 of the improvement plan starts here.**
+Validation must name artifacts, runtime, tests and physical devices. An APK or
+compile pass is not proof of inference, recovery, vendor acceleration or radio
+transmission. Read PROGRESS for the latest actual results and outstanding work.
 
-### `OnnxOrtInferenceEngine` — wired but inert
-- Microsoft ORT Mobile 1.18 aar is bundled (`libonnxruntime.so` ships in APK, `~3.7 MB` for arm64).
-- The Java side calls ORT's pure-Java API; the JNI surface (`nativeLoadModel`, `nativeInfer`, `nativeUnload`) is declared but not linked.
-- The engine initializes the ORT environment successfully (`isReady() == true` if `.so` loads) but returns typed errors when no `.onnx` model is present.
-- `engineTag = "onnx-ort"`.
+## Custom models and training continuation (2026-10-06)
 
-### `NoOpInferenceEngine` — typed-failure fallback
-- Last resort. Returns `MeshlitError.Native("no_engine_for_format:...")` on every operation.
-- Never emits placeholder text (the old `JvmStubInferenceEngine` was deleted for exactly this reason — it produced deterministic fake replies that confused users).
-- `engineTag = "none"`.
+Read [../local-model-behavior-and-training.md](../local-model-behavior-and-training.md). Custom local prompt behavior is default-off;
+compatible custom weights are imported through Models. No toggle changes learned
+refusals or hosted-provider rules. Settings → Fine-tuning drives the optional
+Soup 0.75.0 POSIX host companion via pinned SSH, with real job/status/log/cancel
+contracts. Android synthetic gradients are removed; phone autograd reports
+unavailable. Actual Soup training, adapter quality/evaluation and GGUF deployment
+remain acceptance gates. Keep phone inference layer sharding/recovery primary.
 
-### Engine selection (`pickEngine()`)
+## Cloud, browser and file continuation
 
-Current resolution order:
-1. `System.getProperty("meshlit.inference.stub") == "true"` → always `NoOpInferenceEngine`.
-2. Try `LlamaCppInferenceEngine.loadNativeLibrary()` → if it succeeds, that's the engine. (Currently never succeeds — no `.so` ships.)
-3. Otherwise try the RunAnywhere-backed engine (already initialized at app start).
-4. Otherwise try the ONNX engine (will likely fail at loadModel with no model file).
-5. Otherwise `NoOpInferenceEngine`.
+Read `../cloud-and-credential-management.md`, `../USER_GUIDE.md` and
+`../runanywhere-browser-and-llama.md`. Dedicated Cloud has fixed read adapters,
+source-stamped resource/cost observations and purpose/origin-bound encrypted
+credential environments. Human and agent actions, environment use and enrolled
+device scopes are independent. Deployment/IaC and full vendor service coverage
+remain future adapters.
 
-**Gap:** the selection is silent. `CoordinatorState` exposes `engineTag` but not the *reason* a particular engine was chosen, nor whether the fallback was safe for the requested model format. Slice 2 + Slice 5 will fix this.
+The visible WebView broker serves typed status/run/stop commands. Exact approved
+origins, foreground lifecycle, per-step authorization and action/timeout caps
+constrain actual local-model reasoning; failed model parsing is an error, not
+a scripted substitute. External browsers use the separate generic Android
+Accessibility tools and detected-browser app scopes. Both paths need real task/
+physical evidence. AI asset inspection and streaming bounded ZIP/unzip operate
+on user-granted storage; archive extraction is not a model import/runtime.
 
-## 4. Data flows
+## Audit telemetry
 
-### Model loading flow (cold start → first token)
+Opt-in metadata collection samples actual Android device state, model/library/task/
+pipeline transitions and typed human/agent operation outcomes. An encrypted bounded
+journal provides retention, filters and JSONL/CSV export. Optional OTLP/HTTP exports
+private metadata traces and metrics with endpoint-bound encrypted auth. Closed
+export sanitization excludes prompts, URLs, paths, credentials and exception bodies.
+See ../AUDIT_TELEMETRY.md for actual coverage/loss limits and collector/dashboard
+setup. Vendor SDK telemetry opt-out, full fleet coverage and a durable remote outbox
+remain unverified/unimplemented; no hosted Grafana proof is implied by loopback OTLP.
 
-```
-App start (MeshlitApplication.onCreate)
-   └─→ BundledModelInstaller.installBundledModels()
-        ├─ extracts assets/models/smollm2-360m-instruct-q8_0.gguf → filesDir/bundled-models/
-        ├─ SHA-256 verified against the pinned sentinel
-        └─ RunAnywhereInferenceEngine.registerModel(id, name, url, ...) pre-seeds the SDK cache
+## Distribution and agreement continuation (2026-10-07)
 
-User opens Jobs screen
-   └─→ JobsScreen collects InferenceCoordinator.state
-        ├─ Idle ───────────► Starting (markStarting() during SDK init)
-        ├─ Starting ──────► Idle (markInitialized() after init completes)
-        └─ Idle ───────────► Loading(path) on user "Load model" tap
+The owner authorized GitHub beta assets, a separate Play review APK/AAB, and
+first-use Terms/Privacy acceptance. Read docs/PLAY_DISTRIBUTION.md (relative to
+repository root) and the public/offline policy copies. `playReview` is a restricted
+review candidate; no Play approval/submission is claimed. Policies are versioned,
+both checkboxes are mandatory, and app-owned SDK/bootstrap work waits for acceptance.
+Optional permissions/telemetry remain independent. Preserve the original open-source
+license rights and third-party notices. Production release signing must never fall
+back to a debug certificate; owner keys remain external to source.
 
-Loading(path)
-   └─→ InferenceCoordinator.loadModel(request)
-        ├─ FileFormat.detect(path) → GGUF | ONNX | unknown
-        ├─ RuntimeRegistry.find(format) → RuntimeEngine entry
-        ├─ engine.loadModel(...) → tokens, context size, parameter count, quant
-        ├─ coordinator emits LoadStarted → LoadSucceeded | LoadFailed
-        └─ coordinator state: Loading → Ready(model) | Error(reason)
+## Final beta checkpoint and owner stop (2026-10-07)
 
-InferenceCoordinator.infer(prompt)
-   ├─ Acquires inferMutex (serialized — only one inference at a time)
-   ├─ state: Ready → Generating(startedAtMs, runtime, format)
-   ├─ engine.infer(request) → stream tokens via onToken callback
-   ├─ Cancellation: coroutineJob.cancel() → engine.nativeCancel() → state Generating → Ready
-   └─ state: Generating → Ready (FinishReason.NATURAL_STOP | MAX_TOKENS | STOP_SEQUENCE | CANCELLED | ERROR)
-```
+Read `docs/SESSION_HANDOFF.md` (repository root relative) and PROGRESS.md. Final
+combined Full/Review APK/AAB build passes; 639 unit tests and one API35 x86_64
+Android audit test pass. Full lint has zero errors (348 warnings/17 hints each),
+Review zero errors (351 warnings/17 hints). CI passes at 2e37dcd. Review static
+manifest/policy/23-library ELF alignment checks pass; Play approval and actual
+16 KiB runtime proof remain open. Final emulator Models shows the starter loaded;
+normal cold startup took 7.406s after Gradle stopped, with two ANRs during lint.
+The owner stopped for sleep, then requested progress saving/local release asset
+preparation. The owner has since authorized continued work and Intel publication; see the current handoff.
+Beta.1 publication is historical and verified; current Intel Studio distribution is tracked in ../RELEASE_EVIDENCE.md. Keep physical phone sharding/recovery, hosted
+Grafana, vendor SDK telemetry opt-out and optional integrations explicitly open.
 
-**Coordination rules (current behavior — to be hardened in Slice 5):**
-- If `loadModel` is called while the coordinator is `Generating`, the call blocks on `inferMutex` until the active generation finishes or is cancelled.
-- `currentJob` tracks the active generation; `cancel()` is cooperative.
-- A model loaded with a sharded manifest sets `loadedShards` so the planner can route replacement peers via `/v1/model.shardRanges`.
-- The engine selection is **silent**: `pickEngine()` returns the first available engine without surfacing why. Slice 5 will surface `engineTag` + `enginePickReason` in `CoordinatorState`.
+Gateway continuation: see ../AGENT_GATEWAY_AND_SECURITY_LAB.md. Protocol endpoint implementation is Meshlit Kotlin, distinct from the pinned upstream Rust companion.
 
-### HTTP/SSE federation flow (peer → peer inference)
+## Current desktop core boundary — 2026-10-10
 
-Each Meshlit node exposes the same surface on `:8080`. The endpoints are typed in `core-inference/net/InferenceWire.kt` and pinned by `RuntimesResponseRoundTripTest`.
-
-```
-Peer A (responder)                                          Peer B (requester)
-────────────────────                                        ────────────────────
-InferenceHttpServer.bind(8080)
-   ├─ GET  /v1/health   → HealthResponse {
-   │       engineTag, runtimeId, runtimeDisplayName,
-   │       modelLoaded, fileFormat, tokensPerSecond }
-   ├─ GET  /v1/runtimes → RuntimesResponse {
-   │       runtimes: List<RuntimeDescriptor>,
-   │       summary: RuntimeCatalogSummary }
-   ├─ GET  /v1/model    → { id, context, shardRanges }
-   └─ POST /v1/infer    → SSE stream
-          event: token { text: "..." }
-          event: token { text: "..." }
-          event: done  { promptTokens, generatedTokens, finishReason }
-
-                                                            RemoteInferenceClient.infer(host, prompt)
-                                                               ├─ POST /v1/infer with JSON body
-                                                               ├─ parses SSE event stream
-                                                               │    token event → onToken callback
-                                                               │    done  event → InferenceResult
-                                                               │    error event → MeshlitError.Network
-                                                               └─ returns MeshlitResult<InferenceResult>
-```
-
-**Wire types locked by tests:** `HealthResponse`, `RuntimesResponse`, `RuntimeDescriptor`, `RuntimeCatalogSummary`. Five round-trip tests in `RuntimesResponseRoundTripTest`. **Gap:** no `protocol_version` field on the wire — Slice 7 adds it.
-
-**Auth model (current):** LAN endpoints are reachable without authentication. Bearer-token auth exists for the cloud gateway (`core-cloud-mcp`) but is not enforced for LAN remote inference. **Gap:** Slice 7 enforces authenticated pairing before remote inference.
-
-### Local-only paths (not in the coordinator)
-
-The cloud MCP path is a **separate coordinator** (`CloudMcpCoordinator`) and never reaches `InferenceCoordinator`. Same for `NaraRouterClient`. Don't conflate them.
-
-```
-Compose UI (CloudHubScreen / AgentTerminalScreen)
-   └─→ CloudMcpCoordinator.connect(provider)
-        ├─ SSE-over-HTTPS to provider
-        ├─ JSON-RPC 2.0: initialize / tools/list / tools/call
-        └─→ McpEvent stream (Connected / Thought / ToolCall / ToolResult / Done)
-
-NaraRouterClient.runAgentPrompt(prompt)
-   └─→ streaming OpenAI-compatible chat completions → LlmChunk.{Text,ToolCall,Done}
-        └─→ tool calls dispatched via ToolRegistry → CloudMcpSession.tools/call
-```
-
-### Coordinator state machine (current shape)
-
-`CoordinatorState` is the typed surface the UI binds to (`StateFlow<CoordinatorState>`):
-
-```
-                  ┌──────────────────────────────────────────────────────┐
-                  │                                                      │
-                  ▼                                                      │
-       ┌──────────────────┐  markStarting()    ┌──────────────────┐    │
-       │       Idle       │ ─────────────────► │     Starting     │    │
-       └──────────────────┘                    └──────────────────┘    │
-              │   ▲                                    │                │
-              │   │ markInitialized()                  │ init finished │
-              │   └────────────────────────────────────┘                │
-              │                                                          │
-              │ loadModel()                                              │
-              ▼                                                          │
-       ┌──────────────────┐  load OK        ┌─────────────────────────┐  │
-       │     Loading      │ ──────────────► │  Ready(model, runtime,  │  │
-       │ (modelPath,      │                 │          format)        │  │
-       │  runtime, format)│ ◄────────────── │                         │  │
-       └──────────────────┘   load fails    └─────────────────────────┘  │
-              │                                      │      ▲            │
-              │                                      │      │            │
-              │                                      │ infer│            │
-              │                                      │      │ generation │
-              │                                      ▼      │ complete   │
-              │                              ┌──────────────────────────┐│
-              │                              │ Generating(startedAtMs,  ││
-              │                              │             runtime,      ││
-              │                              │             format)       ││
-              │                              └──────────────────────────┘│
-              │                                      │      │            │
-              │                                      │      │ cancel     │
-              │                                      ▼      ▼            │
-              │                              ┌──────────────────────────┐│
-              │                              │       Ready(...)         │┘
-              │                              └──────────────────────────┘
-              │
-              │ unloadModel()
-              ▼
-       ┌──────────────────┐
-       │       Idle       │
-       └──────────────────┘
-
-  Side-state (any state): errors surface as CoordinatorState.Error(message, runtime, format).
-  The Error state is reachable from Loading, Ready, Generating — see InferenceCoordinator.kt lines 351, 393, 401, 408, 443.
-```
-
-**Slice 5 will harden this** by introducing explicit `Cancelling` and `Failed` terminal states, and by adding `enginePickReason` to `Ready` so the UI can show *why* a particular engine was chosen.
-
-## 5. What's actually shipped vs. what's planned
-
-### Shipped (`:app:assembleDebug` is green)
-
-- [x] InferenceEngine abstraction + 4 implementations.
-- [x] InferenceCoordinator with serialized inference + StateFlow + cancellation.
-- [x] InferenceForegroundService with `dataSync` FGS + persistent notification + LocalBinder IPC + Android 15+ `onTimeout()`.
-- [x] Embedded NanoHTTPD server on `:8080` (`/v1/health`, `/v1/runtimes`, `/v1/model`, `/v1/infer` SSE).
-- [x] RemoteInferenceClient (Ktor 3, OkHttp engine).
-- [x] Voice / JSON / Catalog / Vision screens wired to `RunAnywhere*Engine`.
-- [x] Model catalog + download via `RunAnywhere.downloadModelById(...)` + `registerModel(...)`.
-- [x] Device pairing via QR + bearer token (Google Play Services scanner).
-- [x] 14 bottom-bar destinations + drawer-only entries (Help, Power, Cloud).
-- [x] Phase 1.0: per-ABI APKs (arm64 = 82 MB, x86_64 = 89 MB, universal = 191 MB).
-- [x] Phase 1.1: `scripts/phase1_validation.py` + `phase1_stress_test.sh` (hardware-dependent, not yet executed on real devices).
-- [x] Phase 1.2: wire-surface test coverage (97 `:core-inference` unit tests).
-- [x] Phase 0.3: Koin DI scaffolding (MeshlitApplication god-object dissolved).
-- [x] Phase Obs-1: tracing (Off/Local/Otel), log export, manual, tour, feedback, network monitor, VPN PCAP capture.
-
-### Not yet shipped (the gap)
-
-- [ ] **Owned llama.cpp JNI path** (`libmeshlit_inference.so` doesn't exist). Slice 2.
-- [ ] **Explicit fallback visibility** — `pickEngine()` is silent. Slice 5.
-- [ ] **Versioned peer protocol** — `/v1/health` has no `protocol_version` field. Slice 7.
-- [ ] **Authenticated pairing required for remote inference** — bearer-token auth exists for cloud gateway but not enforced for LAN remote. Slice 7.
-- [ ] **Capability-aware router** — `RouterRef.decideFor(...)` is a placeholder. Slice 7.
-- [ ] **CI for `:core-inference` unit tests** — `.github/workflows/ci.yml` runs `:app:test<Flavor>DebugUnitTest` but not `:core-inference:testDebugUnitTest`. Slice 1 step.
-- [ ] **Real-device stress test pass** — scripts exist; no recorded run. Slice 6.
-
-### Out of scope for v1 (deferred)
-
-- [ ] MoE expert shard federation (`BUILD_GUIDE.md` §2.7 — planned for Phase 4.5).
-- [ ] Co-operative training loops (`BUILD_GUIDE.md` §7.9 — Phase 5).
-- [ ] Adaptive thermal/power tuning (`BUILD_GUIDE.md` Phase 5).
-- [ ] Rust integration — not needed in v1; re-introduce only with a concrete subsystem.
-- [ ] Ghostty swap in `core-terminal` (TODO #179 — pending licence + NDK matrix check).
-
-## 6. The contract surface (what must not break)
-
-These types are touched by the UI, the FGS, and the HTTP/SSE wire. Breaking them ripples into every screen and every peer.
-
-| File | Contract |
-|---|---|
-| `core-inference/.../InferenceEngine.kt` | `InferenceEngine` interface + `ModelLoadRequest` / `ModelInfo` / `InferenceRequest` / `InferenceResult` / `FinishReason` |
-| `core-inference/.../InferenceCoordinator.kt` | `CoordinatorState` sealed class + `InferenceEvent` sealed class + `pickEngine()` selection |
-| `core-inference/.../RuntimeEngine.kt` | `RuntimeEngine` interface + `RuntimeStatus` enum + `FileFormat` union + `RuntimeRegistry` |
-| `core-inference/.../net/InferenceWire.kt` | `HealthResponse`, `RuntimesResponse`, `RuntimeDescriptor`, wire-type round-trippable JSON |
-| `core-common/.../MeshlitError.kt` | Sealed error surface: `Native`, `Network`, `Invalid`, `Permission`, etc. |
-
-**Rule for Slice 2+:** when touching any of these, treat the existing shape as locked. Add new fields via defaults; don't reorder; don't rename.
-
-## 7. Verification recipe for this slice
-
-```bash
-# Build stays green
-./gradlew :app:assembleDebug
-
-# Inference module tests
-./gradlew :core-inference:testDebugUnitTest
-
-# Lint
-./gradlew :app:lintDebug
-```
-
-If any of these is red, Slice 1 didn't land cleanly.
+Desktop-engine reuses the portable GGUF/model/negotiation sources, desktop-ssh reuses scoped SSH sources, and desktop-hyperl keeps its separate licence. Intel local inference is an owned pinned CPU process with verified SSE4.2/AVX2 dispatch, memory/native-context admission, bounded streaming/options, human lazy load and idle unload. Recovered installers execute it with a private Java runtime. The seven-category management shell has real bounded local controllers and separately marked pending backends. A shared layer planner is not a desktop distributed executor. Production admission, independent device execution, agent authority/audit, OS firewall/VM/container/cloud and other platform backends remain tracked gates. See ../DOCUMENTATION_STATUS.md and ../DESKTOP_FEATURE_TRACKER.md; older numeric phase records are design/history, not global current status.

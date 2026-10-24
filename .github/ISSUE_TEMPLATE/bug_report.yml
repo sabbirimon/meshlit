@@ -1,0 +1,30 @@
+name: Reproducible bug
+description: Report a model, device, UI or integration failure with real evidence
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Include only sanitized diagnostics. Do not attach credentials, private prompts or model weights."
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and observed behavior
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Device, Android version, ABI and app/source version
+    validations:
+      required: true
+  - type: textarea
+    id: model
+    attributes:
+      label: Model/backend/context/cache settings, if relevant
+      description: Include public source/revision/hash where available; no access tokens.
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction and sanitized evidence
+    validations:
+      required: true

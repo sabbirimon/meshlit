@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="Meshlit — Many phones. One mind.">
-  <title>Meshlit — Many phones. One mind.</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="Meshlit — Many nodes. One mind.">
+  <title>Meshlit — Many nodes. One mind.</title>
   <desc>Animated federated-inference hero banner: five pulsing phone nodes orbit a glowing core; the MESHLIT wordmark is filled with a flowing rainbow gradient.</desc>
 
   <defs>
@@ -165,7 +165,7 @@
   <text x="640" y="300" text-anchor="middle"
         font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
         font-size="20" font-weight="500" fill="#e5e7eb">
-    Many phones. <tspan fill="#a78bfa">·</tspan> One mind.
+    Many nodes. <tspan fill="#a78bfa">·</tspan> One mind.
     <animate attributeName="opacity" values="0.7;1;0.7" dur="3.4s" repeatCount="indefinite"/>
   </text>
 

@@ -81,6 +81,7 @@ fun VisionScreen(
     omitHeader: Boolean = false,
 ) {
     val context = LocalContext.current
+    val contextResources=androidx.compose.ui.platform.LocalResources.current
     val app = koinInject<MeshlitApplication>()
     val engine = app.visionEngine
     val scope = rememberCoroutineScope()
@@ -105,18 +106,35 @@ fun VisionScreen(
         val picked = uri
         imageUri = picked
         if (picked == null) return@rememberLauncherForActivityResult
-        // Read the bytes off the main thread — the URI may live in
-        // a content provider that's slow on cold launch.
         scope.launch {
-            runCatching {
-                context.contentResolver.openInputStream(picked).use { it?.readBytes() }
-            }.onSuccess { bytes ->
-                imageBytes = bytes
-                statusMessage = null
-            }.onFailure { t ->
-                statusMessage = t.message ?: t.javaClass.simpleName
-            }
+            try {
+                imageBytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val raw=context.contentResolver.openInputStream(picked)?.use{input->
+                        val output=java.io.ByteArrayOutputStream();val chunk=ByteArray(8192)
+                        while(true){val count=input.read(chunk);if(count<0) break;require(output.size()+count<=8*1024*1024){"Image exceeds 8 MiB"};output.write(chunk,0,count)}
+                        output.toByteArray()
+                    } ?: error("Cannot read image")
+                    val bounds=android.graphics.BitmapFactory.Options().apply{inJustDecodeBounds=true}
+                    android.graphics.BitmapFactory.decodeByteArray(raw,0,raw.size,bounds)
+                    require(bounds.outWidth in 1..100000 && bounds.outHeight in 1..100000){"Invalid image dimensions"}
+                    var sample=1
+                    while(bounds.outWidth/sample>1024 || bounds.outHeight/sample>1024) sample*=2
+                    val bitmap=android.graphics.BitmapFactory.decodeByteArray(raw,0,raw.size,android.graphics.BitmapFactory.Options().apply{inSampleSize=sample}) ?: error("Cannot decode image")
+                    try{java.io.ByteArrayOutputStream().use{output->check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,85,output));output.toByteArray()}}finally{bitmap.recycle()}
+                }
+                statusMessage="Image resized to a bounded JPEG for model input"
+            } catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){imageBytes=null;statusMessage=e.message ?: e.javaClass.simpleName}
         }
+    }
+
+    val capture=rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()){bitmap->
+        if(bitmap!=null) scope.launch{
+            try{imageBytes=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){java.io.ByteArrayOutputStream().use{out->check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG,85,out));out.toByteArray()}};imageUri=null;statusMessage="Actual camera thumbnail captured; analysis requires a working VLM backend"}
+            catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){statusMessage=e.message}finally{bitmap.recycle()}
+        }
+    }
+    val cameraPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->
+        if(granted) runCatching{capture.launch(null)}.onFailure{statusMessage="No usable camera capture app"} else statusMessage="Camera permission not granted"
     }
 
     fun run() {
@@ -154,7 +172,7 @@ fun VisionScreen(
                         totalMs = event.totalDurationMs
                     }
                     is RunAnywhereVisionEngine.VisionStreamView.Failed ->
-                        statusMessage = context.getString(R.string.vision_failed) +
+                        statusMessage = contextResources.getString(R.string.vision_failed) +
                             ": " + event.message
                     is RunAnywhereVisionEngine.VisionStreamView.BackendMissing -> {
                         backendMissing = true
@@ -223,7 +241,13 @@ fun VisionScreen(
                     }
                 }
 
-                if (imageUri != null && imageBytes != null) {
+                OutlinedButton(enabled=!running,onClick={
+                    if(androidx.core.content.ContextCompat.checkSelfPermission(context,android.Manifest.permission.CAMERA)==android.content.pm.PackageManager.PERMISSION_GRANTED)
+                        runCatching{capture.launch(null)}.onFailure{statusMessage="No usable camera capture app"}
+                    else cameraPermission.launch(android.Manifest.permission.CAMERA)
+                }){Text("Capture phone camera thumbnail")}
+                Text("Image capture/import is real. Vision inference requires a compatible loaded VLM backend; the pinned SDK may report it unavailable. Live CCTV/USB frame streams are not connected here.")
+                if (imageBytes != null) {
                     val bitmap = remember(imageBytes) {
                         android.graphics.BitmapFactory.decodeByteArray(
                             imageBytes, 0, imageBytes!!.size,

@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Meshlit" parent="Theme.Meshlit.Base">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/meshlit_boot_animated</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_midnight</item>
+        <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    </style>
+</resources>

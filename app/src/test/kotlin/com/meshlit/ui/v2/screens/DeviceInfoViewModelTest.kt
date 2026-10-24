@@ -33,6 +33,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import androidx.lifecycle.ViewModelStore
 
 /**
  * Smoke tests for `DeviceInfoViewModel`.
@@ -65,6 +66,7 @@ import org.junit.Test
 class DeviceInfoViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
+    private val viewModelStores = mutableListOf<ViewModelStore>()
 
     @Before
     fun setUp() {
@@ -79,6 +81,11 @@ class DeviceInfoViewModelTest {
 
     @After
     fun tearDown() {
+        // Exercise real lifecycle cleanup before removing Main. Otherwise the
+        // real monitor can emit into a ViewModel from an already finished test.
+        viewModelStores.forEach { it.clear() }
+        viewModelStores.clear()
+        testDispatcher.scheduler.runCurrent()
         Dispatchers.resetMain()
     }
 
@@ -168,7 +175,11 @@ class DeviceInfoViewModelTest {
         registry = registry,
         settings = settings,
         bootstrapCoordinator = coordinator,
-    )
+    ).also { vm ->
+        val store=ViewModelStore()
+        store.put("subject",vm)
+        viewModelStores+=store
+    }
 
     @Test
     fun `Loading state without bootstrap snapshot`() = runTest(testDispatcher) {

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-10-12",
+  "applicationSourceCommit": "12bd20a",
+  "sourceEvidenceCheckpoint": "630cba2",
+  "review": "https://github.com/sabbirimon/meshlit-v2/pull/2",
+  "releaseTag": "v2.0.0-macos-intel-build40.1",
+  "releaseState": "published-experimental",
+  "productionQualified": false,
+  "workstreams": [
+    {
+      "name": "Local core engine",
+      "state": "Host/payload verified; Experimental",
+      "nextGate": "Clean-machine, lifecycle/stress, wider quality and hardware"
+    },
+    {
+      "name": "Shared sharding",
+      "state": "Contract-tested planner; desktop executor pending",
+      "nextGate": "Live paired-worker controller and independent-device oversized-model/peer-loss proof"
+    },
+    {
+      "name": "Desktop management",
+      "state": "Partial source and scoped host qualification",
+      "nextGate": "Remaining real category controllers and operational acceptance"
+    },
+    {
+      "name": "Android reliability",
+      "state": "Build44 evidence retained; build45 source saved, final build/lint/device qualification incomplete",
+      "nextGate": "Owner resumes work, then changed contracts, both flavors/lints and Samsung voice/RAG/native checks"
+    },
+    {
+      "name": "Governed agents and fleet",
+      "state": "Android reference; desktop authority/audit port pending",
+      "nextGate": "Common permission/controller/audit bridge before autonomous MCP/A2A/hooks"
+    },
+    {
+      "name": "Platform and distribution",
+      "state": "Intel Experimental release published; recovered payloads/hash verification pass",
+      "nextGate": "Clean-target signing/privacy and independent OS/device gates; CI remains separately observed"
+    },
+    {
+      "name": "Android/desktop peering, identity, wallet and UI",
+      "state": "Partial source saved for PR #4; application work paused for HyperL-first delivery",
+      "nextGate": "Desktop and Android compile/integration review, strict lint and qualified peer/recovery tests",
+      "plan": "docs/PEERING_UI_BUILD_PLAN.md",
+      "handoff": "docs/PAUSED_CHECKPOINT_2026-10-24.md"
+    }
+  ],
+  "releaseUrl": "https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-macos-intel-build40.1",
+  "releaseSourceCommit": "c1f2d60ffeff043ef2da210c552ccaf73b65ea8a",
+  "proposedMilestone": {
+    "name": "Desktop stabilization",
+    "state": "plan-refined; implementation not started",
+    "plan": "docs/desktop/STABILIZATION_PLAN.md",
+    "buildGuide": "docs/desktop/STABILIZATION_BUILD_GUIDE.md",
+    "baselineSourceCommit": "80077834cfd9421da6f650f0ff51525337b29735",
+    "gateStates": {
+      "S0": "planned",
+      "S1": "planned",
+      "S2": "planned",
+      "S3": "planned",
+      "S4": "planned",
+      "S5": "planned",
+      "S6": "planned"
+    },
+    "releaseDecisions": [
+      "Local desktop preview after S0\u2013S4 and package/clean-target acceptance",
+      "Cluster Experimental preview additionally requires S5 physical-device evidence"
+    ]
+  },
+  "currentSourceCheckpoint": {
+    "date": "2026-10-24",
+    "state": "saved-source; application qualification paused for HyperL-first delivery",
+    "branch": "feature/peering-ui-2026-10-12",
+    "review": "https://github.com/sabbirimon/meshlit-v2/pull/4",
+    "document": "docs/PAUSED_CHECKPOINT_2026-10-24.md",
+    "build45Qualified": false
+  }
+}

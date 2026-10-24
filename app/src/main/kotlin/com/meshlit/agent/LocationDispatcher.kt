@@ -1,13 +1,10 @@
 package com.meshlit.agent
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Location
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.meshlit.core.cloudmcp.McpEvent
 import com.meshlit.core.cloudmcp.agent.AgentCapability
 import com.meshlit.core.cloudmcp.agent.AgentCapabilityRegistry
@@ -48,7 +45,8 @@ class LocationDispatcher(
         if (!registry.isAllowed(AgentCapability.Location)) {
             return error("permission-denied: location")
         }
-        if (!hasFineOrCoarse()) {
+        if (ContextCompat.checkSelfPermission(appContext,Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(appContext,Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED) {
             return error("location permission not granted")
         }
         val maxAgeMs = args["maxAgeMs"]?.jsonPrimitive?.contentOrNull
@@ -93,20 +91,6 @@ class LocationDispatcher(
             }
         }
     }
-
-    @SuppressLint("InlinedApi")
-    private fun hasFineOrCoarse(): Boolean {
-        val fine = ContextCompat.checkSelfPermission(
-            appContext, Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        val coarse = ContextCompat.checkSelfPermission(
-            appContext, Manifest.permission.ACCESS_COARSE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        return fine || coarse
-    }
-
-    @Suppress("unused")
-    private val priorityRef = Priority.PRIORITY_BALANCED_POWER_ACCURACY
 
     private fun ok(body: String) = McpEvent.ToolResult(
         providerId = AgentCapabilityTools.PROVIDER_ID,

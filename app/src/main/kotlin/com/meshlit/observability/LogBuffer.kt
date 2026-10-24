@@ -106,6 +106,8 @@ class LogBuffer(
         }
     }
 
+    @Volatile var auditObserver: ((Level, LogSource) -> Unit)? = null
+
     private val _entries = MutableStateFlow<List<Entry>>(emptyList())
     val entries: StateFlow<List<Entry>> = _entries.asStateFlow()
 
@@ -153,6 +155,7 @@ class LogBuffer(
             context = context,
             errorMessage = errorMessage,
         )
+        auditObserver?.invoke(entry.level, entry.source)
         _entries.update { current ->
             val next = ArrayList<Entry>(current.size + 1)
             next.addAll(current)
@@ -194,6 +197,7 @@ class LogBuffer(
             errorMessage = errorMessage,
             source = source,
         )
+        auditObserver?.invoke(entry.level, entry.source)
         _entries.update { current ->
             val next = ArrayList<Entry>(current.size + 1)
             next.addAll(current)

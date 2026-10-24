@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <!-- Review candidate only. File/media access uses explicit SAF/photo picker grants. -->
+    <!-- Keep the overlay independently lintable; SMS is removed below. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" tools:node="remove" />
+    <application android:label="Meshlit Core Candidate" tools:replace="android:label">
+        <service android:name="com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService" tools:node="remove" />
+        <service android:name="com.meshlit.core.net.capture.MeshlitCaptureVpnService" tools:node="remove" />
+        <receiver android:name="com.meshlit.network.termux.TermuxResultReceiver" tools:node="remove" />
+        <activity android:name=".browser.BrowserActivity" tools:node="remove" />
+        <service android:name=".inference.InferenceForegroundService" tools:node="remove" />
+        <service android:name=".sandbox.RuntimeForegroundService" tools:node="remove" />
+        <service android:name="com.meshlit.core.cloudmcp.CloudMcpForegroundService" tools:node="remove" />
+        <service android:name=".openclaw.OpenClawNodeService" tools:node="remove" />
+        <service android:name=".openclaw.OpenClawService" tools:node="remove" />
+        <service android:name=".peering.NfcPairingService" tools:node="remove" />
+        <service android:name=".pipeline.PipelineService" tools:node="remove" />
+        <service android:name=".control.WebBridgeService" tools:node="remove" />
+        <service android:name=".ssh.NodeSshService" tools:node="remove" tools:targetApi="26" />
+        <service android:name="com.meshlit.feature.ghosty.GhostyOverlayService" tools:node="remove" />
+        <!-- Removal-only marker; merged-manifest checks require this service absent. -->
+        <service android:name="androidx.camera.core.impl.MetadataHolderService" tools:node="remove" tools:ignore="Instantiatable" />
+        <service android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService" tools:node="remove" />
+        <service android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery" tools:node="remove" />
+        <service android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService" tools:node="remove" />
+        <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider" tools:node="remove" />
+    </application>
+</manifest>

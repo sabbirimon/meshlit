@@ -4,6 +4,11 @@
 
     <!-- Network: discovery, transport, and the embedded HTTP/SSE server. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Explicit user-selected APK and Android-confirmed removal workflows. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
@@ -82,8 +87,6 @@
          optional (the user must opt in via Settings → Cloud → Agent
          capabilities AND grant the runtime permission). -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.SEND_SMS" />
 
     <!-- Battery-optimization whitelist. Required so the
@@ -100,10 +103,11 @@
          Network monitor screen. Same gating as Tasker / NetGuard.
          FOREGROUND_SERVICE_SPECIAL_USE is the official FGS type for the
          packet-capture foreground service on Android 14+ (API 34). -->
-    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <!-- For Wi-Fi Direct / Aware discovery on supporting devices. -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -113,6 +117,8 @@
              installed (Android 11+ package visibility) and to launch
              its RunCommandService via explicit ComponentName. -->
         <package android:name="com.termux" />
+        <!-- Narrow package visibility for the optional, separately installed capture companion. -->
+        <package android:name="com.emanuelef.remote_capture" />
     </queries>
 
     <!-- Custom permission Termux exposes to gate callers of its
@@ -121,7 +127,12 @@
          settings ("Allow external apps"). -->
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
-    <application
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
+    <application android:extractNativeLibs="true"
         android:name=".MeshlitApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -136,6 +147,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:theme="@style/Theme.Meshlit">
             <intent-filter>
@@ -144,12 +156,22 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".browser.BrowserActivity" android:exported="false" />
+
         <!-- Foreground service for hosting inference / MCP tool serving.
              Android 14+ requires foregroundServiceType="dataSync". -->
         <service
             android:name=".inference.InferenceForegroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".sandbox.RuntimeForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-requested local Linux virtual machine session with terminal and desktop tools" />
+        </service>
 
         <!-- Cloud-MCP SSE foreground service — keeps the agentic
              loop's connection alive when the user backgrounds the
@@ -180,14 +202,10 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- Phase Observability 1 — opt-in device-wide packet capture
-             (the network monitor). The user enables this via the
-             Network monitor screen; the system prompts for the VPN
-             profile consent. ForegroundServiceType=specialUse is the
-             only allowed type for in-app capture on Android 14+; we
-             declare the explanation in res/xml/vpn_service_config.xml. -->
+        <!-- Legacy capture stays disabled: its TUN reader lacked packet forwarding. -->
         <service
             android:name="com.meshlit.core.net.capture.MeshlitCaptureVpnService"
+            android:enabled="false"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:exported="true">
             <intent-filter>
@@ -222,6 +240,23 @@
             </intent-filter>
         </receiver>
 
+        <service android:name=".ssh.NodeSshService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Human-started public-key SSH node session on an explicit private interface" />
+        </service>
+        <service android:name=".models.ModelDownloadService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name=".chat.ChatInferenceService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User initiated on-device model generation" />
+        </service>
+    <service android:name=".openclaw.OpenClawNodeService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-connected paired OpenClaw Android device node" /></service>
+    <service android:name=".openclaw.OpenClawService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled authenticated loopback model endpoint" /></service>
+    <service android:name=".pipeline.PipelineService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled model layer computation with paired devices" /></service>
+        <service android:name=".control.WebBridgeService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Owner-enabled authenticated device enrollment and command API" />
+        </service>
+        <service android:name=".peering.NfcPairingService" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter><action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" /></intent-filter>
+            <meta-data android:name="android.nfc.cardemulation.host_apdu_service" android:resource="@xml/nfc_pairing_service" />
+        </service>
     </application>
 
 </manifest>

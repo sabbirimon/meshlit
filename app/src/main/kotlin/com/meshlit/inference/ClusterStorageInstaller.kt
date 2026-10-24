@@ -119,30 +119,14 @@ object ClusterStorageInstaller {
         // (cached 60 s) so the planner sees the real numbers.
         val peers: List<String> = app.peerRegistry.snapshot()
         val cache = app.activePeerHealthCache()
-        return peers.map { ip ->
+        return peers.mapNotNull { ip ->
             val baseUrl = "http://$ip:${com.meshlit.core.inference.net.InferenceHttpServer.DEFAULT_PORT}"
             val fetched = fetchPeerCapabilitiesCached(baseUrl)
             if (fetched != null) {
                 fetched
             } else {
-                // Fall back to a placeholder when the peer doesn't
-                // expose /v1/capabilities yet (older build). The
-                // planner filters this out on `freeDiskMb == 0L` so
-                // the whole-model path still works.
-                val ok = cache?.snapshot(ip)?.ok ?: false
-                log.warn(
-                    "cluster.peer.caps.fallback",
-                    "peer capabilities fetch failed; using placeholder",
-                    mapOf("peer" to ip),
-                )
-                PeerCapabilities(
-                    peerId = ip,
-                    capabilityTier = if (ok) CapabilityTier.MID else CapabilityTier.LITE,
-                    freeRamMb = 0L,
-                    freeDiskMb = 0L,
-                    hostedShardIds = emptySet(),
-                    lastSeenMs = System.currentTimeMillis(),
-                )
+                log.warn("cluster.peer.caps.unavailable", "Peer did not report capabilities; excluding from placement",mapOf("peer" to ip))
+                null
             }
         }
     }

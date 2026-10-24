@@ -1,0 +1,73 @@
+{
+  "assets": [
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/INSTALL.txt",
+      "digest": "sha256:a33d14ea66673c98f1dad6ddf752781a9d4488131793a87642d6f875ee15fb4a",
+      "name": "INSTALL.txt",
+      "size": 4301,
+      "state": "uploaded"
+    },
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/MeshlitPreview-2.0.40-studio.1-macos-intel.dmg",
+      "digest": "sha256:6e625d88741ee90d70972e51639c2188be95f089a7ada041baddcd763bbbab62",
+      "name": "MeshlitPreview-2.0.40-studio.1-macos-intel.dmg",
+      "size": 1203805199,
+      "state": "uploaded"
+    },
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/MeshlitPreview-2.0.40-studio.1-macos-intel.pkg",
+      "digest": "sha256:d8439375049fb2e2e298158d919bd36bdfe20ac5dfd6a0ed1b8c77917cebad1c",
+      "name": "MeshlitPreview-2.0.40-studio.1-macos-intel.pkg",
+      "size": 1181958029,
+      "state": "uploaded"
+    },
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz",
+      "digest": "sha256:573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234",
+      "name": "OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz",
+      "size": 115126841,
+      "state": "uploaded"
+    },
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/PACKAGING.json",
+      "digest": "sha256:fd06a8e7b5ec03cec82bb8dcb9f434363d3da5c2078728aa1872c17dd4958474",
+      "name": "PACKAGING.json",
+      "size": 4207,
+      "state": "uploaded"
+    },
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/RUNTIME_SOURCE.json",
+      "digest": "sha256:04cd4c47ca9d71b4f0e2f1f52256689ba51f042e5efe88c5c58dadea98351e12",
+      "name": "RUNTIME_SOURCE.json",
+      "size": 723,
+      "state": "uploaded"
+    },
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/SHA256SUMS",
+      "digest": "sha256:e26ef975d4b45f14cdf51cd4b6afd9dfafb1e0eb01f5574c3b12349e6b0b2737",
+      "name": "SHA256SUMS",
+      "size": 661,
+      "state": "uploaded"
+    },
+    {
+      "browser_download_url": "https://github.com/sabbirimon/meshlit-v2/releases/download/v2.0.0-macos-intel-build40.1/VALIDATION.json",
+      "digest": "sha256:9d33291f9fbe5f7b2ecbee960acd517523f2f5ab203ec1fc78ac4428aa71053c",
+      "name": "VALIDATION.json",
+      "size": 4070,
+      "state": "uploaded"
+    }
+  ],
+  "draft": false,
+  "html_url": "https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-macos-intel-build40.1",
+  "id": 408390281,
+  "prerelease": true,
+  "published_at": "2026-10-09T22:37:07Z",
+  "tag_name": "v2.0.0-macos-intel-build40.1",
+  "target_commitish": "c1f2d60ffeff043ef2da210c552ccaf73b65ea8a",
+  "allEightLocalDigestsMatched": true,
+  "resolvedTagCommit": "c1f2d60ffeff043ef2da210c552ccaf73b65ea8a",
+  "publicInstallerDownloadHeadStatus": {
+    "dmg": 200,
+    "pkg": 200
+  }
+}

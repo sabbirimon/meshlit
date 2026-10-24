@@ -1,0 +1,1179 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-10-10",
+  "operations": [
+    "SETTINGS_READ",
+    "SETTINGS_PATCH",
+    "MODELS_LIST",
+    "MODEL_DOWNLOAD",
+    "MODEL_ADD_URL",
+    "MODEL_IMPORT",
+    "MODEL_IMPORT_SOURCES",
+    "MODEL_OPTIONS_SET",
+    "DEVICE_RUNTIME_STATUS",
+    "MODEL_LOAD",
+    "MODEL_GENERATE",
+    "MODEL_UNLOAD",
+    "MODEL_DELETE",
+    "CLUSTER_STATUS",
+    "CLUSTER_PLAN",
+    "CLUSTER_START",
+    "CLUSTER_WORKER_START",
+    "CLUSTER_STOP",
+    "RECOVERY_STATUS",
+    "CHECKPOINT_LIST",
+    "CHECKPOINT_SAVE",
+    "CHECKPOINT_RESTORE",
+    "CHECKPOINT_DELETE",
+    "MODEL_STARTUP_SET",
+    "TASK_LIST",
+    "TASK_CREATE",
+    "TASK_UPDATE",
+    "TASK_BATCH_UPDATE",
+    "TASK_DELETE",
+    "WORKSPACE_LIST",
+    "WORKSPACE_READ",
+    "WORKSPACE_WRITE",
+    "CLOUD_PROFILES",
+    "ENVIRONMENT_PROFILES",
+    "CLOUD_EXECUTE",
+    "BROWSER_STATUS",
+    "BROWSER_AUTONOMOUS_RUN",
+    "BROWSER_STOP"
+  ],
+  "features": [
+    {
+      "id": "local-inference",
+      "title": "Local model engine",
+      "status": "implemented",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/RunAnywhereInferenceEngine.kt",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/InferenceCoordinator.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "models",
+      "title": "Model downloads, imports, startup and management",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/models/ModelLibrary.kt",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/ModelDownload.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "Modern chat and saved conversations",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/chat/ChatController.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/ModernMeshlitApp.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "settings",
+      "title": "Search, Basic/Advanced, persisted appearance",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/ModernSettingsScreen.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/SettingsDestinations.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/StatusHeroCard.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/BootLoadingGate.kt"
+      ],
+      "authority": [
+        "SETTINGS"
+      ]
+    },
+    {
+      "id": "tasks",
+      "title": "Tasks, subtasks, bulk state and real operations",
+      "status": "contract-tested-device-validation-pending",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/TaskBoard.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/TaskManagerScreen.kt"
+      ],
+      "authority": [
+        "TASKS"
+      ]
+    },
+    {
+      "id": "typed-backend",
+      "title": "Durable scoped agent and human commands",
+      "status": "implemented",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/AgentCommands.kt",
+        "app/src/main/kotlin/com/meshlit/control/AgentBackend.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "web-api",
+      "title": "Non-Android TLS browser/API enrollment",
+      "status": "contract-tested-device-validation-pending",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/ControlBridgeServer.kt",
+        "app/src/main/kotlin/com/meshlit/control/WebBridgeHost.kt",
+        "app/src/main/assets/control/index.html"
+      ],
+      "authority": [
+        "per-device",
+        "saved-delegation"
+      ]
+    },
+    {
+      "id": "devices-groups",
+      "title": "Local approved device groups",
+      "status": "contract-tested-device-validation-pending",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/DeviceDirectory.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/DeviceCompanionPanel.kt"
+      ],
+      "authority": [
+        "owner-only"
+      ]
+    },
+    {
+      "id": "layer-pipeline",
+      "title": "Native model layers over TLS-paired workers",
+      "status": "host-proof",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/pipeline/PipelineHost.kt",
+        "app/src/main/kotlin/com/meshlit/pipeline/WorkerAssessment.kt",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/RpcPipelineEngine.kt",
+        "scripts/prove-layer-rpc.py"
+      ],
+      "authority": [
+        "CLUSTER"
+      ]
+    },
+    {
+      "id": "worker-qr",
+      "title": "QR/manual native worker approval",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/pipeline/LayerPairingQr.kt",
+        "app/src/main/kotlin/com/meshlit/pipeline/PipelineMcpTools.kt",
+        "app/src/main/kotlin/com/meshlit/devices/QrScanner.kt"
+      ],
+      "authority": [
+        "owner-only"
+      ]
+    },
+    {
+      "id": "cluster-planning",
+      "title": "Fresh offers, memory weights, candidate choice",
+      "status": "implemented",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/ClusterNegotiation.kt"
+      ],
+      "authority": [
+        "CLUSTER"
+      ]
+    },
+    {
+      "id": "phone-replicas",
+      "title": "Replicated compact memory/tasks on all phones",
+      "status": "planned",
+      "sources": [
+        "docs/layer-pipeline-and-recovery.md"
+      ],
+      "authority": [
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "storage-holders",
+      "title": "Selected heavy model/checkpoint holders",
+      "status": "planned",
+      "sources": [
+        "docs/layer-pipeline-and-recovery.md"
+      ],
+      "authority": [
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "failover",
+      "title": "Fenced election, replay, native KV recovery",
+      "status": "planned",
+      "sources": [
+        "docs/layer-pipeline-and-recovery.md"
+      ],
+      "authority": [
+        "RECOVERY"
+      ]
+    },
+    {
+      "id": "monitor",
+      "title": "Real memory, storage, battery, thermal and inference",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/ModernMonitorScreen.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "permissions",
+      "title": "Optional first launch and contextual runtime grants",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/permissions/PermissionSetup.kt"
+      ],
+      "authority": [
+        "Android-system"
+      ]
+    },
+    {
+      "id": "logs",
+      "title": "Search, filters and redacted TXT/JSONL export",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/ModernLogsScreen.kt",
+        "app/src/main/kotlin/com/meshlit/observability/LogRedaction.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "workspace",
+      "title": "Offline CodeMirror editor and bounded source files",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ide/CodeWorkspaceScreen.kt",
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/CodeWorkspace.kt",
+        "companions/editor/editor.js"
+      ],
+      "authority": [
+        "WORKSPACE"
+      ]
+    },
+    {
+      "id": "ide-toolchain",
+      "title": "Optional full IDE compile/run/debug",
+      "status": "planned",
+      "sources": [
+        "docs/code-workspace-and-permissions.md"
+      ],
+      "authority": [
+        "owner-toolchain"
+      ]
+    },
+    {
+      "id": "sandbox-vm",
+      "title": "Optional bounded rootless QEMU runtime",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/sandbox/RuntimeHost.kt",
+        "core-sandbox/src/main/kotlin/com/meshlit/core/sandbox/QemuVm.kt"
+      ],
+      "authority": [
+        "runtime-consent"
+      ]
+    },
+    {
+      "id": "root-vnc",
+      "title": "Optional root and Linux desktop/VNC adapters",
+      "status": "configured-adapters",
+      "sources": [
+        "docs/runtime-and-sandbox.md"
+      ],
+      "authority": [
+        "human-root"
+      ]
+    },
+    {
+      "id": "terminal",
+      "title": "Existing shell and Termux audit integration",
+      "status": "retained",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/terminal/TerminalSession.kt",
+        "app/src/main/kotlin/com/meshlit/ui/screens/integrations/TermuxIntegrationScreen.kt"
+      ],
+      "authority": [
+        "explicit-command-scope"
+      ]
+    },
+    {
+      "id": "network-tools",
+      "title": "Diagnostics and existing optional capture tools",
+      "status": "retained-partial",
+      "sources": [
+        "core-net/src/main/kotlin/com/meshlit/core/net/NetworkDiagnostics.kt",
+        "app/src/main/kotlin/com/meshlit/ui/screens/network/NetworkMonitorScreen.kt"
+      ],
+      "authority": [
+        "VPN-system-consent"
+      ]
+    },
+    {
+      "id": "ssh-enrollment",
+      "title": "Verified remote host worker deployment",
+      "status": "planned",
+      "sources": [
+        "docs/platform-and-backend-contract.md"
+      ],
+      "authority": [
+        "owner-SSH"
+      ]
+    },
+    {
+      "id": "crawler",
+      "title": "Crawl4AI companion and scoped MCP bridge",
+      "status": "implemented",
+      "sources": [
+        "companions/crawler/service.py",
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/builtin/CrawlMcpTools.kt"
+      ],
+      "authority": [
+        "crawler-opt-in"
+      ]
+    },
+    {
+      "id": "browser-agent",
+      "title": "Visible on-device browser: reviewed steps or bounded autonomous sessions",
+      "status": "implemented-real-model-task-unverified",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/browser/BrowserActivity.kt",
+        "app/src/main/kotlin/com/meshlit/browser/BrowserSessionBroker.kt"
+      ],
+      "authority": [
+        "origin-policy",
+        "BROWSER",
+        "foreground-session",
+        "human-sensitive-actions"
+      ]
+    },
+    {
+      "id": "openclaw",
+      "title": "Gateway profile, signed node and text phone provider",
+      "status": "implemented-unverified-interop",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/openclaw/OpenClawHost.kt",
+        "app/src/main/kotlin/com/meshlit/openclaw/OpenClawNode.kt",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/openclaw/OpenAiPhoneServer.kt"
+      ],
+      "authority": [
+        "gateway-approved",
+        "saved-delegation"
+      ]
+    },
+    {
+      "id": "autonomous-os",
+      "title": "Saved target scopes and production accessibility",
+      "status": "implemented-pending-device-proof",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/openclaw/AndroidControl.kt",
+        "core-cloud-mcp/src/main/kotlin/com/meshlit/core/cloudmcp/android/MeshlitAccessibilityService.kt"
+      ],
+      "authority": [
+        "Android-system",
+        "saved-allowlist"
+      ]
+    },
+    {
+      "id": "future-platforms",
+      "title": "Linux/Windows/macOS/HarmonyOS adapters",
+      "status": "planned",
+      "sources": [
+        "docs/platform-and-backend-contract.md"
+      ],
+      "authority": []
+    },
+    {
+      "id": "vendor-backends",
+      "title": "CUDA/HIP/SYCL/Metal/Vulkan/OpenCL/MUSA/CANN",
+      "status": "planned-adapters",
+      "sources": [
+        "docs/platform-and-backend-contract.md",
+        "scripts/build-optional-llama.py"
+      ],
+      "authority": [
+        "installed-probed-benchmarked"
+      ]
+    },
+    {
+      "id": "tutorial",
+      "title": "Offline illustrated guide and eight persisted reading lessons",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/HelpTutorialScreen.kt",
+        "app/src/main/assets/help/index.html",
+        "docs/USER_GUIDE.md"
+      ],
+      "authority": []
+    },
+    {
+      "id": "tracking",
+      "title": "Build/progress/agent documentation",
+      "status": "implemented",
+      "sources": [
+        "AGENTS.md",
+        "AGENT_BUILD.md",
+        "BUILD.md",
+        "PROGRESS.md",
+        "FEATURE_MAP.md"
+      ],
+      "authority": []
+    },
+    {
+      "id": "device-runtime-policy",
+      "title": "Observed device capability and conservative runtime policy",
+      "status": "implemented-device-validation-pending",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/DeviceRuntimePolicy.kt",
+        "app/src/main/kotlin/com/meshlit/models/DeviceRuntimeProbe.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "context-and-kv",
+      "title": "Native context selection and KV key precision",
+      "status": "implemented-device-validation-pending",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/ModelRuntimeOptions.kt",
+        "app/src/main/kotlin/com/meshlit/pipeline/PipelineHost.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "hugging-face",
+      "title": "Hub discovery, access tokens and optional hosted inference",
+      "status": "implemented-device-validation-pending",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/HuggingFaceClient.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/HuggingFacePanel.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "bundled-model",
+      "title": "Pinned real starter asset with build and install verification",
+      "status": "implemented-device-validation-pending",
+      "sources": [
+        "app/src/main/assets/models/bundled-model.json",
+        "scripts/prepare-bundled-model.py",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/BundledModelInstaller.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "online-models",
+      "title": "Explicit online provider profiles and offline/online chat",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/providers/OnlineProviders.kt",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/OnlineModelClient.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "power-costs",
+      "title": "Observed battery power, workload policies and estimates",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/power/PowerRepository.kt",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/EnergyEstimate.kt"
+      ],
+      "authority": [
+        "SETTINGS"
+      ]
+    },
+    {
+      "id": "external-devices",
+      "title": "Actual USB/OTG discovery and storage grants",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/devices/ExternalDevices.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "acceleration-settings",
+      "title": "Supported defaults, native thread cap and explicit vendor roadmap",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/models/AccelerationPreferences.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/AccelerationScreen.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "ssh-client",
+      "title": "Pinned JSch remote command execution",
+      "status": "implemented",
+      "sources": [
+        "core-ssh/src/main/kotlin/com/meshlit/core/ssh/SshClient.kt",
+        "app/src/main/kotlin/com/meshlit/ssh/SshConnections.kt"
+      ],
+      "authority": [
+        "SSH"
+      ]
+    },
+    {
+      "id": "listener-policy",
+      "title": "Persisted validated rules gate Meshlit listeners",
+      "status": "implemented",
+      "sources": [
+        "core-firewall/src/main/kotlin/com/meshlit/core/firewall/PortAwareFirewall.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/FirewallSettingsScreen.kt"
+      ],
+      "authority": [
+        "SETTINGS"
+      ]
+    },
+    {
+      "id": "agent-management",
+      "title": "Saved scopes, real jobs and registered tools",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/PowerDevicesScreens.kt",
+        "app/src/main/kotlin/com/meshlit/control/EnvironmentTools.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "configuration-transfer",
+      "title": "Reviewed versioned non-secret export/import",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/configuration/PortableConfiguration.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/ConfigurationScreen.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "media-options",
+      "title": "Bounded phone image/camera input and existing audio paths",
+      "status": "partial",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/MediaOptionsScreen.kt",
+        "app/src/main/kotlin/com/meshlit/ui/screens/VisionScreen.kt",
+        "app/src/main/kotlin/com/meshlit/ui/screens/VoiceScreen.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "iot-enrollment",
+      "title": "Microcontroller/Pi/sensor/radio identities and non-LLM role claims",
+      "status": "partial",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/DeviceDirectory.kt",
+        "docs/media-iot-and-radio-nodes.md"
+      ],
+      "authority": []
+    },
+    {
+      "id": "radio-media-federation",
+      "title": "External live media and paired radio/DSP carriers",
+      "status": "planned",
+      "sources": [
+        "docs/media-iot-and-radio-nodes.md",
+        "docs/declarative-federation-roadmap.md"
+      ],
+      "authority": []
+    },
+    {
+      "id": "scenario-model-router",
+      "title": "Scenario rules, sequential model chains and answer comparisons",
+      "status": "implemented-validation-in-progress",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/ModelRouter.kt",
+        "app/src/main/kotlin/com/meshlit/routing/ModelRoutes.kt",
+        "app/src/main/kotlin/com/meshlit/routing/RouterTools.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/ModelRouterScreen.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ]
+    },
+    {
+      "id": "chat-text-attachments",
+      "title": "Bounded user-picked UTF-8 file references",
+      "status": "implemented-device-validation-pending",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/ChatAttachmentActions.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "online-media-generation",
+      "title": "Vision upload, PNG image, WAV speech and async video adapters",
+      "status": "implemented-provider-validation-pending",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/OnlineMediaClient.kt",
+        "app/src/main/kotlin/com/meshlit/media/MediaGeneration.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/MediaGenerationScreen.kt",
+        "docs/model-router-and-media.md"
+      ],
+      "authority": []
+    },
+    {
+      "id": "local-model-behavior",
+      "status": "implemented; contract tests; local model properties depend on weights",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/LocalModelBehavior.kt",
+        "app/src/main/kotlin/com/meshlit/models/LocalBehaviorSettings.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/LocalBehaviorScreen.kt",
+        "docs/local-model-behavior-and-training.md"
+      ],
+      "authority": [],
+      "title": "Custom local weights and prompt behavior"
+    },
+    {
+      "id": "host-fine-tuning",
+      "status": "implemented optional companion and SSH UI; actual Soup training proof pending",
+      "sources": [
+        "companions/training/meshlit_training.py",
+        "companions/training/README.md",
+        "app/src/main/kotlin/com/meshlit/training/TrainingHost.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/FineTuningScreen.kt",
+        "core-training/src/main/kotlin/com/meshlit/core/training/LocalLoraTrainer.kt"
+      ],
+      "authority": [],
+      "title": "Optional real Soup host fine-tuning"
+    },
+    {
+      "id": "native-local-checkpoints",
+      "title": "Encrypted native CPU KV checkpoints",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/recovery/NativeCheckpointStore.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/RecoveryScreen.kt"
+      ],
+      "authority": []
+    },
+    {
+      "id": "cloud-credential-management",
+      "title": "Cloud resource/cost reads and encrypted credential/environment management",
+      "status": "source-built-live-account-acceptance-pending",
+      "sources": [
+        "core-cloud-mcp/src/main/kotlin/com/meshlit/core/cloudmcp/management/CloudProfiles.kt",
+        "core-cloud-mcp/src/main/kotlin/com/meshlit/core/cloudmcp/management/CloudApiClient.kt",
+        "app/src/main/kotlin/com/meshlit/cloud/CloudManagement.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/CloudManagementScreen.kt"
+      ],
+      "authority": [
+        "CLOUD",
+        "per-provider-human-agent",
+        "per-environment",
+        "per-device"
+      ]
+    },
+    {
+      "id": "ai-file-archives",
+      "title": "AI asset inspection and bounded streaming ZIP/unzip",
+      "status": "implemented-device-storage-unverified",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/FileManagerScreen.kt",
+        "app/src/main/kotlin/com/meshlit/files/StreamingZip.kt"
+      ],
+      "authority": [
+        "human-SAF-grants"
+      ]
+    },
+    {
+      "id": "audit-telemetry",
+      "title": "Audit telemetry and optional OTLP collector",
+      "status": "implemented-unit-and-Android-audit-tested; hosted-collector-validation-pending",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/observability/AuditTelemetry.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/AuditTelemetryScreen.kt",
+        "core-observability/src/main/kotlin/com/meshlit/core/observability/AuditJournal.kt",
+        "docs/AUDIT_TELEMETRY.md"
+      ]
+    },
+    {
+      "id": "first-use-legal-agreement",
+      "title": "Versioned first-use Terms and Privacy acceptance",
+      "status": "implemented-unit-and-Android-agreement-tested",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/legal/LegalAgreementStore.kt",
+        "app/src/main/kotlin/com/meshlit/legal/LegalScreens.kt",
+        "docs/PRIVACY_POLICY.md",
+        "docs/TERMS_OF_USE.md"
+      ],
+      "authority": [
+        "human-explicit-agreement",
+        "independent-optional-grants"
+      ]
+    },
+    {
+      "id": "play-review-distribution",
+      "title": "Restricted Play review APK/AAB and submission gates",
+      "status": "candidate-not-store-approved",
+      "sources": [
+        "app/src/playReview/AndroidManifest.xml",
+        "app/build.gradle.kts",
+        "scripts/check-play-review.py",
+        "docs/PLAY_DISTRIBUTION.md"
+      ]
+    },
+    {
+      "id": "ai-assisted-repair",
+      "title": "AI/web diagnosis, bounded repair and source evolution",
+      "status": "planned-not-implemented",
+      "sources": [
+        "docs/AI_REPAIR_AND_EVOLUTION.md"
+      ]
+    },
+    {
+      "id": "signed-update-channels",
+      "title": "Signed GitHub/Play update and rollback channels",
+      "status": "planned-not-implemented",
+      "sources": [
+        "PLAN.md",
+        "docs/PLAY_DISTRIBUTION.md"
+      ]
+    },
+    {
+      "id": "security-lab-hardware-access",
+      "title": "Capability-probed Blue Team and Red Team lab",
+      "status": "planned-not-implemented",
+      "sources": [
+        "docs/SECURITY_LAB_AND_HARDWARE_ACCESS.md",
+        "docs/runtime-and-sandbox.md",
+        "docs/ANDROID_SECURITY_TOOL_INTEGRATIONS.md",
+        "docs/BLUE_TEAM_AND_PACKET_ANALYSIS.md",
+        "docs/security-tool-sources.json"
+      ]
+    },
+    {
+      "id": "embedded-agent-gateway",
+      "title": "Embedded MCP/A2A and buffered model gateway",
+      "status": "implemented",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/gateway/EmbeddedGateway.kt",
+        "app/src/main/kotlin/com/meshlit/gateway/GatewayHost.kt"
+      ],
+      "authority": [
+        "MODELS"
+      ],
+      "remaining": [
+        "Rust Android runtime, remote federation, OAuth, streaming/tool loop and physical proof"
+      ]
+    },
+    {
+      "id": "manual-command-input",
+      "title": "Manual commands and instructions",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/ManualCommandsScreen.kt"
+      ],
+      "authority": [
+        "HUMAN"
+      ],
+      "remaining": [
+        "Physical process/SSH cancellation and guest acceptance"
+      ]
+    },
+    {
+      "id": "vm-security-assessments",
+      "title": "VM-gated Security Lab assessments and read-only companions",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/security/SecurityLab.kt",
+        "companions/cyber/meshlit_cyber.py"
+      ],
+      "authority": [
+        "HUMAN"
+      ],
+      "remaining": [
+        "Earlier cyber tools beyond APK inventory/PCAP summary/tshark remain planned"
+      ]
+    },
+    {
+      "id": "vm-lab-packages",
+      "title": "VM package install/list/uninstall and pip name delegation",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/security/LabPackages.kt",
+        "companions/cyber/meshlit_packages.py"
+      ],
+      "authority": [
+        "HUMAN"
+      ],
+      "remaining": [
+        "Physical VM, distro managers, persistent images and storage transfer acceptance"
+      ]
+    },
+    {
+      "id": "manual-replica-journal",
+      "title": "Manual signed fixed-membership recovery journal",
+      "status": "implemented; acceptance boundaries in CONTINUATION_2026_10_08.md",
+      "sources": [
+        "core-federation/src/main/kotlin/com/meshlit/core/federation/recovery/ReplicaJournal.kt",
+        "app/src/main/kotlin/com/meshlit/recovery/ReplicaHost.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/ReplicaRecoveryPanel.kt"
+      ],
+      "authority": [
+        "human setup; independent opt-ins"
+      ]
+    },
+    {
+      "id": "remote-agent-routes",
+      "title": "Owner-enrolled JSON-response MCP/A2A routes",
+      "status": "implemented; acceptance boundaries in CONTINUATION_2026_10_08.md",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/gateway/RemoteAgentClient.kt",
+        "app/src/main/kotlin/com/meshlit/gateway/RemoteRoutes.kt"
+      ],
+      "authority": [
+        "human setup; independent opt-ins"
+      ]
+    },
+    {
+      "id": "terraform-saved-plan",
+      "title": "Optional human-only Terraform saved-plan companion",
+      "status": "implemented; acceptance boundaries in CONTINUATION_2026_10_08.md",
+      "sources": [
+        "companions/deployment/meshlit_terraform.py"
+      ],
+      "authority": [
+        "human setup; independent opt-ins"
+      ]
+    },
+    {
+      "id": "storage-dsp-companion",
+      "title": "Optional content-addressed storage and offline IQ FFT",
+      "status": "implemented; acceptance boundaries in CONTINUATION_2026_10_08.md",
+      "sources": [
+        "companions/node/meshlit_node.py"
+      ],
+      "authority": [
+        "human setup; independent opt-ins"
+      ]
+    },
+    {
+      "id": "operations-dashboard",
+      "title": "Persisted local stop controls and bounded cluster inventory policy",
+      "status": "implemented for managed local paths; distributed and independent-service stop acceptance open",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/operations/StopCoordinator.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/OperationsScreen.kt"
+      ],
+      "authority": [
+        "human setup; saved agent delegation remains separate"
+      ]
+    },
+    {
+      "id": "unified-ai-routes",
+      "title": "Owner-configured LLM/MCP/A2A routing with human and delegated agent input",
+      "status": "implemented; streaming/OAuth/spend enforcement and runtime qualification open",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/gateway/UnifiedRoute.kt",
+        "app/src/main/kotlin/com/meshlit/gateway/UnifiedRouting.kt"
+      ],
+      "authority": [
+        "human setup; saved agent delegation remains separate"
+      ]
+    },
+    {
+      "id": "accelerator-node-probe",
+      "title": "Encrypted owner-enrolled read-only host SDK and topology probes",
+      "status": "implemented observation only; actual accelerator inference unavailable",
+      "sources": [
+        "companions/node/accelerators.py",
+        "companions/node/topology.py",
+        "app/src/main/kotlin/com/meshlit/gateway/AcceleratorHosts.kt"
+      ],
+      "authority": [
+        "human setup; saved agent delegation remains separate"
+      ]
+    },
+    {
+      "id": "platform-native-contracts",
+      "title": "Cross-platform OS/fabric and native driver/kernel qualification contracts",
+      "status": "contracts implemented; installers and privileged execution backends planned",
+      "sources": [
+        "core-common/src/main/kotlin/com/meshlit/core/common/platform/PlatformContract.kt",
+        "core-common/src/main/kotlin/com/meshlit/core/common/platform/NativeBackendContract.kt"
+      ],
+      "authority": [
+        "human setup; saved agent delegation remains separate"
+      ]
+    },
+    {
+      "id": "node-network-baseline",
+      "title": "Persistent HTTP and authenticated application RTT benchmark",
+      "status": "implemented local baseline; native/RDMA/kernel transports planned",
+      "sources": [
+        "companions/node/meshlit_node.py",
+        "scripts/benchmark-node-network.py"
+      ],
+      "authority": [
+        "human setup; saved agent delegation remains separate"
+      ]
+    },
+    {
+      "id": "hyperl-libraries",
+      "title": "HyperL reference/native CPU, precision and encrypted datasets",
+      "status": "implemented",
+      "sources": [
+        "core-gpu/src/main/kotlin/com/meshlit/core/gpu/HyperLLibrary.kt",
+        "core-gpu/src/main/kotlin/com/meshlit/core/gpu/HyperLAdmission.kt",
+        "app/src/main/kotlin/com/meshlit/hyperl/HyperLWorkbenchController.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/HyperLScreen.kt",
+        "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/NativeCpu.kt",
+        "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/LargeData.kt",
+        "app/src/main/kotlin/com/meshlit/hyperl/HyperLDatasets.kt"
+      ],
+      "authority": [
+        "HYPERL",
+        "HUMAN_ONLY"
+      ]
+    },
+    {
+      "id": "global-content-search",
+      "title": "Global app/options/chat/article/device search and separate web/agent grants",
+      "status": "implemented-unit-and-Samsung-local-tested-live-web-remote-pending",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/search/AppSearchService.kt",
+        "app/src/main/kotlin/com/meshlit/search/SearchAccess.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/GlobalSearchDialog.kt",
+        "docs/SEARCH_AND_CLUSTER_OUTPUT.md"
+      ],
+      "authority": [
+        "human-search-grants",
+        "gateway-tool-scopes",
+        "remote-settings-delegation"
+      ]
+    },
+    {
+      "id": "reply-reader-token-controls",
+      "title": "Native formatted reply blocks, full reader and authoritative token details",
+      "status": "implemented-Samsung-UI-tested",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/ReplyContent.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/ReplyFormatting.kt",
+        "app/src/main/kotlin/com/meshlit/chat/ChatTokenUsage.kt",
+        "docs/CHAT_PRESENTATION.md"
+      ],
+      "authority": []
+    },
+    {
+      "id": "cluster-output-budget",
+      "title": "Manual or evidence-bound Automatic whole-cluster output ceiling",
+      "status": "implemented-policy-tested-physical-cluster-pending",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/chat/ClusterOutputBudget.kt",
+        "app/src/main/kotlin/com/meshlit/chat/ChatController.kt",
+        "docs/SEARCH_AND_CLUSTER_OUTPUT.md"
+      ],
+      "authority": [
+        "per-chat-human-ceiling",
+        "exact-loaded-cluster-session"
+      ]
+    },
+    {
+      "id": "ssh-node",
+      "title": "Scoped public-key SSH app node and delegated node actions",
+      "status": "experimental; actual host SSH transport tests; Android/Internet/guest qualification open",
+      "sources": [
+        "core-ssh/src/main/kotlin/com/meshlit/core/ssh/NodeSshServer.kt",
+        "core-ssh/src/main/kotlin/com/meshlit/core/ssh/NodeSshProtocol.kt",
+        "app/src/main/kotlin/com/meshlit/ssh/NodeSshHost.kt",
+        "app/src/main/kotlin/com/meshlit/ssh/SshMcpTools.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/NodeSshCard.kt"
+      ],
+      "limitations": [
+        "API 26+ inbound; explicit private IPv4; no shell/SFTP/forwarding/password/root; configured VM runtime required"
+      ],
+      "docs": [
+        "docs/SSH_NODE.md"
+      ]
+    },
+    {
+      "id": "production-candidate-channel",
+      "title": "Separate Core candidate package and immutable feature admission",
+      "status": "implemented candidate boundary; production qualification remains open",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/BuildProfile.kt",
+        "app/src/productionCandidate/AndroidManifest.xml",
+        "core-common/src/main/kotlin/com/meshlit/core/common/control/OperationGate.kt"
+      ],
+      "limitations": [
+        "shared inactive dependencies remain; debug signing; SDK telemetry/device endurance gates open"
+      ],
+      "docs": [
+        "docs/architecture/PRODUCTION_CHANNELS.md"
+      ]
+    },
+    {
+      "id": "multiplatform-workspace-contracts",
+      "title": "KMP language, visual and chat contracts with shared JVM reply reader",
+      "status": "implemented; common/JVM and Android compatibility checks; not full shared UI or runtime parity",
+      "sources": [
+        "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/Workspace.kt",
+        "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/ReplyFormatting.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/WorkspaceStrings.kt"
+      ],
+      "limitations": [
+        "English default; Simplified Chinese covers modern chat/model resources; advanced Android tools retain English"
+      ],
+      "docs": [
+        "docs/MULTIPLATFORM_NEXT.md"
+      ]
+    },
+    {
+      "id": "desktop-host-client",
+      "title": "Experimental Compose desktop GUI and JVM CLI for explicit authenticated hosts",
+      "status": "implemented; actual TCP contract and Intel Mac native offscreen tests; live model/Windows/Linux acceptance open",
+      "sources": [
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/HostClient.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/Cli.kt"
+      ],
+      "limitations": [
+        "No bundled local runtime; remote HTTPS and bearer token; session-only history/credentials; host-reported token usage only"
+      ],
+      "docs": [
+        "docs/MULTIPLATFORM_NEXT.md"
+      ]
+    },
+    {
+      "id": "harmonyos-next-native-preview",
+      "title": "Latest HarmonyOS NEXT 26.0.0 native ArkTS client and N-API capability boundary",
+      "status": "source preview; static JSON/contract checks only; DevEco/NDK/HAP/device unverified",
+      "sources": [
+        "ohosApp/entry/src/main/ets/pages/Index.ets",
+        "ohosApp/entry/src/main/ets/client/HostClient.ets",
+        "ohosApp/entry/src/main/cpp/runtime_capabilities.cpp"
+      ],
+      "limitations": [
+        "NEXT local inference unavailable; no Android APK/JNI fallback; English default/\u7b80\u4f53\u4e2d\u6587 second; complete-response host client; rich-reader parity open"
+      ],
+      "docs": [
+        "docs/MULTIPLATFORM_NEXT.md",
+        "ohosApp/README.md"
+      ]
+    },
+    {
+      "id": "colibri-host",
+      "title": "Optional authenticated Colibri host: Off/On/Auto",
+      "status": "implemented",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/ColibriClient.kt",
+        "app/src/main/kotlin/com/meshlit/colibri/ColibriBackend.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/ColibriScreen.kt"
+      ],
+      "authority": [
+        "human saved grants; separate agent and per-chat selection"
+      ]
+    },
+    {
+      "id": "gibberlink-audio",
+      "title": "Experimental real ggwave PCM audio and English transcript",
+      "status": "implemented",
+      "sources": [
+        "core-gibberlink/src/main/cpp/bridge.cpp",
+        "app/src/main/kotlin/com/meshlit/gibberlink/GibberLinkHost.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/ConnectedToolsScreens.kt"
+      ],
+      "authority": [
+        "human saved grants; separate agent and per-chat selection"
+      ]
+    },
+    {
+      "id": "local-cryptography",
+      "title": "Built-in local JCA cryptography with separate agent opt-in",
+      "status": "implemented",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/crypto/CryptoEngine.kt",
+        "app/src/main/kotlin/com/meshlit/crypto/CryptoHost.kt"
+      ],
+      "authority": [
+        "human saved grants; separate agent and per-chat selection"
+      ]
+    },
+    {
+      "id": "remote-chat-commands",
+      "title": "Scoped multi-node SSH commands exposed to local chat",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/remote/RemoteCommandHost.kt",
+        "app/src/main/kotlin/com/meshlit/chat/LocalChatTools.kt"
+      ],
+      "authority": [
+        "human saved grants; separate agent and per-chat selection"
+      ]
+    },
+    {
+      "id": "p2p-chat-commands",
+      "title": "Foreground signed WebRTC peer chat and scoped commands; device qualification pending",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/assets/p2p/index.html",
+        "app/src/main/kotlin/com/meshlit/p2p/PeerChatHost.kt",
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/p2p/PeerWire.kt"
+      ],
+      "authority": [
+        "human saved grants; separate agent and per-chat selection"
+      ]
+    }
+  ],
+  "modules": [
+    "app",
+    "core-advanced-engines",
+    "core-agent-memory",
+    "core-bootstrap",
+    "core-cloud-mcp",
+    "core-common",
+    "core-config",
+    "core-discovery",
+    "core-federation",
+    "core-files",
+    "core-firewall",
+    "core-flags",
+    "core-gibberlink",
+    "core-gpu",
+    "core-guardrails",
+    "core-hyperl",
+    "core-inference",
+    "core-lifecycle",
+    "core-mcp",
+    "core-net",
+    "core-observability",
+    "core-orchestration",
+    "core-peer-security",
+    "core-probe",
+    "core-registry",
+    "core-role",
+    "core-sandbox",
+    "core-ssh",
+    "core-terminal",
+    "core-training",
+    "core-trust",
+    "core-tunnel",
+    "core-users",
+    "desktop-engine",
+    "desktop-hyperl",
+    "desktop-ssh",
+    "desktopApp",
+    "feature-advanced",
+    "feature-ghosty",
+    "shared-workspace"
+  ],
+  "acceptanceLedger": "PROGRESS.md",
+  "phoneProof": false,
+  "oversizedModelProof": false,
+  "unregisteredModuleDirectories": [
+    "core-stable-diffusion"
+  ]
+}

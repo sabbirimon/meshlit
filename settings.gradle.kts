@@ -35,6 +35,7 @@ rootProject.name = "meshlit"
 
 // Modules in topological order: leaves first, then app consuming them.
 include(
+    ":core-peer-security",
     ":core-common",
     ":core-config",
     ":core-flags",
@@ -51,6 +52,7 @@ include(
     ":core-tunnel",
     ":core-users",
     ":core-terminal",
+    ":core-sandbox",
     ":core-bootstrap",
     ":core-registry",
     ":core-lifecycle",
@@ -59,6 +61,8 @@ include(
     ":core-orchestration",
     ":core-advanced-engines",
     ":core-gpu",
+    ":core-hyperl",
+    ":core-gibberlink",
     ":core-net",
     ":core-observability",
     // Phase 6 — versioned peer-to-peer federation protocol.
@@ -76,5 +80,10 @@ include(
     ":core-agent-memory",
     ":feature-advanced",
     ":feature-ghosty",
+    ":shared-workspace",
+    ":desktopApp",
+    ":desktop-hyperl",
+    ":desktop-ssh",
+    ":desktop-engine",
     ":app"
 )

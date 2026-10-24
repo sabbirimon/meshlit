@@ -1,0 +1,32 @@
+name: Multiplatform client preview
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+permissions:
+  contents: read
+jobs:
+  clients:
+    name: Host client contracts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4.0.4
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: KMP contracts, actual TCP failures and native offscreen UI
+        shell: bash
+        run: ./gradlew :shared-workspace:jvmTest :desktop-engine:test :desktop-ssh:test :desktopApp:test --no-daemon --max-workers=2
+      - name: NEXT static project boundaries (not a HAP build)
+        shell: bash
+        run: python3 scripts/check-next-preview.py

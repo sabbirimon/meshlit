@@ -58,6 +58,13 @@ fun AndroidAutomationSettingsScreen(
     settingsRepository: SettingsRepository,
     onBack: () -> Unit,
 ) {
+    if (com.meshlit.BuildConfig.PLAY_REVIEW) {
+        Column(Modifier.padding(24.dp)) {
+            Text("Android cross-app automation is unavailable in this distribution.")
+            OutlinedButton(onClick = onBack) { Text("Back") }
+        }
+        return
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val enabled by settingsRepository.androidAutomationEnabledFlow

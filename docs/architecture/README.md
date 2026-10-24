@@ -1,4 +1,8 @@
 # Architecture notes
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 This directory holds architecture-level documentation for Meshlit:
 diagrams, design rationale, cross-cutting concerns. Phase 0+ will fill

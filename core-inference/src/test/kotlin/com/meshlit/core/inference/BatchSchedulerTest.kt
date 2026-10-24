@@ -185,13 +185,14 @@ class BatchSchedulerTest {
 
     @Test
     fun scheduler_throws_BackpressureError_when_queue_full() {
-        // batchSize=16 with maxQueueDepth=16 means no flush
-        // triggers on a 4-enqueue test (we'd need 16 entries).
-        val scheduler = makeScheduler(
-            batchSize = 16,
-            batchTimeoutMs = 5_000L,
-            maxQueueDepth = 16,
-        )
+        // Hold dispatch so the 16th enqueue cannot race the asynchronous
+        // flush before the capacity assertion. This tests backpressure while
+        // the consumer is stalled, rather than relying on CPU timing.
+        val paused = object : kotlinx.coroutines.CoroutineDispatcher() {
+            override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) { }
+        }
+        val pausedScope = CoroutineScope(SupervisorJob() + paused)
+        val scheduler = BatchScheduler(pausedScope, batchSize=16, batchTimeoutMs=5000L, maxQueueDepth=16)
         scheduler.enqueue("a", "h", "k", "v", 0)
         scheduler.enqueue("b", "h", "k", "v", 0)
         scheduler.enqueue("c", "h", "k", "v", 0)
@@ -212,6 +213,7 @@ class BatchSchedulerTest {
         assertThrows(BatchScheduler.BackpressureError::class.java) {
             scheduler.enqueue("q", "h", "k", "v", 0)
         }
+        pausedScope.cancel()
     }
 
     @Test

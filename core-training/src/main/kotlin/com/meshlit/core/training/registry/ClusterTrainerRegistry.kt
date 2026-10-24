@@ -76,6 +76,9 @@ class ClusterTrainerRegistry private constructor(
         jobId: String,
         localPeerId: String,
     ): MeshlitResult<StrategyDispatcher> {
+        if(!localLoraTrainer.available) return MeshlitResult.Failure(
+            MeshlitError.Invalid("training_backend_unavailable: configure a real training host")
+        )
         val newAverager = when (cfg.strategy) {
             DistributedConfig.Strategy.P2P -> P2pRingAverager(nanGuard = nanGuard)
             DistributedConfig.Strategy.DILOCO -> DiLoCoAverager(nanGuard = nanGuard)
@@ -115,6 +118,9 @@ class ClusterTrainerRegistry private constructor(
         jobId: String,
         desktopAverager: Averager,
     ): MeshlitResult<StrategyDispatcher> {
+        if(!localLoraTrainer.available) return MeshlitResult.Failure(
+            MeshlitError.Invalid("training_backend_unavailable: configure a real training host")
+        )
         val dispatcher = StrategyDispatcher(
             localLoraTrainer = localLoraTrainer,
             thermalGuard = thermalGuard,

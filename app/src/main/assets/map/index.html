@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'none'"><link rel="stylesheet" href="leaflet.css"><style>
+html,body{width:100%;height:340px;margin:0;background:#102330}#map{width:100%;height:340px;margin:0;background:#102330}body{overflow:hidden;font:12px system-ui,sans-serif}.leaflet-container{background:#102330;outline:none}.leaflet-control-attribution{background:rgba(15,28,37,.88)!important;color:#dbe6e7!important;font-size:10px!important;padding:3px 5px!important}.leaflet-control-attribution a{color:#9adad0!important}.leaflet-bar a{background:#243b47;color:#e8f4f2;border-color:#36515a}.leaflet-bar a:hover{background:#325262;color:#fff}
+</style></head><body><div id="map" role="img" aria-label="Interactive world map with consenting relay pins and optional manual IP estimate"></div><script src="leaflet.js"></script><script src="land.js"></script><script>
+(function(){
+const map=L.map('map',{zoomControl:true,attributionControl:true,minZoom:1,maxZoom:7,worldCopyJump:true,preferCanvas:true}).setView([16,0],1);
+map.attributionControl.setPrefix('<a href="https://leafletjs.com" rel="noreferrer">Leaflet</a>');
+map.attributionControl.addAttribution('Land: <a href="https://www.naturalearthdata.com" rel="noreferrer">Natural Earth</a>');
+const land=L.geoJSON(window.MESHLIT_LAND,{interactive:false,style:{color:'#709387',weight:0.55,fillColor:'#346459',fillOpacity:0.9}}).addTo(map);
+for(let lat=-60;lat<=60;lat+=30){L.polyline([[-180,lat],[180,lat]],{interactive:false,color:'#6e96a3',opacity:.18,weight:1}).addTo(map)}
+for(let lon=-150;lon<=150;lon+=30){L.polyline(Array.from({length:15},(_,i)=>[-80+i*160/14,lon]),{interactive:false,color:'#6e96a3',opacity:.18,weight:1}).addTo(map)}
+const layer=L.layerGroup().addTo(map);
+let selfMarker=null,lastFocusRequest=-1;
+window.focusSelf=function(lat,lon,requestId){
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||requestId===lastFocusRequest)return;
+  lastFocusRequest=requestId;
+  if(selfMarker)map.removeLayer(selfMarker);
+  selfMarker=L.circleMarker([lat,lon],{radius:7,color:'#fff',weight:2,fillColor:'#4b9bff',fillOpacity:1})
+    .bindTooltip('This phone · only visible here').addTo(map);
+  map.setView([lat,lon],Math.max(map.getZoom(),streets?5:3));
+};
+let streets=null;
+window.setOnlineTiles=function(enabled){
+  if(enabled && !streets){
+    land.setStyle({fillOpacity:0,opacity:0});
+    streets=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      minZoom:1,maxZoom:7,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" rel="noreferrer">OpenStreetMap contributors</a>',
+      updateWhenIdle:true,keepBuffer:1
+    }).addTo(map);
+    streets.bringToBack();
+  }else if(!enabled && streets){map.removeLayer(streets);streets=null;land.setStyle({fillOpacity:0.9,opacity:1})}
+};
+window.setHosts=function(hosts){layer.clearLayers();if(!Array.isArray(hosts))return;for(const host of hosts){const lat=Number(host.latitude),lon=Number(host.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)continue;const color=/^#[0-9a-f]{6}$/i.test(host.color)?host.color:'#21b675';L.circleMarker([lat,lon],{radius:7,color:'#fff',weight:1.4,fillColor:color,fillOpacity:1,interactive:false}).addTo(layer)}};
+})();
+</script></body></html>

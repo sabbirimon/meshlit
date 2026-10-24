@@ -11,13 +11,14 @@ import com.runanywhere.sdk.public.extensions.deleteModel
 import com.runanywhere.sdk.public.extensions.downloadModelStream
 import com.runanywhere.sdk.public.extensions.generateStream
 import com.runanywhere.sdk.public.extensions.loadModel
+import com.runanywhere.sdk.public.extensions.unloadModel
+import com.meshlit.core.inference.models.ModelFiles
 import com.runanywhere.sdk.public.extensions.registerModel
 import com.runanywhere.sdk.public.types.RAModelInfo
 import com.runanywhere.sdk.public.types.RAModelLoadRequest
 import ai.runanywhere.proto.v1.DownloadProgress
 import ai.runanywhere.proto.v1.InferenceFramework
 import ai.runanywhere.proto.v1.LLMStreamEvent
-import ai.runanywhere.proto.v1.LLMStreamEventKind
 import ai.runanywhere.proto.v1.ModelCategory
 import ai.runanywhere.proto.v1.SDKEnvironment
 import kotlinx.coroutines.CoroutineDispatcher
@@ -103,9 +104,10 @@ class RunAnywhereInferenceEngine(
     private val defaultModelId: String = DEFAULT_MODEL_ID,
     /**
      * SDK environment flag passed to `RunAnywhere.initialize`.
-     * `DEVELOPMENT` keeps telemetry off in the dev APK; production
-     * builds should switch this to `PRODUCTION` once the SDK's
-     * telemetry contract is signed off.
+     * DEVELOPMENT selects the SDK's development environment; it is not a
+     * verified telemetry opt-out. A real run attempted the development telemetry
+     * endpoint (DNS failed). See docs/remaining-engine-bugs.md before changing
+     * environments or advertising zero-network behavior.
      */
     private val environment: SDKEnvironment = SDKEnvironment.SDK_ENVIRONMENT_DEVELOPMENT,
 ) : InferenceEngine {
@@ -152,6 +154,8 @@ class RunAnywhereInferenceEngine(
                     "RunAnywhere SDK initialized",
                     mapOf("env" to environment.name),
                 )
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (t: Throwable) {
                 // Don't claim initialisation succeeded if either
                 // call threw — leave `initialized` at false so the
@@ -224,93 +228,30 @@ class RunAnywhereInferenceEngine(
                 // the SDK's canonical id (`smollm2-360m-instruct-q8_0`,
                 // etc.) directly, so the two code paths land on the same
                 // catalog row.
-                val resolvedId = file.nameWithoutExtension.ifBlank { defaultModelId }
-
-                // **The actual root cause for "model not loading".** The
-                // RunAnywhere SDK's `loadModel(model_id=...)` call resolves
-                // the on-disk path via
-                // `rac_model_paths_get_model_file_path(...)`, which
-                // computes `{filesDir}/RunAnywhere/Models/LlamaCpp/{modelId}/{modelId}.gguf`
-                // and hands that to the llama.cpp backend. If the file
-                // isn't at that canonical path (e.g. we extracted the
-                // bundled GGUF to `filesDir/bundled-models/`, or the user
-                // imported it via SAF into `Downloads/...`), the SDK's
-                // resolver returns a directory path, then `load_model`
-                // scans that directory for a `.gguf`, finds none, and
-                // logs `No .gguf file found in directory: ...`. The user
-                // sees the Jobs status flip to `Error` and the Send
-                // button does nothing.
-                //
-                // Fix: when the input file isn't already under the SDK's
-                // canonical models dir, copy it into
-                // `{filesDir}/RunAnywhere/Models/LlamaCpp/{modelId}/{modelId}.gguf`
-                // before calling `RunAnywhere.loadModel`. Copy (not
-                // hard-link) so the user's source file is left alone —
-                // important for SAF imports which may be on read-only
-                // storage anyway. The copy is idempotent: if the
-                // destination already exists with the same size we skip
-                // the write entirely. Subsequent loads hit the cache.
-                val canonicalDir = File(
-                    CppBridgeModelPaths.getFrameworkDirectory(
-                        CppBridgeModelRegistry.Framework.LLAMACPP,
-                    ),
-                    resolvedId,
-                )
-                val canonicalPath = File(canonicalDir, "$resolvedId.gguf").absolutePath
-                if (canonicalPath != file.absolutePath &&
-                    !file.absolutePath.startsWith(canonicalDir.absolutePath)
-                ) {
-                    val needsCopy = run {
-                        val dst = File(canonicalPath)
-                        !dst.exists() || dst.length() != file.length()
-                    }
-                    if (needsCopy) {
-                        try {
-                            canonicalDir.mkdirs()
-                            // Use a `.tmp` rename pattern so a partial
-                            // copy never leaves the canonical dir with a
-                            // half-written GGUF (which would fail
-                            // llama.cpp's mmap check and look like the
-                            // original bug all over again).
-                            val tmp = File(canonicalDir, "$resolvedId.gguf.tmp")
-                            runCatching { tmp.delete() }
-                            file.inputStream().use { input ->
-                                tmp.outputStream().use { output ->
-                                    input.copyTo(output, bufferSize = 1 shl 20)
-                                }
-                            }
-                            if (!tmp.renameTo(File(canonicalPath))) {
-                                tmp.copyTo(File(canonicalPath), overwrite = true)
-                                tmp.delete()
-                            }
-                            log.info(
-                                "runanywhere.model_mirrored",
-                                "mirrored GGUF to canonical SDK location",
-                                mapOf(
-                                    "id" to resolvedId,
-                                    "src" to file.absolutePath,
-                                    "dst" to canonicalPath,
-                                    "bytes" to file.length(),
-                                ),
-                            )
-                        } catch (t: Throwable) {
-                            log.warn(
-                                "runanywhere.model_mirror_failed",
-                                "could not mirror GGUF into SDK dir; SDK load will fail",
-                                mapOf(
-                                    "id" to resolvedId,
-                                    "src" to file.absolutePath,
-                                    "dst" to canonicalPath,
-                                    "error" to (t.message ?: t.javaClass.simpleName),
-                                ),
-                            )
-                            // Fall through — the SDK load will fail
-                            // loudly with its own diagnostic so the user
-                            // sees a real error rather than silent
-                            // fallback.
-                        }
-                    }
+                if (request.layerStart != 0 || request.layerEnd != Int.MAX_VALUE || request.manifest != null) {
+                    return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid(
+                        "runanywhere.pipeline_unsupported: use the native RPC layer backend"))
                 }
+                val prepared = try {
+                    ModelFiles.validateGguf(file)
+                    ("local-" + ModelFiles.sha256(file)) to file
+                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (error: Exception) {
+                    return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid(
+                        "runanywhere.model_prepare:${error.message}", error))
+                }
+                val resolvedId = prepared.first
+                // Register the installed artifact, not a download-only id. The registry
+                // and lifecycle must agree on availability and the actual native path.
+                CppBridgeModelRegistry.save(RAModelInfo(
+                    id = resolvedId, name = file.nameWithoutExtension,
+                    local_path = prepared.second.absolutePath,
+                    format = ai.runanywhere.proto.v1.ModelFormat.MODEL_FORMAT_GGUF,
+                    category = ModelCategory.MODEL_CATEGORY_LANGUAGE,
+                    framework = InferenceFramework.INFERENCE_FRAMEWORK_LLAMA_CPP,
+                    is_downloaded = true, is_available = true,
+                    download_size_bytes = file.length(), context_length = request.contextSize,
+                ))
                 Triple(resolvedId, file.name, file.length())
             }
 
@@ -323,6 +264,8 @@ class RunAnywhereInferenceEngine(
                     ),
                 )
                 if (!result.success) {
+                    modelInfo = null
+                    loadedModelId = null
                     log.warn(
                         "runanywhere.load_failed",
                         "RunAnywhere load failed",
@@ -343,12 +286,12 @@ class RunAnywhereInferenceEngine(
                 // for the synthetic `runanywhere:<id>` path) so the
                 // Jobs screen's "Ready · 1000M params · GGUF" header
                 // shows something identifiable.
-                val displayName = result.model_id.takeIf { it.isNotBlank() } ?: syntheticDisplayName
+                val displayName = syntheticDisplayName
                 val resolvedPath = result.resolved_path.takeIf { it.isNotBlank() } ?: path
                 val info = ModelInfo(
                     modelPath = resolvedPath,
                     modelName = displayName,
-                    contextSize = request.contextSize,
+                    contextSize = 0, // Pinned SDK does not expose its effective native context.
                     parameterCount = 0L, // SDK doesn't surface this in the load result
                     quantization = guessQuantization(displayName),
                     embeddingDim = 0,
@@ -367,7 +310,11 @@ class RunAnywhereInferenceEngine(
                     ),
                 )
                 MeshlitResult.Success(info)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (t: Throwable) {
+                modelInfo = null
+                loadedModelId = null
                 log.warn(
                     "runanywhere.load_failed",
                     "RunAnywhere load failed",
@@ -386,12 +333,15 @@ class RunAnywhereInferenceEngine(
         }
 
     override suspend fun unloadModel() {
-        // The upstream SDK has no public unload() yet — the model
-        // handle is dropped when the SDK's loader is re-invoked or
-        // the process exits. We clear our local state so the
-        // coordinator's `pickEngineForInfer` falls through to
-        // another engine and the UI doesn't keep claiming a loaded
-        // model that no longer answers.
+        withContext(dispatcher) {
+            if (initialized && loadedModelId != null) {
+                val result = RunAnywhere.unloadModel(ai.runanywhere.proto.v1.ModelUnloadRequest(
+                    model_id = loadedModelId.orEmpty(), category = ModelCategory.MODEL_CATEGORY_LANGUAGE,
+                    framework = InferenceFramework.INFERENCE_FRAMEWORK_LLAMA_CPP,
+                ))
+                check(result.success) { "Inference backend failed to unload the model" }
+            }
+        }
         modelInfo = null
         loadedModelId = null
         log.info("runanywhere.unloaded", "RunAnywhere engine cleared locally")
@@ -403,50 +353,24 @@ class RunAnywhereInferenceEngine(
                 ?: return@withContext MeshlitResult.Failure(
                     com.meshlit.core.common.MeshlitError.Invalid("runanywhere.not_loaded"),
                 )
+            if(request.reuseContext) return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid("runanywhere.explicit_cache_reuse_unavailable"))
             val started = System.currentTimeMillis()
-            val accumulator = StringBuilder()
-            var stopReason = FinishReason.NATURAL_STOP
-            var tokensEmitted = 0
+            val accounting=SdkStreamAccounting()
             try {
-                // The SDK emits one flow event per token with a
-                // terminal event whose `is_final == true`. We map
-                // each non-terminal event into a single-token chunk
-                // for the existing `onToken` callback contract used
-                // by `NoOpInferenceEngine`'s fallback path and
-                // `OnnxOrtInferenceEngine`'s downstream consumers.
                 val events: Flow<LLMStreamEvent> = RunAnywhere.generateStream(
                     prompt = request.prompt,
-                    options = null,
+                    options = ai.runanywhere.proto.v1.LLMGenerationOptions(
+                        max_tokens = request.maxTokens, temperature = request.temperature,
+                        top_p = request.topP, top_k = request.topK,
+                        repetition_penalty = request.repeatPenalty, stop_sequences = request.stopSequences,
+                        seed = request.seed, streaming_enabled = true,
+                    ),
                 )
                 events.collect { event ->
-                    if (event.event_kind == LLMStreamEventKind.LLM_STREAM_EVENT_KIND_TOKEN &&
-                        event.token.isNotEmpty()
-                    ) {
-                        coroutineContext.ensureActive()
-                        val text = event.token
-                        accumulator.append(text)
-                        tokensEmitted += 1
-                        request.onToken(text)
-                        if (request.stopSequences.isNotEmpty() &&
-                            accumulator.toString().contains(request.stopSequences.first())
-                        ) {
-                            stopReason = FinishReason.STOP_SEQUENCE
-                            throw StopIterationSentinel()
-                        }
-                        if (tokensEmitted >= request.maxTokens) {
-                            stopReason = FinishReason.MAX_TOKENS
-                            throw StopIterationSentinel()
-                        }
-                    } else if (event.is_final) {
-                        // Natural end-of-stream.
-                        return@collect
-                    }
+                    coroutineContext.ensureActive()
+                    accounting.accept(event)?.let{request.onToken(it)}
                 }
-            } catch (sentinel: StopIterationSentinel) {
-                // Co-operative early-exit. `stopReason` was set before
-                // we threw. Swallow and fall through to result build.
             } catch (t: kotlinx.coroutines.CancellationException) {
-                stopReason = FinishReason.CANCELLED
                 // Re-throw so the calling coroutine observes the cancel.
                 throw t
             } catch (t: Throwable) {
@@ -463,24 +387,18 @@ class RunAnywhereInferenceEngine(
                 )
             }
             val durationMs = System.currentTimeMillis() - started
-            val tps = if (durationMs > 0) tokensEmitted * 1000f / durationMs else 0f
-            val result = InferenceResult(
-                promptTokens = 0,
-                generatedTokens = tokensEmitted,
-                totalDurationMs = durationMs,
-                tokensPerSecond = tps,
-                finishReason = stopReason,
-                finalText = accumulator.toString(),
-            )
+            val result=try {accounting.finish(durationMs)} catch(e:IllegalStateException){
+                return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Native("runanywhere.incomplete_stream",e))
+            }
             request.onComplete(result)
             log.info(
                 "runanywhere.infer.done",
                 "RunAnywhere generation complete",
                 mapOf(
                     "model" to info.modelName,
-                    "tokens" to tokensEmitted,
+                    "tokens" to result.generatedTokens,
                     "durationMs" to durationMs,
-                    "reason" to stopReason.tag,
+                    "reason" to result.finishReason.tag,
                 ),
             )
             MeshlitResult.Success(result)
@@ -543,13 +461,13 @@ class RunAnywhereInferenceEngine(
                 log.info(
                     "runanywhere.register",
                     "model registered for download",
-                    mapOf("id" to modelId, "url" to url),
+                    mapOf("id" to modelId),
                 )
             }.onFailure { t ->
                 log.warn(
                     "runanywhere.register.fail",
                     "${t.message}",
-                    mapOf("id" to modelId, "url" to url),
+                    mapOf("id" to modelId),
                 )
                 throw t
             }
@@ -631,6 +549,13 @@ class RunAnywhereInferenceEngine(
         }
     }
 
+    /** Resolve the SDK registry's actual artifact after its transfer finishes. */
+    fun downloadedModelFile(modelId:String):File {
+        val model=CppBridgeModelRegistry.get(modelId) ?: error("RunAnywhere did not register a downloaded model")
+        val path=model.local_path.takeIf{it.isNotBlank()} ?: error("RunAnywhere did not report a local model path")
+        return File(path).also { require(it.isFile) { "RunAnywhere artifact is missing" } }
+    }
+
     private fun currentCatalogUrl(modelId: String): String =
         catalogUrlById[modelId].orEmpty()
 
@@ -689,9 +614,3 @@ data class DownloadProgressView(
     val state: String,
     val error: String?,
 )
-
-/** Internal sentinel — local-only control flow, not the SDK's
- *  `CancellationException`. Must extend `Throwable` so we can
- *  `throw` it inside a `flow.collect` block and unwind to the
- *  outer `try { … } catch (sentinel: StopIterationSentinel)`. */
-private class StopIterationSentinel : Throwable()

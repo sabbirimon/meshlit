@@ -1,0 +1,30 @@
+# Example for an owner-controlled OpenTelemetry Collector; keep credentials on the host.
+# Front this loopback listener with your authenticated HTTPS reverse proxy for phones.
+# Send the app to the proxy's OTLP base URL; it appends /v1/traces and /v1/metrics.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:4318
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  batch:
+    timeout: 5s
+    send_batch_size: 128
+exporters:
+  otlp_http/backend:
+    endpoint: ${env:OTLP_BACKEND_BASE_URL}
+    headers:
+      Authorization: ${env:OTLP_BACKEND_AUTHORIZATION}
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/backend]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/backend]

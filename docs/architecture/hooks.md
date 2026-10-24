@@ -1,4 +1,8 @@
 # Phase 8 — Hooks
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 Hooks let users author small Kotlin-DSL scripts (`ConfigScript`)
 that the agent runtime invokes at well-defined lifecycle points.

@@ -50,6 +50,10 @@ class BatteryOptimizationHelper(
      * confirm.
      */
     fun requestIgnoreBatteryOptimizations() {
+        if (com.meshlit.BuildConfig.PLAY_REVIEW) {
+            openAppInfoFallback()
+            return
+        }
         val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
             data = Uri.parse("package:${context.packageName}")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK

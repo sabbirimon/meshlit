@@ -10,6 +10,7 @@ android {
 }
 
 dependencies {
+    api(project(":core-peer-security"))
     implementation(project(":core-common"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)

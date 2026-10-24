@@ -1,4 +1,8 @@
 # Build Guide — Meshlit (Android Device Cluster & Local-Agent Orchestrator)
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 A phone-cluster app that discovers nearby (and optionally remote) Android devices,
 assigns each one a role, and runs local LLM inference, MCP tool servers, agents,
@@ -20,18 +24,14 @@ These decisions came out of scoping discussion and exist specifically to stop
 scope creep from turning into unbuildable features. Treat them as constraints,
 not suggestions.
 
-1. **Data-parallel, not tensor-parallel. But MoE-shard federation is OK.**
-   Never split one model's layers or activations across phones over the
-   network — each node runs a complete model of *its* slice. The router
-   distributes independent jobs across nodes. Real inter-phone bandwidth
-   (1–2 GB/s best case over USB, far less over Wi-Fi) cannot support
-   cross-device tensor operations at usable latency. **However**, for
-   *Mixture-of-Experts* architectures (most modern frontier models),
-   coarse-grained shard federation IS feasible: each node holds the
-   complete weights for a subset of experts, and a lightweight router
-   dispatches tokens to the right shard. This is *not* tensor-parallel;
-   it's expert-routing at the token boundary. See §2.7 "Frontier model
-   federation" for the worked approach.
+1. **Job distribution and genuine layer/pipeline execution are both authorized.**
+   User direction on 2026-10-06 supersedes the historical layer-sharding ban.
+   Dense models may run through the optional authenticated native GGML RPC
+   layer runtime. Preserve RunAnywhere as the local default. Read
+   `AGENT_BUILD.md` and `docs/layer-pipeline-and-recovery.md` for boundaries,
+   device tests and evidence requirements. Pipeline execution is distinct
+   from tensor parallelism, MoE routing and distributed training.
+
 2. **Role suggestions are advisory, not hard locks.** Warn and let the user
    override. Hard-locking invites sideloaded workarounds and blocks
    legitimate stress-testing.
@@ -448,9 +448,9 @@ is a *different* federation that is feasible on phones:
   "a model with a subset of experts."
 
 **Why it doesn't work for dense models:** there's no router, so every
-token needs every layer's activation. The constraint stays. MoE is
-*the* architectural feature that makes phone-cluster federation of
-frontier models realistic.
+token needs every layer's activation. The user has authorized measured
+layer execution with native RPC; bandwidth, memory and latency must be
+verified on physical devices. MoE remains a separate design option.
 
 **Module ownership:**
 - `:core-inference` — the shard model manager, expert-id dispatch.
@@ -870,7 +870,7 @@ Humans are the final gate.
 ### 2.9.7 The 2026 reality check
 
 Almost every AI tool is already part of an agent system. Claude
-Code, ChatGPT, Cursor, LangChain agents, the OpenAI Python SDK,
+Code, Cursor, LangChain agents, the OpenAI Python SDK,
 the Anthropic SDK — all of these can call APIs. **If Meshlit
 exposes a clean OpenAI-compatible API at the gateway, agents will
 use it without us doing anything special.** The "AI uses Meshlit"
@@ -983,7 +983,7 @@ them, but they're not shaping current code:
 - Vouch decay timer tuning — runs as designed, no special handling
 - Token-to-fiat conversion — human verification at the gate is enough
 - Anti-Sybil heuristics tuning — needs adversarial testing post-launch
-- Cross-node tensor parallelism — explicitly forbidden by §0 principle 1
+- Cross-node tensor parallelism — not implemented by the current layer/RPC path
 - Public gateway with bearer tokens — Phase 4.5, design already done
 
 ### 2.10.10 Cross-OS compatibility (HarmonyOS + Chinese Android forks)
@@ -1725,3 +1725,39 @@ To stay honest about what's feasible:
 - **No code signing of models.** A user can import a model from anywhere
   and we can't know if it's poisoned. Treat unverified models as
   untrusted input — same as any other file the user chose to download.
+## Required real starter model
+Before any APK build, run `python3 scripts/prepare-bundled-model.py` from the root.
+The asset manifest is revision/SHA/size pinned; Gradle rejects missing or corrupt
+weights. Binary models remain ignored by Git. See `app/src/main/assets/models/README.md`.
+
+## Latest continuation priorities (2026-10-06)
+
+Keep genuine phone layer sharding/model execution and committed recovery as the
+main product priority. Nodes also contribute storage, tools, capture, sensors,
+actuation, preprocessing, DSP, routing and monitoring according to real evidence.
+ESP32/Arduino/IoT membership does not imply transformer execution.
+Read `../docs/online-power-peripherals-and-configuration.md`,
+`../docs/declarative-federation-roadmap.md` and `../docs/media-iot-and-radio-nodes.md`.
+These record offline/online selection, free/public/gated model distinctions,
+actual pricing provenance, power readings, hardware/vendor backend limits, open
+source SSH, configuration transfer, media sources and owner-paired radio carriers.
+Keep unsupported adapters visibly unavailable; never invent devices, samples,
+throughput, tokens, costs, account entitlements or recovery success.
+
+## Scenario routing and media continuation (2026-10-06)
+
+Read `../docs/model-router-and-media.md`. Scenario recipes, sequential chains/comparisons,
+chat text attachments and explicit online vision/image/speech/video adapters are
+wired in source. Validate real execution; paid provider media outputs and generic
+music/sound/on-device diffusion/video remain separate gates. Do not substitute
+text event counts for native tokens. Keep phone layer execution/recovery primary.
+
+## Custom models and training continuation (2026-10-06)
+
+Read [../docs/local-model-behavior-and-training.md](../docs/local-model-behavior-and-training.md). Custom local prompt behavior is default-off;
+compatible custom weights are imported through Models. No toggle changes learned
+refusals or hosted-provider rules. Settings → Fine-tuning drives the optional
+Soup 0.75.0 POSIX host companion via pinned SSH, with real job/status/log/cancel
+contracts. Android synthetic gradients are removed; phone autograd reports
+unavailable. Actual Soup training, adapter quality/evaluation and GGUF deployment
+remain acceptance gates. Keep phone inference layer sharding/recovery primary.

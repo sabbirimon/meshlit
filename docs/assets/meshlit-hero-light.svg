@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="Meshlit — Many phones. One mind. (light mode)">
-  <title>Meshlit — Many phones. One mind. (light)</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="Meshlit — Many nodes. One mind. (light mode)">
+  <title>Meshlit — Many nodes. One mind. (light)</title>
   <desc>Day-mode hero banner modelled on the meshlit_card_library mockup: pastel lavender → pink → cyan mesh gradient, white wordmark on glass card, four pastel phone nodes.</desc>
 
   <defs>
@@ -104,7 +104,7 @@
   <text x="640" y="160" text-anchor="middle"
         font-family="'Segoe UI',Inter,Helvetica,Arial,sans-serif"
         font-size="20" font-weight="500"
-        fill="#5C5C72">Many phones. <tspan fill="#A78BFA">·</tspan> One mind.
+        fill="#5C5C72">Many nodes. <tspan fill="#A78BFA">·</tspan> One mind.
     <animate attributeName="opacity" values="0.7;1;0.7" dur="3.4s" repeatCount="indefinite"/>
   </text>
 

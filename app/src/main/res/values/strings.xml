@@ -355,7 +355,7 @@
     <string name="models_bundled_section">Bundled model</string>
     <string name="models_bundled_name">Qwen2.5-1.5B-Instruct</string>
     <string name="models_bundled_quant">Q4_K_M · Apache 2.0 · multilingual</string>
-    <string name="models_bundled_installed">Installed</string>
+    <string name="models_bundled_installed">Installed: %1$s · %2$d bytes</string>
     <string name="models_bundled_not_installed">Not installed</string>
     <string name="models_no_asset">No bundled model found in the APK</string>
     <string name="models_reextract_in_progress">Extracting…</string>
@@ -850,7 +850,7 @@
     <string name="files_moved">Moved \"%1$s\"</string>
     <string name="files_open">Open</string>
     <string name="files_open_external">Open with another app</string>
-    <string name="files_open_failed">Couldn\'t open file</string>
+    <string name="files_open_failed">Couldn\'t open file: %1$s</string>
     <string name="files_rename">Rename</string>
     <string name="files_share">Share</string>
     <string name="files_source_saf">Choose from storage</string>
@@ -863,7 +863,7 @@
     <string name="llm_output_export_failed">Export failed</string>
     <string name="llm_output_save">Save</string>
     <string name="llm_output_save_failed">Save failed</string>
-    <string name="llm_output_saved">Saved</string>
+    <string name="llm_output_saved">Saved: %1$s</string>
     <string name="llm_output_share">Share</string>
     <!-- v2 Device Info screen (Devices hub → Info card) -->
     <string name="info_node_id_copied">Copied node ID</string>

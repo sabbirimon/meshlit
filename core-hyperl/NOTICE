@@ -1,0 +1,44 @@
+HyperL — original experimental AI compute tools
+Copyright 2026 Sabbir Hassan Imon and contributors.
+Newly covered rights: HyperL Community and Enterprise License 1.0; see LICENSE.
+Earlier Apache-2.0 grants are preserved, including pre-transition source through
+67b30e09741f4bba1672a891644fc73abb1f9855 and released alpha.5 material.
+See docs/LICENSE_HISTORY.md and docs/licenses/Apache-2.0.txt.
+Licensing contact: sabbirimon@gmail.com.
+
+Foundation adapted from original Meshlit HyperL source commit
+cdb06b654e837604094c1ea9ac269d0f22c88e3b, owner-merged into Meshlit main at
+851576bdd0c9daaea71f32f5daac8720671c6453.
+The four foundation files/tests retain hyperl/1 CPU semantics with a new
+org.hyperl namespace; standalone targets/tooling extend those interfaces.
+Meshlit: https://github.com/sabbirimon/meshlit-v2
+
+Runtime distribution dependencies:
+Kotlin standard library 2.4.10 — Apache-2.0, JetBrains and contributors.
+kotlinx.coroutines 1.10.0 — Apache-2.0, JetBrains and contributors.
+kotlinx.serialization 1.8.0 — Apache-2.0, JetBrains and contributors.
+Gradle wrapper/build tooling — Apache-2.0, Gradle and contributors.
+Portable ZIP/TAR packages require a separately installed JDK/JRE. Native desktop
+installers include an OpenJDK 21 runtime (Temurin in CI); preserve its bundled
+legal/ notices and GPL-2.0-with-Classpath-Exception and component licenses.
+Native compilers, platform OpenCL/Metal/CUDA/HIP/Vulkan SDKs and drivers remain
+separately installed and retain their own licenses; they are not bundled.
+
+Preserve upstream license/notice resources contained in dependency jars.
+No Odysseus, OpenAirInterface or srsRAN implementation is imported.
+
+Developer workbench dependencies: FlatLaf 3.7.2 no-natives classifier
+(com.formdev, Apache-2.0, FormDev/Karl Tauber) and RSyntaxTextArea 4.0.1
+(com.fifesoft, BSD-3-Clause, Robert Futrell/contributors). Their original
+license texts are retained under docs/licenses and in the unmodified JARs.
+No NVIDIA artwork, code, trademark logo or Nsight assets are copied.
+
+Bundled unmodified workbench fonts: Inter Regular/SemiBold (Inter Project Authors;
+resources pinned through FlatLaf tag 3.7.2) and JetBrains Mono Regular v2.304
+(JetBrains Mono Project Authors), both SIL Open Font License 1.1. Preserve the
+complete upstream copyright/license texts under docs/licenses. Source paths and
+SHA-256 digests are recorded in docs/FONT_PROVENANCE.md. No runtime font download.
+
+The macOS Metal host is original Objective-C++ code using Apple's system SDK
+interfaces. Apple frameworks/toolchains retain their separate license terms;
+no Apple or NVIDIA implementation source is copied or redistributed here.

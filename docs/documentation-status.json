@@ -1,0 +1,1184 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-10-12",
+  "index": "docs/DOCUMENTATION_STATUS.md",
+  "phaseLedger": "docs/phase-progress.json",
+  "countsExcludingGeneratedIndex": {
+    "active": 133,
+    "historical": 19,
+    "protected": 8,
+    "template": 1,
+    "third-party": 6
+  },
+  "documents": [
+    {
+      "path": ".claude/skills/build.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "/build \u2014 Build the Meshlit Android app",
+      "contentSha256WithoutTrackingBlock": "ee027aed3897b694f4536e6899193bb3755dfce385c4acb69aaba610f28a078d"
+    },
+    {
+      "path": ".claude/skills/cloud-mcp.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "/cloud-mcp \u2014 Conventions for the cloud-MCP module",
+      "contentSha256WithoutTrackingBlock": "f3a7064a4e4bb1a0c8fe1dfeb0510a46d525d423d02f867422bf9d2492930d34"
+    },
+    {
+      "path": ".claude/skills/journal.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "/journal \u2014 Append a session summary to PROGRESS.md",
+      "contentSha256WithoutTrackingBlock": "c15b2aabcd896b3416f5e3f431b8f8b52efbe875b948ece6a381a48b08cf7d26"
+    },
+    {
+      "path": ".claude/skills/release.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "/release \u2014 Bump Meshlit's version number",
+      "contentSha256WithoutTrackingBlock": "1d410ea4f3152de40384b3d7c7fb96b040e7438036f85607d0966bf4d2e4720c"
+    },
+    {
+      "path": ".claude/skills/test.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "/test \u2014 Run Meshlit unit tests",
+      "contentSha256WithoutTrackingBlock": "555b473d54697b9688eced8f551148be780ea7fb8635637047af01a1f4fda51f"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "class": "template",
+      "scope": "pull-request template",
+      "title": ".github/pull_request_template.md",
+      "contentSha256WithoutTrackingBlock": "64960fa71e7ce50ad2ce70a10cb1ab5d6300d89ee2707e93b5ea2824d05f984e"
+    },
+    {
+      "path": "AGENTS.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "Meshlit agent instructions",
+      "contentSha256WithoutTrackingBlock": "66d964078b15f995db1380e21455795ba08cb64f6e1721acd8be724db6710a41"
+    },
+    {
+      "path": "AGENT_BUILD.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "Meshlit build and continuation contract for the Claude Opus agent",
+      "contentSha256WithoutTrackingBlock": "16a45d176e317f1264e6889825bb773fa5ebd76c933bd7b9f0e3d6d491362163"
+    },
+    {
+      "path": "AUTHORS.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "Authors and attribution",
+      "contentSha256WithoutTrackingBlock": "87acf3b1638759c047c8be4f4710afaf37c2f927c733033bbc39c23efea7bdca"
+    },
+    {
+      "path": "BUGS.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Current regressions, limitations and verification",
+      "contentSha256WithoutTrackingBlock": "53d214d70d1bfe64fb260936dd08a1e0ee5e631cd5317cdf21b9d40d51ab76f3"
+    },
+    {
+      "path": "BUILD.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Meshlit build and validation",
+      "contentSha256WithoutTrackingBlock": "e1acebc9a93b5216daf97d4d368504d9da050bb73792c7149f9c23e578100adb"
+    },
+    {
+      "path": "BUILD_MILESTONES.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Sequential implementation and acceptance ledger",
+      "contentSha256WithoutTrackingBlock": "d3983aef68d9e3b2e3eb02fdee336e6991d6c0df6585cf520d089fafa693ffe1"
+    },
+    {
+      "path": "CLAUDE.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "Claude Code instructions",
+      "contentSha256WithoutTrackingBlock": "22ff863880076c0fd8f8ae684da055a6c14b1bb40b1055040b25da39b1ab136c"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Contributing to Meshlit",
+      "contentSha256WithoutTrackingBlock": "1a5f89491f8119cc15626258eb3933e2b9847dc21daf5b32ab157e5aa44e2075"
+    },
+    {
+      "path": "FEATURE_MAP.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Meshlit structured feature and architecture map",
+      "contentSha256WithoutTrackingBlock": "e318c8590c83250ad8295d5f55fdb24502831572ebd425375b74b28b7b5bf924"
+    },
+    {
+      "path": "HYPERL.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "HyperL experimental foundation",
+      "contentSha256WithoutTrackingBlock": "ee6a9c891862c45dc26fa9074e7b978c37d913a9e660947ad3363df7d6cf3f15"
+    },
+    {
+      "path": "PLAN.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Meshlit implementation and qualification plan",
+      "contentSha256WithoutTrackingBlock": "8dccfa051dd836c42ab34f643720ad584ebb4aaa871590e77b49934a0fece781"
+    },
+    {
+      "path": "PROGRESS.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Meshlit progress and evidence",
+      "contentSha256WithoutTrackingBlock": "92a1371dde11f15d13d46b4d94d35e2178f02f41e0702ada3a3a0bfc01d2c573"
+    },
+    {
+      "path": "README.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Meshlit v2 \u2014 adaptive AI workspace and experimental distributed compute",
+      "contentSha256WithoutTrackingBlock": "202414a2a16c57e36946a571b155fcf99c2b0a065a26c6477404d971bcd86f5a"
+    },
+    {
+      "path": "REQUESTS.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Current user requests and implementation tracking",
+      "contentSha256WithoutTrackingBlock": "4a705eae4e3d7e0350096652fe47e581d315528daf99587c66c0490e443eb981"
+    },
+    {
+      "path": "SECURITY.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Security reporting",
+      "contentSha256WithoutTrackingBlock": "07e2597a5421f8dd024b3d5a7ecf06c18d6ac26525b6c2ef9b38b43023aa4dd1"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "Third-party notices for current additions",
+      "contentSha256WithoutTrackingBlock": "937d5cadd8c7a74221176b43ab19f64fb2d6bf3c9c2b3efc7b041fd477c8c2bc"
+    },
+    {
+      "path": "TODO.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Meshlit current implementation and acceptance queue",
+      "contentSha256WithoutTrackingBlock": "7c0c1082e3aa029a3d3cbfc75782cda5074073e4247b848254c3a006686b5be7"
+    },
+    {
+      "path": "app/BUILD_GUIDE.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Build Guide \u2014 Meshlit (Android Device Cluster & Local-Agent Orchestrator)",
+      "contentSha256WithoutTrackingBlock": "6ebf937937b03d0ad4a2a87704c5627ddca63e50f0c5ba5e6172028ffa28f01a"
+    },
+    {
+      "path": "app/CLAUDE.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "App-specific instructions",
+      "contentSha256WithoutTrackingBlock": "7107f262bceef5ae7c66d41788acd44a96b816e08a53ba99fa86a67a9c705cf9"
+    },
+    {
+      "path": "app/SKILL-1.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "llama.cpp on Android (NDK)",
+      "contentSha256WithoutTrackingBlock": "853345c788713beca61f8d4c434514733f63671613aa5b7a4e4e268fd23a0403"
+    },
+    {
+      "path": "app/SKILL-2.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "Local Discovery & Mesh Transports on Android",
+      "contentSha256WithoutTrackingBlock": "61a8ec00b432682e4e1e9c5efeefd26a59273ae26cfeabcdd7a8327fe592d567"
+    },
+    {
+      "path": "app/SKILL-3.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "MCP Tool Servers on Android",
+      "contentSha256WithoutTrackingBlock": "41b976b378e471fa3ec4f8e35d9142723fdf29f367ac25221d1662db7e179b79"
+    },
+    {
+      "path": "app/SKILL-4.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "Cluster Trust Tiers",
+      "contentSha256WithoutTrackingBlock": "df87634f11065f8ac1c4cd206093d79548faf0f1c6079e10ab0e2ad67729d81d"
+    },
+    {
+      "path": "app/SKILL.md",
+      "class": "active",
+      "scope": "workflow guidance; current owner instructions and scoped evidence govern",
+      "title": "Android Foreground Services for Long-Running Cluster Nodes",
+      "contentSha256WithoutTrackingBlock": "772b1350709f1efbd3326a639037bd71a3afd4f27b2520ab92f8a2d4ae225d4b"
+    },
+    {
+      "path": "app/src/main/assets/colibri/THIRD_PARTY_NOTICES.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "Third-party notices",
+      "contentSha256WithoutTrackingBlock": "283fa1a9c27a8930340add500f2f0453dd15568ec38c21a1fff4f3d1f716ebc7"
+    },
+    {
+      "path": "app/src/main/assets/models/README.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Real bundled starter model",
+      "contentSha256WithoutTrackingBlock": "832e6ade05a62f662b013798f1d7076317ac563b6032882c124c764233f0b53b"
+    },
+    {
+      "path": "companions/agentgateway/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Official Rust agentgateway companion",
+      "contentSha256WithoutTrackingBlock": "1caa8d12d6291633d8941d6ee5e7f89b77b023cc96b4fd4af318df57c377c5e2"
+    },
+    {
+      "path": "companions/colibri/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Optional Colibri host",
+      "contentSha256WithoutTrackingBlock": "6526cbf7ee9e31dced37dcaaf88bd7fcfde3794e71e12113e702a3e5dd612970"
+    },
+    {
+      "path": "companions/crawler/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Optional private Crawl4AI companion",
+      "contentSha256WithoutTrackingBlock": "4692c9b96a5ce3debdd6d73e78de54ebb202812d26c023ca918357df2d4d469e"
+    },
+    {
+      "path": "companions/cyber/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Meshlit Security Lab companions",
+      "contentSha256WithoutTrackingBlock": "6508714dad71d36220d949ea0f19db05da2b8e89dba3d75ca884a670a1d6fbf0"
+    },
+    {
+      "path": "companions/deployment/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Terraform saved-plan companion",
+      "contentSha256WithoutTrackingBlock": "e7a71fbeb9e466c758045eb3bc66f013d4e93cda488a48d871c1452137fe2caa"
+    },
+    {
+      "path": "companions/node/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Storage and offline DSP node companion",
+      "contentSha256WithoutTrackingBlock": "fcb80d4d6a1c5c8a68a559a9c9a689d77bce09662e234a230b43c182064b9073"
+    },
+    {
+      "path": "companions/pipeline/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Native host worker without the Android app",
+      "contentSha256WithoutTrackingBlock": "a2b646752f4d8ea1a9eee2a07cccf126089931110c8682b2c286d7f0d4b68ffd"
+    },
+    {
+      "path": "companions/training/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Optional Soup training host",
+      "contentSha256WithoutTrackingBlock": "96e6b4677c7c746c7566f7cdc21da1d6026ee1264c168a7d91d6565df35ae099"
+    },
+    {
+      "path": "configuration/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Portable configuration",
+      "contentSha256WithoutTrackingBlock": "363feb22e375c936c77812e917934eecdc3a12e607aad9dd505e4f76bf37e169"
+    },
+    {
+      "path": "core-federation/src/main/kotlin/com/meshlit/core/federation/README.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "`:core-federation` \u2014 versioned peer-to-peer federation",
+      "contentSha256WithoutTrackingBlock": "a89c20e3f9eefd69e64ebdfc33101d07112c93154c679fb24495bbf862d14ceb"
+    },
+    {
+      "path": "core-hyperl/LICENSE_HISTORY.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "Licence scope and history",
+      "contentSha256WithoutTrackingBlock": "ee8cdcc84193c2cb5471cb9ae4303c54df2597d9eb36e578e4a008b60f4be20a"
+    },
+    {
+      "path": "core-hyperl/MODIFICATIONS.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "Android integration boundary",
+      "contentSha256WithoutTrackingBlock": "7429b8d86717dc9873410a0d2949d5c4c2825aeb2df9852da3d4482d9dc45969"
+    },
+    {
+      "path": "core-hyperl/src/main/assets/hyperl/LICENSE_HISTORY.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "Licence scope and history",
+      "contentSha256WithoutTrackingBlock": "ee8cdcc84193c2cb5471cb9ae4303c54df2597d9eb36e578e4a008b60f4be20a"
+    },
+    {
+      "path": "docs/AGENT_FEATURE_PORT_AUDIT.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Old Android agent feature audit \u00b7 2026-10-23",
+      "contentSha256WithoutTrackingBlock": "57f7cfcd16a1e4393eeff8cc1b46dbf7b7f5942e4dc00cf7776376a09f556239"
+    },
+    {
+      "path": "docs/AGENT_GATEWAY_AND_SECURITY_LAB.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Gateway and Linux Security Lab implementation \u2014 2026-10-07",
+      "contentSha256WithoutTrackingBlock": "efce9618da772de43ebed6e373284680537179a257bf7ddc279526560597a2f4"
+    },
+    {
+      "path": "docs/AI_REPAIR_AND_EVOLUTION.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "AI-assisted repair and evolution design",
+      "contentSha256WithoutTrackingBlock": "da42c5ca9abe263e333acdfc1af023d792f4b3b6653c5719530efecd48d71d0b"
+    },
+    {
+      "path": "docs/ANDROID_DESKTOP_PARITY.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Android old/new inventory and desktop parity",
+      "contentSha256WithoutTrackingBlock": "4b738e592489d6bc72b3ce675863a21d11a32e0d5a848496d9af8d26eaa99334"
+    },
+    {
+      "path": "docs/ANDROID_SECURITY_TOOL_INTEGRATIONS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Android security tool and root integration plan",
+      "contentSha256WithoutTrackingBlock": "1d69f9cd62ce9a92c2c7dafc6a143212d955a5ba8e3eb20121c2dcc11e2a71b7"
+    },
+    {
+      "path": "docs/AUDIT_TELEMETRY.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Audit telemetry, OpenTelemetry and Grafana",
+      "contentSha256WithoutTrackingBlock": "bfbab3b519106ea775b39bec2992a79147d43b61fe46cb0d1567353694ebebe3"
+    },
+    {
+      "path": "docs/BLUE_TEAM_AND_PACKET_ANALYSIS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Blue Team and mobile packet-analysis roadmap",
+      "contentSha256WithoutTrackingBlock": "6f251bdab172ec16851ada9e476632ffc1c6d91d41a0e265892b9afc97738819"
+    },
+    {
+      "path": "docs/BUILT_IN_AGENT_DESIGN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Built-in Meshlit agent",
+      "contentSha256WithoutTrackingBlock": "d8c896ecc827f97ee33c776cb6564fceaaf09fe27f94f103819ee757ef258e83"
+    },
+    {
+      "path": "docs/CHAT_PRESENTATION.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Reply presentation and token controls",
+      "contentSha256WithoutTrackingBlock": "8ac2ca9009b3b9ec11a0d093521686c9da29aa31cdfa18e59e98732a14cbbdcc"
+    },
+    {
+      "path": "docs/CLIENT_HUB.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit as an authenticated model and agent hub",
+      "contentSha256WithoutTrackingBlock": "ac9bcb00f2a1acdf3604e92f21b9fb6c5f57ec041af4b343bc2ee7ef6b9868f7"
+    },
+    {
+      "path": "docs/COLIBRI.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Colibri: optional host inference",
+      "contentSha256WithoutTrackingBlock": "507bc48f8ba47bc21d67c0e14fc6f23258e5ea265498b6daee88e04f21387309"
+    },
+    {
+      "path": "docs/CONTINUATION_2026_10_08.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Continuation: physical-device tests deferred",
+      "contentSha256WithoutTrackingBlock": "b34dd3f497d05b30ab495eadf7967a92ab2ba46f3bcd0bf783e2f8a4ae256409"
+    },
+    {
+      "path": "docs/DESKTOP_BUILD_LOG.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop/server build update ledger",
+      "contentSha256WithoutTrackingBlock": "7f87985ee184e80e71a5852c2ac39ddcaef18840700876bee8b99983e05d7ec4"
+    },
+    {
+      "path": "docs/DESKTOP_FEATURE_TRACKER.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop and server feature tracker",
+      "contentSha256WithoutTrackingBlock": "442103fbbf72fda5e08ac7793f58ad0a02c6f47515804c17bb52e588e6e2563b"
+    },
+    {
+      "path": "docs/DESKTOP_STUDIO_PLAN.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Meshlit desktop Studio implementation plan",
+      "contentSha256WithoutTrackingBlock": "4eeba03915088dc1fb9066ce27c522653438a4381999ebf336b656655c34a198"
+    },
+    {
+      "path": "docs/DEVICE_COMPATIBILITY.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Device Compatibility & Recommended Configurations",
+      "contentSha256WithoutTrackingBlock": "c5d6366355e4ddcdb30d3336a948a447c1d3cc12537f62fa1051a22e8c5ebc75"
+    },
+    {
+      "path": "docs/DEVICE_TESTING_2026-10-08.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Samsung single-phone qualification \u2014 2026-10-08",
+      "contentSha256WithoutTrackingBlock": "8e808b8bc5b28d77e190448d343174e7183b30607953a0cae87b662ae74273aa"
+    },
+    {
+      "path": "docs/DISCOVERY_AND_COMMUNITY.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Project discovery and community",
+      "contentSha256WithoutTrackingBlock": "101511e5c7d6873a82f7f4644df56189448921c89d3d04482696c2c2f8870f44"
+    },
+    {
+      "path": "docs/GIBBERLINK.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Experimental GibberLink with English transcript",
+      "contentSha256WithoutTrackingBlock": "91505b580d037e3bf0b440b42d2884e3f32838febfa962c354ca40db6e5234b9"
+    },
+    {
+      "path": "docs/HIGH_IMPACT_BACKLOG_2026-10-24.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "High-impact work and remaining acceptance",
+      "contentSha256WithoutTrackingBlock": "8a64f90a4fe35bcc9ede5639b422ee4cdd6da31f3f91e25e8ddf6652ec9361b4"
+    },
+    {
+      "path": "docs/LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Linux distributions and optional lab tools",
+      "contentSha256WithoutTrackingBlock": "20c2d525cdf6cbeefb8aaa379bbfc241633a811cfbb5868e4da89179d41d8cde"
+    },
+    {
+      "path": "docs/LOCAL_MODEL_TOOLS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Local model internet tools and Android control",
+      "contentSha256WithoutTrackingBlock": "592c124d9c3047dbf1a98688907b6c0884b901249ce57fb156cc39b6da0dc4b4"
+    },
+    {
+      "path": "docs/MACOS_OFFLINE.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Intel Mac offline desktop preview",
+      "contentSha256WithoutTrackingBlock": "1b732af84fec61a87793170ba1d2218d36659f9dccf85582b1d2d21a5282c928"
+    },
+    {
+      "path": "docs/MEMORY_AND_VOICE.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Memory, personality, recovery and speech adapters",
+      "contentSha256WithoutTrackingBlock": "ead85b7b4b860663b7b2a44703624a4c6589e07e7579f122d66421cfbb61d9cc"
+    },
+    {
+      "path": "docs/MULTIPLATFORM_NEXT.md",
+      "class": "active",
+      "scope": "platform preview; NEXT device/build acceptance remains open",
+      "title": "Meshlit desktop and native HarmonyOS NEXT preview",
+      "contentSha256WithoutTrackingBlock": "4a71f01215d7725d5bd5695e712a335b712ab1874c7a06c0f84c30be1df82b90"
+    },
+    {
+      "path": "docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Nemotron and mixed-hardware model placement \u2014 2026-10-23",
+      "contentSha256WithoutTrackingBlock": "fa592f0eae189ae35393a1aa0c6c33a799c7a84ecb8b323b73f885d08935bd52"
+    },
+    {
+      "path": "docs/ODYSSEUS_REVIEW_2026_10_08.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Odysseus workspace review \u2014 2026-10-08",
+      "contentSha256WithoutTrackingBlock": "ed2439bd4bb393da9322ee39966d80490b720f125af16a89e7367e37d4f4bd85"
+    },
+    {
+      "path": "docs/OLD_ANDROID_GAP_AUDIT_2026-10-23.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Old Android Studio project to current Meshlit: gap audit",
+      "contentSha256WithoutTrackingBlock": "cd7adf9453bb470b74555c42b0356fb455653cd342525c80c2d27ec4551caaf8"
+    },
+    {
+      "path": "docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Older Android Studio request and plan audit",
+      "contentSha256WithoutTrackingBlock": "8ae43f691ecac67586c5355f66fdee8dd0d39fd8068478dfaae421c6d0a2d996"
+    },
+    {
+      "path": "docs/P2P_AND_CRYPTO.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "P2P chat, scoped remote commands and local cryptography",
+      "contentSha256WithoutTrackingBlock": "3c41b2fa4cb71148ff2027cd0e5f12cfba346533f507d5c6c66a28c8982b940b"
+    },
+    {
+      "path": "docs/PAUSED_CHECKPOINT_2026-10-24.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit paused progress checkpoint \u2014 2026-10-24",
+      "contentSha256WithoutTrackingBlock": "e5ec040d6e8d8bb58882d36d9a59ec9863c758585b202807a54f0a4ed2e6e035"
+    },
+    {
+      "path": "docs/PEERING_UI_BUILD_PLAN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Future build plan \u2014 Android and desktop peering, UI and rewards",
+      "contentSha256WithoutTrackingBlock": "6401333c974f2bd1841621a8a821b3dfd8cbe0e6e5e8385596368050e25fbf3d"
+    },
+    {
+      "path": "docs/PEERING_UI_HANDOFF_2026-10-12.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Android and desktop peering/UI handoff \u2014 2026-10-12",
+      "contentSha256WithoutTrackingBlock": "c2793fd5c8bcc0f375d90004206f84a33144693f24d6e194c609b492747ceb7d"
+    },
+    {
+      "path": "docs/PENDING_FEATURES.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Pending and unfinished Meshlit work",
+      "contentSha256WithoutTrackingBlock": "fa20a9a04978dc40c036ca8afa39d567463754f9808ea287992db7760c2534bd"
+    },
+    {
+      "path": "docs/PHASE1_VALIDATION.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Phase 1 Hardware Validation",
+      "contentSha256WithoutTrackingBlock": "0e9b16b617bafd79996af77d6889bacf16a24a0f3e916387dcadf907050948c0"
+    },
+    {
+      "path": "docs/PLATFORM_ADAPTER_PLAN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit: adaptive AI platform and native backend plan",
+      "contentSha256WithoutTrackingBlock": "f386837e286d3b9ea1b04617f7884157986f16003c92749028b42a9027a81c73"
+    },
+    {
+      "path": "docs/PLAY_DISTRIBUTION.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Google Play distribution preparation",
+      "contentSha256WithoutTrackingBlock": "21fb8e009050328794e14b1fbe1b88bf109946885a23ea3a4945428b042f602f"
+    },
+    {
+      "path": "docs/PRIVACY_POLICY.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "docs/PRIVACY_POLICY.md",
+      "contentSha256WithoutTrackingBlock": "e09713a651198c196d20f934a423d54b6bbd8e8b4fd37160ba7633712d7e91b4"
+    },
+    {
+      "path": "docs/REDESIGN_PLAN_2026-10-23.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit workspace redesign and build plan",
+      "contentSha256WithoutTrackingBlock": "e8ef90618aba0ec86a23a64823ca196e02e2b8ffc80b7dd7afc7357c0e2fcec0"
+    },
+    {
+      "path": "docs/RELEASE_EVIDENCE.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Release publication and qualification evidence",
+      "contentSha256WithoutTrackingBlock": "499dbca615e51863dc7627aa6a13e6bb8a247da945c8f323c7a4081f74e873b2"
+    },
+    {
+      "path": "docs/REWARD_METERING_AND_SETTLEMENT.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Reward metering, fraud controls and monetary settlement plan",
+      "contentSha256WithoutTrackingBlock": "c86ab4d96636c1afde2d0df08550e24f3e8989217b15ba0390d354335f9fbc86"
+    },
+    {
+      "path": "docs/SEARCH_AND_CLUSTER_OUTPUT.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Global search, chat search and cluster output controls",
+      "contentSha256WithoutTrackingBlock": "d7b7729a17e15133bbc69ee188a1e27ecb4024121ab8d76be876ba6e921e35bd"
+    },
+    {
+      "path": "docs/SECURITY_LAB_AND_HARDWARE_ACCESS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Hardware access and Security Lab roadmap",
+      "contentSha256WithoutTrackingBlock": "3a11f5e5cbe7964580620c7ebc08fb91b5be58d0e10ae2a517c3f9083554f864"
+    },
+    {
+      "path": "docs/SESSION_HANDOFF.md",
+      "class": "active",
+      "scope": "cross-platform tracking; feature and device gates remain separate",
+      "title": "Meshlit current session handoff",
+      "contentSha256WithoutTrackingBlock": "71fae97e9a3ed7e65bfd0428e5ed0e83f13ebb2bf67a6b087a1a5c256660ad17"
+    },
+    {
+      "path": "docs/SSH_NODE.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Bidirectional SSH app nodes",
+      "contentSha256WithoutTrackingBlock": "c9b891423f1e56eca77015a383267188504795ead18e4960a03c4f2cd4dd575c"
+    },
+    {
+      "path": "docs/STITCH_GLASS_UI.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Stitch Glass UI \u2014 Design System Skill",
+      "contentSha256WithoutTrackingBlock": "006d4e7f83138aae80ea3f2ff22d2326f60ca17049d9c4a3006ed7522df56a0c"
+    },
+    {
+      "path": "docs/TERMS_OF_USE.md",
+      "class": "protected",
+      "scope": "licence, attribution or versioned agreement",
+      "title": "docs/TERMS_OF_USE.md",
+      "contentSha256WithoutTrackingBlock": "3129d80d8d3c17a25c53f4723e894ea3d438cac5ff2aba258df2a4fdd7a8ce1c"
+    },
+    {
+      "path": "docs/UI_AUDIT.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit \u2014 UI Audit (v2 build no. 1)",
+      "contentSha256WithoutTrackingBlock": "57afa294870dc2992c90329433951b71e30456d63df9fec21f6f34fc537297df"
+    },
+    {
+      "path": "docs/UI_REFERENCE_REDESIGN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Reference-driven UI continuation",
+      "contentSha256WithoutTrackingBlock": "26e694ac68d3856eea5cddce541d4119cd3a2e4529e2c0a5926e15cf4524b40b"
+    },
+    {
+      "path": "docs/UI_WORKSPACE_REDESIGN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit shared workspace redesign",
+      "contentSha256WithoutTrackingBlock": "f383a38550e470df611e8e15707c4eafd4a282a3ce1636451ab20009f3e23c01"
+    },
+    {
+      "path": "docs/USER_GUIDE.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit full app guide and configuration tutorial",
+      "contentSha256WithoutTrackingBlock": "f8a3231965028ccd4e5216a3ee60a746d810ffe4d6b20f7de27574f897187f16"
+    },
+    {
+      "path": "docs/VALIDATION_BUILD_38.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Build 38 validation \u2014 9 October 2026",
+      "contentSha256WithoutTrackingBlock": "c9b5c18e04489c6cea801f9dd7d6995c79eff423f48e4e89817c797bf3ab87e3"
+    },
+    {
+      "path": "docs/VALIDATION_BUILD_40.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Build 40 validation \u2014 9 October 2026",
+      "contentSha256WithoutTrackingBlock": "f6e7f9f85bc70a9170e32f5779ab81932b9bc9e16f5b8bbe03df3d189e646bad"
+    },
+    {
+      "path": "docs/architecture/EVALUATION_REVIEW_2026_10_09.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Review of the supplied Meshlit architectural evaluation",
+      "contentSha256WithoutTrackingBlock": "34db5e28467ee588703363f0c1839839095d4fb06f1832a705c21399e6e57c47"
+    },
+    {
+      "path": "docs/architecture/PRODUCTION_CHANNELS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit Core candidate and Experimental",
+      "contentSha256WithoutTrackingBlock": "26978734cf5a8d46f6991bdfde9278a2f1f04e037dec6fcd25a72add85748ba3"
+    },
+    {
+      "path": "docs/architecture/README.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Architecture notes",
+      "contentSha256WithoutTrackingBlock": "250a8c901e9ca26c478b015a0458dfcbda8ed52bb660ab9106f48df1b383b257"
+    },
+    {
+      "path": "docs/architecture/current-state.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Current architecture and evidence boundaries",
+      "contentSha256WithoutTrackingBlock": "f794a67f46b247123c40b426d5f12a83fa78c4efaa28d75c78562e6512a97259"
+    },
+    {
+      "path": "docs/architecture/dirty-tree-inventory-redesign-drawer-gemini.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Slice 1 \u2014 Pre-existing dirty-tree inventory",
+      "contentSha256WithoutTrackingBlock": "1fcf2a4b99d8e7bbccd4c5ed652d269bb75090ea70c9a2912c56b800205ee91f"
+    },
+    {
+      "path": "docs/architecture/federation.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "`:core-federation` \u2014 Phase 6 architecture",
+      "contentSha256WithoutTrackingBlock": "428d4efe9e6d581b134f6cbab69fc7647fd977e89c17d7faab833e9a4ce515d6"
+    },
+    {
+      "path": "docs/architecture/hooks.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Phase 8 \u2014 Hooks",
+      "contentSha256WithoutTrackingBlock": "48d9c4cecc2af4307e9b3231ff82071ce6e021466b083ed461cabdcaf7d797c6"
+    },
+    {
+      "path": "docs/cloud-and-credential-management.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Cloud, credentials and environment management",
+      "contentSha256WithoutTrackingBlock": "6c69bb8c8dffcd33a57262b484b58a26f94a0dbbde2c6a2be8b832738584295c"
+    },
+    {
+      "path": "docs/code-workspace-and-permissions.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Code workspace and permission setup",
+      "contentSha256WithoutTrackingBlock": "6c33c81cb1f8d096120c890989906de15dd1866312944d30f803f97c5ab419d1"
+    },
+    {
+      "path": "docs/decisions/0001-user-driven-choices.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "ADR 0001 \u2014 Resolve conflicting constraints via user-driven choices",
+      "contentSha256WithoutTrackingBlock": "b72a9b9ebd3b15fe623c43d0d7eef26f0f0f8f06a00265af3208b00119fc47e9"
+    },
+    {
+      "path": "docs/declarative-federation-roadmap.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Declarative deployment and federated clusters",
+      "contentSha256WithoutTrackingBlock": "b8f86134e2022c018977525d5aeef907cdf161bf39c45279f4ecceaae99ef5c2"
+    },
+    {
+      "path": "docs/desktop/DOLPHIN.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Two separate Dolphin model integrations",
+      "contentSha256WithoutTrackingBlock": "a840eb240c8a4495c8dd1ad3725b057a980e450acd42f5b33a847bccb45d0aa6"
+    },
+    {
+      "path": "docs/desktop/ENGINE_AND_SHARDING.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop engine and shared sharding admission",
+      "contentSha256WithoutTrackingBlock": "f708f8a23782ceaf0e92ca47c32553ce724ec2bc3a2655960d534637f5d0fce2"
+    },
+    {
+      "path": "docs/desktop/RECOVERY.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop recovery, self-healing and reset",
+      "contentSha256WithoutTrackingBlock": "b258e37ed580979521f7f5e041a1a7d94e79734c4450724d9ee649995602670c"
+    },
+    {
+      "path": "docs/desktop/SEARCH_AND_MANAGEMENT.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Management categories and search",
+      "contentSha256WithoutTrackingBlock": "c137d36598abee35fa426316bee98fb756d308676218be121b2d57cd9354bd1b"
+    },
+    {
+      "path": "docs/desktop/SECURITY_AND_RUNTIME.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop/server security, automation, VM and container design",
+      "contentSha256WithoutTrackingBlock": "d0e6fd9e51634db3becc05ccd2a022fe0d11efb55fe03061b822d66e7f19b672"
+    },
+    {
+      "path": "docs/desktop/STABILIZATION_BUILD_GUIDE.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Stabilization build and acceptance guide",
+      "contentSha256WithoutTrackingBlock": "1347265eb542ee00b1abfbcb6cbd04237cc6a3a08930dceea026f9c5ddc43b7f"
+    },
+    {
+      "path": "docs/desktop/STABILIZATION_NEXT.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop-only stabilization \u2014 next implementation slices",
+      "contentSha256WithoutTrackingBlock": "69f0cb9dbd54f3a07cc5528a39e9ce017a2548e9b3d765421c6a9b0eb68ba8de"
+    },
+    {
+      "path": "docs/desktop/STABILIZATION_PLAN.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop stabilization milestone \u2014 proposed plan",
+      "contentSha256WithoutTrackingBlock": "c4cc6de813d0e3c23e5a5fc5f139150b743f7219869c3c201519e4d775e10be6"
+    },
+    {
+      "path": "docs/desktop/TERMINAL.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Desktop terminal and Ghostty SSH",
+      "contentSha256WithoutTrackingBlock": "03d367fd1ad592530ccc0372b5af83277cd63f994af2120e58e60e1b385ac68f"
+    },
+    {
+      "path": "docs/device-aware-model-runtime.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Device-aware local models, context and KV cache",
+      "contentSha256WithoutTrackingBlock": "88896e5c3369423a7c817f92fdd5a1fca73c74fb0e19868fe35422c4071e02b8"
+    },
+    {
+      "path": "docs/history/BUGS-before-studio-2026-10-10.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "BUGS \u2014 open issues, repro steps, workarounds, owner",
+      "contentSha256WithoutTrackingBlock": "8e27afb534ee0a43df63be65f9c5c37ae4e43c1bcbb406493a33e5e900de4f21"
+    },
+    {
+      "path": "docs/history/PLAN-before-2026-10-06.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "PLAN \u2014 working state + roadmap",
+      "contentSha256WithoutTrackingBlock": "8c790e4cb561526b31ce27728eb1cf1833e38fc85def4bcf627a2fc03a4b81b5"
+    },
+    {
+      "path": "docs/history/PLAN-before-studio-2026-10-10.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Meshlit implementation plan",
+      "contentSha256WithoutTrackingBlock": "dbd9c28864cfc6e734c9581d2cf9d7dbbbd43004084b7527783087fcd46972bf"
+    },
+    {
+      "path": "docs/history/PROGRESS-before-2026-10-06.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Meshlit \u2014 Project Progress Journal",
+      "contentSha256WithoutTrackingBlock": "a2640b7be1f5caa141117d8222289bf62b08fc669b95d10d0176090e8892f6f2"
+    },
+    {
+      "path": "docs/history/REQUESTS-before-studio-2026-10-10.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "REQUESTS \u2014 full feature / bug / design history (chronological)",
+      "contentSha256WithoutTrackingBlock": "d93afb19dc7e8549bb128946723b60657d67d15ddf49bbd2bfea028fb18ddc0a"
+    },
+    {
+      "path": "docs/history/SESSION_HANDOFF-2026-10-07.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Meshlit session handoff \u2014 saved after beta publication",
+      "contentSha256WithoutTrackingBlock": "22676f00c0868a4ea056809d3e456bd41c6b86b480e9eed0dcd5d1164423d2ae"
+    },
+    {
+      "path": "docs/history/TODO-before-studio-2026-10-10.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Meshlit \u2014 Active TODO List",
+      "contentSha256WithoutTrackingBlock": "cf2f70185c8a1200b61726c803461bd6e99d5c29a6bb4948c5ddbe12c841ded0"
+    },
+    {
+      "path": "docs/history/bring-your-own-server-before-2026-10-06.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Bring-your-own MCP server",
+      "contentSha256WithoutTrackingBlock": "a03da57f35a9e6253b2949e8f3ca17fc970a218dd388bc1691050607e8430ab2"
+    },
+    {
+      "path": "docs/history/current-state-upstream-baseline.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Current-state baseline",
+      "contentSha256WithoutTrackingBlock": "e0c33a664715d88a242482723d7e0f8669bed2b7a34794c1647169c8ff732c7e"
+    },
+    {
+      "path": "docs/hugging-face-integration.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Hugging Face integration",
+      "contentSha256WithoutTrackingBlock": "9beb816404d9d81505d51f48124d3f9358d663d2aabedab38ef63c581847b355"
+    },
+    {
+      "path": "docs/hyperl/ANDROID_ALPHA6.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "HyperL alpha.6 in Meshlit",
+      "contentSha256WithoutTrackingBlock": "daf760214016debfe5f0ddcd5f88763b8e912aec918616d20febb727521cc307"
+    },
+    {
+      "path": "docs/hyperl/APP_AND_LIBRARY.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "HyperL libraries in Meshlit",
+      "contentSha256WithoutTrackingBlock": "410b5ff685544fb77261d025fcf82b8046cd623a52ab8bbb636f43d11302bd07"
+    },
+    {
+      "path": "docs/hyperl/LANGUAGE_V1.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "HyperL v1 implementation and compatibility",
+      "contentSha256WithoutTrackingBlock": "be0a58d2bc5148ec2f0741d6fdcbb33b5c1a65e637ea61506fc2e2dcae91aa33"
+    },
+    {
+      "path": "docs/hyperl/REQUESTS_AND_PLAN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "HyperL and Meshlit: owner requests and build plan",
+      "contentSha256WithoutTrackingBlock": "ed813ee7ea6c323129a59fb5b7af6f93d76237bdb1cf16d03317592a462160f1"
+    },
+    {
+      "path": "docs/hyperl/RESEARCH_2026_10_08.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "HyperL research and provenance \u2014 2026-10-08",
+      "contentSha256WithoutTrackingBlock": "ee0ce3db833d280f591cab24357092d772377f818b8d4cf78fc26616a264f0d3"
+    },
+    {
+      "path": "docs/hyperl/VALIDATION_2026_10_08.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "HyperL local validation \u2014 2026-10-08",
+      "contentSha256WithoutTrackingBlock": "d65b1a62981a2ae5f7fc1d48fdcbbde2d8801c1bdcd169e31ad03bbee1cbdaf3"
+    },
+    {
+      "path": "docs/improvement-and-stryker-plan.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit review and implementation plan",
+      "contentSha256WithoutTrackingBlock": "298d97b8a92eea9a765fc1d763b3600d6687a03fcacad4c5c6c5c683aee483ec"
+    },
+    {
+      "path": "docs/journal/2026-08-01-phase-0-planning.md",
+      "class": "historical",
+      "scope": "dated design/evidence snapshot",
+      "title": "Journal \u2014 2026-08-01 \u2014 Phase 0 planning session",
+      "contentSha256WithoutTrackingBlock": "e2dee3c44e2b0696b8ed6f964e8eb5b641a60ed5083b4998ebb0ace76030da8c"
+    },
+    {
+      "path": "docs/layer-pipeline-and-recovery.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Layer execution, heterogeneous devices and recovery",
+      "contentSha256WithoutTrackingBlock": "69946d2ac9e7037a803b88a6da3213b7a8f2d6a7b717705e5c7d9ece43d59b62"
+    },
+    {
+      "path": "docs/lint-findings.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Final beta lint evidence (2026-10-07)",
+      "contentSha256WithoutTrackingBlock": "d631794a0e1231bec7fc490f5cfdee6dac79a287a79fefa0ce3a53e222f05028"
+    },
+    {
+      "path": "docs/local-model-behavior-and-training.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Custom local models and real fine-tuning",
+      "contentSha256WithoutTrackingBlock": "81cc293f539058fe418a500ead578b4ee616f345520f880ef9ba1747470d3996"
+    },
+    {
+      "path": "docs/mcp/bring-your-own-server.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "External MCP and OpenClaw integration",
+      "contentSha256WithoutTrackingBlock": "56f7c7de44459ae9548d6347b36c6b5f4338e909608a65ee4fa258099a61c150"
+    },
+    {
+      "path": "docs/media-iot-and-radio-nodes.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "General AI nodes: media, IoT and radio",
+      "contentSha256WithoutTrackingBlock": "304de08c5f0ea61490df1e35e3b0801467546f5adefaf23fc457385511d78a59"
+    },
+    {
+      "path": "docs/model-router-and-media.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Scenario routing, attachments and media",
+      "contentSha256WithoutTrackingBlock": "d147c640e8ef865bd50c58da4db7660cf1a9ad2b237a6f09e580da08553ef62c"
+    },
+    {
+      "path": "docs/models/catalog-classification.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Model catalog \u2014 classification matrix",
+      "contentSha256WithoutTrackingBlock": "099a85d1aaa2885c35ecd10ab1dbe2e5371a55ba5d368767fee05e3c21a927cd"
+    },
+    {
+      "path": "docs/native-checkpoints.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Native CPU checkpoints and usage correctness",
+      "contentSha256WithoutTrackingBlock": "1403a7359e186f77e6b9b8a2b35be5f6729cfdf0bd6c7e7d68bef3dbac152bc2"
+    },
+    {
+      "path": "docs/old-android-reuse-review.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Existing Android project reuse review \u2014 2026-10-06",
+      "contentSha256WithoutTrackingBlock": "6718902f3c607063d83a5323e66b58a8e9c6899c332cad837df4d691371d50af"
+    },
+    {
+      "path": "docs/online-power-peripherals-and-configuration.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Online models, power, peripherals and portable configuration",
+      "contentSha256WithoutTrackingBlock": "c6f3e20e1a189da83a4ee335eadc0f184102e0559bdc2ef989572b9936008ce1"
+    },
+    {
+      "path": "docs/openclaw-integration.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "OpenClaw in Meshlit",
+      "contentSha256WithoutTrackingBlock": "293c495bed4de99ff069241a598eb3841ebf4f127dd75b08c3d4e5c8c7c472a8"
+    },
+    {
+      "path": "docs/physical-device-test-guide.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Physical Android acceptance: Samsung and phone clusters",
+      "contentSha256WithoutTrackingBlock": "e9abbacaf07081f225ffe9fc7f4d10662d7006aa9d46419f289c87ceb1b78e9c"
+    },
+    {
+      "path": "docs/platform-and-backend-contract.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Portable host and accelerator contract",
+      "contentSha256WithoutTrackingBlock": "9d0a0852aab3cea987103a24bfa3bd1494791830298dd5d4e4b08fd52d824c59"
+    },
+    {
+      "path": "docs/release-checklist.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Release gates by platform and channel",
+      "contentSha256WithoutTrackingBlock": "6d62e35cb22ee6cef42052249a4087aae0b4987dfa03c3e7ba87cea8d825a0e4"
+    },
+    {
+      "path": "docs/remaining-engine-bugs.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Remaining model-engine correctness gates",
+      "contentSha256WithoutTrackingBlock": "83f508c546c0fad73130a1c64c6eb68eb8129a0c9d964379ffbb8a35d61dbf86"
+    },
+    {
+      "path": "docs/runanywhere-browser-and-llama.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "RunAnywhere sources and browser assistant",
+      "contentSha256WithoutTrackingBlock": "317c44c8fae2f81414aa309ad65ea729e17e60b9593fd35fd36fb432340e11ab"
+    },
+    {
+      "path": "docs/runtime-and-sandbox.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Optional runtime, terminal and VM",
+      "contentSha256WithoutTrackingBlock": "7d2900009a99930e622f407db29b4e56d24c9c57d53eb9a5e47df106ead4cb25"
+    },
+    {
+      "path": "docs/task-manager.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Task manager",
+      "contentSha256WithoutTrackingBlock": "bb8af855bbad466269ceb5dccd4fc7b86014387f4796d6c4182a7a2c85cd9103"
+    },
+    {
+      "path": "docs/typed-agent-backend.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Typed agent backend, version 1",
+      "contentSha256WithoutTrackingBlock": "7fccd6416cb3940ae9bb6292add597676b969e0a1eef6be2f2d11f04b03d05b6"
+    },
+    {
+      "path": "docs/web-api-and-devices.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Authenticated web/API companion and local groups",
+      "contentSha256WithoutTrackingBlock": "e49ca04c7abf67f057679d460bb3749e1e017b9468bf59a5ca491c19158ae5a0"
+    },
+    {
+      "path": "examples/training/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Distributed training config examples",
+      "contentSha256WithoutTrackingBlock": "c5777b713ddf25e57a5ca6acf6b7da12f1740c4284991a1b46b25a0eda3651e0"
+    },
+    {
+      "path": "ohosApp/README.md",
+      "class": "active",
+      "scope": "platform preview; NEXT device/build acceptance remains open",
+      "title": "Meshlit native HarmonyOS NEXT preview",
+      "contentSha256WithoutTrackingBlock": "1311b27d132e11065b4ad190693664c296a537f8e4d1504fb33477ba037a74fd"
+    },
+    {
+      "path": "tests/e2e/README.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit E2E \u2014 Playwright test harness",
+      "contentSha256WithoutTrackingBlock": "47336dc04910e2f3ef0cb4a83166698930144888f79701bea263560b56ef3788"
+    },
+    {
+      "path": "tests/e2e/node_modules/@playwright/test/README.md",
+      "class": "third-party",
+      "scope": "dependency text",
+      "title": "\ud83c\udfad Playwright",
+      "contentSha256WithoutTrackingBlock": "0004e9cc683616bc89028cc5bcdd730285689b4b73d58172afbaa3db18c5b0b2"
+    },
+    {
+      "path": "tests/e2e/node_modules/@types/node/README.md",
+      "class": "third-party",
+      "scope": "dependency text",
+      "title": "Installation",
+      "contentSha256WithoutTrackingBlock": "9902d6cd4f3024f90d9c916c60c54ea4e1e235567056a90f0aee6346758f7ef6"
+    },
+    {
+      "path": "tests/e2e/node_modules/playwright-core/README.md",
+      "class": "third-party",
+      "scope": "dependency text",
+      "title": "playwright-core",
+      "contentSha256WithoutTrackingBlock": "d16ff7f8e38fa1fc954f695ad551cdc118d9c9bdd5f3d83203901f4c317d7d7e"
+    },
+    {
+      "path": "tests/e2e/node_modules/playwright/README.md",
+      "class": "third-party",
+      "scope": "dependency text",
+      "title": "\ud83c\udfad Playwright",
+      "contentSha256WithoutTrackingBlock": "0004e9cc683616bc89028cc5bcdd730285689b4b73d58172afbaa3db18c5b0b2"
+    },
+    {
+      "path": "tests/e2e/node_modules/undici-types/README.md",
+      "class": "third-party",
+      "scope": "dependency text",
+      "title": "undici-types",
+      "contentSha256WithoutTrackingBlock": "c8cced6ec588c55b07e35733258cb7d6b63e3426ee7490aa9267aab4bda0fb20"
+    },
+    {
+      "path": "vendored/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "vendored/",
+      "contentSha256WithoutTrackingBlock": "b9c34359128e3ae9995912dd2889a1f38fc08b9e2621c2cd60e95468e58912b8"
+    },
+    {
+      "path": "vendored/licenses/colibri/THIRD_PARTY_NOTICES.md",
+      "class": "third-party",
+      "scope": "dependency text",
+      "title": "Third-party notices",
+      "contentSha256WithoutTrackingBlock": "283fa1a9c27a8930340add500f2f0453dd15568ec38c21a1fff4f3d1f716ebc7"
+    }
+  ]
+}

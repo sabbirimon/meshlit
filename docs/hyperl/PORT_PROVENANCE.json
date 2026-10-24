@@ -1,0 +1,35 @@
+{
+  "format": "hyperl-port-provenance/1",
+  "upstream": "https://github.com/sabbirimon/HyperL",
+  "sourceCommit": "67b30e09741f4bba1672a891644fc73abb1f9855",
+  "applicationVersion": "0.1.0-alpha.5",
+  "license": "Apache-2.0",
+  "normalization": "Replace the package declaration only: com.meshlit.core.gpu -> org.hyperl",
+  "files": [
+    {
+      "file": "HyperL.kt",
+      "normalizedSha256": "94a5a8a5b7f053bb083b262d7d37343c62539c9d194dc72ca2a29aef7f31f8fb"
+    },
+    {
+      "file": "HyperLAdmission.kt",
+      "normalizedSha256": "aa80fb50ee8dc0b2b826b291a6c78b4c47627f54efbe78393c9f5c433fd05559"
+    },
+    {
+      "file": "HyperLCodec.kt",
+      "normalizedSha256": "c94af3ca8a6f2f26adac32ff5fb7ddca67d6e994be3e2ac378379458be575ed0"
+    },
+    {
+      "file": "HyperLLibrary.kt",
+      "normalizedSha256": "ed4c028f2be2ab32d6b9066af8c2973b2a7723fe82830b2d5c664069b8835b98"
+    },
+    {
+      "file": "HyperLSourceEmitter.kt",
+      "normalizedSha256": "5a232bae4ac65f5bc39b1beba217a02f3aba9bb5521d2f09b8e51f1ccead2d7e"
+    },
+    {
+      "file": "PortableEmitter.kt",
+      "normalizedSha256": "ea7e017b61a6f769b507a6ff2267f58f58ddc1db414062689f696d7e6da9b0cd"
+    }
+  ],
+  "upstreamCommit": "d330d2bc46c427421c9d3dc04aec9ec2e9170b76"
+}

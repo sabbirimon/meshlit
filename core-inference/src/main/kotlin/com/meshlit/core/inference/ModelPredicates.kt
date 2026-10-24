@@ -43,8 +43,15 @@ object ModelPredicates {
      * covers both.
      */
     fun isDownloadedOnDisk(context: Context, id: String): Boolean {
-        val file = importedModelFile(context, id)
-        return file.exists() && file.length() > 0L
+        return installedModelFile(context, id) != null
+    }
+
+    fun installedModelFile(context: Context, id: String): File? {
+        require(id.matches(Regex("[A-Za-z0-9._-]{1,180}")))
+        val candidates = listOf(importedModelFile(context, id),
+            File(context.filesDir, "bundled-models/$id.gguf"),
+            File(context.filesDir, "RunAnywhere/Models/LlamaCpp/$id/$id.gguf"))
+        return candidates.firstOrNull { it.isFile && it.length() >= 24 }
     }
 
     /** Canonical on-disk file for an imported or bundled model. */

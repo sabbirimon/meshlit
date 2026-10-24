@@ -401,7 +401,17 @@ fun V2SessionsScreen(onBack: () -> Unit = {}) {
         headline = "Sessions",
         subtitle = "Agent session history",
     ) {
-        ScriptsScreen(onOpenDrawer = onBack)
+        var terminal by androidx.compose.runtime.remember { mutableStateOf(true) }
+        Column(Modifier.fillMaxSize()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.TextButton(onClick = { terminal = true }) { Text("Terminal") }
+                androidx.compose.material3.TextButton(onClick = { terminal = false }) { Text("Scripts") }
+            }
+            Box(Modifier.weight(1f)) {
+                if (terminal) com.meshlit.terminal.TerminalScreen(onOpenDrawer = onBack)
+                else ScriptsScreen(onOpenDrawer = onBack)
+            }
+        }
     }
 }
 

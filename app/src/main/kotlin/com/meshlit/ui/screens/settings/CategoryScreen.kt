@@ -55,7 +55,7 @@ import com.meshlit.R
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryScreen(
+private fun LegacyCategoryScreen(
     category: SettingsCategory,
     onBack: () -> Unit,
     onOpenCustomPalette: (() -> Unit)? = null,
@@ -263,4 +263,19 @@ private fun categorySections(
             matches = visible,
         ),
     )
+}
+@Composable fun CategoryScreen(category:SettingsCategory,onBack:()->Unit,onOpenCustomPalette:(()->Unit)?=null,omitHeader:Boolean=false) {
+    val destination=when(category){
+        SettingsCategory.THEME -> "appearance"
+        SettingsCategory.MODELS -> "models"
+        SettingsCategory.DEVICE -> "device"
+        SettingsCategory.NOTIFICATIONS -> "notifications"
+        SettingsCategory.CLUSTER -> "network"
+        SettingsCategory.PERFORMANCE -> "monitor"
+        SettingsCategory.PRIVACY -> "about"
+        SettingsCategory.DEVELOPER -> "logs"
+        SettingsCategory.HOOKS -> "hooks"
+        else -> "about"
+    }
+    com.meshlit.ui.modern.ModernSettingsScreen(destination,onBack)
 }

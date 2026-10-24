@@ -113,6 +113,9 @@ fun NearbyDiscoveryPanel(
             port = app.httpServerPort,
             tierTag = app.capabilityTier.name,
             fingerprint = "", // populated once the trust store lands
+            displayName = app.displayName,
+            manufacturer = android.os.Build.MANUFACTURER.orEmpty(),
+            model = android.os.Build.MODEL.orEmpty(),
         )
     }
 
@@ -270,7 +273,7 @@ private fun DiscoveredPeerRow(
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "meshlit-${peer.nodeId.take(8)}",
+                text = peer.displayName.ifBlank { "Device ${peer.nodeId.take(8)}" },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -296,18 +299,15 @@ private fun DiscoveredPeerRow(
     }
 }
 
-/** Convert a [PeerAdvertisement] into a fully-trusted
- *  [RemoteEndpoint] entry the user can route through. The peer
- *  comes pre-trusted because the user explicitly tapped "Add"
- *  — this is the same trust model as QR pairing. */
+/** A discovery advertisement is a lead for pairing, never proof of identity. */
 private fun PeerAdvertisement.toRemoteEndpoint(): RemoteEndpoint = RemoteEndpoint(
-    id = "nsd-${UUID.randomUUID()}",
-    name = "meshlit-${nodeId.take(8)}",
+    id = "node-$nodeId",
+    name = displayName.ifBlank { "Device ${nodeId.take(8)}" },
     baseUrl = "http://$host:$port",
     apiKey = "",
     protocol = EndpointProtocol.MESHLIT_SSE,
     allowInsecure = true, // local LAN; HTTPS isn't always available
-    trusted = true,        // user explicitly added via Scan panel
+    trusted = false,
     addedAtMs = System.currentTimeMillis(),
     lastSeenMs = System.currentTimeMillis(),
     notes = "nsd-discovered;fingerprint=$fingerprint",

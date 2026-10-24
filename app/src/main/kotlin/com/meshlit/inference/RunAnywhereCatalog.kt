@@ -2,58 +2,10 @@ package com.meshlit.inference
 
 import com.meshlit.core.inference.RunAnywhereCatalogEngine
 
-/**
- * Curated list of GGUF model ids the RunAnywhere SDK 0.20.12
- * knows how to download and serve.
- *
- * The upstream SDK does not currently expose a `listAvailable()`
- * or `catalog()` API — only `downloadModelStream(RAModelInfo(id))`
- * with a fixed set of known ids. So we maintain this list by hand,
- * mirroring the upstream README's recommended starters plus a
- * couple of Hugging Face's most-downloaded GGUFs. When the SDK
- * ships an enumeration API this whole object becomes a one-line
- * wrapper:
- *
- *     val all: List<Entry> = RunAnywhere.listAvailable().map { it.toEntry() }
- *
- * Each [Entry] mirrors the field shape of
- * [com.meshlit.core.inference.RunAnywhereCatalogEngine.Entry] so
- * the Catalog screen's Compose row can render both the live SDK
- * fetch and the offline fallback without branching on type.
- *
- * **Multi-source policy.** Every entry carries a `sources` list
- * — one or more [RunAnywhereCatalogEngine.DownloadSource] rows
- * the SDK can register + download. The Catalog screen surfaces
- * the source list as a chip group so the user can pick between
- * official, community requant, and mirror variants of the same
- * architecture. The order in `sources` is priority order
- * (lowest `priority` = preferred); the SDK plans against the
- * first reachable source.
- *
- * Why multiple sources: the same architecture (Qwen 2.5 1.5B,
- * Phi-3-mini, etc.) is published by both the upstream owner and
- * a community requant project (bartowski, unsloth). The
- * community requant is usually a smaller or better-tuned GGUF;
- * the upstream is the canonical source. The user picks.
- *
- * Quantization policy: Q4_K_M and Q8_0 only. These are the only
- * quants `libllama.so` (shipped by `runanywhere-llamacpp:0.20.12`)
- * can decode without an explicit `Q4_0` / `Q5_1` re-link. We pick
- * the lighter quant per family (Q8_0 for the 360M SmolLM2,
- * Q4_K_M for the 1-2B tier) so the user's first download lands
- * quickly even on cellular.
- *
- * Size budget: dense models cap at Phi-3-mini (2.3 GB) for now.
- * Bigger models belong on the cluster / sharding path that lives
- * on the Devices screen — a separate plan. MoE entries (Qwen3-A3B,
- * Granite-Tiny-MoE, Mixtral) are intentionally oversize because
- * they're tagged and the user picks them knowingly.
- *
- * Why a small list and not a long scraped one: the SDK's enrollment
- * is currently a manual id → URL mapping on the upstream side, and
- * renaming an id silently breaks every consumer. A short, audited
- * list is safer than a long scraped one.
- */
+/** Curated published GGUF sources. Sizes are estimates, not measured downloads.
+ * The host registers selected source URLs with RunAnywhere. Native architecture
+ * and quantization compatibility are determined by the loader, not this catalog.
+ * The APK starter is selected by the verified bundled-model.json manifest. */
 object RunAnywhereCatalog {
 
     /**
@@ -151,20 +103,7 @@ object RunAnywhereCatalog {
      * tokens fastest) at the top.
      */
     val all: List<Entry> = listOf(
-        // The bundled starter — SmolLM2-360M-Instruct Q8_0. The
-        // APK ships this file in `assets/models/`; the row renders
-        // a green "bundled" chip + SMALL size class. The FGS
-        // auto-loads it on first bind so the user sees real tokens
-        // within seconds of cold start. The asset basename matches
-        // the SDK's `DEFAULT_MODEL_ID`, so no rename step is
-        // required between extraction and load.
-        //
-        // Sources: bundled (priority 1, no URL) + Hugging Face
-        // upstream Q8_0 (priority 20) + bartowski Q4_K_M
-        // (priority 30, smaller requant). The bundled copy is
-        // preferred; the Q8_0 fallback is the canonical HF URL;
-        // the Q4_K_M requant is the smaller alternative if the
-        // user wants to free space later.
+        // Optional 360M upgrade; the actual APK starter is described by bundled-model.json.
         Entry(
             id = "smollm2-360m-instruct-q8_0",
             displayName = "SmolLM2-360M-Instruct",
@@ -178,7 +117,7 @@ object RunAnywhereCatalog {
             quant = RunAnywhereCatalogEngine.Quant.Q8_0,
             sizeClass = RunAnywhereCatalogEngine.SizeClass.SMALL,
             modelType = RunAnywhereCatalogEngine.ModelType.CHAT,
-            bundled = true,
+            bundled = false,
             sources = listOf(
                 RunAnywhereCatalogEngine.DownloadSource(
                     id = "smollm2-360m-instruct-q8_0@HuggingFaceTB:Q8_0",

@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import kotlinx.serialization.Serializable
 
 /**
@@ -29,12 +30,23 @@ import kotlinx.serialization.Serializable
  *  - **Animated gradient** — same stops, but the brush drifts over
  *    `cycleSeconds` (default 12s — slow, per the user's spec).
  */
+enum class UiFont(val label:String) { FIGTREE("Figtree"), SYSTEM("System sans"), SERIF("Serif"), MONO("Maple Mono") }
+enum class SurfaceStyle(val label:String) { SOLID("Solid"), GLASS("Tinted glass") }
+enum class WorkspaceLayout(val label:String) { ADAPTIVE("Adaptive"), FOCUS("Focus") }
+enum class SidebarStyle(val label:String) { CARDS("Cards"), ROWS("Rows") }
+
 @Immutable
 data class MeshlitThemeConfig(
-    val accentHue: AccentHue = AccentHue.MESHLIT,
-    val basePalette: BasePalette = BasePalette.MIDNIGHT,
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val accentHue: AccentHue = AccentHue.EMBER,
+    val basePalette: BasePalette = BasePalette.GRAPHITE,
+    val themeMode: ThemeMode = ThemeMode.DARK,
+    val dynamicColors: Boolean = false,
     val fontScale: Float = 1.0f,
+    val uiFont: UiFont = UiFont.FIGTREE,
+    val uiLanguage: com.meshlit.workspace.WorkspaceLanguage = com.meshlit.workspace.WorkspaceLanguage.ENGLISH,
+    val surfaceStyle: SurfaceStyle = SurfaceStyle.SOLID,
+    val workspaceLayout: WorkspaceLayout = WorkspaceLayout.ADAPTIVE,
+    val sidebarStyle: SidebarStyle = SidebarStyle.CARDS,
     val densityScale: Float = 1.0f,
     val animationsEnabled: Boolean = true,
     val highContrast: Boolean = false,
@@ -98,13 +110,16 @@ enum class AccentHue(val displayName: String, val primary: Color, val primaryCon
     SKY("Sky", Color(0xFF38BDF8), Color(0xFF0369A1)),
     INDIGO("Indigo", Color(0xFF6366F1), Color(0xFF3730A3)),
     ROSE("Rose", Color(0xFFF43F5E), Color(0xFF9F1239)),
+    EMBER("Studio orange", Color(0xFFFF965C), Color(0xFF8C431D)),
     AMBER("Amber (RunAnywhere orange)", MeshlitAmber, MeshlitAmberDim),
     EMERALD("Emerald", MeshlitEmerald, MeshlitEmeraldDim),
     FUCHSIA("Fuchsia", Color(0xFFD946EF), Color(0xFF86198F)),
+    PEARL("Pearl", Color(0xFFE5E7EB), Color(0xFF374151)),
     SLATE("Slate", Color(0xFF64748B), Color(0xFF334155)),
 }
 
 enum class BasePalette(val displayName: String) {
+    GRAPHITE("Graphite"),
     MIDNIGHT("Midnight (default)"),
     DUSK("Dusk"),
     DAWN("Dawn"),
@@ -183,6 +198,7 @@ fun buildColorScheme(
     }
     val base = config.basePalette
     val (background, surface, surfaceVariant, outline, textPrimary, textSecondary) = when (base) {
+        BasePalette.GRAPHITE -> PaletteShades(Color(0xFF0F1012),Color(0xFF17181B),Color(0xFF25262B),Color(0xFF44464E),Color(0xFFF4F5F7),Color(0xFFB8BBC4))
         BasePalette.MIDNIGHT -> MeshlitMidnightShades
         BasePalette.DUSK -> MeshlitDuskShades
         BasePalette.DAWN -> MeshlitDawnShades
@@ -192,13 +208,21 @@ fun buildColorScheme(
         BasePalette.FOREST -> MeshlitForestShades
         BasePalette.RUNANYWHERE -> MeshlitRunAnywhereShades
     }
-    val isLight = base == BasePalette.PAPER
+    // Custom surfaces can be light even when the selected base palette is dark.
+    // Derive foreground colors from the surface the user will actually see.
+    val visibleSurface = customResolved?.surface ?: surface
+    val visibleSurfaceVariant = customResolved?.surfaceVariant ?: surfaceVariant
+    val isLight = customResolved?.let { visibleSurface.luminance() > 0.45f } ?: (base == BasePalette.PAPER)
+    val visibleTextPrimary = if (customResolved == null) textPrimary else
+        if (isLight) Color(0xFF17202B) else Color(0xFFF4F5F7)
+    val visibleTextSecondary = if (customResolved == null) textSecondary else
+        if (isLight) Color(0xFF405163) else Color(0xFFC5CCD5)
 
     // Phase 12.2 — when a custom palette is active, use those
     // values directly. Otherwise fall back to the curated
     // AccentHue-derived primary / secondary / tertiary.
     val primary = customResolved?.primary ?: run {
-        if (config.highContrast && isLight) {
+        if (isLight) {
             accentContainer(config.accentHue)
         } else {
             accentPrimary(config.accentHue)
@@ -206,7 +230,7 @@ fun buildColorScheme(
     }
     val secondary = customResolved?.secondary ?: MeshlitCyan
     val tertiary = customResolved?.tertiary ?: MeshlitEmerald
-    val onPrimary = if (isLight) Color(0xFFFFFFFF) else Color(0xFF0A0E1A)
+    val onPrimary = if (primary.luminance() > 0.45f) Color(0xFF0A0E1A) else Color(0xFFFFFFFF)
 
     return if (isLight) {
         lightColorScheme(
@@ -217,16 +241,21 @@ fun buildColorScheme(
             onPrimaryContainer = customResolved?.primary ?: accentContainer(config.accentHue),
             secondary = secondary,
             onSecondary = Color(0xFF0A0E1A),
-            secondaryContainer = secondary.copy(alpha = 0.18f),
-            onSecondaryContainer = secondary,
+            secondaryContainer = primary.copy(alpha = 0.12f),
+            onSecondaryContainer = visibleTextPrimary,
             tertiary = tertiary,
             onTertiary = Color(0xFF0A0E1A),
-            background = background,
-            onBackground = textPrimary,
-            surface = surface,
-            onSurface = textPrimary,
-            surfaceVariant = surfaceVariant,
-            onSurfaceVariant = textSecondary,
+            background = if (customResolved == null) background else visibleSurface,
+            onBackground = visibleTextPrimary,
+            surface = visibleSurface,
+            surfaceContainerLowest = visibleSurface,
+            surfaceContainerLow = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.025f),
+            surfaceContainer = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.04f),
+            surfaceContainerHigh = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.065f),
+            surfaceContainerHighest = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.09f),
+            onSurface = visibleTextPrimary,
+            surfaceVariant = visibleSurfaceVariant,
+            onSurfaceVariant = visibleTextSecondary,
             outline = outline,
             outlineVariant = outline.copy(alpha = 0.5f),
             error = MeshlitError,
@@ -246,12 +275,17 @@ fun buildColorScheme(
             onTertiary = Color(0xFF0A0E1A),
             tertiaryContainer = tertiary.let { tint(it, 0.65f) },
             onTertiaryContainer = Color(0xFFFFFFFF),
-            background = background,
-            onBackground = textPrimary,
-            surface = surface,
-            onSurface = textPrimary,
-            surfaceVariant = surfaceVariant,
-            onSurfaceVariant = textSecondary,
+            background = if (customResolved == null) background else visibleSurface,
+            onBackground = visibleTextPrimary,
+            surface = visibleSurface,
+            surfaceContainerLowest = visibleSurface,
+            surfaceContainerLow = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.025f),
+            surfaceContainer = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.04f),
+            surfaceContainerHigh = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.065f),
+            surfaceContainerHighest = androidx.compose.ui.graphics.lerp(visibleSurface, visibleTextPrimary, 0.09f),
+            onSurface = visibleTextPrimary,
+            surfaceVariant = visibleSurfaceVariant,
+            onSurfaceVariant = visibleTextSecondary,
             outline = outline,
             outlineVariant = outline.copy(alpha = 0.5f),
             error = MeshlitError,

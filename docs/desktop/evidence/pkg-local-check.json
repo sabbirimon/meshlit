@@ -1,0 +1,14 @@
+{
+    "model": "Qwen2.5 1.5B Instruct · Q4_K_M",
+    "modelSha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "engine": "llama.cpp CPU AVX2/FMA/F16C",
+    "nativeContextVerified": 4096,
+    "loadSeconds": 10.002707442,
+    "answer": "- Protects data from loss if the computer crashes or gets damaged.\n- Allows for easy recovery of lost or corrupted files.\n- Helps maintain data integrity and accuracy.",
+    "outputTokens": 34,
+    "endToEndTokensPerSecond": 13.272287385047981,
+    "generationWithoutTokenRejected": true,
+    "loopbackModelMetadataPublic": true,
+    "unloadStoppedListener": true,
+    "scope": "Real bundled model generation on Intel Mac; no cloud, GPU, other-device or broad quality benchmark"
+}

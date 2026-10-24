@@ -25,9 +25,10 @@ class SinkSpanProcessor(
     override fun isStartRequired(): Boolean = false
 
     override fun onEnd(span: ReadableSpan) {
-        val attrs = span.attributes.asMap().mapKeys { it.key.key }
+        val safe = TelemetryPrivacy.span(span.toSpanData())
+        val attrs = safe.attributes.asMap().mapKeys { it.key.key }
             .mapValues { it.value.toString() }
-        sink.onSpan(span.name, attrs)
+        sink.onSpan(safe.name, attrs)
     }
 
     override fun isEndRequired(): Boolean = true

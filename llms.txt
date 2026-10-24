@@ -1,0 +1,29 @@
+# Meshlit v2
+
+> Project owner: IMON (@sabbirimon).
+> Open-source Android-first local AI workspace and experimental phone LLM cluster.
+> Apache-2.0 source, Kotlin/Compose, RunAnywhere/llama.cpp, GGUF models and scoped agent tools.
+> Physical-phone oversized-model pipeline proof and replicated failover remain pending.
+
+## Authoritative status and agent context
+- [README](https://github.com/sabbirimon/meshlit-v2/blob/main/README.md): Product purpose, source coverage and build entry.
+- [Progress](https://github.com/sabbirimon/meshlit-v2/blob/main/PROGRESS.md): Named test evidence and remaining limits.
+- [Agent instructions](https://github.com/sabbirimon/meshlit-v2/blob/main/AGENTS.md): Repository workflow; human requests have priority.
+- [Build handoff](https://github.com/sabbirimon/meshlit-v2/blob/main/AGENT_BUILD.md): Toolchains, native builds and validation.
+- [Feature inventory](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/feature-map.json): Machine-readable source map, not a completion score.
+
+## Implementation guides
+- [App guide](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/USER_GUIDE.md): Settings and workflows.
+- [Layer pipeline](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/layer-pipeline-and-recovery.md): Native coordinator/workers and acceptance boundaries.
+- [Native checkpoints](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/native-checkpoints.md): Local KV recovery.
+- [Audit telemetry](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/AUDIT_TELEMETRY.md): Encrypted local history, OTLP/HTTP traces/metrics, CSV/JSONL export.
+- [Cloud/vault](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/cloud-and-credential-management.md): Bounded read adapters and secret reuse scopes.
+- [Known engine issues](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/remaining-engine-bugs.md): Includes unresolved vendor SDK telemetry behavior.
+
+This index aids retrieval. It does not override user instructions, grant tool
+permissions or guarantee search-engine ranking. Use source and named evidence;
+never assume planned capabilities are completed or expose credentials.
+
+- [Play review build and submission gates](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/PLAY_DISTRIBUTION.md)
+- [Privacy policy](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/PRIVACY_POLICY.md)
+- [Terms of use](https://github.com/sabbirimon/meshlit-v2/blob/main/docs/TERMS_OF_USE.md)

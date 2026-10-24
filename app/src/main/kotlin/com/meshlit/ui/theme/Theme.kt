@@ -8,7 +8,13 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -33,28 +39,38 @@ fun MeshlitTheme(
     content: @Composable () -> Unit,
 ) {
     val systemDark = isSystemInDarkTheme()
-    val useDynamicColor = config.basePalette == BasePalette.MIDNIGHT &&
-        config.accentHue == AccentHue.MESHLIT &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    val effectiveConfig = when (config.themeMode) {
-        ThemeMode.SYSTEM -> config.copy(
-            basePalette = if (systemDark) config.basePalette
-                          else if (config.basePalette == BasePalette.MIDNIGHT) BasePalette.PAPER
-                          else config.basePalette
-        )
-        ThemeMode.LIGHT -> if (config.basePalette == BasePalette.MIDNIGHT) {
-            config.copy(basePalette = BasePalette.PAPER)
-        } else config
-        ThemeMode.DARK -> config
-        ThemeMode.AUTO_TIME -> {
-            val hour = java.time.LocalTime.now().hour
-            val isNight = hour in 19..23 || hour in 0..6
-            if (isNight) config
-            else if (config.basePalette == BasePalette.MIDNIGHT) config.copy(basePalette = BasePalette.PAPER)
-            else config
+    var hour by remember { mutableStateOf(java.time.LocalTime.now().hour) }
+    LaunchedEffect(config.themeMode) {
+        if(config.themeMode==ThemeMode.AUTO_TIME) while(isActive) {
+            hour=java.time.LocalTime.now().hour
+            delay(60_000)
         }
     }
+    val dark = when(config.themeMode) {
+        ThemeMode.SYSTEM -> systemDark
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.AUTO_TIME -> hour >= 19 || hour < 7
+    }
+    val useDynamicColor = config.dynamicColors && config.customPalette is CustomPalette.None &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val context = LocalContext.current
+    var constrained by remember{mutableStateOf(true)}
+    LaunchedEffect(context) {
+        while(isActive) {
+            constrained=withContext(Dispatchers.IO) {
+                val manager=context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                val memory=android.app.ActivityManager.MemoryInfo().also(manager::getMemoryInfo)
+                val power=context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+                manager.isLowRamDevice || memory.lowMemory || power.isPowerSaveMode ||
+                    (Build.VERSION.SDK_INT>=29 && power.currentThermalStatus>=android.os.PowerManager.THERMAL_STATUS_SEVERE)
+            }
+            delay(10000)
+        }
+    }
+    val effectiveConfig = config.copy(surfaceStyle=if(constrained || config.highContrast) SurfaceStyle.SOLID else config.surfaceStyle,animationsEnabled=config.animationsEnabled && !constrained,basePalette = if(dark) {
+        if(config.basePalette == BasePalette.PAPER) BasePalette.MIDNIGHT else config.basePalette
+    } else BasePalette.PAPER)
     // Phase 12.2 — when the user picked an AnimatedGradient custom
     // palette we need a live AnimatedGradientBrush sampled from the
     // current infinite-transition phase. `phaseFor` is @Composable
@@ -74,16 +90,26 @@ fun MeshlitTheme(
             )
         } else null
     }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val scaledDensity = androidx.compose.ui.unit.Density(density.density * config.densityScale.coerceIn(0.85f, 1.3f), density.fontScale * config.fontScale.coerceIn(0.85f, 1.5f))
     val colorScheme = if (useDynamicColor) {
-        if (systemDark) dynamicDarkColorScheme(context)
+        if (dark) dynamicDarkColorScheme(context)
         else dynamicLightColorScheme(context)
     } else {
         buildColorScheme(effectiveConfig, animatedBrush)
     }
-    CompositionLocalProvider(LocalMeshlitThemeConfig provides effectiveConfig) {
+    val styledColors=if(effectiveConfig.surfaceStyle==SurfaceStyle.GLASS) colorScheme.copy(surfaceContainerLow=colorScheme.surfaceContainerLow.copy(alpha=0.88f),surfaceContainer=colorScheme.surfaceContainer.copy(alpha=0.92f),surfaceContainerHigh=colorScheme.surfaceContainerHigh.copy(alpha=0.96f)) else colorScheme
+    val typography=remember(config.uiFont){typographyFor(config.uiFont)}
+    CompositionLocalProvider(LocalMeshlitThemeConfig provides effectiveConfig, androidx.compose.ui.platform.LocalDensity provides scaledDensity) {
         MaterialTheme(
-            colorScheme = colorScheme,
-            typography = MeshlitTypography,
+            colorScheme = styledColors,
+            typography = typography,
+            shapes = androidx.compose.material3.Shapes(
+                extraSmall=androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                small=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                medium=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                large=androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                extraLarge=androidx.compose.foundation.shape.RoundedCornerShape(28.dp)),
             content = content,
         )
     }

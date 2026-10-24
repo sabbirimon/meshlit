@@ -48,6 +48,9 @@ class StrategyDispatcher(
         localHost: String,
         localPort: Int,
     ): MeshlitResult<AveragedGradient> {
+        if(!localLoraTrainer.available) return MeshlitResult.Failure(
+            MeshlitError.Invalid("training_backend_unavailable: configure a real training host")
+        )
         // 1. Thermal guard.
         val rateFactor = thermalGuard.stepRateFactor()
         if (rateFactor <= 0.0f) {
@@ -56,10 +59,10 @@ class StrategyDispatcher(
             )
         }
 
-        // 2. Local gradient (synthetic in v0).
+        // 2. Real gradients only after an autograd backend exists.
         val localGradient = localLoraTrainer.computeLocalGradient(
             step = step,
-            loraRank = cfg.sharding.keepLastN,  // placeholder; real path uses config.loraRank
+            loraRank = cfg.sharding.keepLastN,
             seed = step,
         )
 

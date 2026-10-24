@@ -1,0 +1,8 @@
+{
+  "modelVersion": "26.0.0",
+  "name": "meshlit-next-preview",
+  "version": "1.0.0",
+  "description": "Experimental native HarmonyOS NEXT client",
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,186 @@
+HyperL Community and Enterprise License, Version 1.0
+SPDX reference: LicenseRef-HyperL-Community-1.0
+Copyright 2026 Sabbir Hassan Imon and respective contributors.
+Licensor for owner-controlled rights: Sabbir Hassan Imon.
+Licensing contact: sabbirimon@gmail.com
+
+1. Scope and prior rights
+
+This license governs HyperL material its rights holder first distributes under
+this license, including authorized later changes ("Covered Software"). It grants
+only rights the Licensor owns or is authorized to grant. Separately identified
+third-party licenses and earlier grants are not replaced.
+
+HyperL through commit 67b30e09741f4bba1672a891644fc73abb1f9855, including released
+versions through v0.1.0-alpha.5, was offered under Apache License 2.0. Those grants
+remain available for that material, including continued enterprise use and
+permitted forks/modifications. Unchanged material from that history does not lose
+its Apache rights in a later distribution. Only newly covered rights, not rights
+already granted under Apache or another license, depend on this license. The
+Apache text and scope history accompany this license.
+
+2. Definitions
+
+"You" means an individual or the legal entity on whose behalf software is used.
+"Group" includes that entity and entities controlling, controlled by or under
+common control with it, directly or indirectly. Control means power to direct
+management/policies or ownership of more than 50 percent of voting interests.
+Unrelated customers, suppliers or research collaborators are not affiliates
+merely because they work together.
+
+"Large Entity" means a Group meeting EITHER threshold: (a) consolidated annual
+gross revenue of at least US$10,000,000 in its most recently completed fiscal
+year, or an approved annual operating budget of at least US$10,000,000 where
+revenue is not an appropriate measure; or (b) 100 or more employees across the
+Group, including full-time and part-time employees. Intragroup revenue is not
+counted twice. Non-US amounts use a publicly quoted exchange rate at fiscal
+year end or, for a budget, its approval date. An entity without a completed
+fiscal year uses its approved current annual operating budget. Keep a reasonable
+written basis for classification; no personal employee data reporting is required.
+
+"Small Business" means a business whose Group is below BOTH thresholds. A
+subsidiary, contractor, service intermediary or legal form does not turn a Large
+Entity's own deployment into a Small Business deployment.
+
+"Developer Use" means creating, studying, modifying, building, testing, debugging,
+benchmarking, demonstrating or contributing software in a non-production
+development environment. It includes commercial application development and
+developers employed by Large Entities.
+
+"Research Use" means academic, educational or scientific investigation,
+experimentation, reproducibility, teaching or publication, including
+non-production industrial research. Funding or employment alone does not
+disqualify research. Routine operations or production service are not research
+merely because they are called a pilot, experiment or research project.
+
+"Production Use" means operating Covered Software for ongoing business or
+organizational operations, delivering a service, or embedding/deploying it in
+a product used operationally by You or Your customers. Genuine Developer Use,
+Research Use and individual personal use are excluded. A Large Entity's
+operational deployment remains its use when administered by an affiliate or
+contractor.
+
+3. Free permissions
+
+Subject to the conditions below, You may use, reproduce, study, modify and
+distribute Covered Software worldwide without a license fee for:
+  a. individual personal use;
+  b. Developer Use, without an organization-size limit;
+  c. Research Use, without an organization-size limit; and
+  d. Production Use by a Small Business or other entity below both thresholds.
+
+These permissions do not expire after six months. A developer's personal license
+does not authorize otherwise restricted Large Entity Production Use. Merely
+receiving independent results from a service is not itself using Covered Software.
+
+4. Six-month Large Entity production trial
+
+A Large Entity may make Production Use without a fee for one trial of six
+consecutive calendar months. It starts on the date its Group first makes
+Production Use requiring this license while meeting a Large Entity threshold.
+Use of independently Apache-licensed material does not start a trial. If a
+Small Business grows into a Large Entity, its trial starts when it first
+continues such Production Use after meeting a threshold; there are no retroactive
+fees for earlier eligible Small Business use.
+
+The trial ends at the start of the same numbered date six months later, or
+the final day of that month if the numbered date does not exist. Pausing,
+reinstalling, upgrading, changing hosts, creating an affiliate, renaming the
+organization or using a derivative does not restart or extend it. Combining
+Groups does not restart a trial already used by the deployment's operator.
+Record the dates internally; no telemetry, activation server or upload is required.
+
+To continue Large Entity Production Use after the trial, obtain a separate paid
+commercial license expressly accepted in writing by the Licensor and You before
+expiry. Prices, covered entities, duration, deployment scope, support, taxes
+and payment terms must be agreed in that document. This license creates no
+automatic subscription, invoice, retroactive fee or promised price. An enquiry,
+pending negotiation or self-assessed payment is not a commercial license.
+
+Without an effective agreement, stop the affected Production Use when the trial
+expires. Free eligible uses and independent Apache/third-party rights remain.
+You need not delete Your own inputs or independent outputs.
+
+5. Redistribution and derivatives
+
+When distributing Covered Software or derivatives containing it, retain this
+license, applicable copyright/attribution notices, NOTICE, Apache history and
+third-party notices; clearly identify modifications. Source/binary distribution
+is permitted with or without a fee under these conditions. Inform recipients
+of the same use conditions for Covered Software. You cannot grant broader
+rights to it, remove the enterprise condition, or grant a new trial to a Group
+that has already used its trial. Recipients receive rights from the applicable
+rights holder, not an assertion that You own their copyright.
+
+Independent software merely calling or linking to HyperL may use its own
+license. Recipients still need applicable rights for Covered Software they
+actually deploy. This license requires no disclosure of independent application
+source, user data, model weights or outputs. Outputs without copied Covered
+Software are not licensed here. Model, dataset, content and other rights remain
+separate.
+
+6. Third-party and contributor rights
+
+Third-party components retain their own licenses, grants, source obligations
+and notices. This license cannot impose restrictions on them or authorize
+vendor SDK, model, font, trademark or patent rights the Licensor does not possess.
+See the accompanying NOTICE and Apache scope history (docs/licenses and
+docs/LICENSE_HISTORY.md in the source tree). Contributions remain
+owned by their authors; a pull request does not imply copyright assignment or
+commercial relicensing permission. Obtain explicit authority and a separate
+contributor agreement where broader commercial licensing rights are needed.
+
+7. Limited patent and trademark terms
+
+Only for patent claims the Licensor controls necessarily infringed by its own
+Covered Software contribution, it grants a non-exclusive worldwide patent
+license for the uses permitted here. No third-party patent grant is implied.
+If You initiate patent litigation alleging Covered Software infringes Your
+patents, this limited patent grant terminates on filing, subject to mandatory
+law. Earlier Apache patent grants are not altered.
+
+No trademark, endorsement or certification right is granted except reasonable
+identification of origin and retention of notices. Payment does not establish
+compatibility, safety, performance or ownership of unrelated rights.
+
+8. Term, breach and remedy
+
+Free permissions continue while their conditions are met. Trial production
+permission expires under section 4; a breach-notice period does not extend it.
+For another material breach, rights granted here terminate if not cured within
+30 days after written notice identifying it. Timely cure preserves permissions.
+Separate commercial-agreement remedies govern that agreement. These remedies
+do not terminate independent rights or authorize access to, remote disabling
+of or destruction of Your systems/data. Attribution, prior rights, warranties
+and liability provisions survive to the extent relevant. Mandatory statutory
+rights remain unaffected.
+
+9. Warranty and liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, COVERED SOFTWARE IS PROVIDED "AS IS"
+AND "AS AVAILABLE", WITHOUT WARRANTIES OF MERCHANTABILITY, FITNESS FOR PURPOSE,
+TITLE, NON-INFRINGEMENT, SECURITY, AVAILABILITY OR PERFORMANCE. NO SUPPORT,
+UPDATE, SLA, INDEMNITY OR PRODUCTION QUALIFICATION IS PROMISED HERE.
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, LICENSOR AND CONTRIBUTORS ARE NOT
+LIABLE FOR INDIRECT, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES, LOST
+PROFITS/DATA OR BUSINESS INTERRUPTION. LIABILITY THAT CANNOT LAWFULLY BE
+EXCLUDED, INCLUDING APPLICABLE MANDATORY CONSUMER RIGHTS, IS NOT EXCLUDED.
+A SEPARATE WRITTEN COMMERCIAL AGREEMENT MAY PROVIDE DIFFERENT OBLIGATIONS.
+
+10. Acceptance, version and contact
+
+Exercising rights requiring this license constitutes acceptance of its
+conditions. Merely receiving a copy creates no payment obligation. A later
+license version does not retroactively replace this version for copies already
+obtained. Oral statements or unaccepted price schedules do not change it.
+An invalid term is limited or severed as necessary, preserving mandatory
+rights; the remainder applies to the extent permitted by law.
+
+For commercial licensing and written licensing notices, contact Sabbir Hassan
+Imon at sabbirimon@gmail.com. Include organization, version, intended deployment
+and trial dates; do not send credentials or private datasets.
+
+This is a custom source-available license, not Apache and not an OSI-approved
+open-source license. Read the accompanying scope history and transition limits;
+docs/LICENSING.md in the source repository provides the maintainer's guide.

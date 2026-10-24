@@ -1,4 +1,8 @@
 # Meshlit — UI Audit (v2 build no. 1)
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 This document tracks the open follow-ups for the v2 UI build
 (`com.meshlit.v2`, `versionName = 2.0.0-v2build1`). Most are

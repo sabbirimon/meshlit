@@ -1,0 +1,8 @@
+{
+  "modelVersion": "26.0.0",
+  "name": "entry",
+  "version": "1.0.0",
+  "dependencies": {
+    "libmeshlit_runtime.so": "file:./src/main/cpp/types/libmeshlit_runtime"
+  }
+}

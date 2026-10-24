@@ -1,0 +1,23 @@
+name: Capability proposal
+description: Propose a concrete workflow and verification criteria
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Which user or agent problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed behavior and supported devices/backends
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: What real evidence would show that it works?
+      description: Separate unit contracts, host tests, emulator tests and physical-phone proof.
+    validations:
+      required: true

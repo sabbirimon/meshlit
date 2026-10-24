@@ -62,6 +62,7 @@ fun FeedbackScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val contextResources=androidx.compose.ui.platform.LocalResources.current
     val repoSlug by settings.feedbackRepoSlugFlow.collectAsStateWithLifecycle(
         initialValue = "meshlit/meshlit-android",
     )
@@ -166,13 +167,13 @@ fun FeedbackScreen(
                         context.startActivity(intent)
                         Toast.makeText(
                             context,
-                            context.getString(R.string.feedback_submit_ok),
+                            contextResources.getString(R.string.feedback_submit_ok),
                             Toast.LENGTH_SHORT,
                         ).show()
                     } catch (e: ActivityNotFoundException) {
                         Toast.makeText(
                             context,
-                            context.getString(R.string.feedback_submit_failed),
+                            contextResources.getString(R.string.feedback_submit_failed),
                             Toast.LENGTH_SHORT,
                         ).show()
                     }

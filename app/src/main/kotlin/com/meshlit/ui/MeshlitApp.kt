@@ -87,7 +87,10 @@ import kotlinx.coroutines.launch
  * [onOpenDrawer] callback exposed via the screen's first parameter.
  */
 @Composable
-fun MeshlitApp() {
+fun MeshlitApp() { com.meshlit.ui.modern.ModernMeshlitApp() }
+
+@Composable
+fun LegacyMeshlitApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: TopLevelDestination.Devices.route
