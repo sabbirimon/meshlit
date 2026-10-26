@@ -4,6 +4,20 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Desktop-first online models and coding workspace — 2026-10-26
+
+The owner prioritized Studio before a simpler mobile model selector. Studio now exposes a combined Online models dashboard for OpenRouter, Hugging Face, OmniRoute, FreeLLMAPI and compatible services, a direct chat model menu, saved non-secret addresses and collapsed technical controls. Requests still require explicit session consent and real catalog selection; no automatic fallback, live-account proof or billing cap is added.
+
+The initial embedded coding workspace provides bounded local UTF-8 editing, conflict-aware atomic saves, unsaved-change prompts, explicit code-to-chat drafts, saved Focus/Code/Review/Custom views and the human-only terminal panel. The initial VS Code extension opens trusted local workspaces in Studio; it is installed locally and its launcher configured. Full VS Code/Monaco embedding, language servers/debugger, autonomous edits and VS Code chat integration remain separate work. [Setup, validation and scope](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md).
+
+
+## Android app identity — 2026-10-26
+
+The owner requested the mobile app use the same identity as Studio and remove the visible “v2” suffix. Both UI flavor labels now resolve to **Meshlit**; Play-review and core-candidate overlays use that same resource. Application IDs, version codes and signing settings are unchanged, preserving update/data identity. Android now uses the existing black M mark, with safe-zone adaptive and monochrome layers plus lossless density-specific legacy/round icons. Removed two empty unqualified XML icon files so pre-26 launchers use the real bitmap fallbacks. Legacy icons can be regenerated with `scripts/generate-mobile-icons.cjs` (Sharp).
+
+The existing pinned bundled model was hash-verified without download. No physical phone is attached; installed-launcher appearance is not yet qualified. Both debug flavor assemblies and lints passed (zero errors). All six ABI/universal APK outputs report the Meshlit label and contain the exact updated legacy icons. The first offline attempt lacked a cached pre-existing QR dependency; normal resolution succeeded. Published prerelease assets are unchanged.
+
+
 ## Studio icon and development runtime fix — 2026-10-26
 
 Follow-up: macOS development launches explicitly set `-Xdock:name=Meshlit` and `apple.awt.application.name=Meshlit` before AWT starts. The Java launcher otherwise retains its Java label even after the Dock icon changes. This affects the development launcher; packaged installer identity remains separate.

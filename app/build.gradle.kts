@@ -94,7 +94,7 @@ android {
             versionName = "2.0.0-v2build45"
             versionCode = 45
             buildConfigField("boolean", "USE_NEW_UI", "true")
-            resValue("string", "app_name", "Meshlit v2")
+            resValue("string", "app_name", "Meshlit")
         }
     }
 

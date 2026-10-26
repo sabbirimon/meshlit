@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 139,
+    "active": 141,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "15ccd7971f2bc3a603f6329794786fb4adec4da85a654bf9b1d1d86180474815"
+      "contentSha256WithoutTrackingBlock": "bda9cc82a89b8751b901a3cbb1d2c59009ddb123b0b3e12da15831f7f47f1716"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "85149f6390965ed70403a30100c6db381361241c6723cdb7718ca4d0f4c18ecc"
+      "contentSha256WithoutTrackingBlock": "07352bb9176c6df0efc2d206f92cb5c8f03d586db0fe97a4ff10fc552356c629"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "ad3197ab534e8bcaa861c5326a87422fe887a0621b5738d302385a385162d289"
+      "contentSha256WithoutTrackingBlock": "edf1b4656e88c6d802504c1646a7c7b5c3e2619b4ac9fc751b07618a4f48925d"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -290,6 +290,13 @@
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Optional Soup training host",
       "contentSha256WithoutTrackingBlock": "96e6b4677c7c746c7566f7cdc21da1d6026ee1264c168a7d91d6565df35ae099"
+    },
+    {
+      "path": "companions/vscode/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Meshlit Studio for VS Code \u2014 initial workspace handoff",
+      "contentSha256WithoutTrackingBlock": "181dbd1d53f6805e69155c0b1aa8241d4e4c36c21a26e2fc656cd275f0d21a63"
     },
     {
       "path": "configuration/README.md",
@@ -822,6 +829,13 @@
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Desktop engine and shared sharding admission",
       "contentSha256WithoutTrackingBlock": "f708f8a23782ceaf0e92ca47c32553ce724ec2bc3a2655960d534637f5d0fce2"
+    },
+    {
+      "path": "docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Studio online models and coding workspace",
+      "contentSha256WithoutTrackingBlock": "94a4ebad1e8a8163855270b2e729368a108cd2cce31b9f5b1b0e3b0b14ed1c7f"
     },
     {
       "path": "docs/desktop/RECOVERY.md",

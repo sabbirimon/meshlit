@@ -56,6 +56,7 @@ tasks.withType<Test>().configureEach {
 // Snapshot each launch separately; another run cannot mutate its classpath.
 tasks.withType<JavaExec>().configureEach {
     if (name == "run") {
+        providers.gradleProperty("meshlit.workspace").orNull?.let { systemProperty("meshlit.workspace", it) }
         if (System.getProperty("os.name").startsWith("Mac", ignoreCase = true)) {
             jvmArgs("-Xdock:name=Meshlit")
             systemProperty("apple.awt.application.name", "Meshlit")

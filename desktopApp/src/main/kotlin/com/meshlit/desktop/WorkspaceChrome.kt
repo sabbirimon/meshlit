@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
         Spacer(Modifier.height(12.dp))
         Button(onNewChat, Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = RoundedCornerShape(12.dp)) { Text("＋ New chat") }
         Spacer(Modifier.height(10.dp))
-        listOf("chat" to "Chat", "models" to "Models", "management" to "Dashboards", "device-dashboard" to "Devices", "monitor" to "Resources", "securityprivacy" to "Security & privacy").forEach { (id, title) ->
+        listOf("chat" to "Chat", "code" to "Code workspace", "models" to "Models", "management" to "Dashboards", "device-dashboard" to "Devices", "monitor" to "Resources", "securityprivacy" to "Security & privacy").forEach { (id, title) ->
             Surface(Modifier.fillMaxWidth().clickable { onSelect(id) }, shape = RoundedCornerShape(12.dp),
                 color = if (current == id) colors.primary.copy(alpha = .15f) else Color.Transparent,
                 border = if (current == id) BorderStroke(1.dp, colors.primary.copy(alpha = .4f)) else null) {
@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
         }
         Spacer(Modifier.weight(1f))
         Text("Explore", style = MaterialTheme.typography.overline, color = colors.onSurface.copy(alpha = .6f))
-        listOf("crypto" to "Identity & rewards", "appearance" to "Appearance", "providers" to "Host connection").forEach { (id, title) ->
+        listOf("crypto" to "Identity & rewards", "appearance" to "Appearance", "providers" to "Online models").forEach { (id, title) ->
             TextButton({ onSelect(id) }, Modifier.fillMaxWidth().heightIn(min = 44.dp)) { Text(title, Modifier.fillMaxWidth()) }
         }
         Divider()

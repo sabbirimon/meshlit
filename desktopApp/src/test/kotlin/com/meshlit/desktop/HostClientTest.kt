@@ -10,6 +10,22 @@ import kotlin.test.*
 
 /** Loopback protocol/failure contracts; these fixtures are never model-generation evidence. */
 class HostClientTest {
+    @Test fun boundedLargeCatalogSupportsGatewayMetadata() = host { server, address ->
+        server.createContext("/v1/models") { e ->
+            val data = "{\"data\":[{\"id\":\"fixture-model\",\"description\":\"" + "x".repeat(300_000) + "\"}]}"
+            val bytes = data.toByteArray(); e.sendResponseHeaders(200, bytes.size.toLong()); e.responseBody.use { it.write(bytes) }
+        }
+        HostClient(HostEndpoint.parse(address), "").use { assertEquals(listOf("fixture-model"), it.models()) }
+        assertFails { boundedJson("{\"x\":\"" + "x".repeat(300_000) + "\"}") }
+    }
+
+    @Test fun officialGatewayBasePathsAreBoundWithoutArbitraryPathSupport() {
+        assertEquals("https://openrouter.ai/api/v1/models", HostEndpoint.parse("https://openrouter.ai/api/v1").route("models").toString())
+        assertEquals("https://router.huggingface.co/v1/chat/completions", HostEndpoint.parse("https://router.huggingface.co/v1").route("chat/completions").toString())
+        assertFails { HostEndpoint.parse("https://example.invalid/api/v1") }
+        assertFails { HostEndpoint.parse("https://openrouter.ai/api/v1?key=secret") }
+    }
+
     private fun host(block: (HttpServer, String) -> Unit) {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val pool = Executors.newCachedThreadPool()

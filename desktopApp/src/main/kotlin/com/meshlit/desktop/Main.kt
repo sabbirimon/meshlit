@@ -35,14 +35,27 @@ fun main(args: Array<String>) {
     if (args.size == 2 && args[0] == "--local-check") { localCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--models-check") { modelsCheck(args[1]); return }
     if (args.firstOrNull() == "--cli") { runCli(args.drop(1).toTypedArray()); return }
+    if (args.size == 2 && args[0] == "--workspace") {
+        val folder = java.nio.file.Path.of(args[1]).toRealPath()
+        require(java.nio.file.Files.isDirectory(folder))
+        System.setProperty("meshlit.workspace", folder.toString())
+    }
     installDesktopIcon()
     application {
-    Window(onCloseRequest = ::exitApplication, title = "Meshlit · Experimental desktop",
+    var unsavedCode by remember { mutableStateOf(false) }
+    var confirmExit by remember { mutableStateOf(false) }
+    Window(onCloseRequest = { if(unsavedCode) confirmExit = true else exitApplication() }, title = "Meshlit · Experimental desktop",
         icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"),
-        state = rememberWindowState(width = 1120.dp, height = 800.dp)) { Workspace() }
+        state = rememberWindowState(width = 1120.dp, height = 800.dp)) {
+        Workspace { unsavedCode = it }
+        if(confirmExit) AlertDialog(onDismissRequest = { confirmExit = false }, title = { Text("Unsaved code") },
+            text = { Text("Return to the editor to save, or discard edits and quit.") },
+            confirmButton = { TextButton({ exitApplication() }) { Text("Discard and quit") } },
+            dismissButton = { TextButton({ confirmExit = false }) { Text("Keep editing") } })
+    }
     }
 }
-@Composable internal fun Workspace() {
+@Composable internal fun Workspace(onCodeDirty: (Boolean) -> Unit = {}) {
     val preferences = remember { DesktopPreferences() }
     var language by remember { mutableStateOf(preferences.language()) }
     var look by remember { mutableStateOf(preferences.look()) }
@@ -65,10 +78,12 @@ fun main(args: Array<String>) {
     val knowledge = remember { DesktopKnowledge() }
     val usageVault = remember { DesktopUsage() }
     val credentials = remember { DesktopCredentials() }
+    val onlineConnections = remember { OnlineConnections() }
     var activeCredential by remember { mutableStateOf<DesktopCredentials.Lease?>(null) }
     var pricedRoute by remember { mutableStateOf("") }
     var reviewedPrice by remember { mutableStateOf(UsagePrice()) }
     var gateway by remember { mutableStateOf(false) }
+    var onlineService by remember { mutableStateOf("Custom compatible") }
     var usageFailure by remember { mutableStateOf<String?>(null) }
     val enginePreferences = remember { EnginePreferences() }
     var engineOptions by remember { mutableStateOf(enginePreferences.load()) }
@@ -84,9 +99,10 @@ fun main(args: Array<String>) {
     var budget by remember { mutableStateOf(2048f) }
     var settings by remember { mutableStateOf(false) }
     var section by remember { mutableStateOf("models") }
+    var coding by remember { mutableStateOf(System.getProperty("meshlit.workspace") != null) }
     var responsePolicy by remember { mutableStateOf(ResponsePolicy.ASSISTANT) }
     var instructions by remember { mutableStateOf(DesktopStarter.prompt) }
-    fun openSection(id: String) { section = id; settings = true }
+    fun openSection(id: String) { if(id == "code") { coding = true; settings = false } else { section = id; settings = true } }
     var busy by remember { mutableStateOf(false) }
     var connected by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf(false) }
@@ -240,6 +256,8 @@ fun main(args: Array<String>) {
                     if (wide) WorkspaceRail(if(settings) section else "chat", onSelect = { id ->
                         if (id == "chat") settings = false else openSection(id)
                     }, onNewChat = { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false })
+                    if (coding) CodingWorkspace(Modifier.weight(1.2f).fillMaxHeight(),
+                        onDraft = { prompt = it }, onClose = { coding = false }, onDirty = onCodeDirty)
                     Column(Modifier.weight(1f).fillMaxHeight()) {
                         WorkspaceHeader(
                             title = if (localMode) customModel?.fileName?.toString() ?: DesktopStarter.label else model.ifBlank { "Meshlit" },
@@ -250,6 +268,21 @@ fun main(args: Array<String>) {
                             loadLabel = if(localSession == null) "Load" else "Unload", busy = busy,
                             onNew = { stop(); messages = emptyList(); usage = GenerationUsage() },
                             onSearch = { openSection("search") }, onManage = { openSection("management") })
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            var modelMenu by remember { mutableStateOf(false) }
+                            var modelQuery by remember { mutableStateOf("") }
+                            Box {
+                                TextButton({ modelMenu = true }, enabled = !busy) { Text("Model ▾ · " + if(localMode) "Local" else model.ifBlank { onlineService }) }
+                                DropdownMenu(modelMenu, { modelMenu = false }) {
+                                    DropdownMenuItem({ modelMenu = false; if(!localMode) { stop(true); localMode = true; network = false; messages = emptyList() } }) { Text("Local / offline") }
+                                    if (!localMode && connected) OutlinedTextField(modelQuery, { modelQuery = it.take(128) }, label = { Text("Find model") }, modifier = Modifier.width(280.dp))
+                                    if (!localMode && connected) models.filter { it.contains(modelQuery, ignoreCase = true) }.take(50).forEach { id -> DropdownMenuItem({ modelMenu = false; model = id }) { Text(id) } }
+                                    DropdownMenuItem({ modelMenu = false; openSection("providers") }) { Text("Online models & gateways…") }
+                                }
+                            }
+                            TextButton({ openSection("providers") }) { Text("Online models") }
+                            TextButton({ openSection("code") }) { Text("Code workspace") }
+                        }
                         if (messages.isNotEmpty()) OutlinedTextField(query, { query = it.take(256) }, label = { Text(t("Search this chat", "搜索当前对话")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), singleLine = true)
                         usageFailure?.let { Text(it, Modifier.padding(horizontal = 24.dp), color = colors.error) }
                         if (failure) Text(if (localMode) t("Local model failed. Check available memory, GGUF compatibility and packaged engine/model integrity. Try Unload and Load; partial replies are excluded from future requests.", "本地模型失败。请检查可用内存、GGUF 兼容性及引擎和模型完整性。尝试卸载再加载；未完成回复不会用于后续请求。") else t("Request failed. Check the host, trusted TLS, client token and context size. A partial reply is excluded from the next request.", "请求失败。请检查主机、可信 TLS、客户端令牌和上下文长度。未完成的回复不会发送至下一次请求。"), Modifier.padding(24.dp), color = colors.error)
@@ -299,7 +332,7 @@ fun main(args: Array<String>) {
                     Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     val destination = DesktopDestinations.all.first { it.id == section }
                     Text(destination.title, style = MaterialTheme.typography.h5)
-                    if (section in setOf("appearance", "models", "providers", "colibri", "tokens", "permissions")) {
+                    if (section in setOf("appearance", "models", "colibri", "tokens", "permissions")) {
                         if (section == "appearance") {
                         MenuHeading("style", t("Make it yours", "个性化设置"))
                         Row { WorkspaceLanguage.entries.forEach { l -> TextButton({ language = l; save() }) { Text((if (language == l) "✓ " else "") + l.label) } } }
@@ -379,6 +412,24 @@ fun main(args: Array<String>) {
                         Text(t("Actual throughput appears only when the host reports token usage; it includes request latency. Language affects UI only.", "仅在主机报告令牌用量时显示吞吐量；此值包含请求延迟。语言设置仅影响界面。"), style = MaterialTheme.typography.caption)
                         }
                     } else when (section) {
+                        "providers" -> OnlineModelsPanel(onlineService, endpoint, token, hostProtocol, gateway,
+                            network && !localMode, connected && !localMode, busy, if(localMode) emptyList() else models, model,
+                            preset = { item -> stop(true); localMode = false; colibriHost = false; onlineService = item.name;
+                                val saved = onlineConnections.load(item.name)
+                                endpoint = saved?.endpoint ?: item.endpoint; hostProtocol = saved?.protocol ?: HostProtocol.OPENAI; gateway = saved?.gateway ?: item.gateway;
+                                token = ""; activeCredential = null; network = false; connected = false; messages = emptyList(); pricedRoute = "" },
+                            setEndpoint = { stop(true); localMode = false; endpoint = it.take(2048); token = ""; activeCredential = null; network = false; connected = false; messages = emptyList(); pricedRoute = "" },
+                            setToken = { stop(); activeCredential = null; token = it.take(8192); connected = false },
+                            setProtocol = { stop(true); hostProtocol = it; token = ""; activeCredential = null; network = false; connected = false },
+                            setGateway = { stop(); gateway = it; pricedRoute = "" },
+                            setAllowed = { stop(); localMode = false; network = it; connected = false },
+                            connect = ::connect,
+                            choose = { model = it; settings = false }, onUsage = { section = "usage" },
+                            credentialControls = { CredentialControls(credentials, endpoint, hostProtocol, token,
+                                invalidate = { stop(); network = false; connected = false; token = ""; activeCredential = null },
+                                use = { lease, value -> activeCredential = lease; token = value }) },
+                            saveConnection = { onlineConnections.save(onlineService, endpoint, hostProtocol, gateway) },
+                            forgetConnection = { onlineConnections.remove(onlineService) })
                         "engine" -> {
                             if (preferencesError) Text("Engine settings could not be saved; previous values are retained.", color = colors.error)
                             EnginePanel(engineOptions, localSession) { options ->

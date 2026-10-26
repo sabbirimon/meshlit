@@ -8,6 +8,28 @@ import kotlin.test.*
 
 class WorkspacePreviewTest {
     @OptIn(ExperimentalComposeUiApi::class)
+    @Test fun onlineAndCodingPanelsRenderWithoutRequests() {
+        for (panel in listOf("online", "code")) {
+            ImageComposeScene(600, 1000) {
+                androidx.compose.material.MaterialTheme(colors = androidx.compose.material.darkColors()) {
+                    androidx.compose.material.Surface {
+                        if(panel == "code") CodingWorkspace(androidx.compose.ui.Modifier, {}, {}, {})
+                        else androidx.compose.foundation.layout.Column {
+                            OnlineModelsPanel("OpenRouter", "https://openrouter.ai/api/v1", "", HostProtocol.OPENAI,
+                                true, false, false, false, emptyList(), "", {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+                        }
+                    }
+                }
+            }.use { scene -> scene.render().use { image ->
+                assertEquals(600, image.width)
+                image.encodeToData(EncodedImageFormat.PNG)!!.use { data ->
+                    System.getProperty("meshlit.previewDir")?.let { path -> File(path).apply { mkdirs() }.resolve("$panel-panel.png").writeBytes(data.bytes) }
+                }
+            } }
+        }
+    }
+
+    @OptIn(ExperimentalComposeUiApi::class)
     @Test fun nativeVpnDashboardRendersWithoutRequestingStatus() {
         ImageComposeScene(600, 1000) {
             androidx.compose.material.MaterialTheme(colors = androidx.compose.material.darkColors()) {

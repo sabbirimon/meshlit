@@ -40,6 +40,13 @@ import com.meshlit.workspace.GenerationUsage
             }
         }
     }
+    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colors.primary.copy(alpha = .4f))) {
+        Column(Modifier.padding(18.dp)) {
+            MenuHeading("providers", "Online models & gateways")
+            Text("OpenRouter · Hugging Face · OmniRoute · FreeLLMAPI")
+            TextButton({ onNavigate("providers") }) { Text("Connect a service") }
+        }
+    }
     Text("Other workspaces", style = MaterialTheme.typography.subtitle1)
     listOf("device-dashboard" to "Devices", "rag" to "Knowledge library", "hyperl" to "HyperL workbench",
         "monitor" to "Resources").forEach { (id, label) -> TextButton({ onNavigate(id) }) { Text(label) } }

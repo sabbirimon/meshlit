@@ -47,7 +47,7 @@ object DesktopDestinations {
         DesktopDestination("commands", "Commands and instructions", "Human shell commands with bounded output and cancellation", true),
         DesktopDestination("packages", "Lab packages", "Install, list and uninstall packages inside a ready VM", false),
         DesktopDestination("securitylab", "Security Lab", "Defensive skill references; execution companions remain unavailable", true),
-        DesktopDestination("providers", "Online providers", "Compatible /v1 and Open WebUI /api hosts; separate service-bound session keys", true),
+        DesktopDestination("providers", "Online models & gateways", "OpenRouter, Hugging Face, OmniRoute, FreeLLMAPI and compatible services", true),
         DesktopDestination("power", "Power and costs", "Local battery readings when OS reports them; cost accounting pending", true),
         DesktopDestination("external", "External devices and OTG", "USB discovery, permissions and removable storage", false),
         DesktopDestination("acceleration", "Acceleration", "Observed CPU/GPU inventory; accelerator execution qualification pending", true),

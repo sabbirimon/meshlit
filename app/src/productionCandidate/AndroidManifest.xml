@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" tools:node="remove" />
-    <application android:label="Meshlit Core Candidate" tools:replace="android:label">
+    <application android:label="@string/app_name" tools:replace="android:label">
         <service android:name="com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService" tools:node="remove" />
         <service android:name="com.meshlit.core.net.capture.MeshlitCaptureVpnService" tools:node="remove" />
         <receiver android:name="com.meshlit.network.termux.TermuxResultReceiver" tools:node="remove" />
