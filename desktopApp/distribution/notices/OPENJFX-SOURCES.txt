@@ -1,0 +1,10 @@
+Meshlit Studio embeds unmodified OpenJFX 21.0.13 Maven runtime artifacts.
+Upstream source release: https://github.com/openjdk/jfx21u/tree/21.0.13%2B1
+Source archive: https://github.com/openjdk/jfx21u/archive/refs/tags/21.0.13%2B1.tar.gz
+Maven coordinates: org.openjfx:javafx-{base,graphics,controls,media,swing,web}:21.0.13
+Platform classifier is selected by the build host (mac, mac-aarch64, win, linux, linux-aarch64).
+The OPENJFX-* notices in this directory are copied from that source release.
+WebKit and other native components retain their separate notices and licenses.
+No OpenJFX or WebKit source modifications are included in Meshlit.
+Notice formatting: trailing whitespace is normalized and a stray upstream merge
+marker in the WebKit notice is omitted; copyright statements and license terms are unchanged.

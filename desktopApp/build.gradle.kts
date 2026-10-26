@@ -15,6 +15,11 @@ dependencies {
     implementation(project(":desktop-engine"))
     implementation(compose.desktop.currentOs)
     implementation(compose.material)
+    val browserOs = when { System.getProperty("os.name").startsWith("Mac") -> "mac"; System.getProperty("os.name").startsWith("Windows") -> "win"; else -> "linux" }
+    val browserPlatform = browserOs + if(System.getProperty("os.arch") in setOf("aarch64", "arm64")) "-aarch64" else ""
+    listOf("base", "graphics", "controls", "media", "swing", "web").forEach {
+        implementation("org.openjfx:javafx-$it:21.0.13:$browserPlatform")
+    }
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.zxing.core)
@@ -30,7 +35,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "MeshlitPreview"
             packageVersion = providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.45")
-            modules("java.instrument", "java.logging", "java.net.http", "java.prefs", "java.rmi", "java.security.jgss", "java.management", "jdk.management", "jdk.crypto.ec", "jdk.unsupported")
+            modules("jdk.jfr", "jdk.xml.dom", "jdk.httpserver", "jdk.jsobject", "java.scripting", "java.xml", "jdk.unsupported.desktop", "java.instrument", "java.logging", "java.net.http", "java.prefs", "java.rmi", "java.security.jgss", "java.management", "jdk.management", "jdk.crypto.ec", "jdk.unsupported")
             description = "Experimental Meshlit Studio; runtime availability depends on the installed package"
             vendor = "Sabbir Hassan Imon"
             macOS { iconFile.set(project.file("distribution/icons/meshlit.icns")) }
@@ -76,4 +81,9 @@ tasks.withType<JavaExec>().configureEach {
         }
         doLast { classpath.files.firstOrNull()?.parentFile?.deleteRecursively() }
     }
+}
+
+// Retain browser and other bundled component notices in every platform artifact.
+tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("processResources") {
+    from("distribution/notices") { into("META-INF/meshlit/licenses") }
 }

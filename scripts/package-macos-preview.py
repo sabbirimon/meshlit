@@ -17,7 +17,7 @@ import zipfile
 from pathlib import Path
 
 # jdeps over the complete packaged classpath, plus reflective TLS/management use.
-MODULES = "java.base,java.desktop,java.instrument,java.logging,java.net.http,java.prefs,java.rmi,java.security.jgss,java.management,jdk.management,jdk.crypto.ec,jdk.unsupported"
+MODULES = "jdk.jfr,jdk.xml.dom,jdk.httpserver,jdk.jsobject,java.scripting,java.xml,jdk.unsupported.desktop,java.base,java.desktop,java.instrument,java.logging,java.net.http,java.prefs,java.rmi,java.security.jgss,java.management,jdk.management,jdk.crypto.ec,jdk.unsupported"
 
 
 def run(*args):

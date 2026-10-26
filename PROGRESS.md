@@ -4,9 +4,15 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Embedded vendor dashboards and page reading — 2026-10-26
+
+Studio's service dashboard, catalog and guide actions now render the actual vendor page inside a Meshlit window using OpenJFX WebView 21.0.13. **Read page → review → Add to chat draft** captures bounded visible text, excludes input/password/editable fields, redacts common key formats and preserves the existing draft. Sending remains a separate action using the selected model and existing credentials/budget contracts. Vendor page content is marked untrusted; no host command bridge or API-key injection is exposed.
+
+Live Intel macOS qualification passed with WebView embedded in Compose: JavaScript, DOM extraction/redaction, cross-origin redirect review, unavailable-service error and clean shutdown. Desktop regression: 62 cases, 61 passed, one physical SSH fixture skipped, no errors/failures. The initial Chromium candidate failed native shutdown on this Mac and is not included. OmniRoute/FreeLLMAPI are not responding on their standard local ports; no authenticated gateway account, other desktop OS, installer or full Code OSS workbench qualification is claimed. Mobile remains deferred. [Setup and limitations](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md).
+
 ## Vendor dashboards and desktop menus — 2026-10-26
 
-Model services now have distinct Overview, Models, Connection and Usage pages. Vendor dashboards, catalogs and setup guides open explicitly in the browser; gateway dashboard addresses persist separately from API endpoints and reject credential-bearing URLs. OmniRoute and FreeLLMAPI use documented loopback server defaults, not invented installation status. Connected model selection still uses the real endpoint response. Native desktop menus and VS Code folder handoff are implemented; the built-in editor remains lightweight and full workbench embedding remains open. See [desktop scope and validation](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md).
+Model services now have distinct Overview, Models, Connection and Usage pages. The initial external-browser dashboard links are superseded by the embedded view above; gateway dashboard addresses persist separately from API endpoints and reject credential-bearing URLs. OmniRoute and FreeLLMAPI use documented loopback server defaults, not invented installation status. Connected model selection still uses the real endpoint response. Native desktop menus and VS Code folder handoff are implemented; the built-in editor remains lightweight and full workbench embedding remains open. See [desktop scope and validation](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md).
 
 
 ## Studio visual redesign — 2026-10-26

@@ -25,6 +25,7 @@ internal val onlinePresets = listOf(
     connect: () -> Unit, choose: (String) -> Unit, onUsage: () -> Unit,
     credentialControls: @Composable () -> Unit,
     saveConnection: () -> Unit = {}, forgetConnection: () -> Unit = {},
+    openDashboard: (String, String) -> Unit = { _, _ -> },
 ) {
     var advanced by remember { mutableStateOf(false) }
     var filter by remember(service) { mutableStateOf("") }
@@ -33,7 +34,7 @@ internal val onlinePresets = listOf(
     val vendor = vendorPages[service]
     val addresses = remember { VendorDashboardAddresses() }
     var dashboard by remember(service) { mutableStateOf(addresses.load(service, vendor?.dashboard ?: "")) }
-    fun browse(url: String) { connectionMessage = runCatching { java.awt.Desktop.getDesktop().browse(dashboardUri(url)); "Opened in your browser." }.getOrElse { "Could not open this address. Use HTTPS, or HTTP on literal loopback for local dashboards." } }
+    fun browse(url: String) { connectionMessage = runCatching { openDashboard(service, dashboardUri(url).toString()); "Opened inside Meshlit." }.getOrElse { "Could not open this address. Use HTTPS, or HTTP on literal loopback for local dashboards." } }
     Text("Model services", style = MaterialTheme.typography.h5)
     Text("Choose a vendor to explore its products, manage your account or connect models to Meshlit.")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -59,16 +60,16 @@ internal val onlinePresets = listOf(
                 OutlinedTextField(dashboard, { dashboard = it.take(2048) }, label = { Text("Your dashboard URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 TextButton({ connectionMessage = runCatching { addresses.save(service, dashboard); "Dashboard address saved." }.getOrElse { "Invalid address. Use HTTPS or literal loopback HTTP, without credentials or query parameters." } }) { Text("Save dashboard address") }
             }
-            Button({ browse(dashboard) }, enabled = dashboard.isNotBlank()) { Text("Open vendor dashboard ↗") }
+            Button({ browse(dashboard) }, enabled = dashboard.isNotBlank()) { Text("Open dashboard in Meshlit") }
             vendor?.let { page ->
-                TextButton({ browse(page.catalog) }) { Text("Browse products / catalog ↗") }
-                TextButton({ browse(page.guide) }) { Text(if(page.local) "Installation and setup ↗" else "Service documentation ↗") }
+                TextButton({ browse(page.catalog) }) { Text("Browse products / catalog") }
+                TextButton({ browse(page.guide) }) { Text(if(page.local) "Installation and setup" else "Service documentation") }
             }
-            Text("Vendor pages open in your browser, where you sign in directly. Meshlit does not forward your API key to those pages.", style = MaterialTheme.typography.caption)
+            Text("Vendor pages open inside Meshlit. Sign in directly to the vendor; API keys are not injected. Use Read page to review text before adding it to chat.", style = MaterialTheme.typography.caption)
             OutlinedButton({ tab = "Connection" }) { Text("Connect this service to chat") }
         }
         "Models" -> {
-            vendor?.let { TextButton({ browse(it.catalog) }) { Text("Explore vendor catalog ↗") } }
+            vendor?.let { TextButton({ browse(it.catalog) }) { Text("Explore vendor catalog") } }
             if(!connected) {
                 Text("Connect to retrieve the models available from your endpoint. A public catalog does not prove account access or free usage.")
                 Button({ tab = "Connection" }) { Text("Set up connection") }
@@ -83,7 +84,7 @@ internal val onlinePresets = listOf(
         "Usage" -> {
             Text("Meshlit's history tracks requests made here. Provider invoices, balances and quotas remain in the vendor dashboard.")
             Button(onUsage) { Text("Meshlit usage & budgets") }
-            vendor?.let { TextButton({ browse(it.billing.ifBlank { dashboard }) }) { Text("Vendor usage / account dashboard ↗") } }
+            vendor?.let { TextButton({ browse(it.billing.ifBlank { dashboard }) }) { Text("Vendor usage / account dashboard") } }
             Text("Device-local estimates are not provider billing caps.", style = MaterialTheme.typography.caption)
         }
         "Connection" -> {

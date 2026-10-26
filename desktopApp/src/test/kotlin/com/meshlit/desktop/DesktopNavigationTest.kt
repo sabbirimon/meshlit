@@ -34,4 +34,17 @@ class DesktopNavigationTest {
             assertTrue(uri.toASCIIString().contains("%23"))
         } finally { Files.delete(folder) }
     }
+    @Test fun embeddedNavigationHasExplicitOriginsAndRedactsCommonKeys() {
+        assertEquals("https://example.com:443", webOrigin("https://example.com/login?code=private"))
+        assertEquals("http://127.0.0.1:20128", webOrigin("http://127.0.0.1:20128/dashboard"))
+        for(url in listOf("file:///etc/passwd", "javascript:alert(1)", "https://user:pass@example.com", "http://remote.example")) assertNull(webOrigin(url))
+        assertFalse(dashboardText("API key: sk-examplePrivateKey123").contains("examplePrivate"))
+        assertEquals(16000, dashboardText("a".repeat(20000)).length)
+    }
+    @Test fun closingDuringBrowserInitializationReleasesTheLateResource() {
+        var releases = 0
+        val slot = BrowserResourceSlot<AutoCloseable>()
+        slot.close(); slot.register(AutoCloseable { releases++ }); slot.close()
+        assertEquals(1, releases)
+    }
 }

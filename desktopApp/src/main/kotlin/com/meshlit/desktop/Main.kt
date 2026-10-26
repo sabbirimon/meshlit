@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.collect
 
 private data class Message(val role: String, val text: String, val completed: Boolean = true)
 fun main(args: Array<String>) {
+    if (args.size == 2 && args[0] == "--dashboard-browser-check") { dashboardBrowserCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--cpu-benchmark-check") { cpuBenchmarkCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--engine-options-check") { engineOptionsCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--monitor-check") { monitorCheck(args[1]); return }
@@ -43,6 +44,7 @@ fun main(args: Array<String>) {
     System.setProperty("apple.laf.useScreenMenuBar", "true")
     installDesktopIcon()
     application {
+    DisposableEffect(Unit) { onDispose { DashboardEngine.shutdown() } }
     var unsavedCode by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
     var menuCommand by remember { mutableStateOf(0 to "") }
@@ -104,6 +106,7 @@ fun main(args: Array<String>) {
     var budget by remember { mutableStateOf(2048f) }
     var settings by remember { mutableStateOf(false) }
     var section by remember { mutableStateOf("models") }
+    var vendorDashboard by remember { mutableStateOf<Pair<String, String>?>(null) }
     var coding by remember { mutableStateOf(false) }
     var codeCommand by remember { mutableStateOf(0 to "") }
     LaunchedEffect(coding) { if(!coding) codeCommand = 0 to "" }
@@ -343,6 +346,15 @@ fun main(args: Array<String>) {
                     }
                 }
             }
+            vendorDashboard?.let { (name, url) ->
+                Window(onCloseRequest = { vendorDashboard = null }, title = "Meshlit · $name dashboard",
+                    icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1280.dp, height = 860.dp)) {
+                    StudioMenus(onCommand, onQuit)
+                    Surface(Modifier.fillMaxSize(), color = colors.background) {
+                        EmbeddedDashboard(name, url, onDraft = { prompt = listOf(prompt, it).filter { draft -> draft.isNotBlank() }.joinToString("\n\n"); vendorDashboard = null; settings = false }, onClose = { vendorDashboard = null })
+                    }
+                }
+            }
             if (coding) {
                 var codeDirty by remember { mutableStateOf(false) }
                 var closeCode by remember { mutableStateOf(false) }
@@ -475,7 +487,8 @@ fun main(args: Array<String>) {
                                 invalidate = { stop(); network = false; connected = false; token = ""; activeCredential = null },
                                 use = { lease, value -> activeCredential = lease; token = value }) },
                             saveConnection = { onlineConnections.save(onlineService, endpoint, hostProtocol, gateway) },
-                            forgetConnection = { onlineConnections.remove(onlineService) })
+                            forgetConnection = { onlineConnections.remove(onlineService) },
+                            openDashboard = { name, url -> vendorDashboard = name to url })
                         "engine" -> {
                             if (preferencesError) Text("Engine settings could not be saved; previous values are retained.", color = colors.error)
                             EnginePanel(engineOptions, localSession) { options ->

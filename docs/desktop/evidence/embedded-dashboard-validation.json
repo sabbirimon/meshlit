@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-26",
+  "runtime": "OpenJFX 21.0.13",
+  "platform": "macOS 15.8.1 Intel; OpenJDK 21.0.12",
+  "unitTests": {
+    "cases": 62,
+    "passed": 61,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0
+  },
+  "headful": {
+    "composeSwingPanel": true,
+    "javascript": true,
+    "visibleDomCapture": true,
+    "passwordAndTextareaExclusion": true,
+    "keyRedaction": true,
+    "crossOriginRedirectReview": true,
+    "unavailableGatewayError": true,
+    "cleanShutdown": true,
+    "exitCode": 0
+  },
+  "qualificationEntryPoint": "--dashboard-browser-check /absolute/evidence.txt",
+  "limitations": [
+    "Loopback fixture, not an authenticated vendor account",
+    "OmniRoute and FreeLLMAPI default local ports unavailable",
+    "Popup login, embedded-browser-restricted OAuth/SSO, downloads unsupported",
+    "Windows, Linux, packaged distribution and full Code OSS workbench unqualified",
+    "No paid provider request or automated dashboard action"
+  ],
+  "rejectedRuntime": "JCEF 152.0.6 caused native AppKit teardown crashes and was removed"
+}
