@@ -6,6 +6,8 @@ Scope: cross-platform tracking; feature and device gates remain separate. Phase 
 
 ## Studio icon and development runtime fix — 2026-10-26
 
+Follow-up: macOS development launches explicitly set `-Xdock:name=Meshlit` and `apple.awt.application.name=Meshlit` before AWT starts. The Java launcher otherwise retains its Java label even after the Dock icon changes. This affects the development launcher; packaged installer identity remains separate.
+
 The owner reported Java error icons and `DesktopToolsKt` failures while the dev app remained open during recompilation. The current jar contains that class; the old process reported `ClassNotFoundException`. Development launches now copy the runtime classpath into a unique per-launch snapshot, preventing later builds from replacing an open JVM's jars/classes. The crashed earlier process was stopped for a fresh launch.
 
 Studio now reuses Meshlit's existing black M vector mark for the window and supported taskbar/Dock APIs, with PNG/ICO/ICNS distribution icons configured for Linux/Windows/macOS. Reproduce assets using `scripts/generate-desktop-icons.cjs` with Sharp available to Node. Black UI styling is unchanged. This source fix does not replace published beta.5 installers; installed-platform icon qualification remains separate. Validation: Studio suite passed (51 passed, one physical SSH fixture skipped); PNG/ICO/ICNS decode checks passed; the actual settings menu/dashboard rendered successfully through the isolated development launch. A first Gradle task-registration attempt failed before compilation and was corrected. Published installers were not rebuilt.

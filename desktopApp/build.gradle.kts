@@ -56,6 +56,10 @@ tasks.withType<Test>().configureEach {
 // Snapshot each launch separately; another run cannot mutate its classpath.
 tasks.withType<JavaExec>().configureEach {
     if (name == "run") {
+        if (System.getProperty("os.name").startsWith("Mac", ignoreCase = true)) {
+            jvmArgs("-Xdock:name=Meshlit")
+            systemProperty("apple.awt.application.name", "Meshlit")
+        }
         notCompatibleWithConfigurationCache("Per-launch immutable development classpath")
         val isolatedClasspath = objects.fileCollection()
         doFirst {
