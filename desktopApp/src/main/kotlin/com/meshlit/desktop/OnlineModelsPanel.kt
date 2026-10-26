@@ -1,6 +1,8 @@
 package com.meshlit.desktop
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -31,8 +33,12 @@ internal val onlinePresets = listOf(
     Text("Choose a service, connect your account, then pick its model in chat.")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         onlinePresets.chunked(2).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            row.forEach { item -> OutlinedButton({ preset(item) }, Modifier.weight(1f), enabled = !busy) {
-                Text((if (service == item.name) "✓ " else "") + item.name)
+            row.forEach { item -> OutlinedButton({ preset(item) }, Modifier.weight(1f).heightIn(min = 64.dp), enabled = !busy, shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(backgroundColor = if(service == item.name) MaterialTheme.colors.primary.copy(alpha = .12f) else MaterialTheme.colors.surface)) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text((if (service == item.name) "✓  " else "") + item.name)
+                    Text(if(item.endpoint.isBlank()) "Your deployment" else "Connect your account", style = MaterialTheme.typography.caption, color = MaterialTheme.colors.onSurface.copy(alpha = .55f))
+                }
             } }
         } }
     }
@@ -45,7 +51,7 @@ internal val onlinePresets = listOf(
     OutlinedTextField(token, setToken, Modifier.fillMaxWidth(), label = { Text("API key") }, singleLine = true,
         visualTransformation = PasswordVisualTransformation(), enabled = !busy)
     credentialControls()
-    Row { Checkbox(allowed, setAllowed, enabled = !busy); Text("Allow access to this service for this session") }
+    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(allowed, setAllowed, enabled = !busy); Text("Allow access to this service for this session") }
     Button(connect, enabled = allowed && !busy && endpoint.isNotBlank()) { Text(if (busy) "Connecting…" else "Connect / fetch models") }
     if (connected) {
         Text("Select a model to return to chat", style = MaterialTheme.typography.subtitle2)

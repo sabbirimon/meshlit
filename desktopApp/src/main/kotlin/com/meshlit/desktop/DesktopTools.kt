@@ -1,6 +1,7 @@
 package com.meshlit.desktop
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -36,8 +37,9 @@ import javax.swing.JOptionPane
                     Text("${if (expanded || query.isNotBlank()) "▾" else "▸"} $group", Modifier.fillMaxWidth(), color = MaterialTheme.colors.primary)
                 }
                 if (expanded || query.isNotBlank()) entries.filter { query.isNotBlank() || it.available || advanced && !compact }.forEach { item ->
-                    TextButton({ onSelect(item.id) }, Modifier.fillMaxWidth()) {
-                        Text((if (selected == item.id) "• " else "") + item.title + (if (item.available) "" else " · port pending"), Modifier.fillMaxWidth(), color = MaterialTheme.colors.onSurface.copy(alpha = if (item.available) 1f else .5f))
+                    TextButton({ onSelect(item.id) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.textButtonColors(backgroundColor = if(selected == item.id) MaterialTheme.colors.primary.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent)) {
+                        Text(item.title + (if (item.available) "" else " · port pending"), Modifier.fillMaxWidth(), color = MaterialTheme.colors.onSurface.copy(alpha = if (item.available) 1f else .5f))
                     }
                 }
             }

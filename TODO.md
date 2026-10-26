@@ -4,6 +4,11 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Studio visual redesign — 2026-10-26
+
+Implemented the owner's separate references: Gemini-style chat composition and an IDE-style coding window with explorer, editor, optional terminal and real assistant chat. Shared desktop typography, palette, settings selection and service cards are updated. See [progress](PROGRESS.md) and [desktop scope/validation](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md). Full VS Code engine/agent behavior, mobile visual port and installed package qualification remain open; this is a source/dev UI update.
+
+
 ## Desktop-first online models and coding workspace — 2026-10-26
 
 The owner prioritized Studio before a simpler mobile model selector. Studio now exposes a combined Online models dashboard for OpenRouter, Hugging Face, OmniRoute, FreeLLMAPI and compatible services, a direct chat model menu, saved non-secret addresses and collapsed technical controls. Requests still require explicit session consent and real catalog selection; no automatic fallback, live-account proof or billing cap is added.

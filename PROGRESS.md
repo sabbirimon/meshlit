@@ -4,6 +4,17 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Studio visual redesign — 2026-10-26
+
+The owner's Gemini screenshots guide chat only; coding follows the explorer/editor/assistant arrangement used by IDEs such as Antigravity. Studio now opens to chat even when a project path was supplied. Chat uses a centered Meshlit wordmark, responsive draft suggestion cards, a bounded conversation column and a composer containing model selection and Online models access. Suggestions only populate drafts. Unknown token statistics are hidden on an empty conversation and remain honest after a response.
+
+A common desktop theme supplies dark neutral surfaces, soft blue/lilac accents, bundled Figtree with its OFL licence, consistent type weights and control shapes. The compact rail has line icons; settings selection and online-service cards use the same palette. Paper and the other appearance choices remain available. No Google branding, account identity or notebook data was copied.
+
+The deliberate coding window contains a left file explorer, central editor, optional lower terminal and the existing real chat controller on the right. Opening code preserves the conversation and draft. File sharing requires adding code to the draft, then sending; dirty edits are guarded when leaving or closing. Native UTF-8 editing remains distinct from a complete VS Code engine: LSP, debugging, autonomous agent edits and full Monaco embedding remain pending. Mobile visual redesign remains deferred under the owner's desktop-first direction.
+
+Design workflow: [Anthropic frontend-design skill](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md), adapted for Compose. Reference: [Google Antigravity side panel](https://antigravity.google/docs/agent-side-panel). Desktop tests and rendered evidence are recorded in the desktop workspace guide.
+
+
 ## Desktop-first online models and coding workspace — 2026-10-26
 
 The owner prioritized Studio before a simpler mobile model selector. Studio now exposes a combined Online models dashboard for OpenRouter, Hugging Face, OmniRoute, FreeLLMAPI and compatible services, a direct chat model menu, saved non-secret addresses and collapsed technical controls. Requests still require explicit session consent and real catalog selection; no automatic fallback, live-account proof or billing cap is added.

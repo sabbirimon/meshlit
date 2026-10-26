@@ -44,7 +44,7 @@ fun main(args: Array<String>) {
     application {
     var unsavedCode by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
-    Window(onCloseRequest = { if(unsavedCode) confirmExit = true else exitApplication() }, title = "Meshlit · Experimental desktop",
+    Window(onCloseRequest = { if(unsavedCode) confirmExit = true else exitApplication() }, title = "Meshlit",
         icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"),
         state = rememberWindowState(width = 1120.dp, height = 800.dp)) {
         Workspace { unsavedCode = it }
@@ -99,7 +99,7 @@ fun main(args: Array<String>) {
     var budget by remember { mutableStateOf(2048f) }
     var settings by remember { mutableStateOf(false) }
     var section by remember { mutableStateOf("models") }
-    var coding by remember { mutableStateOf(System.getProperty("meshlit.workspace") != null) }
+    var coding by remember { mutableStateOf(false) }
     var responsePolicy by remember { mutableStateOf(ResponsePolicy.ASSISTANT) }
     var instructions by remember { mutableStateOf(DesktopStarter.prompt) }
     fun openSection(id: String) { if(id == "code") { coding = true; settings = false } else { section = id; settings = true } }
@@ -243,22 +243,10 @@ fun main(args: Array<String>) {
         if (localMode && localSession == null && !busy && prompt.isNotBlank()) { loadLocal(); sendAfterLoad = true }
         else send()
     }
-    val colors = if (look == WorkspaceLook.PAPER) lightColors(primary = Color(look.accent), background = Color(look.background),
-        surface = Color(look.surface), onBackground = Color(look.foreground), onSurface = Color(look.foreground))
-        else darkColors(primary = Color(look.accent), background = Color(look.background), surface = Color(look.surface),
-            onBackground = Color(look.foreground), onSurface = Color(look.foreground), onPrimary = Color(0xFF101113))
-    MaterialTheme(colors = colors, typography = Typography(defaultFontFamily = FontFamily.SansSerif,
-        body1 = TextStyle(fontSize = (16 * scale).sp, lineHeight = (25 * scale).sp))) {
-        Surface(Modifier.fillMaxSize(), color = colors.background) {
-            BoxWithConstraints {
-                val wide = maxWidth > 860.dp
-                Row(Modifier.fillMaxSize()) {
-                    if (wide) WorkspaceRail(if(settings) section else "chat", onSelect = { id ->
-                        if (id == "chat") settings = false else openSection(id)
-                    }, onNewChat = { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false })
-                    if (coding) CodingWorkspace(Modifier.weight(1.2f).fillMaxHeight(),
-                        onDraft = { prompt = it }, onClose = { coding = false }, onDirty = onCodeDirty)
-                    Column(Modifier.weight(1f).fillMaxHeight()) {
+    val colors = desktopColors(look)
+    DesktopTheme(look, scale) {
+        val chatContent: @Composable RowScope.() -> Unit = {
+                    Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                         WorkspaceHeader(
                             title = if (localMode) customModel?.fileName?.toString() ?: DesktopStarter.label else model.ifBlank { "Meshlit" },
                             status = if (localMode) if (localSession != null) "Offline · ${localSession?.backend} · ready" else if (localLoading) "Verifying and loading local model…" else "Offline model · load when ready"
@@ -268,34 +256,15 @@ fun main(args: Array<String>) {
                             loadLabel = if(localSession == null) "Load" else "Unload", busy = busy,
                             onNew = { stop(); messages = emptyList(); usage = GenerationUsage() },
                             onSearch = { openSection("search") }, onManage = { openSection("management") })
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            var modelMenu by remember { mutableStateOf(false) }
-                            var modelQuery by remember { mutableStateOf("") }
-                            Box {
-                                TextButton({ modelMenu = true }, enabled = !busy) { Text("Model ▾ · " + if(localMode) "Local" else model.ifBlank { onlineService }) }
-                                DropdownMenu(modelMenu, { modelMenu = false }) {
-                                    DropdownMenuItem({ modelMenu = false; if(!localMode) { stop(true); localMode = true; network = false; messages = emptyList() } }) { Text("Local / offline") }
-                                    if (!localMode && connected) OutlinedTextField(modelQuery, { modelQuery = it.take(128) }, label = { Text("Find model") }, modifier = Modifier.width(280.dp))
-                                    if (!localMode && connected) models.filter { it.contains(modelQuery, ignoreCase = true) }.take(50).forEach { id -> DropdownMenuItem({ modelMenu = false; model = id }) { Text(id) } }
-                                    DropdownMenuItem({ modelMenu = false; openSection("providers") }) { Text("Online models & gateways…") }
-                                }
-                            }
-                            TextButton({ openSection("providers") }) { Text("Online models") }
-                            TextButton({ openSection("code") }) { Text("Code workspace") }
-                        }
                         if (messages.isNotEmpty()) OutlinedTextField(query, { query = it.take(256) }, label = { Text(t("Search this chat", "搜索当前对话")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), singleLine = true)
                         usageFailure?.let { Text(it, Modifier.padding(horizontal = 24.dp), color = colors.error) }
                         if (failure) Text(if (localMode) t("Local model failed. Check available memory, GGUF compatibility and packaged engine/model integrity. Try Unload and Load; partial replies are excluded from future requests.", "本地模型失败。请检查可用内存、GGUF 兼容性及引擎和模型完整性。尝试卸载再加载；未完成回复不会用于后续请求。") else t("Request failed. Check the host, trusted TLS, client token and context size. A partial reply is excluded from the next request.", "请求失败。请检查主机、可信 TLS、客户端令牌和上下文长度。未完成的回复不会发送至下一次请求。"), Modifier.padding(24.dp), color = colors.error)
-                        if (messages.isEmpty()) Column(Modifier.weight(1f).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("✦", fontSize = 48.sp, color = colors.primary)
-                            Spacer(Modifier.height(20.dp)); Text(t("What should we work on?", "我们开始做什么？"), style = MaterialTheme.typography.h4)
-                            Spacer(Modifier.height(12.dp)); Text(if (localMode) t("Load the bundled Qwen model to chat offline, or select a GGUF in Settings.", "加载内置 Qwen 模型离线聊天，或在设置中选择 GGUF。") else t("Choose a trusted Meshlit or OpenAI-compatible host in Settings.", "请在设置中选择可信的 Meshlit 或 OpenAI 兼容主机。"), color = colors.onSurface.copy(alpha = .65f))
-                            Spacer(Modifier.height(20.dp))
-                            HeroMenu(::t, onChat = { stop(); messages = emptyList(); usage = GenerationUsage() }, onModels = { openSection("models") }, onStyle = { openSection("appearance") })
-                        } else LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                        if (messages.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            ChatWelcome(coding, onPrompt = { prompt = it }, onCode = { openSection("code") })
+                        } else LazyColumn(Modifier.weight(1f).widthIn(max = 780.dp).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                             itemsIndexed(messages.filter { query.isBlank() || it.text.contains(query, true) }) { _, message ->
                                 if (message.role == "user") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                    Surface(shape = RoundedCornerShape(24.dp), color = colors.surface, modifier = Modifier.widthIn(max = 560.dp)) { SelectionContainer { Text(message.text, Modifier.padding(18.dp)) } }
+                                    Surface(shape = RoundedCornerShape(28.dp), color = colors.surface, modifier = Modifier.widthIn(max = 560.dp)) { SelectionContainer { Text(message.text, Modifier.padding(18.dp)) } }
                                 } else Column(Modifier.fillMaxWidth().widthIn(max = 860.dp)) {
                                     if (message.text.isEmpty()) Text(t("Generating…", "正在生成…"), color = colors.onSurface.copy(alpha = .65f))
                                     RichReply(message.text, scale)
@@ -305,23 +274,72 @@ fun main(args: Array<String>) {
                                 }
                             }
                         }
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                            Surface(shape = RoundedCornerShape(24.dp), color = colors.surface, border = androidx.compose.foundation.BorderStroke(1.dp, colors.primary.copy(alpha = .35f))) {
-                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    TextField(prompt, { prompt = it.take(131072) }, placeholder = { Text(t("Ask Meshlit", "向 Meshlit 提问")) }, modifier = Modifier.weight(1f), maxLines = 6,
+                        Column(Modifier.widthIn(max = 780.dp).fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp)) {
+                            Surface(shape = RoundedCornerShape(24.dp), color = colors.surface, border = androidx.compose.foundation.BorderStroke(1.dp, colors.onSurface.copy(alpha = .10f))) {
+                                Column {
+                                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    TextField(prompt, { prompt = it.take(131072) }, placeholder = { Text(t("Ask anything", "向 Meshlit 提问")) }, modifier = Modifier.weight(1f), maxLines = 6,
                                         colors = TextFieldDefaults.textFieldColors(backgroundColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
                                     Button(if (busy) { { stop() } } else ::requestSend, enabled = busy || (prompt.isNotBlank() && (localMode && localEngine.available() || requestsAllowed() && hostAllowed() && model.isNotBlank())), shape = RoundedCornerShape(22.dp)) { Text(if (busy) t("Stop", "停止") else t("Send ↑", "发送 ↑")) }
                                 }
+                        Row(Modifier.widthIn(max = 780.dp).fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            var modelMenu by remember { mutableStateOf(false) }
+                            var modelQuery by remember { mutableStateOf("") }
+                            Box {
+                                TextButton({ modelMenu = true }, enabled = !busy) { Text("▾  " + if(localMode) "On device" else model.ifBlank { onlineService }, maxLines = 1) }
+                                DropdownMenu(modelMenu, { modelMenu = false }) {
+                                    DropdownMenuItem({ modelMenu = false; if(!localMode) { stop(true); localMode = true; network = false; messages = emptyList() } }) { Text("Local / offline") }
+                                    if (!localMode && connected) OutlinedTextField(modelQuery, { modelQuery = it.take(128) }, label = { Text("Find model") }, modifier = Modifier.width(280.dp))
+                                    if (!localMode && connected) models.filter { it.contains(modelQuery, ignoreCase = true) }.take(50).forEach { id -> DropdownMenuItem({ modelMenu = false; model = id }) { Text(id) } }
+                                    DropdownMenuItem({ modelMenu = false; openSection("providers") }) { Text("Online models & gateways…") }
+                                }
                             }
-                            Text(t("Reported output tokens", "报告的输出令牌") + ": ${usage.outputTokens ?: t("unknown", "未知")} · " + t("End-to-end tokens/s", "端到端令牌/秒") + ": ${usage.tokensPerSecond?.let { "%.2f".format(it) } ?: t("unknown", "未知")}", style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = 8.dp))
+                            TextButton({ openSection("providers") }) { Text("Online models") }
+
                         }
+                                }
+                            }
+                            if (messages.isEmpty()) Text("Meshlit can make mistakes. Check important information.", style = MaterialTheme.typography.caption,
+                                color = colors.onSurface.copy(alpha = .5f), modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp))
+                            if (messages.isNotEmpty()) Text(t("Reported output tokens", "报告的输出令牌") + ": ${usage.outputTokens ?: t("unknown", "未知")} · " + t("End-to-end tokens/s", "端到端令牌/秒") + ": ${usage.tokensPerSecond?.let { "%.2f".format(it) } ?: t("unknown", "未知")}", style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = 8.dp))
+                        }
+                    }
+        }
+        Surface(Modifier.fillMaxSize(), color = colors.background) {
+            BoxWithConstraints {
+                val wide = maxWidth > 860.dp
+                Row(Modifier.fillMaxSize()) {
+                    if (wide) WorkspaceRail(if(settings) section else "chat", onSelect = { id ->
+                        if (id == "chat") settings = false else openSection(id)
+                    }, onNewChat = { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false })
+                    if (!coding) chatContent() else Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Text("Coding workspace is open", color = colors.onSurface.copy(alpha = .6f))
+                    }
+                }
+            }
+            if (coding) {
+                var codeDirty by remember { mutableStateOf(false) }
+                var closeCode by remember { mutableStateOf(false) }
+                DialogWindow(onCloseRequest = { if (codeDirty) closeCode = true else coding = false },
+                    title = "Meshlit · Coding workspace", state = rememberDialogState(width = 1420.dp, height = 860.dp)) {
+                    Surface(Modifier.fillMaxSize(), color = colors.background) {
+                        Row(Modifier.fillMaxSize()) {
+                            CodingWorkspace(Modifier.weight(1.6f).fillMaxHeight(), onDraft = { prompt = it }, onClose = { coding = false },
+                                onDirty = { codeDirty = it; onCodeDirty(it) })
+                            Divider(Modifier.width(1.dp).fillMaxHeight(), color = colors.onSurface.copy(alpha = .10f))
+                            chatContent()
+                        }
+                        if (closeCode) AlertDialog(onDismissRequest = { closeCode = false }, title = { Text("Unsaved changes") },
+                            text = { Text("Save your file first, or discard edits before closing the workspace.") },
+                            confirmButton = { TextButton({ coding = false }) { Text("Discard and close") } },
+                            dismissButton = { TextButton({ closeCode = false }) { Text("Keep editing") } })
                     }
                 }
             }
             if (settings) DialogWindow(onCloseRequest = { settings = false }, title = t("Meshlit Studio · workspace", "Meshlit Studio · 工作区"), state = rememberDialogState(width = 1060.dp, height = 800.dp)) {
                 Surface(Modifier.fillMaxSize(), color = colors.background) {
                     Row(Modifier.fillMaxSize()) {
-                    Column(Modifier.width(260.dp).fillMaxHeight().padding(12.dp)) {
+                    Column(Modifier.width(228.dp).fillMaxHeight().background(colors.surface).padding(16.dp)) {
                         Row {
                             TextButton({ advanced = false; if (section !in BASIC_DESKTOP_SECTIONS) section = "appearance"; runCatching { preferences.saveAdvanced(false) }.onFailure { preferencesError = true } }) { Text((if (!advanced) "✓ " else "") + "Basic") }
                             TextButton({ advanced = true; runCatching { preferences.saveAdvanced(true) }.onFailure { preferencesError = true } }) { Text((if (advanced) "✓ " else "") + "Advanced") }
@@ -329,7 +347,7 @@ fun main(args: Array<String>) {
                         Text(if (advanced) "Technical controls and feature availability" else "Appearance, privacy and help", style = MaterialTheme.typography.caption)
                         Box(Modifier.weight(1f)) { DesktopMenu(section, { section = it }, advanced = advanced) }
                     }
-                    Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     val destination = DesktopDestinations.all.first { it.id == section }
                     Text(destination.title, style = MaterialTheme.typography.h5)
                     if (section in setOf("appearance", "models", "colibri", "tokens", "permissions")) {
