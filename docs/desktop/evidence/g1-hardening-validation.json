@@ -1,7 +1,7 @@
 {
   "date": "2026-10-26",
   "workingTree": true,
-  "status": "Full regression, both assemblies and lints passed; physical follow-up in progress",
+  "status": "Full regression, both assemblies and lints passed at G1 checkpoint; targeted Samsung physical follow-up passed. See samsung-vpn-g1-validation.json; final prerelease lint recorded separately.",
   "sourceSha256": {
     "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/UsageLedger.kt": "1d83c3ae5e9b6049185399f4e868e352958a4714f3cc9a347592a0aaf85359da",
     "shared-workspace/src/jvmTest/kotlin/com/meshlit/workspace/UsageReplayTest.kt": "c2bb783f40258fb7202e1d3b2e6b8a64767620bba6695135b5e5bd21e7f5871d",

@@ -10,7 +10,7 @@
   "tests": {
     "appNetworkObservationAndPersistedOptIn": "passed",
     "encryptedLedgerReopenAndAtomicCredentialMutation": "passed",
-    "packagedHyperL": "Native recipe comparisons completed; dataset test exposed Android getFileStore SecurityException. Direct owner-only POSIX creation fix awaits rebuilt device run."
+    "packagedHyperL": "passed: native recipes, precise reduction, authenticated multi-chunk import/verify/rotate/export and POSIX file/directory permissions"
   },
   "ui": {
     "defaultOff": true,
@@ -28,5 +28,16 @@
     "Reopen in process tested; full process-death persistence not qualified",
     "No new hardware/GPU or distributed model claim",
     "Interactive navigation and real network snapshot inspected; broader accessibility/lifecycle acceptance open"
+  ],
+  "instrumentation": {
+    "tests": 3,
+    "failures": 0,
+    "durationSeconds": 3.227
+  },
+  "apkSha256": "3ee2bd1ad24b32228ceefa1ddd44e192511e92c220d1309c52efc0c5d294f808",
+  "resolvedFailures": [
+    "JUnit method must return void",
+    "Android denies getFileStore inspection",
+    "Android denies hard-link publication"
   ]
 }
