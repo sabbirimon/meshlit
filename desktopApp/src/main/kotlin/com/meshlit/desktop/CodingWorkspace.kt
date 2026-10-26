@@ -18,7 +18,7 @@ import java.nio.file.*
 import java.util.prefs.Preferences
 import javax.swing.JFileChooser
 
-@Composable internal fun CodingWorkspace(modifier: Modifier, onDraft: (String) -> Unit, onClose: () -> Unit, onDirty: (Boolean) -> Unit, command: Pair<Int, String> = 0 to "") {
+@Composable internal fun CodingWorkspace(modifier: Modifier, onDraft: (String) -> Unit, onClose: () -> Unit, onDirty: (Boolean) -> Unit, command: Pair<Int, String> = 0 to "", onWorkspace: (Path) -> Unit = {}) {
     val preferences = remember { Preferences.userRoot().node("com/meshlit/studio-code") }
     var layout by remember { mutableStateOf(preferences.get("layout", "Code")) }
     var explorer by remember { mutableStateOf(preferences.getBoolean("explorer", true)) }
@@ -35,7 +35,7 @@ import javax.swing.JFileChooser
     DisposableEffect(Unit) { onDispose { onDirty(false) } }
     fun guarded(action: () -> Unit) { if(dirty) pending = action else action() }
     fun attempt(action: () -> Unit) { try { action(); error = null } catch(e: Exception) { error = e.message ?: "File operation failed" } }
-    fun openFolder(path: Path) = attempt { val opened = CodeFiles(path); val files = opened.entries(); workspace = opened; directory = opened.root; entries = files; document = null; text = "" }
+    fun openFolder(path: Path) = attempt { val opened = CodeFiles(path); val files = opened.entries(); workspace = opened; onWorkspace(opened.root); directory = opened.root; entries = files; document = null; text = "" }
     fun saveLayout() = attempt { preferences.put("layout", layout); preferences.putBoolean("explorer", explorer); preferences.putBoolean("terminal", terminal); preferences.flush() }
     LaunchedEffect(Unit) { System.getProperty("meshlit.workspace")?.let { openFolder(Path.of(it)) } }
     LaunchedEffect(command) {

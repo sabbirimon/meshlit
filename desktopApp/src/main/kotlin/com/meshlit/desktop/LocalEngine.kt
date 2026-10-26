@@ -33,7 +33,7 @@ internal data class LocalSession(val endpoint: HostEndpoint, val token: String, 
 
 /** Owns only the bundled CPU process. No downloads, persistent listener or remote fallback. */
 internal class LocalEngine(private val resources: Path = Path.of(
-    System.getProperty("compose.application.resources.dir", "desktopApp/build/local-resources")
+    System.getProperty("meshlit.dev.resources") ?: System.getProperty("compose.application.resources.dir", "desktopApp/build/local-resources")
 ), registerShutdownHook: Boolean = true) : AutoCloseable {
     private val lock = Any()
     @Volatile private var revision = 0L

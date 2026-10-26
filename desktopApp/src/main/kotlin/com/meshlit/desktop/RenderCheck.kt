@@ -45,3 +45,22 @@ internal fun renderManagementCheck(path: String) {
     } }
     println("Native dashboard hub rendered; unavailable backends are not executed.")
 }
+
+/** Render the actual shared assistant controls without opening providers or running tools. */
+@OptIn(ExperimentalComposeUiApi::class)
+internal fun assistantControlsCheck(path: String) {
+    System.setProperty("java.awt.headless", "true")
+    ImageComposeScene(600, 760) {
+        DesktopTheme(com.meshlit.workspace.WorkspaceLook.STUDIO, 1f) {
+            androidx.compose.material.Surface(androidx.compose.ui.Modifier.fillMaxSize()) {
+                Column(androidx.compose.ui.Modifier.padding(24.dp)) {
+                    androidx.compose.material.Text("Assistant controls", style = androidx.compose.material.MaterialTheme.typography.h5)
+                    Spacer(androidx.compose.ui.Modifier.height(16.dp))
+                    StudioControlContent(StudioMode.PLAN, StudioApproval.ASK, "Choose a workspace to enable file tools", false, {}, {}, {})
+                }
+            }
+        }
+    }.use { scene -> scene.render().use { image ->
+        image.encodeToData(EncodedImageFormat.PNG)?.use { File(path).writeBytes(it.bytes) } ?: error("PNG encoder unavailable")
+    } }
+}

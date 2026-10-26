@@ -4,6 +4,16 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Studio identity and assistant modes — 2026-10-27
+
+Studio now displays generated version, source revision, dirty-source marker and build time in its title/About. A per-profile OS file lock covers packaged and development GUIs; a second launch requests focus instead of opening another process. On macOS the development launcher builds/opens **Meshlit.app** with bundle identifier `com.meshlit.desktop`, serializes builds and checks the instance lock before replacing a bundle. Old Java/JCEF notification registrations are not modified; no JCEF runtime is used or notification permission enabled.
+
+Chat and coding share **Chat / Plan / Edit / Autopilot**, a separate approval policy, chosen assistant workspace, action review and activity list. Plan blocks writes, Edit stops after one file mutation, and Autopilot has eight model steps with a ten-minute coroutine deadline. Each model step passes the existing credential and durable usage admission/settlement path. The default is Chat with approval required for every tool. Broader workspace edit permission requires a user confirmation and resets on restart or scope change.
+
+Registered tools list/read bounded text, create a file without overwrite, replace one exact text match after a read receipt, show local system readings, and navigate Meshlit views. No unrestricted OS/shell, administrator, browser-clicking, provider billing or credential-mutation tool is registered. File writes reject Plan, unsaved editor state, traversal/symlinks, stale content and private paths. Unsupported/invalid model action JSON stops the run without retry. Human terminal/settings remain separate. Reviewed dashboard text can be sent through the same chat modes; it does not become trusted instructions.
+
+Validation and remaining gates: [desktop guide](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md). Contract tests use scripted model decisions, not a claimed live-model qualification. Complete Code OSS embedding, general computer actions, richer patch review/undo, live provider/model tool reliability and simpler mobile controls remain open. Published beta.5 installers are unchanged.
+
 ## Embedded vendor dashboards and page reading — 2026-10-26
 
 Studio's service dashboard, catalog and guide actions now render the actual vendor page inside a Meshlit window using OpenJFX WebView 21.0.13. **Read page → review → Add to chat draft** captures bounded visible text, excludes input/password/editable fields, redacts common key formats and preserves the existing draft. Sending remains a separate action using the selected model and existing credentials/budget contracts. Vendor page content is marked untrusted; no host command bridge or API-key injection is exposed.

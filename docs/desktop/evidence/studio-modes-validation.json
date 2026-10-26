@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-27",
+  "platform": "Intel macOS",
+  "desktopTests": {
+    "total": 72,
+    "passed": 71,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0,
+    "skip": "physical SSH fixture"
+  },
+  "nativeApp": {
+    "name": "Meshlit",
+    "bundleIdentifier": "com.meshlit.desktop",
+    "bundleVersion": "2.0.45",
+    "buildChannel": "dev",
+    "built": true,
+    "startupAndDuplicateProbe": "pending final source build"
+  },
+  "render": {
+    "assistantControls": "passed; actual shared Compose controls rendered and inspected",
+    "path": "/tmp/meshlit-assistant-controls.png"
+  },
+  "identityTests": [
+    "cross-JVM exclusion",
+    "focus marker",
+    "owner release and restart"
+  ],
+  "modeTests": [
+    "Plan denies writes even with workspace edit permission",
+    "Edit stops after one mutation",
+    "decline and cancellation do not write",
+    "dirty editor and external conflicts fail closed",
+    "paths, symlinks and private files rejected",
+    "safe reads still require edit approval",
+    "8-step bound",
+    "strict action schema",
+    "create refuses overwrite"
+  ],
+  "modelQualification": "scripted decisions only; no live-provider or autonomous model reliability claim",
+  "usage": "each model decision uses existing durable ledger admission and settlement; unknown usage preserved; provider invoice caps not claimed",
+  "openGates": [
+    "full Code OSS workbench",
+    "general OS agent actions",
+    "browser action automation",
+    "mobile controls",
+    "Windows/Linux installed qualification",
+    "Developer ID signing/notarization"
+  ],
+  "paidApiCalls": 0,
+  "publishedInstallersChanged": false,
+  "localResources": "existing verified developer engine/model directory; no model copy or download",
+  "commands": [
+    ":desktopApp:test :desktopApp:createDistributable --offline",
+    "native --assistant-controls-check",
+    "Python/shell syntax checks",
+    "update-doc-tracking --check",
+    "validate-feature-map",
+    "git diff --check"
+  ]
+}

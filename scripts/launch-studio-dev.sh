@@ -13,4 +13,7 @@ if [ -z "${ANDROID_HOME:-}" ] && [ -d "$HOME/Library/Android/sdk" ]; then
   ANDROID_HOME="$HOME/Library/Android/sdk"; export ANDROID_HOME
 fi
 cd "$repo"
+if [ "$(uname -s)" = Darwin ]; then
+  exec python3 "$repo/scripts/launch-studio-macos.py" --workspace "$2"
+fi
 exec ./gradlew :desktopApp:run "-Pmeshlit.workspace=$2" --no-configuration-cache --no-daemon --no-parallel --max-workers=1 -Pkotlin.compiler.execution.strategy=in-process

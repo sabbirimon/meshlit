@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.collect
 
 private data class Message(val role: String, val text: String, val completed: Boolean = true)
 fun main(args: Array<String>) {
+    if (args.size == 2 && args[0] == "--assistant-controls-check") { assistantControlsCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--dashboard-browser-check") { dashboardBrowserCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--cpu-benchmark-check") { cpuBenchmarkCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--engine-options-check") { engineOptionsCheck(args[1]); return }
@@ -41,18 +42,38 @@ fun main(args: Array<String>) {
         require(java.nio.file.Files.isDirectory(folder))
         System.setProperty("meshlit.workspace", folder.toString())
     }
+    val instance = try {
+        StudioInstance.acquire(java.nio.file.Path.of(System.getProperty("user.home"), ".meshlit", "studio"), StudioBuild.details)
+    } catch(_: Exception) {
+        javax.swing.JOptionPane.showMessageDialog(null, "Meshlit could not verify its single-instance lock. Check access to your Meshlit profile.", "Meshlit", javax.swing.JOptionPane.ERROR_MESSAGE)
+        return
+    }
+    if(instance == null) {
+        println("Meshlit is already running; requested activation. Use Open folder in that window to change workspaces.")
+        return
+    }
+    Runtime.getRuntime().addShutdownHook(Thread { instance.close() })
     System.setProperty("apple.laf.useScreenMenuBar", "true")
     installDesktopIcon()
-    application {
+    try { application {
     DisposableEffect(Unit) { onDispose { DashboardEngine.shutdown() } }
     var unsavedCode by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
     var menuCommand by remember { mutableStateOf(0 to "") }
     fun dispatch(action: String) { menuCommand = menuCommand.first + 1 to action }
     fun requestQuit() { if(unsavedCode) confirmExit = true else exitApplication() }
-    Window(onCloseRequest = { if(unsavedCode) confirmExit = true else exitApplication() }, title = "Meshlit",
+    Window(onCloseRequest = { if(unsavedCode) confirmExit = true else exitApplication() }, title = StudioBuild.title,
         icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"),
         state = rememberWindowState(width = 1120.dp, height = 800.dp)) {
+        LaunchedEffect(instance) {
+            while(true) {
+                delay(500)
+                if(withContext(Dispatchers.IO) { runCatching { instance.consumeActivation() }.getOrDefault(false) }) {
+                    window.extendedState = java.awt.Frame.NORMAL
+                    window.toFront(); window.requestFocus()
+                }
+            }
+        }
         StudioMenus(::dispatch, ::requestQuit)
         Workspace(command = menuCommand, onCommand = ::dispatch, onQuit = ::requestQuit) { unsavedCode = it }
         if(confirmExit) AlertDialog(onDismissRequest = { confirmExit = false }, title = { Text("Unsaved code") },
@@ -60,7 +81,7 @@ fun main(args: Array<String>) {
             confirmButton = { TextButton({ exitApplication() }) { Text("Discard and quit") } },
             dismissButton = { TextButton({ confirmExit = false }) { Text("Keep editing") } })
     }
-    }
+    } } finally { instance.close() }
 }
 @Composable internal fun Workspace(command: Pair<Int, String> = 0 to "", onCommand: (String) -> Unit = {}, onQuit: () -> Unit = {}, onCodeDirty: (Boolean) -> Unit = {}) {
     val preferences = remember { DesktopPreferences() }
@@ -113,6 +134,13 @@ fun main(args: Array<String>) {
     var responsePolicy by remember { mutableStateOf(ResponsePolicy.ASSISTANT) }
     var instructions by remember { mutableStateOf(DesktopStarter.prompt) }
     fun openSection(id: String) { if(id == "code") { coding = true; settings = false } else { section = id; settings = true } }
+    var studioMode by remember { mutableStateOf(StudioMode.CHAT) }
+    var studioApproval by remember { mutableStateOf(StudioApproval.ASK) }
+    var assistantFolder by remember { mutableStateOf<java.nio.file.Path?>(null) }
+    var editorDirty by remember { mutableStateOf(false) }
+    var assistantControls by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<PendingStudioReview?>(null) }
+    var agentEvents by remember { mutableStateOf(emptyList<String>()) }
     var busy by remember { mutableStateOf(false) }
     var connected by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf(false) }
@@ -121,6 +149,10 @@ fun main(args: Array<String>) {
     var client by remember { mutableStateOf<HostClient?>(null) }
     var revision by remember { mutableStateOf(0) }
     fun stop(unloadLocal: Boolean = false) {
+        if(busy && !localLoading && messages.lastOrNull()?.let { it.role == "assistant" && !it.completed } == true) {
+            messages = messages.dropLast(1) + messages.last().copy(text = messages.last().text.ifBlank { "Stopped. Completed file changes are kept; review the activity log and workspace." })
+        }
+        pendingAction?.answer?.cancel(); pendingAction = null
         revision++; sendAfterLoad = false; client?.close(); job?.cancel(); client = null
         if (unloadLocal || localMode && busy) { localEngine.stop(); localSession = null; connected = false; models = emptyList(); model = "" }
         busy = false; localLoading = false
@@ -182,6 +214,10 @@ fun main(args: Array<String>) {
         messages = messages + Message("user", prompt.trim()) + Message("assistant", "", false)
         prompt = ""; usage = GenerationUsage(); failure = false; busy = true
         val currentRevision = revision
+        val selectedMode = studioMode
+        val selectedApproval = studioApproval
+        val selectedFolder = assistantFolder
+        agentEvents = emptyList()
         val selectedLocal = localMode
         val selectedModel = model
         val selectedEndpoint = endpoint
@@ -201,33 +237,56 @@ fun main(args: Array<String>) {
                 val session = if (selectedLocal) checkNotNull(selectedSession) else null
                 val targetHost = session?.endpoint ?: HostEndpoint.parse(selectedEndpoint, selectedProtocol)
                 val generationClient = HostClient(targetHost, session?.token ?: selectedCredential?.let { credentials.resolve(it, targetHost) } ?: selectedToken); active = generationClient; client = generationClient
-                val reply = ReplyBuffer()
-                val updates = MutableStateFlow("")
-                val display = launch {
-                    updates.collect { text ->
-                        if (revision == currentRevision && text.isNotEmpty()) messages = messages.dropLast(1) + messages.last().copy(text = text)
-                    }
-                }
-                val result = try {
-                    withContext(Dispatchers.IO) {
-                        val references = knowledge.context(context.last().content, remote = !selectedLocal)
-                        val groundedSystem = (system.orEmpty() + references).takeIf { it.isNotBlank() }
-                        attempt = ledger.begin(route, selectedModel, selectedPrice,
-                            (context.sumOf { it.content.length.toLong() } + (groundedSystem?.length ?: 0)) * 4 + 1024, selectedBudget.toLong())
-                        if (!selectedLocal && selectedCredential != null) credentials.resolve(selectedCredential, targetHost)
-                        generationClient.generateConfigured(selectedModel, context, GenerationBudget(selectedBudget), groundedSystem) { chunk ->
-                            reply.append(chunk)?.let { updates.value = it }
+                val references = withContext(Dispatchers.IO) { knowledge.context(context.last().content, remote = !selectedLocal) }
+                suspend fun round(turns: List<ChatTurn>, agentSystem: String?, showReply: Boolean): Pair<String, GenerationUsage> {
+                    val reply = ReplyBuffer()
+                    val updates = MutableStateFlow("")
+                    val display = launch {
+                        updates.collect { text ->
+                            if(showReply && revision == currentRevision && text.isNotEmpty()) messages = messages.dropLast(1) + messages.last().copy(text = text)
                         }
                     }
-                } finally { display.cancelAndJoin() }
-                withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", result.inputTokens, result.outputTokens) }
-                if (revision != currentRevision) throw CancellationException("Request superseded")
-                messages = messages.dropLast(1) + messages.last().copy(text = reply.snapshot(), completed = true); usage = result
+                    val result = try {
+                        withContext(Dispatchers.IO) {
+                            // Agent protocol replaces the ordinary no-tools persona; retrieved context stays untrusted.
+                            val groundedSystem = ((agentSystem ?: system.orEmpty()) + references).takeIf { it.isNotBlank() }
+                            require(groundedSystem == null || groundedSystem.length <= 8192) { "System context is too large" }
+                            require(turns.size < 64 && turns.sumOf { it.content.length.toLong() } + (groundedSystem?.length ?: 0) <= 131072) { "Assistant context limit reached; start a new chat" }
+                            attempt = ledger.begin(route, selectedModel, selectedPrice,
+                                (turns.sumOf { it.content.length.toLong() } + (groundedSystem?.length ?: 0)) * 4 + 1024, selectedBudget.toLong())
+                            if (!selectedLocal && selectedCredential != null) credentials.resolve(selectedCredential, targetHost)
+                            generationClient.generateConfigured(selectedModel, turns, GenerationBudget(selectedBudget), groundedSystem) { chunk ->
+                                reply.append(chunk)?.let { updates.value = it }
+                            }
+                        }
+                    } finally { display.cancelAndJoin() }
+                    withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", result.inputTokens, result.outputTokens) }
+                    attempt = null
+                    if (revision != currentRevision) throw CancellationException("Request superseded")
+                    usage = result
+                    return reply.snapshot() to result
+                }
+                val answer = if(selectedMode == StudioMode.CHAT) round(context, null, true).first else {
+                    StudioAgent(selectedFolder, { editorDirty }, ::openSection).run(selectedMode, selectedApproval, context,
+                        generate = { turns, agentSystem -> round(turns, agentSystem, false).first },
+                        review = { proposed ->
+                            val decision = PendingStudioReview(proposed, CompletableDeferred())
+                            pendingAction = decision
+                            try { decision.answer.await() } finally { if(pendingAction === decision) pendingAction = null }
+                        },
+                        event = { event -> if(revision == currentRevision) agentEvents = (agentEvents + event).takeLast(30) })
+                }
+                messages = messages.dropLast(1) + messages.last().copy(text = answer, completed = true)
             } catch (e: CancellationException) {
+                if(revision == currentRevision && messages.lastOrNull()?.role == "assistant") messages = messages.dropLast(1) + messages.last().copy(text = "Stopped. Completed file changes are kept; review the activity log.")
                 withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, "cancelled") } }; throw e
             } catch (e: Exception) {
                 withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, "failed") } }
-                if (revision == currentRevision) { failure = true; usageFailure = if(attempt == null) e.message else "Request failed; review Usage for any unresolved charge" }
+                if (revision == currentRevision) {
+                    failure = selectedMode == StudioMode.CHAT
+                    usageFailure = if(attempt == null) e.message else "Request failed; review Usage for any unresolved charge"
+                    if(selectedMode != StudioMode.CHAT) messages = messages.dropLast(1) + messages.last().copy(text = "Assistant stopped: ${usageFailure ?: "action failed"}. Earlier completed changes are kept.")
+                }
             } finally { active?.close(); if (revision == currentRevision) { client = null; busy = false } }
         }
     }
@@ -259,6 +318,7 @@ fun main(args: Array<String>) {
         runCatching {
             when(command.second) {
                 "new-chat" -> { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false }
+                "assistant-controls" -> { assistantControls = true }
                 "paste-draft" -> { prompt = (prompt + (clipboard.getText()?.text ?: "")).take(131072) }
                 "copy-draft" -> clipboard.setText(AnnotatedString(prompt))
                 "clear-draft" -> { prompt = "" }
@@ -267,7 +327,7 @@ fun main(args: Array<String>) {
                 "vscode" -> if(coding) { codeCommand = command } else openVsCode()
                 "guide" -> java.awt.Desktop.getDesktop().browse(java.net.URI("https://github.com/sabbirimon/meshlit/blob/plan/studio-mobile-lts/docs/USER_GUIDE.md"))
                 "vscode-guide" -> java.awt.Desktop.getDesktop().browse(java.net.URI("https://code.visualstudio.com/docs"))
-                "code", "providers", "models", "usage", "management", "appearance" -> openSection(command.second)
+                "code", "providers", "models", "usage", "management", "appearance", "about" -> openSection(command.second)
             }
         }.onFailure { navigationError = "Could not open the requested view or application. Check that VS Code is installed for workspace handoff." }
     }
@@ -275,6 +335,16 @@ fun main(args: Array<String>) {
     DesktopTheme(look, scale) {
         val chatContent: @Composable RowScope.() -> Unit = {
                     Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if(assistantControls) StudioControlDialog(studioMode, studioApproval, assistantFolder?.toString(), busy,
+                            onMode = { studioMode = it }, onApproval = { studioApproval = it }, onClose = { assistantControls = false },
+                            onFolder = {
+                                val picker = javax.swing.JFileChooser().apply { fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY }
+                                if(picker.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) runCatching {
+                                    assistantFolder = CodeFiles(picker.selectedFile.toPath()).root; studioApproval = StudioApproval.ASK
+                                }.onFailure { navigationError = "Could not open the assistant workspace" }
+                            })
+                        pendingAction?.let { pending -> StudioActionDialog(pending, if(localMode) "On device" else "$onlineService · $model") { pending.answer.complete(it) } }
+
                         WorkspaceHeader(
                             title = if (localMode) customModel?.fileName?.toString() ?: DesktopStarter.label else model.ifBlank { "Meshlit" },
                             status = if (localMode) if (localSession != null) "Offline · ${localSession?.backend} · ready" else if (localLoading) "Verifying and loading local model…" else "Offline model · load when ready"
@@ -295,12 +365,19 @@ fun main(args: Array<String>) {
                                 if (message.role == "user") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                                     Surface(shape = RoundedCornerShape(28.dp), color = colors.surface, modifier = Modifier.widthIn(max = 560.dp)) { SelectionContainer { Text(message.text, Modifier.padding(18.dp)) } }
                                 } else Column(Modifier.fillMaxWidth().widthIn(max = 860.dp)) {
-                                    if (message.text.isEmpty()) Text(t("Generating…", "正在生成…"), color = colors.onSurface.copy(alpha = .65f))
+                                    if (message.text.isEmpty()) Text(if(studioMode != StudioMode.CHAT) "Assistant is working…" else t("Generating…", "正在生成…"), color = colors.onSurface.copy(alpha = .65f))
                                     RichReply(message.text, scale)
                                     val clipboard = LocalClipboardManager.current
                                     Row { TextButton({ clipboard.setText(AnnotatedString(message.text)) }, enabled = message.text.isNotEmpty()) { Text(t("Copy", "复制")) }
                                         if (!message.completed) Text(t("Incomplete", "未完成"), Modifier.padding(12.dp), style = MaterialTheme.typography.caption) }
                                 }
+                            }
+                        }
+                        if(agentEvents.isNotEmpty()) {
+                            var showActivity by remember { mutableStateOf(false) }
+                            TextButton({ showActivity = !showActivity }) { Text((if(showActivity) "▾ " else "▸ ") + agentEvents.last()) }
+                            if(showActivity) Column(Modifier.heightIn(max = 130.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+                                agentEvents.forEach { Text(it, style = MaterialTheme.typography.caption) }
                             }
                         }
                         Column(Modifier.widthIn(max = 780.dp).fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp)) {
@@ -323,6 +400,8 @@ fun main(args: Array<String>) {
                                     DropdownMenuItem({ modelMenu = false; openSection("providers") }) { Text("Online models & gateways…") }
                                 }
                             }
+                            StudioModePicker(studioMode, busy, { studioMode = it }, { assistantControls = true })
+                            TextButton({ assistantControls = true }) { Text(studioApproval.label) }
                             TextButton({ openSection("providers") }) { Text("Online models") }
 
                         }
@@ -330,7 +409,7 @@ fun main(args: Array<String>) {
                             }
                             if (messages.isEmpty()) Text("Meshlit can make mistakes. Check important information.", style = MaterialTheme.typography.caption,
                                 color = colors.onSurface.copy(alpha = .5f), modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp))
-                            if (messages.isNotEmpty()) Text(t("Reported output tokens", "报告的输出令牌") + ": ${usage.outputTokens ?: t("unknown", "未知")} · " + t("End-to-end tokens/s", "端到端令牌/秒") + ": ${usage.tokensPerSecond?.let { "%.2f".format(it) } ?: t("unknown", "未知")}", style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = 8.dp))
+                            if (messages.isNotEmpty()) Text(t("Last request output tokens", "最近请求输出令牌") + ": ${usage.outputTokens ?: t("unknown", "未知")} · " + t("End-to-end tokens/s", "端到端令牌/秒") + ": ${usage.tokensPerSecond?.let { "%.2f".format(it) } ?: t("unknown", "未知")}", style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = 8.dp))
                         }
                     }
         }
@@ -364,7 +443,8 @@ fun main(args: Array<String>) {
                     Surface(Modifier.fillMaxSize(), color = colors.background) {
                         Row(Modifier.fillMaxSize()) {
                             CodingWorkspace(Modifier.weight(1.6f).fillMaxHeight(), onDraft = { prompt = it }, onClose = { coding = false },
-                                onDirty = { codeDirty = it; onCodeDirty(it) }, command = codeCommand)
+                                onDirty = { codeDirty = it; editorDirty = it; onCodeDirty(it) }, command = codeCommand,
+                                onWorkspace = { folder -> if(assistantFolder != folder) { stop(); assistantFolder = folder; studioApproval = StudioApproval.ASK } })
                             Divider(Modifier.width(1.dp).fillMaxHeight(), color = colors.onSurface.copy(alpha = .10f))
                             chatContent()
                         }
@@ -470,6 +550,11 @@ fun main(args: Array<String>) {
                         Text(t("Actual throughput appears only when the host reports token usage; it includes request latency. Language affects UI only.", "仅在主机报告令牌用量时显示吞吐量；此值包含请求延迟。语言设置仅影响界面。"), style = MaterialTheme.typography.caption)
                         }
                     } else when (section) {
+                        "agents" -> {
+                            Text("${studioMode.label} · ${studioApproval.label}")
+                            Text("Shared assistant controls for Studio chat and coding. Runs use bounded file tools, system readings and Meshlit navigation. Permissions apply to assistant actions, not your manual settings or terminal commands.")
+                            Button({ assistantControls = true; settings = false }) { Text("Mode, approvals & workspace") }
+                        }
                         "providers" -> OnlineModelsPanel(onlineService, endpoint, token, hostProtocol, gateway,
                             network && !localMode, connected && !localMode, busy, if(localMode) emptyList() else models, model,
                             preset = { item -> stop(true); localMode = false; colibriHost = false; onlineService = item.name;
@@ -559,10 +644,10 @@ fun main(args: Array<String>) {
                             Text("Offline chat makes no web requests. Connecting sends prompts and session keys to the selected host, which may use its own cloud providers or tools. No telemetry or agent execution is enabled by default.")
                         }
                         "about" -> {
-                            Text("Meshlit Studio · Intel desktop build 40 · experimental")
+                            Text(StudioBuild.details)
                             Text("Bundled Qwen2.5 1.5B Instruct Q4_K_M · llama.cpp CPU · portable Java 21")
                             Text("Android menu inventory has been audited. ${DesktopDestinations.all.count { it.available }} desktop sections provide scoped functions or actual host readings. Remaining Android backends are explicitly listed as awaiting a desktop port.")
-                            Text("This build is not full Android feature parity or production qualification. GPU, P2P, agents, training, recovery, voice and VM require their respective desktop implementations and tests. SSH currently supports pinned exec and an inbound status node; remote qualification remains.")
+                            Text("This build is not full Android feature parity or production qualification. GPU, P2P, delegated multi-agent jobs, training, recovery, voice and VM require their respective desktop implementations and tests. SSH currently supports pinned exec and an inbound status node; remote qualification remains.")
                         }
                         else -> FeatureStatus(section)
                     }

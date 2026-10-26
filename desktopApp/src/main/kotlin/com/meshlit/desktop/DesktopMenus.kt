@@ -28,6 +28,7 @@ import javax.swing.JFileChooser
             Item("Clear chat draft", onClick = { action("clear-draft") })
         }
         Menu("View") {
+            Item("Assistant mode & approvals", onClick = { action("assistant-controls") })
             Item("Model services", onClick = { action("providers") })
             Item("Local models", onClick = { action("models") })
             Item("Usage & budgets", onClick = { action("usage") })
@@ -40,7 +41,7 @@ import javax.swing.JFileChooser
             Item("Minimize", onClick = { window.extendedState = java.awt.Frame.ICONIFIED })
             Item("Bring to front", onClick = { window.toFront() })
         }
-        Menu("Help") { Item("Meshlit guide", onClick = { action("guide") }); Item("VS Code documentation", onClick = { action("vscode-guide") }) }
+        Menu("Help") { Item("About Meshlit", onClick = { action("about") }); Item("Meshlit guide", onClick = { action("guide") }); Item("VS Code documentation", onClick = { action("vscode-guide") }) }
     }
 }
 

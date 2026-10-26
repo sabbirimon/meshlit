@@ -51,7 +51,7 @@ object DesktopDestinations {
         DesktopDestination("power", "Power and costs", "Local battery readings when OS reports them; cost accounting pending", true),
         DesktopDestination("external", "External devices and OTG", "USB discovery, permissions and removable storage", false),
         DesktopDestination("acceleration", "Acceleration", "Observed CPU/GPU inventory; accelerator execution qualification pending", true),
-        DesktopDestination("agents", "Agent management", "Delegated permissions, real jobs and registered tools", false),
+        DesktopDestination("agents", "Assistant modes", "Shared Plan, Edit and bounded Autopilot with action approvals", true),
         DesktopDestination("ssh", "SSH nodes and connections", "Pinned outbound SSH and approved-key inbound status", true),
         DesktopDestination("firewall", "Network rules", "Persisted Meshlit listener firewall and network status", false),
         DesktopDestination("device", "Device", "Observed local hardware and process inventory", true),

@@ -61,7 +61,7 @@ def main():
     if (args.llama_source / "LICENSE").read_bytes() != pinned_license:
         parser.error("llama licence differs from pinned source")
     app_input = args.app_image.resolve() / "Contents/app"
-    jars = list(app_input.glob("desktopApp-*.jar"))
+    jars = list(app_input.glob("desktopApp-*.jar")) + list(app_input.glob("desktopApp.jar"))
     if len(jars) != 1:
         parser.error("Expected exactly one compiled desktopApp jar.")
     provenance = json.loads(args.runtime_provenance.read_text(encoding="utf-8"))
@@ -79,18 +79,18 @@ def main():
         "--strip-debug", "--no-man-pages", "--no-header-files", "--output", runtime)
     image_dir = args.scratch / "image"
     run(args.jdk_home / "bin/jpackage", "--type", "app-image", "--dest", image_dir,
-        "--input", clean_input, "--runtime-image", runtime, "--name", "MeshlitPreview",
+        "--input", clean_input, "--runtime-image", runtime, "--name", "Meshlit",
         "--main-jar", jars[0].name, "--main-class", "com.meshlit.desktop.MainKt",
         "--app-version", args.version, "--vendor", "Sabbir Hassan Imon",
         "--description", "Experimental Meshlit desktop studio with offline CPU inference",
         "--mac-package-identifier", "com.meshlit.desktop",
-        "--icon", args.app_image / "Contents/Resources/MeshlitPreview.icns",
+        "--icon", args.app_image / "Contents/Resources/Meshlit.icns",
         "--java-options", "-Dcompose.application.resources.dir=$APPDIR/resources",
         "--java-options", "-Dcompose.application.configure.swing.globals=true",
         "--java-options", "-Dskiko.library.path=$APPDIR",
         "--java-options", "-Djava.library.path=$APPDIR/resources/local")
     # The native HyperL bridge is loaded only by an explicit enabled CPU action.
-    app = image_dir / "MeshlitPreview.app"
+    app = image_dir / "Meshlit.app"
     plist = app / "Contents/Info.plist"
     metadata = plistlib.loads(plist.read_bytes())
     # Conservative distribution floor; only macOS 15.8.1 is physically qualified.

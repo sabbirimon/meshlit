@@ -1,3 +1,5 @@
+import java.util.Properties
+import java.time.Instant
 import java.nio.file.Files
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
@@ -30,15 +32,19 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.meshlit.desktop.MainKt"
+        providers.gradleProperty("meshlit.devResources").orNull?.let {
+            require(project.file(it).isDirectory) { "Developer resources directory is missing" }
+            jvmArgs("-Dmeshlit.dev.resources=" + project.file(it).absolutePath)
+        }
         providers.gradleProperty("meshlit.packagingJdk").orNull?.let { javaHome = it }
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "MeshlitPreview"
+            packageName = "Meshlit"
             packageVersion = providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.45")
             modules("jdk.jfr", "jdk.xml.dom", "jdk.httpserver", "jdk.jsobject", "java.scripting", "java.xml", "jdk.unsupported.desktop", "java.instrument", "java.logging", "java.net.http", "java.prefs", "java.rmi", "java.security.jgss", "java.management", "jdk.management", "jdk.crypto.ec", "jdk.unsupported")
             description = "Experimental Meshlit Studio; runtime availability depends on the installed package"
             vendor = "Sabbir Hassan Imon"
-            macOS { iconFile.set(project.file("distribution/icons/meshlit.icns")) }
+            macOS { bundleID = "com.meshlit.desktop"; iconFile.set(project.file("distribution/icons/meshlit.icns")) }
             windows { iconFile.set(project.file("distribution/icons/meshlit.ico")) }
             linux { iconFile.set(project.file("distribution/icons/meshlit.png")) }
         }
@@ -86,4 +92,29 @@ tasks.withType<JavaExec>().configureEach {
 // Retain browser and other bundled component notices in every platform artifact.
 tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("processResources") {
     from("distribution/notices") { into("META-INF/meshlit/licenses") }
+}
+
+val studioBuildMetadata = layout.buildDirectory.dir("generated/studioIdentity")
+val generateStudioIdentity by tasks.registering {
+    outputs.dir(studioBuildMetadata)
+    outputs.upToDateWhen { false } // Every compiled distribution has a distinct build time.
+    doLast {
+        fun git(vararg args: String): String = providers.exec {
+            workingDir(rootProject.projectDir)
+            commandLine("git", *args)
+        }.standardOutput.asText.get().trim()
+        val file = studioBuildMetadata.get().file("studio-build.properties").asFile
+        file.parentFile.mkdirs()
+        val metadata = Properties().apply {
+            setProperty("version", providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.45") + "-" + providers.gradleProperty("meshlit.channel").getOrElse("dev"))
+            setProperty("revision", git("rev-parse", "HEAD"))
+            setProperty("dirty", git("status", "--porcelain", "--untracked-files=normal").isNotEmpty().toString())
+            setProperty("builtAt", Instant.now().toString())
+        }
+        file.outputStream().use { metadata.store(it, "Generated Meshlit build identity") }
+    }
+}
+tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("processResources") {
+    dependsOn(generateStudioIdentity)
+    from(studioBuildMetadata)
 }
