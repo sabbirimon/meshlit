@@ -16,7 +16,7 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class HyperLNativeAndroidTest {
-    @Test fun packagedNativeRecipesAndPrivateAuthenticatedStorage()=runBlocking {
+    @Test fun packagedNativeRecipesAndPrivateAuthenticatedStorage()=runBlocking<Unit> {
         for(id in HyperLLibrary.ids){val r=HyperLLibrary.recipe(id)
             assertArrayEquals(id,HyperLCpuBackend().execute(r.program,r.example),NativeCpu.execute(r.program,r.example,16L*1024*1024),0f)
         }
@@ -28,6 +28,10 @@ class HyperLNativeAndroidTest {
             val store=HyperLDatasets(root,OperationGate());val data=ByteArray(4*1024*1024+17){(it%251).toByte()}
             val (id,s)=store.import{ByteArrayInputStream(data)}
             assertEquals(2,s.chunks);assertEquals(s,store.verify(id))
+            assertEquals(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"),
+                java.nio.file.Files.getPosixFilePermissions(File(root,"$id/key").toPath()))
+            assertEquals(java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"),
+                java.nio.file.Files.getPosixFilePermissions(File(root,"$id/data").toPath()))
             val (next,rotated)=store.rotate(id);assertEquals(s,rotated)
             store.export(next){assertArrayEquals(data,it.readBytes())}
         }finally{root.deleteRecursively()}

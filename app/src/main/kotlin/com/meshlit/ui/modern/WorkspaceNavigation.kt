@@ -28,6 +28,7 @@ data class WorkspaceDestination(val id:String,val title:String,val description:S
 /** Shared phone/wide-window inventory of connected modern routes. */
 object WorkspaceDestinations {
     private val primary=listOf(
+        WorkspaceDestination("dashboards","Dashboards","Models, routing, usage and private connections","Workspace"),
         WorkspaceDestination("chat","Chat","Your model conversations","Workspace"),
         WorkspaceDestination("models","Models","Downloads, imports and local runtime","Workspace","catalog GGUF load"),
         WorkspaceDestination("devices","Devices","Discovery, pairing and device inventory","Workspace","nearby list QR approval cluster"),
@@ -39,8 +40,8 @@ object WorkspaceDestinations {
     )
     private fun group(id:String)=when(id) {
         "tasks","ide","files","agents","agent-registry","agent-logs" -> "Workspace"
-        "media","training","router","behavior","guardrails","acceleration","hyperl" -> "Models and media"
-        "network","sharding","radar","host-map","device-dashboard","resources","ssh","securitylab","runtime","packages","commands","operations","power","firewall","recovery","logs","audit" -> "Operations"
+        "usage","media","training","router","behavior","guardrails","acceleration","hyperl" -> "Models and media"
+        "vpn","network","sharding","radar","host-map","device-dashboard","resources","ssh","securitylab","runtime","packages","commands","operations","power","firewall","recovery","logs","audit" -> "Operations"
         "meshchat" -> "Connections"
         "securityprivacy","guardrails","permissions","legal","identity-recovery" -> "Security & privacy"
         "cloud","huggingface","providers","gateway","tools-automation","mcp-catalog","rag","external","external-services","web-bridge","peers","openclaw","automation","termux","crawler","hooks" -> "Connections"

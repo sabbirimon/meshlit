@@ -4,6 +4,30 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## G1 contract hardening and math assessment — 2026-10-26
+
+Durable ledger replay now rejects invalid domains, duplicate currency policies, inconsistent terminal costs and illegal event shapes. Any uncertain write disables the current authority until reopen. Android profile/key edits use one checked encrypted transaction; a failed commit blocks further credentials in that instance, and current profile/local-key bindings are rechecked before dispatch. Independent integer accounting and write-then-fail regressions pass; full regression, both debug assemblies and both lints passed. Samsung device follow-up is in progress. Studio durable credentials, all-adapter revocation, cross-device authority and live account/device qualification remain open. No automatic routing or provider billing-cap promise was added.
+
+The [OpenAI math assessment](docs/MATH_RESEARCH_2026-10-26.md) reviews the pinned 719-manuscript catalog and selected compute/security candidates. Standalone HyperL gained bounded exact-arithmetic reduction tests; no theorem-derived speedup or cipher replacement is claimed.
+
+## Optional Tailscale / VPN increment — 2026-10-26
+
+The owner requested real VPN dashboards while keeping Basic settings minimal. Studio now reads optional installed Tailscale CLI status with bounded, cancellable local execution; Android reports its actual app-effective VPN transport separately from Tailscale package presence and hands management to the official client. Observations are opt-in, in-memory, timestamped and expiring. No unsupported connect toggle, paid API call, VPN reconfiguration or push is part of this increment. See [setup and evidence boundaries](docs/TAILSCALE_AND_VPN.md). Live tailnet and physical-device qualification remain open.
+
+
+## Usage accounting boundaries — 2026-10-26
+
+The new ledger covers Android online-provider text calls and Studio interactive chat, not all adapters or provider account activity. Device-local budgets guard estimates and cannot guarantee a provider invoice ceiling. Unknown/cancelled requests retain reservations; manual reconciliation requires owner-confirmed per-attempt charges. Opaque gateways are blocked by free-only/currency-budget policy. Studio's usage vault needs a passphrase each session, and journal capacity is bounded with no archival UI yet. See [details](docs/USAGE_AND_MODEL_BUDGETS.md). These limitations remain explicit rather than being counted as completed LTS gates.
+
+
+## Confirmed baseline CI timeout — 2026-10-26
+
+GitHub check `120763534145` explicitly reports that the V2 job exceeded its one-hour execution limit during the separate Core Candidate stage. Both new debug assemblies completed locally; final lint and the scoped restricted-channel test are tracked in [the baseline report](docs/desktop/STUDIO_BASELINE_2026-10-26.md). The full CI timeout remains open; no workflow timeout was increased or checks disabled.
+
+## LTS planning blockers — 2026-10-26
+
+[The LTS plan](docs/STUDIO_MOBILE_LTS_PLAN.md) records source gaps rather than treating them as completed integrations: Studio model routing is pending; the tunnel module is configuration-only; unified durable usage/spend admission is absent; current full CI was cancelled. G0 must reproduce the baseline and inspect the actual CI failure/cancellation cause. Existing device, voice, RAG and native qualification gates below stay open. No new runtime regression is asserted by this documentation audit.
+
 ## Current validation boundary — 2026-10-24
 
 The paused build45 source fixes and unresolved cases are summarized in [the checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md). Publication preserves this work; final voice regressions, both flavor build/lint and physical device checks remain open. Earlier successful builds below apply only to their named revisions.
@@ -60,3 +84,11 @@ Updated 2026-10-10. Older bug IDs, hypotheses and screenshots are preserved in d
 | Physical multi-device oversized model, native placement and failover | Open implementation/acceptance | Planner/loopback evidence is insufficient for physical fleet qualification |
 
 No fabricated total bug count or project completion percentage. Report each reproducible issue with exact source/artifact, device/backend, expected/actual result, sanitized logs and its regression test or acceptance gate.
+
+## Samsung permission-screen finding — 2026-10-26
+
+The App permissions page has no storage/files row. Normal document-picker imports remain available; the existing all-files settings helper is not linked from that page. Add clear selected-file versus optional broad-access guidance and an Advanced-only settings handoff in a later UI increment; do not automatically grant broad file access.
+
+## Prerelease continuation — 2026-10-26
+
+Samsung Android 11 HyperL dataset import failed at Files.getFileStore despite an app-private path. Fixed the Android port to request owner-only POSIX attributes atomically rather than inspect the denied filesystem store. Device regression and permission assertions pending; native recipe comparisons completed before the original failure.

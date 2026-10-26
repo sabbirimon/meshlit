@@ -14,7 +14,7 @@ Updated 2026-10-24 for the consolidated Meshlit repository. The Chat reply below
 
 Meshlit is a phone-first private AI workspace. Run a supported local model on one device; manage files, chats and tasks; explicitly connect providers and owner-approved devices when needed. Android is the working on-device target. Experimental desktop and native HarmonyOS NEXT clients are described in docs/MULTIPLATFORM_NEXT.md; NEXT local inference and HAP/device acceptance remain unavailable/unverified. A model catalog, device role claim or installed library does not establish usable inference or training.
 
-The drawer starts with four shortcuts: Models, Devices, Agents and Device management. Expand a category for other pages, or use its single search field. You can change the shortcuts under Customize menu. Devices contains discovery, the device list, pairing, saved QRs and approvals. Networking contains transport, relay and firewall controls. Settings opens on six essential destinations; Browse all shows the complete Basic list. Advanced lists optional tools and integrations. Search checks both lists and matches every entered word across names, descriptions and keywords, regardless of the selected tab.
+Open Dashboards from Settings or the workspace menu for Models, Routing, Usage & costs, and VPN & network. Android Basic settings now contain Appearance, Security and privacy, Notifications, Files and storage, Guide and tutorial, and About (subject to build availability). Studio Basic contains Appearance, Security and privacy, Help, and About. Advanced and search retain the remaining controls; search spans both modes. Existing shortcuts and preferences are preserved. The usage page shows only the latest in-memory route on Android or response on Studio, not billing history. VPN pages explain connection setup; they do not report a verified Tailscale connection or control the VPN. Studio automatic routing remains pending.
 
 Implementation status matters. Desktop layer workers have real execution evidence. Oversized-model execution across physical phones, replicated task/session failover and portable distributed KV recovery remain acceptance/implementation gates. This guide explains actual controls and labels future work explicitly. It contains no simulated devices, costs or performance charts.
 
@@ -660,3 +660,19 @@ Enable **Use excerpts in local chat** for on-device answers. Remote/routed/clust
 ## Built-in security references
 
 Open **Security Lab → Security skills** on Android or **Security skills** in Studio. Choose one of eight defensive references and copy it into any supported model: reporting, source/configuration/dependency review, crash triage, API authorization, mobile privacy or agent boundaries. Android agents can use `cyber_skills_list` and `cyber_skill_read` with their saved CYBER grant and selected chat tools. These are read-only references; they do not start an assessment, run scripts, change firewall settings or authorize targets. Actual lab execution remains separately scoped. Studio currently offers read/copy, not the Android MCP execution bridge. See [the scope and reviewed source](SECURITY_LAB_AND_HARDWARE_ACCESS.md).
+
+
+### Usage history, budgets and optional model gateways
+
+Dashboards → Usage & costs now records Android online-provider text calls and Studio interactive chat. Studio requires a separate encrypted usage-vault passphrase before chatting. Choose a currency, monthly allowance and per-request reservation, then save. Review direct-model input/output rates before using a budget or free-only mode; reviewed rates expire after 24 hours. Unknown prices are not free. Cancelled or missing-usage requests retain uncertain charges until you reconcile the individual attempt with your provider bill. These are device-local estimate guards, not provider billing caps or ChatGPT credit controls.
+
+OmniRoute and experimental FreeLLMAPI are optional OpenAI-compatible presets for your own deployment. No server is installed or account entitlement included. Enable network access explicitly. Opaque gateways are blocked by local free-only and currency budgets; review their downstream billing separately. Android local/Colibri/media, Studio CLI/hosting, cross-device usage and automatic invoices remain outside this ledger. See [Usage and model budgets](USAGE_AND_MODEL_BUDGETS.md) for storage, scope and setup.
+
+
+### Optional VPN dashboard
+
+Open Dashboards → VPN & network. Studio can optionally read an installed Tailscale CLI using Refresh; select a trusted executable in Advanced details if needed. Android can show its actual app-network VPN transport and open the Tailscale companion or Android VPN settings. Installed-app detection does not prove Tailscale is connected. Snapshots expire after 60 seconds; refresh after network changes. Connection, login and exit-node changes remain in the official client. Host authentication and worker approval remain separate. Basic settings are unchanged. See [Tailscale and VPN observations](TAILSCALE_AND_VPN.md).
+
+## Usage storage recovery
+
+Usage history blocks further admission after an uncertain storage failure until it is reopened. Studio users can lock/unlock the usage vault; Android users should restart and review interrupted entries. Do not erase history to recover allowance. Provider budgets remain local estimates, not invoice caps.

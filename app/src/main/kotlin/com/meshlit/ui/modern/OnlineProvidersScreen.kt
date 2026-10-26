@@ -35,19 +35,25 @@ import java.util.UUID
             listOf(Triple("OpenAI","https://api.openai.com/v1",OnlineProtocol.OPENAI),Triple("Claude","https://api.anthropic.com/v1",OnlineProtocol.ANTHROPIC),
                 Triple("DeepSeek","https://api.deepseek.com/v1",OnlineProtocol.OPENAI_COMPATIBLE),Triple("Qwen · US region","https://dashscope-us.aliyuncs.com/compatible-mode/v1",OnlineProtocol.OPENAI_COMPATIBLE),
                 Triple("Gemini","https://generativelanguage.googleapis.com/v1beta",OnlineProtocol.GEMINI),Triple("Hugging Face","https://router.huggingface.co/v1",OnlineProtocol.OPENAI_COMPATIBLE),
-                Triple("Agentgateway / LiteLLM","",OnlineProtocol.OPENAI_COMPATIBLE),Triple("Custom compatible","",OnlineProtocol.OPENAI_COMPATIBLE)).forEach{(name,url,protocol)->OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),name,url,protocol=protocol))}){Text(name)}}}}
+                Triple("OmniRoute (optional)","",OnlineProtocol.OPENAI_COMPATIBLE),Triple("FreeLLMAPI (experimental)","",OnlineProtocol.OPENAI_COMPATIBLE),
+                Triple("Agentgateway / LiteLLM","",OnlineProtocol.OPENAI_COMPATIBLE),Triple("Custom compatible","",OnlineProtocol.OPENAI_COMPATIBLE)).forEach{(name,url,protocol)->OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),name,url,protocol=protocol,gateway=when { name.startsWith("OmniRoute") -> OnlineGateway.OMNIROUTE; name.startsWith("FreeLLMAPI") -> OnlineGateway.FREELLMAPI; name.startsWith("Agentgateway") -> OnlineGateway.CUSTOM; else -> OnlineGateway.DIRECT }))}){Text(name)}}}}
         editing?.let{profile->item{Card{Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("Configure ${profile.name}",style=MaterialTheme.typography.titleMedium)
+            if (profile.gateway != OnlineGateway.DIRECT) Text("Optional gateway: prompts and keys go to your chosen deployment. Downstream routing, retries, quota and costs are controlled there. Local free-only and budgeted requests block opaque gateways. FreeLLMAPI is experimental, for personal use. No provider entitlement is included.")
             OutlinedTextField(profile.name,{editing=profile.copy(name=it)},label={Text("Profile name")})
-            OutlinedTextField(profile.endpoint,{editing=profile.copy(endpoint=it,pricingSource=null,priceCheckedAtMs=null);inputRate="";outputRate=""},label={Text("HTTPS API base URL")},supportingText={Text("Qwen requires an endpoint and key for your region/workspace. Custom keys are sent only to this endpoint.")})
-            FlowRow{OnlineProtocol.entries.forEach{protocol->FilterChip(profile.protocol==protocol,{editing=profile.copy(protocol=protocol)},label={Text(protocol.name)})}}
+            OutlinedTextField(profile.endpoint,{editing=profile.copy(endpoint=it,pricingSource=null,priceCheckedAtMs=null);inputRate="";outputRate=""},label={Text("HTTPS API base URL")},supportingText={Text("Qwen requires an endpoint and key for your region/workspace. Changing endpoint or protocol clears the old key; enter a key bound to the new endpoint.")})
+            if(profile.protocol==OnlineProtocol.OPENAI_COMPATIBLE) Row {
+                Text("This endpoint routes to other providers", Modifier.weight(1f))
+                Switch(profile.gateway != OnlineGateway.DIRECT, { editing=profile.copy(gateway=if(it) OnlineGateway.CUSTOM else OnlineGateway.DIRECT) })
+            }
+            FlowRow{OnlineProtocol.entries.forEach{protocol->FilterChip(profile.protocol==protocol,{editing=profile.copy(protocol=protocol,gateway=if(protocol==OnlineProtocol.OPENAI_COMPATIBLE) profile.gateway else OnlineGateway.DIRECT)},label={Text(protocol.name)})}}
             OutlinedTextField(profile.credentialEnvironmentId.orEmpty(),{editing=profile.copy(credentialEnvironmentId=it.takeIf{value->value.isNotBlank()})},label={Text("Optional Cloud vault API environment ID")},singleLine=true)
             if(profile.credentialEnvironmentId!=null) OutlinedTextField(profile.credentialVariable,{editing=profile.copy(credentialVariable=it)},label={Text("Vault variable name, e.g. OPENROUTER_API_KEY")},singleLine=true)
             Text("Vault API profiles must be bound to this endpoint's HTTPS origin. A vault reference overrides the saved key; agent use also needs vault delegation.",style=MaterialTheme.typography.bodySmall)
-            OutlinedTextField(key,{key=it},label={Text(if(providers.token(profile.id).isBlank()) "API key" else "Replacement key (blank keeps saved key)")},visualTransformation=PasswordVisualTransformation(),singleLine=true)
+            OutlinedTextField(key,{key=it},label={Text(if(providers.tokenFor(profile).isBlank()) "API key" else "Replacement key (blank keeps saved key)")},visualTransformation=PasswordVisualTransformation(),singleLine=true)
             OutlinedTextField(profile.model,{editing=profile.copy(model=it,pricingSource=null,priceCheckedAtMs=null);inputRate="";outputRate=""},label={Text("Model ID")})
-            OutlinedButton(enabled=!busy,onClick={scope.launch{busy=true;error=null;try{discovered=providers.client.models(profile.copy(enabled=false),if(profile.credentialEnvironmentId!=null) providers.resolveToken(profile) else key.ifBlank{providers.token(profile.id)})}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}finally{busy=false}}}){Text(if(busy) "Discovering…" else "Discover models from API")}
-            discovered.take(100).forEach{model->TextButton(onClick={editing=profile.copy(model=model)}){Text(model)}}
+            OutlinedButton(enabled=!busy,onClick={scope.launch{busy=true;error=null;try{discovered=providers.client.models(profile.copy(enabled=false),if(profile.credentialEnvironmentId!=null) providers.resolveToken(profile) else key.ifBlank{providers.tokenFor(profile)})}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}finally{busy=false}}}){Text(if(busy) "Discovering…" else "Discover models from API")}
+            discovered.take(100).forEach{model->TextButton(onClick={editing=profile.copy(model=model,pricingSource=null,priceCheckedAtMs=null);inputRate="";outputRate=""}){Text(model)}}
             Row{Text("API key authentication",Modifier.weight(1f));Switch(profile.requiresApiKey,{editing=profile.copy(requiresApiKey=it)})}
             Text("Disable key authentication only for an endpoint that explicitly supports anonymous requests. Public HF catalog discovery works without a login; hosted inference normally needs a token.",style=MaterialTheme.typography.bodySmall)
             Row{Text("Enable online requests",Modifier.weight(1f));Switch(profile.enabled,{editing=profile.copy(enabled=it)})}
@@ -67,7 +73,7 @@ import java.util.UUID
             }
             profile.priceCheckedAtMs?.let{Text("Price snapshot: ${java.util.Date(it)} · ${profile.pricingSource}. Refresh before relying on it.",style=MaterialTheme.typography.bodySmall)}
             Text("Prices are your assumptions, not a provider quote. Estimates exclude cache discounts, tools, taxes and unreported reasoning usage.",style=MaterialTheme.typography.bodySmall)
-            Button(onClick={try{val input=inputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid input price")};val output=outputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid output price")};providers.save(profile.copy(inputPricePerMillion=input,outputPricePerMillion=output),key.takeIf{it.isNotBlank()});editing=null;key=""}catch(e:Exception){error=e.message}}){Text("Save profile")}
+            Button(onClick={try{val input=inputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid input price")};val output=outputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid output price")};providers.save(profile.copy(inputPricePerMillion=input,outputPricePerMillion=output,pricingSource=profile.pricingSource ?: "User reviewed rates",priceCheckedAtMs=System.currentTimeMillis()),key.takeIf{it.isNotBlank()});editing=null;key=""}catch(e:Exception){error=e.message}}){Text("Save profile")}
         }}}}
         error?.let{item{ErrorCard(it){error=null}}}
     }

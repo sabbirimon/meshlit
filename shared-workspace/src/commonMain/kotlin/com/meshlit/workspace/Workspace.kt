@@ -19,7 +19,7 @@ data class GenerationBudget(val maxOutputTokens: Int = 2048) {
     init { require(maxOutputTokens in 64..4096) }
 }
 /** Reported token counts stay unknown until the engine/provider actually reports them. */
-data class GenerationUsage(val outputTokens: Long? = null, val generationNanos: Long? = null) {
+data class GenerationUsage(val outputTokens: Long? = null, val generationNanos: Long? = null, val inputTokens: Long? = null) {
     val tokensPerSecond: Double? get() = if (outputTokens != null && generationNanos != null &&
         outputTokens > 0 && generationNanos > 0) outputTokens * 1_000_000_000.0 / generationNanos else null
 }

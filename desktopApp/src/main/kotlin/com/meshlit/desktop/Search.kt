@@ -32,6 +32,8 @@ internal object DesktopSearch {
         "discover" to "Hugging Face HF model download library free paid gated",
         "ssh" to "SSH terminal Ghostty remote shell inbound outbound",
         "providers" to "Ollama LM Studio Open WebUI Jan API provider credentials",
+        "usage" to "tokens cost billing usage spending history",
+        "vpn" to "Tailscale private network connection status",
         "containers" to "Docker Podman incubator image volume container",
         "kubernetes" to "Kubernetes k8s namespace deployment cluster",
         "guardrails" to "censored uncensored policy model native instructions",

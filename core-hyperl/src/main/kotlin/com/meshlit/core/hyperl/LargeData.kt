@@ -33,13 +33,13 @@ object LargeData {
     private val digestPattern = Regex("[a-f0-9]{64}")
     private val manifestJson = Json(HyperLCodec.json) { encodeDefaults = true; prettyPrint = false }
 
-    private fun privateAttributes(parent: Path) =
-        if (Files.getFileStore(parent).supportsFileAttributeView("posix"))
-            arrayOf(PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
-        else emptyArray()
+    // Android denies getFileStore; require owner-only POSIX creation directly.
+    // Fail closed if the destination cannot enforce these attributes.
+    private fun privateAttributes() =
+        arrayOf(PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
 
     fun keygen(file: Path) {
-        Files.createFile(file, *privateAttributes(file.toAbsolutePath().parent))
+        Files.createFile(file, *privateAttributes())
         try {
             Files.write(file, ByteArray(32).also(random::nextBytes), StandardOpenOption.WRITE)
         } catch (error: Exception) {
@@ -64,11 +64,8 @@ object LargeData {
             it.updateAAD(aad.toByteArray(Charsets.UTF_8))
         }
 
-    private fun privateDirectory(parent: Path) = Files.createTempDirectory(parent, ".hyperl-data-").also {
-        if (Files.getFileStore(it).supportsFileAttributeView("posix")) {
-            Files.setPosixFilePermissions(it, PosixFilePermissions.fromString("rwx------"))
-        }
-    }
+    private fun privateDirectory(parent: Path) = Files.createTempDirectory(parent, ".hyperl-data-",
+        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
 
     private fun cleanup(dir: Path) {
         Files.walk(dir).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) }
@@ -230,9 +227,7 @@ object LargeData {
     /** Reserve without overwrite, publish the authenticated manifest last. */
     private suspend fun publishDataset(stage: Path, destination: Path) {
         currentCoroutineContext().ensureActive()
-        val attributes = if (Files.getFileStore(destination.toAbsolutePath().parent).supportsFileAttributeView("posix"))
-            arrayOf(PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
-        else emptyArray()
+        val attributes = arrayOf(PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
         Files.createDirectory(destination, *attributes)
         var published = false
         try {
@@ -318,7 +313,7 @@ object LargeData {
         val stageDir = privateDirectory(destination.toAbsolutePath().parent)
         val stage = stageDir.resolve("output")
         try {
-            Files.createFile(stage, *privateAttributes(stageDir))
+            Files.createFile(stage, *privateAttributes())
             val summary = Files.newOutputStream(stage).use { output ->
                 verified(directory, key, maxBytes) { data, _ -> output.write(data) }
             }

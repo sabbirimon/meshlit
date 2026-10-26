@@ -148,10 +148,12 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
                 val tokens = (root["usage"] as? JsonObject)?.get("completion_tokens")?.jsonPrimitive?.longOrNull
                 require(tokens == null || tokens in 0..10_000_000)
                 onText(text)
-                return@response GenerationUsage(tokens, System.nanoTime() - start)
+                val input = (root["usage"] as? JsonObject)?.get("prompt_tokens")?.jsonPrimitive?.longOrNull
+                require(input == null || input in 0..10_000_000)
+                return@response GenerationUsage(tokens, System.nanoTime() - start, input)
             }
             require(type.substringBefore(';').trim().lowercase() == "text/event-stream") { "Host did not return a token stream." }
-            var total = 0; var outputSize = 0; var tokens: Long? = null; var finished = false
+            var total = 0; var outputSize = 0; var tokens: Long? = null; var input: Long? = null; var finished = false
             val event = StringBuilder()
             fun dispatch(): Boolean {
                 if (event.isEmpty()) return false
@@ -161,6 +163,9 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
                 if (json["error"] != null) error("Host reported a generation error; details withheld.")
                 json["usage"]?.takeIf { it is JsonObject }?.jsonObject?.get("completion_tokens")?.jsonPrimitive?.longOrNull?.let {
                     require(it in 0..10_000_000); tokens = it
+                }
+                json["usage"]?.takeIf { it is JsonObject }?.jsonObject?.get("prompt_tokens")?.jsonPrimitive?.longOrNull?.let {
+                    require(it in 0..10_000_000); input = it
                 }
                 json["choices"]?.jsonArray?.forEach { choice ->
                     val delta = choice.jsonObject["delta"]?.jsonObject
@@ -185,7 +190,7 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
             }
             require(finished) { "Host closed the stream before completion." }
             require(outputSize > 0) { "Host returned no text." }
-            GenerationUsage(tokens, System.nanoTime() - start)
+            GenerationUsage(tokens, System.nanoTime() - start, input)
         }
     }
     override fun close() {

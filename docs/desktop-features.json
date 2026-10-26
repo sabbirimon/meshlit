@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-23",
+  "updated": "2026-10-26",
   "scope": "desktop-and-server",
   "features": [
     {
@@ -8,7 +8,7 @@
       "area": "Workspace and presentation",
       "requested": "Compact thin header, icon menus, grouped searchable dashboards, Basic/Advanced differences, hero cards, custom colour/font/language, Markdown/code/tables/charts, long reply reader",
       "status": "Partial source",
-      "boundary": "Shared reply reader, compact seven-category management overview, globally searchable Basic/Advanced menus and saved themes exist; full reader/platform parity and pending category backends remain.",
+      "boundary": "Native four-dashboard hub, minimal four-entry Basic settings and searchable Advanced controls now exist in source; encrypted device-local chat usage/budgets and private-host setup do not establish account-wide billing, automatic routing or VPN control. Shared reply reader and saved themes remain. Physical UI and broader backend parity are separate gates.",
       "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt"
     },
     {
@@ -72,7 +72,7 @@
       "area": "Tokens and throughput",
       "requested": "Output/context budgets, authoritative token speed, manual/automatic combined cluster ceiling, spend admission",
       "status": "Partial source",
-      "boundary": "Local output budget and reported usage; distributed capacity/cluster budgeting not ported. Unknown usage stays unknown.",
+      "boundary": "Reported input/output usage and encrypted Studio chat journal, separate currency estimate budgets, atomic reservations and manual bill reconciliation. Unknown charges remain unresolved. CLI/hosting, other devices, provider billing caps and distributed capacity budgets are outside this authority.",
       "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt"
     },
     {
@@ -96,8 +96,8 @@
       "area": "Networking and VPN",
       "requested": "Interfaces, DNS, scoped host checks, RTT, pairing, private transport, optional VPN, no-VPN direct/relay P2P",
       "status": "Partial source",
-      "boundary": "Inference HTTPS address book only. VPN deployment, direct NAT traversal and remote device acceptance pending.",
-      "source": "docs/P2P_AND_CRYPTO.md"
+      "boundary": "Optional persisted opt-in reads bounded Tailscale CLI status, node/peer/exit-node observations and timestamps. Existing authenticated host checks remain separate. No VPN configuration, auto-enrollment, NAT traversal or live tailnet/device qualification is claimed.",
+      "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/VpnDashboard.kt"
     },
     {
       "id": "terminal",

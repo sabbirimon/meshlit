@@ -36,7 +36,6 @@ import kotlinx.coroutines.*
     val context=LocalContext.current
     val prefs=remember{context.getSharedPreferences("settings-navigation",0)}
     var advanced by rememberSaveable{mutableStateOf(prefs.getBoolean("advanced",false))}
-    var showAllBasic by rememberSaveable { mutableStateOf(false) }
     val repository=koinInject<SettingsRepository>()
     var history by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
     fun navigate(next:String) {
@@ -55,6 +54,7 @@ import kotlinx.coroutines.*
     }
     val back:()->Unit={back()}
     BackHandler(destination!=null){back()}
+    if(destination in setOf("dashboards", "usage", "vpn")) { WorkspaceDashboards(destination!!, back, ::navigate); return }
     if(destination=="menu-layout"){MenuLayoutScreen(back);return}
     if(destination=="sharding"){ShardingSettingsScreen(back);return}
     if(destination=="radar"){RadarScreen(back,{navigate("scan")},{navigate("meshchat")},{navigate("logs")},{navigate("host-map")},
@@ -163,18 +163,13 @@ import kotlinx.coroutines.*
                             FilterChip(advanced,{advanced=true;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced")})
                         }}
                         if(query.isBlank()) item {
-                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                                Text(if(advanced) "Advanced tools and integrations" else if(showAllBasic) "All everyday settings" else "Essentials",
-                                    Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                                if(!advanced) TextButton(onClick={showAllBasic=!showAllBasic},modifier=Modifier.testTag("settings-toggle-all")) {
-                                    Text(if(showAllBasic) "Show essentials" else "Browse all")
-                                }
+                            OutlinedButton(onClick={navigate("dashboards")},modifier=Modifier.fillMaxWidth().testTag("open-dashboards")) {
+                                Icon(Icons.Outlined.Dashboard,null);Spacer(Modifier.width(T.small));Text("Open dashboards")
                             }
+                            Text(if(advanced) "Technical controls and integrations" else "Everyday preferences. Find model and connection tools in Dashboards.",
+                                style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        val results=if(query.isBlank() && !advanced && !showAllBasic) {
-                            val essentials=setOf("models","device-dashboard","agents","securityprivacy","appearance","permissions")
-                            SettingsDestinations.all.filter { it.id in essentials }
-                        } else SettingsDestinations.search(query,advanced)
+                        val results=SettingsDestinations.search(query,advanced)
                         if(results.isEmpty()) item{Text("No matching settings. Search covers Basic and Advanced.")}
                         items(results,key={it.id}){entry -> Card(shape=RoundedCornerShape(20.dp),onClick={navigate(entry.id)},modifier=Modifier.fillMaxWidth(),
                             colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow)){
@@ -284,6 +279,10 @@ import kotlinx.coroutines.*
 
 /** The same icon vocabulary is used in settings and the app drawer. */
 internal fun settingsIcon(id:String)=when(id){
+    "dashboards"->Icons.Outlined.Dashboard
+    "usage"->Icons.Outlined.Insights
+    "vpn"->Icons.Outlined.VpnLock
+    "router"->Icons.Outlined.Route
     "chat"->Icons.Outlined.ChatBubbleOutline
     "voice","gibberlink"->Icons.Outlined.GraphicEq
     "vision"->Icons.Outlined.CameraAlt
@@ -295,7 +294,7 @@ internal fun settingsIcon(id:String)=when(id){
     "resources"->Icons.Outlined.Memory
     "menu-layout"->Icons.Outlined.DashboardCustomize
     "appearance"->Icons.Outlined.Palette
-    "models","router","acceleration","colibri"->Icons.Outlined.Storage
+    "models","acceleration","colibri"->Icons.Outlined.Storage
     "cloud","providers"->Icons.Outlined.Cloud
     "network","peers","ssh","firewall"->Icons.Outlined.Wifi
     "agents","openclaw","automation"->Icons.Outlined.SmartToy

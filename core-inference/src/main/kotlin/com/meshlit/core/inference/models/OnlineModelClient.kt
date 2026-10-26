@@ -9,11 +9,13 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
+@Serializable enum class OnlineGateway { DIRECT, OMNIROUTE, FREELLMAPI, CUSTOM }
 @Serializable enum class OnlineProtocol { OPENAI, OPENAI_COMPATIBLE, ANTHROPIC, GEMINI }
 @Serializable data class OnlineProfile(val id:String,val name:String,val endpoint:String,val model:String="",
     val protocol:OnlineProtocol=OnlineProtocol.OPENAI_COMPATIBLE,val enabled:Boolean=false,val agentAllowed:Boolean=false,
-    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY") {
+    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT) {
     fun validate() {
+        require(gateway == OnlineGateway.DIRECT || protocol == OnlineProtocol.OPENAI_COMPATIBLE) { "Gateways use OpenAI-compatible protocol" }
         require(credentialEnvironmentId==null || credentialEnvironmentId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
         require(credentialVariable.matches(Regex("[A-Z_][A-Z0-9_]{0,79}")))
         require(id.matches(Regex("[a-zA-Z0-9-]{1,80}")) && name.length in 1..100)
@@ -66,10 +68,15 @@ class OnlineModelClient {
                 model["name"]?.jsonPrimitive?.content?.removePrefix("models/") else null
         } else data["data"]?.jsonArray.orEmpty().mapNotNull{it.jsonObject["id"]?.jsonPrimitive?.contentOrNull}
     }
-    suspend fun generate(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f):OnlineReply {
+    fun validateGeneration(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,temperature:Float) {
         profile.validate();require(profile.enabled) { "Enable the selected online profile first" }
         require(messages.isNotEmpty() && messages.size<=41 && messages.all{it.role in setOf("user","assistant")})
         require(messages.sumOf{it.text.length}+system.length<=96000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f)
+        require(!profile.requiresApiKey || token.isNotBlank() && token.length<=4096 && token.none{it.isWhitespace()}) { "Save an API key first" }
+        if(profile.protocol==OnlineProtocol.GEMINI) require(profile.model.matches(Regex("[A-Za-z0-9_.-]+")))
+    }
+    suspend fun generate(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f):OnlineReply {
+        validateGeneration(profile, token, messages, system, maxTokens, temperature)
         val payload=buildJsonObject { when(profile.protocol) {
             OnlineProtocol.GEMINI -> {
                 put("contents",buildJsonArray{messages.forEach{message->add(buildJsonObject{put("role",if(message.role=="assistant") "model" else "user");put("parts",buildJsonArray{add(buildJsonObject{put("text",message.text)})})})}})

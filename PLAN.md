@@ -4,6 +4,30 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## G1 contract hardening and math assessment — 2026-10-26
+
+Durable ledger replay now rejects invalid domains, duplicate currency policies, inconsistent terminal costs and illegal event shapes. Any uncertain write disables the current authority until reopen. Android profile/key edits use one checked encrypted transaction; a failed commit blocks further credentials in that instance, and current profile/local-key bindings are rechecked before dispatch. Independent integer accounting and write-then-fail regressions pass; full regression, both debug assemblies and both lints passed. Samsung device follow-up is in progress. Studio durable credentials, all-adapter revocation, cross-device authority and live account/device qualification remain open. No automatic routing or provider billing-cap promise was added.
+
+The [OpenAI math assessment](docs/MATH_RESEARCH_2026-10-26.md) reviews the pinned 719-manuscript catalog and selected compute/security candidates. Standalone HyperL gained bounded exact-arithmetic reduction tests; no theorem-derived speedup or cipher replacement is claimed.
+
+## Optional Tailscale / VPN increment — 2026-10-26
+
+The owner requested real VPN dashboards while keeping Basic settings minimal. Studio now reads optional installed Tailscale CLI status with bounded, cancellable local execution; Android reports its actual app-effective VPN transport separately from Tailscale package presence and hands management to the official client. Observations are opt-in, in-memory, timestamped and expiring. No unsupported connect toggle, paid API call, VPN reconfiguration or push is part of this increment. See [setup and evidence boundaries](docs/TAILSCALE_AND_VPN.md). Live tailnet and physical-device qualification remain open.
+
+
+## Usage and optional gateway increment — 2026-10-26
+
+Implement device-local encrypted usage and budget admission before automatic routing. Android online-provider text calls and Studio chat now use the shared ledger; optional OmniRoute/FreeLLMAPI profiles use existing compatible transports. Cross-device authority, other adapters, automatic invoices and live gateway qualification remain open. See [contracts and setup](docs/USAGE_AND_MODEL_BUDGETS.md); current checks are in PROGRESS.md.
+
+
+## Implementation resumed — 2026-10-26
+
+The owner authorized the first implementation step. [Baseline audit and dashboard increment](docs/desktop/STUDIO_BASELINE_2026-10-26.md) track source-backed Studio gaps, tests and the initial Basic/Advanced navigation cleanup. G1 financial/authority contracts and new gateway/VPN adapters remain separate work; this UI increment does not promote them to implemented.
+
+## Studio and mobile LTS planning — 2026-10-26
+
+The owner selected **plan first, then implement**. [The consolidated LTS plan](docs/STUDIO_MOBILE_LTS_PLAN.md) defines optional OmniRoute/FreeLLMAPI connections alongside direct free and paid providers, dedicated Models/Routing/Usage/VPN dashboards, minimal Basic settings, scenario automation, Studio parity and a gentle premium visual system. G0–G7 are proposed acceptance gates, not implemented features or a current LTS claim. Current source/device limitations remain open.
+
 [Current paused checkpoint and ordered resumption gates](docs/PAUSED_CHECKPOINT_2026-10-24.md) · [Build/run](BUILD.md) · [Agent handoff](docs/SESSION_HANDOFF.md). Source publication does not resume application qualification.
 
 
@@ -87,3 +111,7 @@ Replicated journal acknowledgements, fencing/quorum, idempotent claims and porta
 ## Update rule
 
 For every change record request/feature IDs, source, commands and failures, model/device/backend, actual observations, remaining gates and artifacts/digests. Update the appropriate workstream, not every historical phase. Run scripts/update-doc-tracking.py --check and scripts/validate-feature-map.py before committing documentation. All 41 desktop/server requested areas remain individually tracked in docs/DESKTOP_FEATURE_TRACKER.md and docs/desktop-features.json.
+
+## Prerelease continuation — 2026-10-26
+
+Prepare Android and Intel macOS packages from validated source; build Windows/Linux Studio clients on their native CI runners. Preserve unavailable local runtime states and platform qualification limits. Publish an experimental prerelease only with successful artifacts and checksums.

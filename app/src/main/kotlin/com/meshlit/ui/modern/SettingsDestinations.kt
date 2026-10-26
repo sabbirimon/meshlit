@@ -4,11 +4,10 @@ package com.meshlit.ui.modern
 data class SettingsDestination(val id:String,val title:String,val description:String,val advanced:Boolean=false,
     val keywords:String="")
 object SettingsDestinations {
-    private val advancedIds=setOf("crypto","gibberlink","remotecommands","p2p","colibri","behavior",
-        "configuration","recovery","training","router","operations","gateway","commands","packages",
-        "securitylab","power","external","acceleration","ssh","firewall","ide","hyperl",
-        "audit","identity-recovery","openclaw","sharding","guardrails","mcp-catalog","agent-registry","agent-logs","rag")
     val all=listOf(
+        SettingsDestination("dashboards","Dashboards","Models, routing, usage and private connections",keywords="workspace overview dashboard"),
+        SettingsDestination("usage","Usage & costs","Online text history, device budgets and bill reconciliation",keywords="tokens spending billing usage"),
+        SettingsDestination("vpn","VPN & network","App-network observations and optional Tailscale companion",keywords="Tailscale VPN private connection"),
         SettingsDestination("menu-layout","Customize menu","Add, remove and reorder shortcuts in Settings and the main drawer",keywords="layout rearrange quick access shortcuts navigation"),
         SettingsDestination("sharding","Sharding and workers","Pair approved model workers, assess resources and negotiate layers",keywords="cluster load balancer distributed model split QR group"),
         SettingsDestination("radar","Device radar","Topology, live discovery, saved workers and local identity",keywords="map nearby far distance devices agents search logs identity user ID"),
@@ -78,7 +77,7 @@ object SettingsDestinations {
         SettingsDestination("legal","Terms and privacy","Offline policies, accepted version and data controls",keywords="agreement consent privacy terms data delete IMON"),
         SettingsDestination("about","About and availability","Build information and feature implementation status",keywords="licenses version help")
     ).filter { com.meshlit.BuildProfile.routeAllowed(it.id) }.filterNot { com.meshlit.BuildConfig.PLAY_REVIEW && it.id in setOf("automation", "termux") }
-    private fun isAdvanced(entry:SettingsDestination)=entry.advanced || entry.id in advancedIds
+    private fun isAdvanced(entry:SettingsDestination)=entry.id !in com.meshlit.workspace.DashboardDirectory.androidBasic
     fun search(query:String,advanced:Boolean):List<SettingsDestination> {
         val words=query.trim().split(Regex("\\s+")).filter(String::isNotBlank)
         return all.filter { entry ->

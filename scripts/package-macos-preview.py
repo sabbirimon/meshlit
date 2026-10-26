@@ -42,7 +42,11 @@ def main():
     parser.add_argument("--fast-server", type=Path)
     parser.add_argument("--cpu-probe", type=Path)
     parser.add_argument("--hyperl-library", type=Path, required=True)
+    parser.add_argument("--version", default="2.0.45")
+    parser.add_argument("--build", default="45.1")
     args = parser.parse_args()
+    if not re.fullmatch(r"[1-9][0-9]*\.[0-9]+\.[0-9]+", args.version) or not re.fullmatch(r"[0-9]+\.[0-9]+", args.build):
+        parser.error("Expected numeric major.minor.patch version and build.revision")
     if platform.system() != "Darwin" or platform.machine() != "x86_64":
         parser.error("This preview packager requires an Intel Mac.")
     if bool(args.fast_server) != bool(args.cpu_probe):
@@ -69,7 +73,7 @@ def main():
     run(args.jdk_home / "bin/jpackage", "--type", "app-image", "--dest", image_dir,
         "--input", clean_input, "--runtime-image", runtime, "--name", "MeshlitPreview",
         "--main-jar", jars[0].name, "--main-class", "com.meshlit.desktop.MainKt",
-        "--app-version", "2.0.40", "--vendor", "Sabbir Hassan Imon",
+        "--app-version", args.version, "--vendor", "Sabbir Hassan Imon",
         "--description", "Experimental Meshlit desktop studio with offline CPU inference",
         "--mac-package-identifier", "com.meshlit.desktop",
         "--icon", args.app_image / "Contents/Resources/MeshlitPreview.icns",
@@ -83,7 +87,7 @@ def main():
     metadata = plistlib.loads(plist.read_bytes())
     # Conservative distribution floor; only macOS 15.8.1 is physically qualified.
     metadata["LSMinimumSystemVersion"] = "11.0"
-    metadata["CFBundleVersion"] = "40.1"
+    metadata["CFBundleVersion"] = args.build
     plist.write_bytes(plistlib.dumps(metadata))
     resources = app / "Contents/Resources"
     notices = resources / "licenses"
@@ -161,12 +165,12 @@ def main():
     }, indent=2) + "\n", encoding="utf-8")
     run("/usr/bin/codesign", "--force", "--sign", "-", app)
     run("/usr/bin/codesign", "--verify", "--deep", "--strict", app)
-    stem = "MeshlitPreview-2.0.40-studio.1-macos-intel"
+    stem = f"MeshlitPreview-{args.version}-studio.{args.build}-macos-intel"
     pkg = args.output / (stem + ".pkg")
     # Root packaging does not depend on LaunchServices recognizing a new bundle.
     # image_dir contains exactly this app; no scripts or other install payloads.
     run("/usr/bin/pkgbuild", "--root", image_dir, "--install-location", "/Applications",
-        "--identifier", "com.meshlit.desktop.preview.pkg", "--version", "2.0.40.1",
+        "--identifier", "com.meshlit.desktop.preview.pkg", "--version", args.version + "." + args.build.split(".")[-1],
         "--ownership", "recommended", pkg)
     staging = args.scratch / "dmg-root"
     staging.mkdir()
@@ -183,7 +187,7 @@ def main():
     shutil.copy2(repo / "docs/MACOS_PREVIEW_INSTALL.txt", args.output / "INSTALL.txt")
     shutil.copy2(args.runtime_provenance, args.output / "RUNTIME_SOURCE.json")
     shutil.copy2(args.runtime_source, args.output / args.runtime_source.name)
-    report = {"architecture": "x86_64", "appVersion": "2.0.40",
+    report = {"architecture": "x86_64", "appVersion": args.version,
               "nativeFilesChecked": native_dependencies,
               "externalNativeDependencies": [], "developerIdSigned": False,
               "notarized": False, "appSignature": "ad-hoc", "installerScripts": False,

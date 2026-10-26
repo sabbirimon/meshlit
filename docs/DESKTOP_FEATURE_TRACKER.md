@@ -4,6 +4,19 @@ Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Usage and optional gateways — 2026-10-26
+
+Studio interactive chat now records encrypted request metadata, reported input/output usage, estimate snapshots and manual reconciliation. A shared synchronized ledger admits requests against separate device-local currency allowances. The dedicated Usage dashboard also manages direct-model session pricing. OmniRoute and experimental FreeLLMAPI are optional compatible-host presets; local strict policies block their opaque downstream billing. CLI/hosting, cross-device billing, invoice imports and live gateway qualification remain open. See [usage contracts](USAGE_AND_MODEL_BUDGETS.md).
+
+
+## First LTS dashboard source increment — 2026-10-26
+
+The [baseline inventory](desktop/STUDIO_BASELINE_2026-10-26.json) captures the original 69 destinations. A native dashboard hub now links Models, Routing, Usage and VPN; Basic settings contain Appearance, Security/privacy, Help and About while Advanced/search retain the rest. Usage includes encrypted device-local history and estimate budgets. Routing remains manual; VPN now offers opt-in read-only Tailscale status and private-host checks, with advanced peer/CLI details. Live tailnet qualification remains open. These scoped views do not close the provider-routing, billing or networking backend gaps. [Validation record](desktop/STUDIO_BASELINE_2026-10-26.md).
+
+## Current Studio parity plan — 2026-10-26
+
+[Studio/mobile LTS planning](STUDIO_MOBILE_LTS_PLAN.md) now defines the next proposed sequence: source/evidence reconciliation, shared authority and usage contracts, optional gateway adapters, four dedicated dashboards, scenario automation and a complete typography/material/motion pass. Keep Basic settings minimal and place technical controls in Advanced. Existing row IDs and current evidence below remain authoritative; this plan does not mark any backend implemented or qualified.
+
 Updated 2026-10-10. Owner requests are tracked here; Android stays a separate application.
 This is a scope and acceptance ledger, not a claim that every listed feature is delivered.
 
@@ -30,7 +43,7 @@ Machine-readable scope: [desktop-features.json](desktop-features.json).
 | `token-budgets` — **Tokens and throughput** | Output/context budgets, authoritative token speed, manual/automatic combined cluster ceiling, spend admission | **Partial source.** Local output budget and reported usage; distributed capacity/cluster budgeting not ported. Unknown usage stays unknown. [Source](../desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt) |
 | `devices` — **Devices and categories** | Phone/desktop/server/NAS/IoT categories, add/connect, actual capability probe, trust, device roles and enrollment | **Partial source.** Saved HTTPS API references, last verified contact dashboard and selected-host authentication; labels and old contact do not establish current online status or compute trust. [Source](../desktopApp/src/main/kotlin/com/meshlit/desktop/Nodes.kt) |
 | `clusters` — **Cluster and distributed compute** | LAN/off-grid/Internet/overseas P2P, approved workers, memory/storage hierarchy, placement, parallel execution, checkpoints/failover | **Partial shared core; desktop execution pending.** Shared whole-layer admission uses integer counts and per-worker KV/graph budgets, optional bounded manual counts and weak-worker exclusion. No new desktop RPC controller or physical cluster throughput proof. [Source](layer-pipeline-and-recovery.md) |
-| `network` — **Networking and VPN** | Interfaces, DNS, scoped host checks, RTT, pairing, private transport, optional VPN, no-VPN direct/relay P2P | **Partial source.** Inference HTTPS address book only. VPN deployment, direct NAT traversal and remote device acceptance pending. [Source](P2P_AND_CRYPTO.md) |
+| `network` — **Networking and VPN** | Interfaces, DNS, scoped host checks, RTT, pairing, private transport, optional VPN, no-VPN direct/relay P2P | **Partial source.** Authenticated host checks and opt-in bounded Tailscale status observations. VPN configuration, direct NAT traversal and live remote-device acceptance pending. [Source](P2P_AND_CRYPTO.md) |
 | `terminal` — **Terminal and commands** | Human commands ready by default under OS account; embedded output, cancellation, full interactive terminal, optional elevated OS flow | **Partial source.** Built-in bounded batch shell runner plus optional external Ghostty SSH. Full embedded PTY and Windows/Linux qualification pending. [Source](../desktopApp/src/main/kotlin/com/meshlit/desktop/Terminal.kt) |
 | `ssh` — **Bidirectional SSH and Ghostty** | Pinned outbound SSH, approved-key inbound app node, interactive terminal, transfers, remote enrollment | **Partial source.** JSch outbound exec; inbound status-only; optional installed Ghostty/OpenSSH handoff. No shell on inbound status node or remote device qualification. [Source](../desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopSsh.kt) |
 | `hyperl` — **Built-in HyperL** | Native recipes, precision, memory accounting, datasets; eventual heterogeneous sharding and device runtime selection | **Partial source.** Twelve JNI CPU recipes and precise reduction passed on the Intel host. Studio now edits validated, bounded custom graph JSON through the same native CPU backend; packaged custom graph UI is not yet checked. Both recovered installer JNI recipe checks passed; no GPU/NPU/full-LLM claim. [Source](../desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopHyperL.kt) |

@@ -36,12 +36,12 @@ internal fun renderManagementCheck(path: String) {
                     }
                     androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.weight(1f).fillMaxHeight()
                         .verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(12.dp),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) { ManagementPanel {} }
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) { DashboardHub {} }
                 }
             }
         }
     }.use { scene -> scene.render().use { image ->
         image.encodeToData(EncodedImageFormat.PNG)?.use { File(path).writeBytes(it.bytes) } ?: error("PNG encoder unavailable")
     } }
-    println("Native management categories rendered; unavailable backends are not executed.")
+    println("Native dashboard hub rendered; unavailable backends are not executed.")
 }

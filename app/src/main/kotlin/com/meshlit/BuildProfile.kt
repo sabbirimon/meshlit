@@ -8,7 +8,7 @@ object BuildProfile {
     val name = if (coreCandidate) "Core candidate" else "Experimental"
     val features = if (coreCandidate) setOf(ManagedFeature.INFERENCE, ManagedFeature.MODEL_TRANSFERS, ManagedFeature.FILES)
         else ManagedFeature.entries.toSet()
-    private val coreRoutes = setOf("chat", "models", "monitor", "settings", "appearance", "crypto", "files", "ide",
+    private val coreRoutes = setOf("chat", "dashboards", "models", "monitor", "settings", "appearance", "crypto", "files", "ide",
         "search", "personalization", "behavior", "operations", "device", "resources", "logs", "notifications", "legal", "help", "about")
     fun routeAllowed(id: String) = !coreCandidate || id in coreRoutes
     fun requireChat(options: com.meshlit.chat.ChatOptions) {

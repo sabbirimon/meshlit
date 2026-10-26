@@ -28,9 +28,9 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "MeshlitPreview"
-            packageVersion = "1.0.0"
+            packageVersion = providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.45")
             modules("java.instrument", "java.logging", "java.net.http", "java.prefs", "java.rmi", "java.security.jgss", "java.management", "jdk.management", "jdk.crypto.ec", "jdk.unsupported")
-            description = "Experimental Meshlit desktop studio with bundled offline CPU inference and optional host connections"
+            description = "Experimental Meshlit Studio; runtime availability depends on the installed package"
             vendor = "Sabbir Hassan Imon"
         }
     }

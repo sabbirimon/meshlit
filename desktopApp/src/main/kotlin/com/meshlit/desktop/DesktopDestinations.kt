@@ -4,8 +4,10 @@ data class DesktopDestination(val id: String, val title: String, val description
 object DesktopDestinations {
     // Names audited against current Android inventory and build 98faaf0. Desktop availability is independent.
     val all = listOf(
+        DesktopDestination("usage", "Usage & costs", "Encrypted chat history, device budgets and bill reconciliation", true),
+        DesktopDestination("vpn", "VPN & network", "Optional Tailscale status, peer observations and host checks", true),
         DesktopDestination("engine", "Inference engine", "CPU threads, context, batch/KV options, memory admission and idle unloading", true),
-        DesktopDestination("management", "Management dashboards", "All management features grouped by category and type", true),
+        DesktopDestination("management", "Dashboards", "Models, routing, observed usage and private connection setup", true),
         DesktopDestination("containers", "Containers and incubator", "Docker/Podman runtime, images and workload isolation · desktop port pending", false),
         DesktopDestination("kubernetes", "Kubernetes management", "Contexts, namespaces, workloads, quotas and reviewed deployments · port pending", false),
         DesktopDestination("terminal", "Terminal", "Built-in human shell commands; optional Ghostty interactive SSH", true),

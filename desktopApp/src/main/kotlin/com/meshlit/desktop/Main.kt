@@ -61,6 +61,11 @@ fun main(args: Array<String>) {
     var observedAt by remember { mutableStateOf<Long?>(null) }
     val localEngine = remember { LocalEngine() }
     val knowledge = remember { DesktopKnowledge() }
+    val usageVault = remember { DesktopUsage() }
+    var pricedRoute by remember { mutableStateOf("") }
+    var reviewedPrice by remember { mutableStateOf(UsagePrice()) }
+    var gateway by remember { mutableStateOf(false) }
+    var usageFailure by remember { mutableStateOf<String?>(null) }
     val enginePreferences = remember { EnginePreferences() }
     var engineOptions by remember { mutableStateOf(enginePreferences.load()) }
     var sendAfterLoad by remember { mutableStateOf(false) }
@@ -117,7 +122,7 @@ fun main(args: Array<String>) {
         }
     }
     fun requestsAllowed() = if (localMode) localSession != null && connected else network && connected
-    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close(); knowledge.lock() } }
+    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close(); knowledge.lock(); usageVault.lock() } }
     fun colibriReady() = connected && observedAt?.let { System.nanoTime() - it in 0..300_000_000_000L } == true
     fun hostAllowed() = localMode || !colibriHost || colibriDecision(colibriMode, network, colibriReady(), false).route == ColibriRoute.HOST
     fun connect() {
@@ -138,6 +143,8 @@ fun main(args: Array<String>) {
     }
     fun send() {
         if (busy || !requestsAllowed() || !hostAllowed() || prompt.isBlank()) return
+        if (!usageVault.isUnlocked()) { usageFailure = "Unlock Usage & budgets before sending a request"; openSection("usage"); return }
+        usageFailure = null
         val system = if (localMode) runCatching { responsePolicy.localPrompt(instructions) }.getOrElse { failure = true; return } else null
         if (localMode && budget.toInt() >= (localSession?.context ?: engineOptions.context)) { failure = true; return }
         val context = messages.filter { it.completed }.map { ChatTurn(it.role, it.text) } + ChatTurn("user", prompt.trim())
@@ -145,11 +152,23 @@ fun main(args: Array<String>) {
         messages = messages + Message("user", prompt.trim()) + Message("assistant", "", false)
         prompt = ""; usage = GenerationUsage(); failure = false; busy = true
         val currentRevision = revision
+        val selectedLocal = localMode
+        val selectedModel = model
+        val selectedEndpoint = endpoint
+        val selectedProtocol = hostProtocol
+        val selectedToken = token
+        val selectedBudget = budget.toInt()
+        val selectedSession = localSession
+        val route = UsageLedger.route(if(selectedLocal) "local:" + (customModelHash ?: customModel?.toString() ?: DesktopStarter.alias) else selectedEndpoint + "/" + selectedProtocol, selectedModel)
+        val selectedPrice = if (selectedLocal) UsagePrice(local = true, source = "Local inference")
+            else if (pricedRoute == route) reviewedPrice.copy(gateway = gateway) else UsagePrice(gateway = gateway)
         job = scope.launch {
             var active: HostClient? = null
+            var attempt: String? = null
+            val ledger = usageVault.journal()
             try {
-                val session = if (localMode) checkNotNull(localSession) else null
-                val generationClient = HostClient(session?.endpoint ?: HostEndpoint.parse(endpoint, hostProtocol), session?.token ?: token); active = generationClient; client = generationClient
+                val session = if (selectedLocal) checkNotNull(selectedSession) else null
+                val generationClient = HostClient(session?.endpoint ?: HostEndpoint.parse(selectedEndpoint, selectedProtocol), session?.token ?: selectedToken); active = generationClient; client = generationClient
                 val reply = ReplyBuffer()
                 val updates = MutableStateFlow("")
                 val display = launch {
@@ -159,18 +178,24 @@ fun main(args: Array<String>) {
                 }
                 val result = try {
                     withContext(Dispatchers.IO) {
-                        val references = knowledge.context(context.last().content, remote = !localMode)
+                        val references = knowledge.context(context.last().content, remote = !selectedLocal)
                         val groundedSystem = (system.orEmpty() + references).takeIf { it.isNotBlank() }
-                        generationClient.generateConfigured(model, context, GenerationBudget(budget.toInt()), groundedSystem) { chunk ->
+                        attempt = ledger.begin(route, selectedModel, selectedPrice,
+                            (context.sumOf { it.content.length.toLong() } + (groundedSystem?.length ?: 0)) * 4 + 1024, selectedBudget.toLong())
+                        generationClient.generateConfigured(selectedModel, context, GenerationBudget(selectedBudget), groundedSystem) { chunk ->
                             reply.append(chunk)?.let { updates.value = it }
                         }
                     }
                 } finally { display.cancelAndJoin() }
+                withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", result.inputTokens, result.outputTokens) }
                 if (revision != currentRevision) throw CancellationException("Request superseded")
                 messages = messages.dropLast(1) + messages.last().copy(text = reply.snapshot(), completed = true); usage = result
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { if (revision == currentRevision) failure = true }
-            finally { active?.close(); if (revision == currentRevision) { client = null; busy = false } }
+            } catch (e: CancellationException) {
+                withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, "cancelled") } }; throw e
+            } catch (e: Exception) {
+                withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, "failed") } }
+                if (revision == currentRevision) { failure = true; usageFailure = if(attempt == null) e.message else "Request failed; review Usage for any unresolved charge" }
+            } finally { active?.close(); if (revision == currentRevision) { client = null; busy = false } }
         }
     }
     LaunchedEffect(localSession, busy, engineOptions.idleMinutes) {
@@ -213,12 +238,13 @@ fun main(args: Array<String>) {
                             title = if (localMode) customModel?.fileName?.toString() ?: DesktopStarter.label else model.ifBlank { "Meshlit" },
                             status = if (localMode) if (localSession != null) "Offline · ${localSession?.backend} · ready" else if (localLoading) "Verifying and loading local model…" else "Offline model · load when ready"
                                 else if (connected) "Connected · selected host" else "Remote host · awaiting connection",
-                            onSettings = { settings = true },
+                            onSettings = { openSection("appearance") },
                             onLoad = if(localMode) ({ if(localSession == null) loadLocal() else stop(true) }) else null,
                             loadLabel = if(localSession == null) "Load" else "Unload", busy = busy,
                             onNew = { stop(); messages = emptyList(); usage = GenerationUsage() },
                             onSearch = { openSection("search") }, onManage = { openSection("management") })
                         if (messages.isNotEmpty()) OutlinedTextField(query, { query = it.take(256) }, label = { Text(t("Search this chat", "搜索当前对话")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), singleLine = true)
+                        usageFailure?.let { Text(it, Modifier.padding(horizontal = 24.dp), color = colors.error) }
                         if (failure) Text(if (localMode) t("Local model failed. Check available memory, GGUF compatibility and packaged engine/model integrity. Try Unload and Load; partial replies are excluded from future requests.", "本地模型失败。请检查可用内存、GGUF 兼容性及引擎和模型完整性。尝试卸载再加载；未完成回复不会用于后续请求。") else t("Request failed. Check the host, trusted TLS, client token and context size. A partial reply is excluded from the next request.", "请求失败。请检查主机、可信 TLS、客户端令牌和上下文长度。未完成的回复不会发送至下一次请求。"), Modifier.padding(24.dp), color = colors.error)
                         if (messages.isEmpty()) Column(Modifier.weight(1f).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("✦", fontSize = 48.sp, color = colors.primary)
@@ -252,15 +278,15 @@ fun main(args: Array<String>) {
                     }
                 }
             }
-            if (settings) DialogWindow(onCloseRequest = { settings = false }, title = t("Meshlit Studio · settings & tools", "Meshlit Studio · 设置与工具"), state = rememberDialogState(width = 1060.dp, height = 800.dp)) {
+            if (settings) DialogWindow(onCloseRequest = { settings = false }, title = t("Meshlit Studio · workspace", "Meshlit Studio · 工作区"), state = rememberDialogState(width = 1060.dp, height = 800.dp)) {
                 Surface(Modifier.fillMaxSize(), color = colors.background) {
                     Row(Modifier.fillMaxSize()) {
                     Column(Modifier.width(260.dp).fillMaxHeight().padding(12.dp)) {
                         Row {
-                            TextButton({ advanced = false; if (section !in BASIC_DESKTOP_SECTIONS) section = "models"; runCatching { preferences.saveAdvanced(false) }.onFailure { preferencesError = true } }) { Text((if (!advanced) "✓ " else "") + "Basic") }
+                            TextButton({ advanced = false; if (section !in BASIC_DESKTOP_SECTIONS) section = "appearance"; runCatching { preferences.saveAdvanced(false) }.onFailure { preferencesError = true } }) { Text((if (!advanced) "✓ " else "") + "Basic") }
                             TextButton({ advanced = true; runCatching { preferences.saveAdvanced(true) }.onFailure { preferencesError = true } }) { Text((if (advanced) "✓ " else "") + "Advanced") }
                         }
-                        Text(if (advanced) "Developer tools and Android port status" else "Daily chat, models and connections", style = MaterialTheme.typography.caption)
+                        Text(if (advanced) "Technical controls and feature availability" else "Appearance, privacy and help", style = MaterialTheme.typography.caption)
                         Box(Modifier.weight(1f)) { DesktopMenu(section, { section = it }, advanced = advanced) }
                     }
                     Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -305,7 +331,7 @@ fun main(args: Array<String>) {
                         MenuHeading("models", t("Explicit host access", "明确授权主机访问"))
                         Row {
                             listOf("LM Studio" to "http://127.0.0.1:1234/v1", "Ollama" to "http://127.0.0.1:11434/v1", "Open WebUI" to "http://127.0.0.1:3000/api").forEach { (label, url) ->
-                                TextButton({ stop(true); hostProtocol = if (label == "Open WebUI") HostProtocol.OPEN_WEBUI else HostProtocol.OPENAI; endpoint = url; token = ""; network = false; colibriHost = false; messages = emptyList() }) { Text(label) }
+                                TextButton({ stop(true); gateway = false; pricedRoute = ""; hostProtocol = if (label == "Open WebUI") HostProtocol.OPEN_WEBUI else HostProtocol.OPENAI; endpoint = url; token = ""; network = false; colibriHost = false; messages = emptyList() }) { Text(label) }
                             }
                         }
                         Text(if (hostProtocol == HostProtocol.OPEN_WEBUI) t("Open WebUI API: /api. Obtain your account API key from that host's Settings → Account. The administrator must enable it. This connects to your existing host; it does not install or rebrand Open WebUI.", "Open WebUI API：/api。请从该主机设置 → 账户获取 API 密钥，管理员需要启用。此连接使用现有主机，不安装或重新品牌化 Open WebUI。") else t("OpenAI-compatible API: /v1. LM Studio/Ollama must already be installed and serving the selected model. No automatic installation or remote discovery.", "OpenAI 兼容 API：/v1。LM Studio/Ollama 需要已安装并提供所选模型。不自动安装或发现远程主机。"), style = MaterialTheme.typography.caption)
@@ -313,6 +339,14 @@ fun main(args: Array<String>) {
                         if (!localMode && !colibriHost) Row { HostProtocol.entries.forEach { protocol ->
                             TextButton({ stop(true); hostProtocol = protocol; endpoint = ""; token = ""; network = false; connected = false; messages = emptyList() }) { Text((if (hostProtocol == protocol) "✓ " else "") + protocol.label) }
                         } }
+                        Row {
+                            listOf("OmniRoute", "FreeLLMAPI · experimental").forEach { label ->
+                                TextButton({ stop(true); localMode = false; hostProtocol = HostProtocol.OPENAI; gateway = true; colibriHost = false;
+                                    endpoint = ""; token = ""; network = false; connected = false; model = ""; models = emptyList(); messages = emptyList(); pricedRoute = "" }) { Text(label) }
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(gateway, { stop(); gateway = it; pricedRoute = "" }); Text("This host is a routing gateway") }
+                        if (gateway) Text("Optional /v1 gateway: enter your own deployment URL and scoped key. Meshlit adds no retries or fallback. Downstream routing and charges are controlled by the gateway; free-only and currency budgets block it. FreeLLMAPI is for personal experimentation. Neither gateway includes paid API entitlement.", style = MaterialTheme.typography.caption)
                         if (hostProtocol == HostProtocol.MESHLIT) Text("Meshlit nodes use authenticated buffered replies. Use a scoped client key and a reachable trusted HTTPS /v1 service. Worker enrollment and remote command permissions are separate.", style = MaterialTheme.typography.caption)
                         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(colibriHost, { stop(true); colibriHost = it; connected = false; observedAt = null; hostProtocol = HostProtocol.OPENAI; network = false; token = ""; endpoint = ""; messages = emptyList() }); Text(t("Use Colibri host", "使用 Colibri 主机")) }
                         if (colibriHost) {
@@ -380,7 +414,15 @@ fun main(args: Array<String>) {
                             Button({ stop(true) }) { Text("Stop request & unload local model") }
                             Text("This stops the process owned by Meshlit. Remote host lifecycle, agent jobs and other devices remain managed by their own authorised controllers.")
                         }
-                        "management" -> ManagementPanel { section = it }
+                        "management" -> DashboardHub { section = it }
+                        "usage" -> {
+                            val route = UsageLedger.route(endpoint + "/" + hostProtocol, model)
+                            UsageHistoryDashboard(usageVault, route, if(localMode) "" else model, gateway,
+                                if(pricedRoute == route) reviewedPrice else UsagePrice(gateway = gateway),
+                                { reviewedPrice = it; pricedRoute = route }, { section = "tokens" })
+                        }
+                        "router" -> RoutingDashboard({ section = "models" }, { section = "providers" })
+                        "vpn" -> VpnDashboard({ section = "network" }, { section = "securityprivacy" })
                         "search" -> SearchPanel(messages.map { it.role to it.text }) { destination, chatQuery ->
                             if (destination == "chat") { query = chatQuery; settings = false }
                             else section = destination

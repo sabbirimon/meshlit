@@ -84,10 +84,15 @@
         "app/src/main/kotlin/com/meshlit/ui/modern/ModernSettingsScreen.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/SettingsDestinations.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/StatusHeroCard.kt",
-        "app/src/main/kotlin/com/meshlit/ui/modern/BootLoadingGate.kt"
+        "app/src/main/kotlin/com/meshlit/ui/modern/BootLoadingGate.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/WorkspaceDashboards.kt",
+        "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/DashboardDirectory.kt"
       ],
       "authority": [
         "SETTINGS"
+      ],
+      "limitations": [
+        "Dashboard navigation and latest-route observations only; durable usage, paid-budget admission and Tailscale control remain pending."
       ]
     },
     {
@@ -1038,13 +1043,17 @@
       "sources": [
         "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt",
         "desktopApp/src/main/kotlin/com/meshlit/desktop/HostClient.kt",
-        "desktopApp/src/main/kotlin/com/meshlit/desktop/Cli.kt"
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/Cli.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/LocalEngine.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/Dashboards.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/VpnDashboard.kt"
       ],
       "limitations": [
-        "No bundled local runtime; remote HTTPS and bearer token; session-only history/credentials; host-reported token usage only"
+        "Explicit compatible hosts, encrypted device-local usage estimates and optional read-only Tailscale observations. Automatic routing, provider billing caps and VPN configuration remain unavailable; live tailnet and physical-device qualification open."
       ],
       "docs": [
-        "docs/MULTIPLATFORM_NEXT.md"
+        "docs/MULTIPLATFORM_NEXT.md",
+        "docs/TAILSCALE_AND_VPN.md"
       ]
     },
     {
@@ -1125,6 +1134,45 @@
       ],
       "authority": [
         "human saved grants; separate agent and per-chat selection"
+      ]
+    },
+    {
+      "id": "model-usage-budgets",
+      "title": "Device-local model usage and estimate budgets",
+      "status": "partial",
+      "sources": [
+        "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/UsageLedger.kt",
+        "app/src/main/kotlin/com/meshlit/providers/UsageHistory.kt",
+        "app/src/main/kotlin/com/meshlit/providers/OnlineProviders.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/UsageDashboard.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopUsage.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/UsageHistoryDashboard.kt"
+      ],
+      "authority": [
+        "CLOUD"
+      ],
+      "limitations": [
+        "Android online-provider text calls and Studio interactive chat only; other adapters and devices excluded",
+        "Estimates/manual reconciliation, not provider billing caps or authenticated free-tier proof",
+        "Optional gateways block under local free-only/currency budgets; live gateway qualification remains open"
+      ]
+    },
+    {
+      "id": "optional-vpn-observations",
+      "title": "Optional Tailscale companion and app-effective VPN dashboards",
+      "status": "implemented; local contract tests and Studio render passed; live tailnet and physical Android qualification open",
+      "sources": [
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/TailscaleProbe.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/VpnDashboard.kt",
+        "app/src/main/kotlin/com/meshlit/network/AndroidVpnObserver.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/VpnDashboard.kt",
+        "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/TailscaleStatus.kt"
+      ],
+      "limitations": [
+        "Read-only default-off observations; Android does not identify another app's VPN provider or expose tailnet peers. No VPN configuration, auto-enrollment or live-device proof."
+      ],
+      "docs": [
+        "docs/TAILSCALE_AND_VPN.md"
       ]
     }
   ],

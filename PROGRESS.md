@@ -4,6 +4,45 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## G1 contract hardening and math assessment — 2026-10-26
+
+Durable ledger replay now rejects invalid domains, duplicate currency policies, inconsistent terminal costs and illegal event shapes. Any uncertain write disables the current authority until reopen. Android profile/key edits use one checked encrypted transaction; a failed commit blocks further credentials in that instance, and current profile/local-key bindings are rechecked before dispatch. Independent integer accounting and write-then-fail regressions pass; full regression, both debug assemblies and both lints passed. Samsung device follow-up is in progress. Studio durable credentials, all-adapter revocation, cross-device authority and live account/device qualification remain open. No automatic routing or provider billing-cap promise was added.
+
+The [OpenAI math assessment](docs/MATH_RESEARCH_2026-10-26.md) reviews the pinned 719-manuscript catalog and selected compute/security candidates. Standalone HyperL gained bounded exact-arithmetic reduction tests; no theorem-derived speedup or cipher replacement is claimed.
+
+## Optional VPN observations — 2026-10-26
+
+Studio now reads the installed Tailscale CLI's bounded JSON status after persisted opt-in and an explicit refresh. Android reads its app-effective VPN transport, validation, metering and interface details from public APIs, with separate companion installation detection. Both dashboards hand off setup to the official client, keep Basic settings unchanged and collapse technical details. Neither configures a VPN, enrolls devices or infers Tailscale connection from an address/app installation. Observations stay in memory, expire after 60 seconds and clear on failure or disable; Android clears on pause.
+
+Final qualification passed: shared 25, Studio 48 (one physical SSH fixture skipped), Android 245 tests per flavor; core MCP 139, sandbox 14, network 46 and inference 287. Both APK builds and both lints passed with zero errors, 401 warnings and 19 hints each; the two added warnings are KTX convenience suggestions, including a deliberate checked commit result. Crawler 9 and both HyperL provenance checks passed. The native Studio render was inspected. Live tailnet and physical Android transitions remain open; no installed Tailscale client is available on this machine. No paid API calls, dependencies, commits or pushes were added. Budgets remain device-local estimates, not provider billing caps. [Setup and limitations](docs/TAILSCALE_AND_VPN.md) · [Evidence](docs/desktop/evidence/vpn-validation.json).
+
+## Usage history, budgets and optional gateways — 2026-10-26
+
+Implemented a shared encrypted, device-local journal for Android online-provider text calls (chat, route steps, delegated calls) and Studio interactive chat. Records retain actual reported input/output tokens, immutable price snapshots, request outcomes, reservations and separate manual reconciliation events. Decimal nanocurrency accounting, currency-separated monthly/per-request policies, reviewed-free-only admission, stale/unknown/gateway rejection under strict policies, synchronized concurrency and interrupted-request recovery are in source. Unknown charges are never silently refunded. Studio local inference records zero API cost without fabricated token counts.
+
+Android uses committed Keystore-backed storage; Studio uses a passphrase-unlocked AES-GCM vault, atomic replacement and a single-process ownership lock. Dedicated dashboards expose monthly history, route/model summaries, price provenance, policies and manual bill corrections. Endpoint/protocol changes no longer reuse an Android provider's saved key. Optional OmniRoute and experimental FreeLLMAPI presets reuse existing compatible transports, with no server install, assumed entitlement, automatic retry or fallback.
+
+Validation: shared workspace 20 cases; Studio 41 cases (one physical-phone SSH fixture skipped); core MCP 139, sandbox 14, network 46, inference 287; Android 242 cases per flavor. All executed tests passed. Crawler 9 passed; both HyperL provenance scripts passed. Both debug APK assemblies passed. Both Android lint checks passed with zero errors, 399 warnings and 19 hints each (same counts as the preceding baseline). The final Studio-only follow-up also passed after currency-only pricing selection, gateway/Colibri reset and POSIX journal directory sync. The compact native dashboard render was inspected; physical UI and live account/gateway qualification are not claimed. One intermediate packaging run was deliberately stopped to correct stale menu descriptions and Studio local-route grouping before final qualification.
+
+No new dependencies, paid model calls, model downloads, releases, commits or pushes were made. Existing verified starter assets and build caches were reused. [Setup and scope](docs/USAGE_AND_MODEL_BUDGETS.md) explains that budgets are estimate guards rather than provider invoice caps, and that Android local/Colibri/media, Studio CLI/hosting, other devices, archival/export, authenticated account pricing and automatic invoice reconciliation remain separate gates. Detailed evidence: [usage validation](docs/desktop/evidence/usage-budget-validation.json).
+
+
+## First LTS dashboard implementation — 2026-10-26
+
+The owner authorized baseline checks, the missing-Studio-feature audit and step-by-step dashboard/Basic-settings work. [Baseline and scope](docs/desktop/STUDIO_BASELINE_2026-10-26.md) records 69 pre-change Studio destinations, of which 33 declared pending ports. This is not a qualified-feature count.
+
+Source now contains a shared four-dashboard directory, native Android/Studio dashboard hubs, scoped usage snapshots, honest private-connection setup pages, and reduced Basic menus (six Android entries; four Studio entries, subject to channel availability). Advanced/search retain the other destinations. Existing route/model/host controllers remain in use. No automatic routing, durable billing ledger, hard spend limit or Tailscale control is claimed. User guide and offline guide are synchronized.
+
+Baseline shared/Studio tests passed before source edits (8 shared tests; 37 desktop tests with one skip). The first combined Android check stopped before execution because the historical Gradle cache lacked EasyQRScan 0.4.0. That dependency was found in the newer local cache; validation completed there without downloading it. Both debug assemblies and lints passed (zero errors; 399 warnings/19 hints per flavor), as did the focused Core Candidate boundary test. Final counts, source digests and remaining device/backend limits are recorded in the baseline report.
+
+## LTS planning and Git audit — 2026-10-26
+
+Prepared [Studio and mobile LTS plan](docs/STUDIO_MOBILE_LTS_PLAN.md) after the owner chose planning before implementation. It incorporates optional gateways and direct free/paid services, four dedicated dashboards, detailed usage/budget management, missing Studio backends, minimal Basic settings, scenario automation and the shared visual direction. Runtime implementation and qualification are unchanged.
+
+The unified checkout was clean at `5a7c5167ce6a32880c4e6354fde26af50773eb2c`; `git fetch origin --prune` and `git ls-remote --heads origin` confirmed `main` matched the remote. No open PRs were returned. Latest multiplatform preview CI succeeded; latest full CI was cancelled, with the preceding full CI successful. Created local planning branch `plan/studio-mobile-lts`; no commit, push or release performed in this pass. The plan records research HEADs for all three requested upstreams; none is a tested dependency pin.
+
+Validation for this documentation-only change: documentation tracking write/check, feature-map validation and whitespace/local-link checks. No app build, device test, provider request, VPN operation or standalone HyperL change is implied.
+
 ## Repository consolidation and release verification — 2026-10-24
 
 The established [Meshlit repository](https://github.com/sabbirimon/meshlit)
@@ -995,3 +1034,11 @@ Owner authorized a GitHub checkpoint on `feature/peering-ui-2026-10-12`, separat
 The modern drawer now gives Devices its own workspace entry. Its device list shows actual Meshlit advertisements in compact rows with claimed name/model, address, discovery category, search and filters; detailed IDs and fingerprints expand on demand. Networking retains transport, relay and firewall controls. A QR review offers Verify & connect now, Save for later and Reject. Pairing progress remains visible through identity checks, owner approval, success or failure. Incoming approvals remain explicit. Saved QR inventory and bounded pairing inbox/history are also exposed. Successful receiver-side renewals now post an optional, rate-limited pairing notification. The Android legacy forwarding registry now receives the TrustStore, correcting a post-handshake false failure.
 
 Samsung SM-A207F and Xiaomi M2101K7AI ran Meshlit Experimental with mutual local discovery on the same Wi-Fi; vendor/model surfaced through NSD. Both hosted identity endpoints responded to a malformed challenge with the expected HTTP 400 rather than the former firewall 403. Samsung showed a verified and approved Xiaomi entry after handshake, but this revision's new QR decision/progress UI and Xiaomi renewal notification still need final phone acceptance. The list covers Meshlit advertisements only; general LAN inventory, remote relay completion and heavy-model sharding are not qualified by these checks. Current work remains a beta branch pending final build, lint and artifact publishing.
+
+## Samsung installed-app follow-up — 2026-10-26
+
+On SM-A207F / Android 11 API 30, owner accepted first-run notices. VPN dashboard navigation, default-off state, real active-network observations and missing-Tailscale error were checked. Two new device tests pass for Android observations and actual Keystore-backed journal reopen/interruption/credential transactions. HyperL device-test runner correction is pending. [Sanitized evidence](docs/desktop/evidence/samsung-vpn-g1-validation.json). No live Tailscale or paid account proof. The owner requested GitHub progress checkpoints after validation.
+
+## Prerelease continuation — 2026-10-26
+
+Four-platform prerelease preparation: owner selected Android, macOS, Windows and Linux. Windows/Linux CI now builds MSI/DEB client packages with commit/checksum/scope metadata; Intel macOS uses the offline engine packager with explicit version parameters. No new installer qualification or release is claimed yet. Samsung HyperL native comparisons reached storage, exposing getFileStore SecurityException; the Android port now requires owner-only POSIX creation directly, with permission assertions in the device test. Rebuild/device rerun pending. HyperL roadmap and oracle tests saved to GitHub at 0675795.

@@ -4,6 +4,17 @@ import org.junit.Test
 import kotlin.test.*
 
 class DesktopSearchTest {
+    @Test fun minimalBasicSettingsDoNotHideAdvancedSearchOrDashboardDestinations() {
+        assertTrue(BASIC_DESKTOP_SECTIONS.size <= 6)
+        assertFalse("engine" in BASIC_DESKTOP_SECTIONS)
+        assertFalse("providers" in BASIC_DESKTOP_SECTIONS)
+        val ids = DesktopDestinations.all.map { it.id }
+        assertEquals(ids.size, ids.toSet().size)
+        com.meshlit.workspace.DashboardDirectory.entries.forEach { assertTrue(it.id in ids) }
+        assertTrue(DesktopSearch.find(DesktopSearch.settings(), "Tailscale", SearchType.SETTINGS).any { it.entry.id == "vpn" })
+        assertFalse(DesktopDestinations.all.single { it.id == "router" }.available)
+    }
+
     @Test fun allSourcesAreScopedAndSettingsIncludeAdvancedAliases() {
         val entries=DesktopSearch.entries(listOf("assistant" to "Weather in Dhaka"),
             listOf(SavedModel("/models/dolphin.gguf",24,"a".repeat(64))),

@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-26",
+  "device": {
+    "model": "Samsung SM-A207F",
+    "android": "11",
+    "api": 30
+  },
+  "variant": "meshlitV2Debug arm64-v8a",
+  "ownerAcceptedNotices": true,
+  "tests": {
+    "appNetworkObservationAndPersistedOptIn": "passed",
+    "encryptedLedgerReopenAndAtomicCredentialMutation": "passed",
+    "packagedHyperL": "Native recipe comparisons completed; dataset test exposed Android getFileStore SecurityException. Direct owner-only POSIX creation fix awaits rebuilt device run."
+  },
+  "ui": {
+    "defaultOff": true,
+    "observedVpnForApp": false,
+    "tailscaleInstalled": false,
+    "androidValidation": true,
+    "metered": true,
+    "providerIdentity": "unavailable",
+    "missingCompanionError": true,
+    "observationRestoredOff": true
+  },
+  "boundaries": [
+    "No Tailscale client installed or live tailnet tested",
+    "No paid provider calls or VPN configuration changes",
+    "Reopen in process tested; full process-death persistence not qualified",
+    "No new hardware/GPU or distributed model claim",
+    "Interactive navigation and real network snapshot inspected; broader accessibility/lifecycle acceptance open"
+  ]
+}

@@ -4,6 +4,57 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## G1 hardening acceptance — 2026-10-26
+
+- [x] Validate replayed accounting and reject ambiguous writes until reopen.
+- [x] Commit Android provider/key changes together and recheck bindings before dispatch.
+- [x] Add independent cost/replay/commit tests and review pinned math candidates.
+- [x] Complete final regression/build/lint checks for this hardening increment.
+- [ ] Qualify durable Studio credentials, all-adapter revocation, cross-device authority and live account/device boundaries before declaring G1 complete.
+
+## Optional VPN dashboard acceptance — 2026-10-26
+
+- [x] Implement bounded read-only Studio Tailscale status and Android app-network observations with official-client handoff.
+- [x] Keep consent default-off, Basic navigation unchanged, technical fields collapsed, and provider identity unknown where Android cannot verify it.
+- [x] Complete new contract tests, both debug builds/lints and native dashboard render inspection.
+- [ ] Qualify a live tailnet and physical phones across VPN loss, sleep/wake, cellular changes and split tunneling.
+
+
+## Usage and gateway acceptance — 2026-10-26
+
+- [x] Implement encrypted append-only request metadata, reported input/output counts, price snapshots and manual bill corrections.
+- [x] Reserve device-local currency allowances before text requests; preserve unresolved charges across failure/restart.
+- [x] Wire Android online-provider chat/routes/agents and Studio chat to the authority; add dedicated history/budget controls.
+- [x] Add explicitly optional OmniRoute and experimental FreeLLMAPI profiles without automatic fallback or assumed free entitlement.
+- [x] Complete required final builds/lints and document exact results for this increment; one physical-phone SSH fixture remains skipped.
+- [ ] Qualify live gateways and physical Android use; cover remaining adapters, archival/export, authenticated pricing and cross-device accounting.
+
+
+## Active implementation increment — 2026-10-26
+
+- [x] Capture the pre-change Studio destination audit and inspect the cancelled CI stage.
+- [x] Run shared and Studio baseline tests before source edits.
+- [x] Implement native dashboard entry points and six/four-entry Basic menus on Android/Studio; retain Advanced/search and current grants.
+- [x] Expose only actual latest route/response observations; label missing billing and VPN backends.
+- [x] Complete final changed-source tests, both Android debug builds/lints, scoped Core Candidate boundary test and offscreen Studio visual inspection; physical UI acceptance remains open. See [baseline report](docs/desktop/STUDIO_BASELINE_2026-10-26.md).
+- [ ] Continue G1 durable usage, budgets and shared authority before adding automatic paid fallback or claiming account billing.
+
+## Studio and mobile LTS queue — 2026-10-26
+
+Plan-first scope: [full architecture, dashboard design and gates](docs/STUDIO_MOBILE_LTS_PLAN.md). Earlier pause/checkpoint entries below are historical; this pass does not resume application builds.
+
+- [x] Inspect unified Git state, upstream repositories and existing Android/Studio integration boundaries.
+- [x] Prepare consolidated LTS design including optional gateways, direct free/paid services, usage accounting, VPN, Studio parity and Basic/Advanced UX.
+- [ ] G0: reproduce source/CI baseline and reconcile each Studio parity row.
+- [ ] G1: implement shared contracts, migrations, credential authority and atomic usage/budget ledger.
+- [ ] G2: qualify direct provider and optional gateway adapters with free/paid/mixed policies.
+- [ ] G3: implement Models, Routing and Usage dashboards on Android and Studio.
+- [ ] G4: implement verified VPN observations and official-client handoff/controls where supported.
+- [ ] G5: scenario Auto settings, minimal Basic navigation and full visual/accessibility polish.
+- [ ] G6: qualify saved reliability work, HyperL integration and remaining admitted Studio parity.
+- [ ] G7: qualify packages, upgrades/rollback and maintenance readiness before an LTS designation.
+- [ ] GX: independently qualify distributed/experimental capabilities and later operational backends.
+
 [Current saved checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) contains the ranked next gates and [build/run handoff](docs/PAUSED_CHECKPOINT_2026-10-24.md#buildrun-and-agent-handoff). This source push does not complete the unchecked acceptance items.
 
 
@@ -117,3 +168,9 @@ Updated 2026-10-10. This list tracks current user requests; older task IDs and p
 - [ ] Production-channel privacy, signing/notarization, dependency review, clean-target and physical fleet gates.
 
 All detailed categories, statuses, source anchors and missing controls: docs/DESKTOP_FEATURE_TRACKER.md. Do not mark an entire category done from a menu, unit fixture, same-host trial or dependency.
+
+- [ ] Explain file-picker grants on App permissions and expose the existing optional all-files settings handoff under Advanced; test on supported Android versions.
+
+## Prerelease continuation — 2026-10-26
+
+Four-platform prerelease: complete Samsung storage regression, Intel Mac package/runtime checks, Windows/Linux CI installers, source checkpoint and checksummed GitHub prerelease. Clean-machine Windows/Linux installation and verified publisher signing remain separate gates.

@@ -75,5 +75,64 @@
     "review": "https://github.com/sabbirimon/meshlit-v2/pull/4",
     "document": "docs/PAUSED_CHECKPOINT_2026-10-24.md",
     "build45Qualified": false
+  },
+  "currentPlanningCheckpoint": {
+    "date": "2026-10-26",
+    "state": "plan prepared; implementation deferred by owner plan-first selection",
+    "repository": "https://github.com/sabbirimon/meshlit",
+    "baselineSourceCommit": "5a7c5167ce6a32880c4e6354fde26af50773eb2c",
+    "branch": "plan/studio-mobile-lts",
+    "document": "docs/STUDIO_MOBILE_LTS_PLAN.md",
+    "gateStates": {
+      "G0": "planned",
+      "G1": "planned",
+      "G2": "planned",
+      "G3": "planned",
+      "G4": "planned",
+      "G5": "planned",
+      "G6": "planned",
+      "G7": "planned",
+      "GX": "planned"
+    },
+    "ltsQualified": false
+  },
+  "currentImplementationCheckpoint": {
+    "date": "2026-10-26",
+    "state": "first dashboard/navigation increment locally validated; physical and backend gates remain open",
+    "document": "docs/desktop/STUDIO_BASELINE_2026-10-26.md",
+    "gates": {
+      "G0": "source audit and local baseline/changed-source checks complete; full CI timeout and physical qualification open",
+      "G1": "planned",
+      "G3": "partial: dashboard navigation and scoped observations locally validated; no full billing or routing parity"
+    },
+    "ltsQualified": false,
+    "evidence": "docs/desktop/evidence/lts-dashboard-validation.json"
+  },
+  "currentUsageCheckpoint": {
+    "date": "2026-10-26",
+    "state": "Locally build/lint/contract validated; live gateway and physical acceptance open",
+    "scope": "Android online-provider text calls and Studio interactive chat; device-local currency budgets and optional gateways",
+    "guide": "docs/USAGE_AND_MODEL_BUDGETS.md",
+    "remaining": [
+      "Live gateway and physical Android qualification",
+      "Other inference adapters and Studio CLI/hosting",
+      "Authenticated free-tier proof and automatic invoices",
+      "Cross-device authority and journal archival"
+    ]
+  },
+  "currentVpnCheckpoint": {
+    "date": "2026-10-26",
+    "state": "Local contracts, both Android builds/lints and Studio render validated; live tailnet and physical acceptance open",
+    "gate": "G4 partial; live tailnet and physical Android acceptance open",
+    "guide": "docs/TAILSCALE_AND_VPN.md",
+    "evidence": "docs/desktop/evidence/vpn-validation.json",
+    "ltsQualified": false
+  },
+  "currentG1HardeningCheckpoint": {
+    "date": "2026-10-26",
+    "state": "Replay, ambiguous-write and credential transaction hardening locally validated; Samsung follow-up in progress",
+    "guide": "docs/MATH_RESEARCH_2026-10-26.md",
+    "evidence": "docs/desktop/evidence/g1-hardening-validation.json",
+    "G1Complete": false
   }
 }

@@ -12,14 +12,25 @@ class SettingsDestinationsTest {
         assertEquals(listOf("runtime"),SettingsDestinations.search("rootless",true).map{it.id})
         assertEquals(listOf("appearance"),SettingsDestinations.search("wallpaper colors",false).map{it.id})
     }
+    @Test fun dashboardLinksRespectTheBuildBoundary(){
+        assertTrue(com.meshlit.BuildProfile.routeAllowed("dashboards"))
+        val ids=SettingsDestinations.all.map{it.id}.toSet()
+        assertTrue("dashboards" in ids)
+        com.meshlit.workspace.DashboardDirectory.entries.filter { com.meshlit.BuildProfile.routeAllowed(it.id) }.forEach {
+            assertTrue("Missing dashboard destination: ${it.id}", it.id in ids)
+        }
+    }
     @Test fun basicAndAdvancedTabsShowDistinctCompleteMenus(){
         val basic=SettingsDestinations.search("",false).map{it.id}.toSet()
         val advanced=SettingsDestinations.search("",true).map{it.id}.toSet()
-        assertTrue(basic.size>10)
+        assertTrue(basic.size in 1..6)
+        assertTrue("appearance" in basic)
+        assertFalse("providers" in basic)
+        assertFalse("agents" in basic)
         assertTrue(advanced.size>10)
         assertTrue(basic.intersect(advanced).isEmpty())
         assertEquals(SettingsDestinations.all.map{it.id}.toSet(),basic+advanced)
-        assertTrue("rewards" in basic)
+        assertTrue("rewards" in advanced)
         assertTrue("hyperl" in advanced)
     }
 }

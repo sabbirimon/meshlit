@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-26",
+  "workingTree": true,
+  "status": "Full regression, both assemblies and lints passed; physical follow-up in progress",
+  "sourceSha256": {
+    "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/UsageLedger.kt": "1d83c3ae5e9b6049185399f4e868e352958a4714f3cc9a347592a0aaf85359da",
+    "shared-workspace/src/jvmTest/kotlin/com/meshlit/workspace/UsageReplayTest.kt": "c2bb783f40258fb7202e1d3b2e6b8a64767620bba6695135b5e5bd21e7f5871d",
+    "core-trust/src/main/kotlin/com/meshlit/core/trust/EncryptedCredentialStore.kt": "bc37b2c3dbb75994742d936ff2ac97b545096147de0c364184e323d1746dc42b",
+    "core-trust/src/test/kotlin/com/meshlit/core/trust/CredentialCommitTest.kt": "babec64745101b7a1f18a1758540cdd51d53580c42e42b8f464b59c97650ec9c",
+    "app/src/main/kotlin/com/meshlit/providers/OnlineProviders.kt": "a702abdf9306b157ff882ec69dadfc9edbc38136a575ac7bf8485acbd5019c84"
+  },
+  "testSuites": {
+    "shared-workspace:jvmTest": {
+      "tests": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktopApp:test": {
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "core-trust:testDebugUnitTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-mcp:testDebugUnitTest": {
+      "tests": 139,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-sandbox:testDebugUnitTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-net:testDebugUnitTest": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-inference:testDebugUnitTest": {
+      "tests": 287,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV1DebugUnitTest": {
+      "tests": 245,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV2DebugUnitTest": {
+      "tests": 245,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "scope": "G1 replay and ambiguous-commit safety; Android profile/key transaction and pre-dispatch recheck",
+  "notQualified": [
+    "Durable Studio credentials",
+    "All-adapter/global vault revocation",
+    "Cross-device budgets",
+    "Live accounts and physical Android persistence",
+    "Independent verification of all OpenAI math proofs"
+  ],
+  "paidCalls": false,
+  "pushes": false,
+  "duration": "14m 47s",
+  "lint": {
+    "meshlitV1Debug": {
+      "Warning": 401,
+      "Hint": 19
+    },
+    "meshlitV2Debug": {
+      "Warning": 401,
+      "Hint": 19
+    }
+  }
+}

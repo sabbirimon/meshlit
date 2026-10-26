@@ -4,6 +4,37 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## G1 contract hardening and math assessment — 2026-10-26
+
+Durable ledger replay now rejects invalid domains, duplicate currency policies, inconsistent terminal costs and illegal event shapes. Any uncertain write disables the current authority until reopen. Android profile/key edits use one checked encrypted transaction; a failed commit blocks further credentials in that instance, and current profile/local-key bindings are rechecked before dispatch. Independent integer accounting and write-then-fail regressions pass; full regression, both debug assemblies and both lints passed. Samsung device follow-up is in progress. Studio durable credentials, all-adapter revocation, cross-device authority and live account/device qualification remain open. No automatic routing or provider billing-cap promise was added.
+
+The [OpenAI math assessment](docs/MATH_RESEARCH_2026-10-26.md) reviews the pinned 719-manuscript catalog and selected compute/security candidates. Standalone HyperL gained bounded exact-arithmetic reduction tests; no theorem-derived speedup or cipher replacement is claimed.
+
+## Optional Tailscale / VPN increment — 2026-10-26
+
+The owner requested real VPN dashboards while keeping Basic settings minimal. Studio now reads optional installed Tailscale CLI status with bounded, cancellable local execution; Android reports its actual app-effective VPN transport separately from Tailscale package presence and hands management to the official client. Observations are opt-in, in-memory, timestamped and expiring. No unsupported connect toggle, paid API call, VPN reconfiguration or push is part of this increment. See [setup and evidence boundaries](docs/TAILSCALE_AND_VPN.md). Live tailnet and physical-device qualification remain open.
+
+
+## Active request: usage history, budgets and optional gateways — 2026-10-26
+
+The owner asked to continue with real free/paid model usage history on Studio/mobile, then optional OmniRoute and FreeLLMAPI, while conserving coding credits. This increment implements a shared ledger, currency budgets and dedicated controls for Android online-provider text calls and Studio interactive chat. Existing dependencies/caches are reused; no live paid API call, server installation, publication or background automation is performed. Remaining coverage and qualification are explicit in [the usage guide](docs/USAGE_AND_MODEL_BUDGETS.md).
+
+
+## Begin staged implementation — 2026-10-26
+
+The owner now requests implementation, starting with baseline checks and missing Studio capabilities, then dashboards and Basic-settings cleanup. Reuse research, assets and caches; avoid wasted credits and parallel agents. This supersedes the plan-first hold below. Current evidence and the first increment boundary are in [the baseline report](docs/desktop/STUDIO_BASELINE_2026-10-26.md).
+
+## Studio/mobile LTS and dashboard requests — 2026-10-26
+
+Current scope is **planning before implementation**. Record the full design in [the LTS plan](docs/STUDIO_MOBILE_LTS_PLAN.md):
+
+- Optional OmniRoute and FreeLLMAPI gateways; direct free and paid providers remain independently usable.
+- Dedicated Models, Routing, Usage & Costs, and VPN & Network dashboards with detailed management and explicit spending policies.
+- Finish missing Studio capabilities by backend/evidence, with a refined font, palette, texture, icon and motion system on both platforms.
+- Minimal Basic settings; scenario-based Auto defaults; searchable Advanced tuning and preserved user overrides.
+- Preserve unfinished voice, RAG, model, HyperL integration and physical-device acceptance in the staged queue.
+- Check Git and avoid wasting ChatGPT/Codex allowance. The owner clarified that “credits” meant account usage, not creator attribution or a standalone HyperL continuation.
+
 ## Save source and documentation — 2026-10-24
 
 The owner requested saving Meshlit progress and pushing it to Meshlit GitHub, then asked for documentation coverage comparable to HyperL. [The paused checkpoint](docs/PAUSED_CHECKPOINT_2026-10-24.md) links build/run instructions, implemented fixes, incomplete evidence, prioritized pending work and agent handoff. Existing PR #4 is the review destination. No new voice work, APK build, device operation or release is authorized by this save step.
@@ -61,3 +92,7 @@ Updated 2026-10-10. Historical request text/task IDs remain in docs/history/REQU
 | Update every Markdown plan/progress/phase record | Active records reconciled and all tracked Markdown classified in documentation index | Maintain generator/check at each future change; docs/DOCUMENTATION_STATUS.md |
 
 Plans and phase labels do not establish completion. See PLAN.md, BUILD_MILESTONES.md, TODO.md, PROGRESS.md and docs/DESKTOP_BUILD_LOG.md for current facts and next gates.
+
+## Prerelease continuation — 2026-10-26
+
+Owner selected Android + macOS + Windows + Linux for the experimental prerelease and authorized saving progress to GitHub. Publisher enrollment/signing is a separate owner identity step; do not label debug/ad-hoc/unsigned packages as verified publisher releases.

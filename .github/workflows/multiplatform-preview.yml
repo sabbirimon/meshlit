@@ -1,8 +1,9 @@
 name: Multiplatform client preview
 on:
+  workflow_dispatch:
   pull_request:
   push:
-    branches: [main, dev]
+    branches: [main, dev, plan/studio-mobile-lts]
 permissions:
   contents: read
 jobs:
@@ -30,3 +31,43 @@ jobs:
       - name: NEXT static project boundaries (not a HAP build)
         shell: bash
         run: python3 scripts/check-next-preview.py
+      - name: Build experimental Windows installer
+        if: runner.os == 'Windows'
+        shell: bash
+        run: ./gradlew :desktopApp:packageMsi --no-daemon --max-workers=2
+      - name: Build experimental Linux installer
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./gradlew :desktopApp:packageDeb --no-daemon --max-workers=2
+      - name: Installer checksums and scope
+        if: runner.os != 'macOS'
+        shell: python
+        run: |
+          import hashlib, json, pathlib, shutil, os
+          root = pathlib.Path('desktopApp/build/compose/binaries/main')
+          files = sorted(root.glob('**/*.msi')) + sorted(root.glob('**/*.deb'))
+          assert files, 'Missing installer'
+          output = pathlib.Path('preview-assets')
+          output.mkdir()
+          for item in files:
+              shutil.copy2(item, output / item.name)
+          for name in ['LICENSE', 'NOTICE']:
+              shutil.copy2(name, output / name)
+          shutil.copy2('docs/desktop/CROSS_PLATFORM_PRERELEASE.md', output / 'INSTALL.md')
+          (output / 'BUILD.json').write_text(json.dumps({
+              'commit': os.environ['GITHUB_SHA'], 'os': os.environ['RUNNER_OS'],
+              'architecture': os.environ['RUNNER_ARCH'], 'publisherSigned': False,
+              'bundledLocalInference': False, 'installedAppQualification': False
+          }, indent=2) + '\n')
+          checksums = []
+          for item in sorted(output.iterdir()):
+              checksums.append(hashlib.sha256(item.read_bytes()).hexdigest() + '  ' + item.name)
+          (output / 'SHA256SUMS.txt').write_text('\n'.join(checksums) + '\n')
+      - name: Retain experimental installers for release review
+        if: runner.os != 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-preview-${{ runner.os }}-${{ runner.arch }}
+          path: preview-assets/
+          if-no-files-found: error
+          retention-days: 14

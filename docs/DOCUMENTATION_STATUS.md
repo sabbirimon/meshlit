@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-133 active, 19 historical, 8 protected, 1 template, 6 third-party; 168 Markdown documents including this index.
+139 active, 19 historical, 8 protected, 1 template, 6 third-party; 174 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -90,6 +90,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md](LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/LOCAL_MODEL_TOOLS.md](LOCAL_MODEL_TOOLS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MACOS_OFFLINE.md](MACOS_OFFLINE.md) | desktop/server; individual acceptance gates apply |
+| [docs/MATH_RESEARCH_2026-10-26.md](MATH_RESEARCH_2026-10-26.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MEMORY_AND_VOICE.md](MEMORY_AND_VOICE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MULTIPLATFORM_NEXT.md](MULTIPLATFORM_NEXT.md) | platform preview; NEXT device/build acceptance remains open |
 | [docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md](NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -110,9 +111,12 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/SESSION_HANDOFF.md](SESSION_HANDOFF.md) | cross-platform tracking; feature and device gates remain separate |
 | [docs/SSH_NODE.md](SSH_NODE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/STITCH_GLASS_UI.md](STITCH_GLASS_UI.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/STUDIO_MOBILE_LTS_PLAN.md](STUDIO_MOBILE_LTS_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/TAILSCALE_AND_VPN.md](TAILSCALE_AND_VPN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/UI_AUDIT.md](UI_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/UI_REFERENCE_REDESIGN.md](UI_REFERENCE_REDESIGN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/UI_WORKSPACE_REDESIGN.md](UI_WORKSPACE_REDESIGN.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/USAGE_AND_MODEL_BUDGETS.md](USAGE_AND_MODEL_BUDGETS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/USER_GUIDE.md](USER_GUIDE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/PRODUCTION_CHANNELS.md](architecture/PRODUCTION_CHANNELS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/README.md](architecture/README.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -122,6 +126,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/cloud-and-credential-management.md](cloud-and-credential-management.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/code-workspace-and-permissions.md](code-workspace-and-permissions.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/declarative-federation-roadmap.md](declarative-federation-roadmap.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/desktop/CROSS_PLATFORM_PRERELEASE.md](desktop/CROSS_PLATFORM_PRERELEASE.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/DOLPHIN.md](desktop/DOLPHIN.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/ENGINE_AND_SHARDING.md](desktop/ENGINE_AND_SHARDING.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/RECOVERY.md](desktop/RECOVERY.md) | desktop/server; individual acceptance gates apply |
@@ -130,6 +135,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/desktop/STABILIZATION_BUILD_GUIDE.md](desktop/STABILIZATION_BUILD_GUIDE.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/STABILIZATION_NEXT.md](desktop/STABILIZATION_NEXT.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/STABILIZATION_PLAN.md](desktop/STABILIZATION_PLAN.md) | desktop/server; individual acceptance gates apply |
+| [docs/desktop/STUDIO_BASELINE_2026-10-26.md](desktop/STUDIO_BASELINE_2026-10-26.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/TERMINAL.md](desktop/TERMINAL.md) | desktop/server; individual acceptance gates apply |
 | [docs/device-aware-model-runtime.md](device-aware-model-runtime.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/hugging-face-integration.md](hugging-face-integration.md) | Android/shared reference; desktop ports have separate acceptance |

@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 133,
+    "active": 139,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -79,7 +79,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current regressions, limitations and verification",
-      "contentSha256WithoutTrackingBlock": "53d214d70d1bfe64fb260936dd08a1e0ee5e631cd5317cdf21b9d40d51ab76f3"
+      "contentSha256WithoutTrackingBlock": "cbf6432bd98daa230f1b0238c767040b9f6ca0fa29abd66abb146ec6c2bb2d28"
     },
     {
       "path": "BUILD.md",
@@ -128,14 +128,14 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit implementation and qualification plan",
-      "contentSha256WithoutTrackingBlock": "8dccfa051dd836c42ab34f643720ad584ebb4aaa871590e77b49934a0fece781"
+      "contentSha256WithoutTrackingBlock": "0ff2e69c97d26e0401a32936cb1fb1882d2ff135cc787e5290fba4d02f22b351"
     },
     {
       "path": "PROGRESS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "db01b02dbc9bee888fd3123c5c1ab730db154cd960e362a51a0118050e4c763a"
+      "contentSha256WithoutTrackingBlock": "629f3a6f10af3f1086d602afde07d71b524e9097417a8de8a491db15eb81370d"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "4a705eae4e3d7e0350096652fe47e581d315528daf99587c66c0490e443eb981"
+      "contentSha256WithoutTrackingBlock": "332f7705eb78bc3a18840a175cf7595aa84fa2a16cc474758cca30bb1c576430"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "7c0c1082e3aa029a3d3cbfc75782cda5074073e4247b848254c3a006686b5be7"
+      "contentSha256WithoutTrackingBlock": "db7f4d6d06197968d6f16991fc559e5cd3108e7b718eb14181028be43043ddbe"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -422,7 +422,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Desktop and server feature tracker",
-      "contentSha256WithoutTrackingBlock": "442103fbbf72fda5e08ac7793f58ad0a02c6f47515804c17bb52e588e6e2563b"
+      "contentSha256WithoutTrackingBlock": "84bb1b4722e410247a9e00073a7c22fbe0b792efea0e49dea7fc178704da72e6"
     },
     {
       "path": "docs/DESKTOP_STUDIO_PLAN.md",
@@ -486,6 +486,13 @@
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Intel Mac offline desktop preview",
       "contentSha256WithoutTrackingBlock": "1b732af84fec61a87793170ba1d2218d36659f9dccf85582b1d2d21a5282c928"
+    },
+    {
+      "path": "docs/MATH_RESEARCH_2026-10-26.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "OpenAI mathematics: applications to Meshlit and HyperL",
+      "contentSha256WithoutTrackingBlock": "fa45d92ea2c529349d6561a7826e5e248284330beba4d358b2097b6d4a30dbc1"
     },
     {
       "path": "docs/MEMORY_AND_VOICE.md",
@@ -649,6 +656,20 @@
       "contentSha256WithoutTrackingBlock": "006d4e7f83138aae80ea3f2ff22d2326f60ca17049d9c4a3006ed7522df56a0c"
     },
     {
+      "path": "docs/STUDIO_MOBILE_LTS_PLAN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit Studio and mobile LTS plan",
+      "contentSha256WithoutTrackingBlock": "24c72d43368ec339f1f0b4d7398c715dbe875676df25ae516418bea15bb939be"
+    },
+    {
+      "path": "docs/TAILSCALE_AND_VPN.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Optional Tailscale and VPN observations",
+      "contentSha256WithoutTrackingBlock": "33c236930c954797f9b6842868d70b6f368005b7494a77e708bb827c9cb27000"
+    },
+    {
       "path": "docs/TERMS_OF_USE.md",
       "class": "protected",
       "scope": "licence, attribution or versioned agreement",
@@ -677,11 +698,18 @@
       "contentSha256WithoutTrackingBlock": "f383a38550e470df611e8e15707c4eafd4a282a3ce1636451ab20009f3e23c01"
     },
     {
+      "path": "docs/USAGE_AND_MODEL_BUDGETS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Usage history and model budgets",
+      "contentSha256WithoutTrackingBlock": "ec82771aa7807b002c9abaa28b064e25008b07aa9287116c3c571889f1967ecc"
+    },
+    {
       "path": "docs/USER_GUIDE.md",
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "e18dba00770611578e16e3f8506f99413062be36618d63d9e346fc1ad47ecec9"
+      "contentSha256WithoutTrackingBlock": "c29385b522994a94778ad010304c38fb257d8080a0381c635e901f02c1b4e38c"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",
@@ -775,6 +803,13 @@
       "contentSha256WithoutTrackingBlock": "b8f86134e2022c018977525d5aeef907cdf161bf39c45279f4ecceaae99ef5c2"
     },
     {
+      "path": "docs/desktop/CROSS_PLATFORM_PRERELEASE.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Four-platform experimental prerelease",
+      "contentSha256WithoutTrackingBlock": "0cf17f478c40e283de3cb3da75a72aceb7f1d151c92c87c30c79b45244ec03a6"
+    },
+    {
       "path": "docs/desktop/DOLPHIN.md",
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
@@ -829,6 +864,13 @@
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Desktop stabilization milestone \u2014 proposed plan",
       "contentSha256WithoutTrackingBlock": "c4cc6de813d0e3c23e5a5fc5f139150b743f7219869c3c201519e4d775e10be6"
+    },
+    {
+      "path": "docs/desktop/STUDIO_BASELINE_2026-10-26.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Studio baseline and first dashboard increment",
+      "contentSha256WithoutTrackingBlock": "b87b38cf67263b59d3fbb6b036fba8e2bb26d3fff5980fb8722bee7d5974db16"
     },
     {
       "path": "docs/desktop/TERMINAL.md",

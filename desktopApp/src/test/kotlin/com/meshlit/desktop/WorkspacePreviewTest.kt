@@ -7,6 +7,39 @@ import java.io.File
 import kotlin.test.*
 
 class WorkspacePreviewTest {
+    @OptIn(ExperimentalComposeUiApi::class)
+    @Test fun nativeVpnDashboardRendersWithoutRequestingStatus() {
+        ImageComposeScene(600, 1000) {
+            androidx.compose.material.MaterialTheme(colors = androidx.compose.material.darkColors()) {
+                androidx.compose.material.Surface { VpnDashboard({}, {}) }
+            }
+        }.use { scene -> scene.render().use { image ->
+            assertEquals(600, image.width)
+            image.encodeToData(EncodedImageFormat.PNG)!!.use { data ->
+                System.getProperty("meshlit.previewDir")?.let { path -> File(path).apply { mkdirs() }.resolve("vpn-dashboard.png").writeBytes(data.bytes) }
+            }
+        } }
+    }
+
+    @OptIn(ExperimentalComposeUiApi::class)
+    @Test fun dashboardHubRendersAtCompactAndWideWidths() {
+        for (width in listOf(420, 600, 1060)) {
+            ImageComposeScene(width, 1000) {
+                androidx.compose.material.MaterialTheme(colors = androidx.compose.material.darkColors()) {
+                    androidx.compose.material.Surface {
+                        androidx.compose.foundation.layout.Column { DashboardHub {} }
+                    }
+                }
+            }.use { scene -> scene.render().use { image ->
+                assertEquals(width, image.width)
+                image.encodeToData(EncodedImageFormat.PNG)!!.use { data ->
+                    System.getProperty("meshlit.previewDir")?.let { path ->
+                        File(path).apply { mkdirs() }.resolve("dashboards-$width.png").writeBytes(data.bytes)
+                    }
+                }
+            } }
+        }
+    }
     /** Render the real desktop workspace with the host's Skiko library; no generated reply fixtures. */
     @OptIn(ExperimentalComposeUiApi::class)
     @Test fun nativeDesktopWorkspaceRenders() {

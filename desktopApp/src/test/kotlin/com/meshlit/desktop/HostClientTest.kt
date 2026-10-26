@@ -32,14 +32,14 @@ class HostClientTest {
         }
         server.createContext("/v1/chat/completions") { exchange ->
             val request = exchange.requestBody.bufferedReader().readText(); assertTrue(request.contains("\"max_tokens\":128")); assertTrue(request.contains("\"stream\":true"))
-            val event = "data: {\"choices\":[{\"delta\":{\"content\":\"你好 🌍\"}}]}\n\ndata: {\"choices\":[],\"usage\":{\"completion_tokens\":7}}\n\ndata: [DONE]\n\n".toByteArray()
+            val event = "data: {\"choices\":[{\"delta\":{\"content\":\"你好 🌍\"}}]}\n\ndata: {\"choices\":[],\"usage\":{\"completion_tokens\":7,\"prompt_tokens\":11}}\n\ndata: [DONE]\n\n".toByteArray()
             exchange.responseHeaders.add("Content-Type", "text/event-stream; charset=utf-8"); exchange.sendResponseHeaders(200, 0)
             exchange.responseBody.use { stream -> event.forEach { stream.write(it.toInt()); stream.flush() } }
         }
         HostClient(HostEndpoint.parse(address), "test-key").use { client ->
             assertEquals(listOf("fixture-model"), client.models())
             val text = StringBuilder(); val usage = client.generate("fixture-model", listOf(ChatTurn("user", "test")), GenerationBudget(128)) { text.append(it) }
-            assertEquals("你好 🌍", text.toString()); assertEquals(7L, usage.outputTokens); assertTrue(usage.tokensPerSecond!! > 0)
+            assertEquals("你好 🌍", text.toString()); assertEquals(7L, usage.outputTokens); assertEquals(11L, usage.inputTokens); assertTrue(usage.tokensPerSecond!! > 0)
         }
     }
     @Test fun localSystemPromptIsSerializedSeparatelyFromSharedChatTurns() = host { server, address ->
@@ -88,7 +88,7 @@ class HostClientTest {
         assertFails { HostClient(endpoint, "") }
         HostClient(endpoint, "scoped-node-key").use { client ->
             val out = StringBuilder(); val usage = client.generate("node-model", listOf(ChatTurn("user", "hello")), GenerationBudget(128)) { out.append(it) }
-            assertEquals("buffered contract", out.toString()); assertNull(usage.outputTokens)
+            assertEquals("buffered contract", out.toString()); assertNull(usage.outputTokens); assertNull(usage.inputTokens)
         }
     }
     @Test fun openWebuiUsesItsDistinctAuthenticatedApiRoutes() = host { server, address ->
@@ -111,7 +111,7 @@ class HostClientTest {
             assertEquals(listOf("webui-fixture"), client.models())
             val text = StringBuilder()
             val usage = client.generate("webui-fixture", listOf(ChatTurn("user", "test")), GenerationBudget(128)) { text.append(it) }
-            assertEquals("API contract only", text.toString()); assertNull(usage.outputTokens)
+            assertEquals("API contract only", text.toString()); assertNull(usage.outputTokens); assertNull(usage.inputTokens)
         }
     }
     @Test fun redirectsNeverForwardBearerToken() = host { server, address ->
