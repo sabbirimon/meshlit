@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "158e39786e5bf13de5b46057a6651f6a943ef67737f4a00b3df03db3cf09c90f"
+      "contentSha256WithoutTrackingBlock": "808583c2b4e9098cde4341554870498c6469ea7394d1762d74f3dc7da865e400"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "b15118007d51de602a81ef8ddc1f7574d37ab18924628df413fcc3cc8e2e8afc"
+      "contentSha256WithoutTrackingBlock": "04100fbe71cca13c458e4575204cd695b38688ccc53f3475429f832a14bf384b"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "c485598583d4e7906b8ca827cf92bc8fde78eaeb8f0704733f5ded6033012983"
+      "contentSha256WithoutTrackingBlock": "56b0c909598fb79dfe7a3cf473967f115309520dd2c08c13aab1079b2a2ee6ae"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -660,7 +660,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit Studio and mobile LTS plan",
-      "contentSha256WithoutTrackingBlock": "24c72d43368ec339f1f0b4d7398c715dbe875676df25ae516418bea15bb939be"
+      "contentSha256WithoutTrackingBlock": "6363f22c195be1c5dc05a45a4aa49ff61dcea637bb7dae0c0c3caf4c6c7f083e"
     },
     {
       "path": "docs/TAILSCALE_AND_VPN.md",
@@ -702,7 +702,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Usage history and model budgets",
-      "contentSha256WithoutTrackingBlock": "ec82771aa7807b002c9abaa28b064e25008b07aa9287116c3c571889f1967ecc"
+      "contentSha256WithoutTrackingBlock": "12936c59e2be01ea473f0de851ff77693d4c2781f505ec3e88420b42be75215f"
     },
     {
       "path": "docs/USER_GUIDE.md",

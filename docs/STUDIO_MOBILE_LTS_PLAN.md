@@ -8,7 +8,7 @@ Planning baseline: 2026-10-26, Asia/Dhaka. Status: **implementation started, fir
 
 ## G1 hardening continuation — 2026-10-26
 
-The durable journal now validates persisted accounting and refuses further use after ambiguous storage failure until reopened. Android profile/key mutations use a checked encrypted transaction and pre-dispatch binding revalidation. G1 remains partial for durable Studio credentials, broader adapter/grant revocation, schema evolution and live qualification. [Research and concrete verification improvements](MATH_RESEARCH_2026-10-26.md) do not authorize automatic routing or claim invoice caps.
+The durable journal now validates persisted accounting and refuses further use after ambiguous storage failure until reopened. Android profile/key mutations use a checked encrypted transaction and pre-dispatch binding revalidation. G1 remains partial: Studio interactive hosts now have optional durable credentials (see the usage guide), while broader adapter/grant revocation, schema evolution and live qualification remain open. [Research and concrete verification improvements](MATH_RESEARCH_2026-10-26.md) do not authorize automatic routing or claim invoice caps.
 
 ## Current VPN increment (2026-10-26)
 

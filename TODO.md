@@ -4,6 +4,13 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Studio credential continuation — 2026-10-26
+
+The owner resumed development and requested keeping the black Studio UI. Optional saved host credentials now use a separate passphrase-unlocked AES-GCM vault, atomic replacement and exclusive process ownership. Save/use/forget/lock are explicit; loading a key leaves network access off. Credentials bind to the normalized host, protocol and interactive-inference purpose. Replacement/removal/locking invalidates issued leases; UI credential actions stop the current client and clear session access. Model refresh and chat validate saved credential access before dispatch. A failed write locks the vault rather than exposing uncertain state.
+
+This is Studio interactive-host coverage only: CLI/agent adapters, cross-device authority, OS keychain integration, Windows/Linux installed-app qualification and live provider testing remain open. Forgetting a local key does not revoke the provider-issued token or undo accepted charges. Black appearance is preserved; no automatic routing, paid request or release rebuild is introduced. Validation results are recorded in the usage guide.
+
+
 ## G1 hardening acceptance — 2026-10-26
 
 - [x] Validate replayed accounting and reject ambiguous writes until reopen.

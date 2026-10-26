@@ -62,6 +62,8 @@ fun main(args: Array<String>) {
     val localEngine = remember { LocalEngine() }
     val knowledge = remember { DesktopKnowledge() }
     val usageVault = remember { DesktopUsage() }
+    val credentials = remember { DesktopCredentials() }
+    var activeCredential by remember { mutableStateOf<DesktopCredentials.Lease?>(null) }
     var pricedRoute by remember { mutableStateOf("") }
     var reviewedPrice by remember { mutableStateOf(UsagePrice()) }
     var gateway by remember { mutableStateOf(false) }
@@ -122,7 +124,7 @@ fun main(args: Array<String>) {
         }
     }
     fun requestsAllowed() = if (localMode) localSession != null && connected else network && connected
-    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close(); knowledge.lock(); usageVault.lock() } }
+    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close(); knowledge.lock(); usageVault.lock(); credentials.lock() } }
     fun colibriReady() = connected && observedAt?.let { System.nanoTime() - it in 0..300_000_000_000L } == true
     fun hostAllowed() = localMode || !colibriHost || colibriDecision(colibriMode, network, colibriReady(), false).route == ColibriRoute.HOST
     fun connect() {
@@ -132,7 +134,7 @@ fun main(args: Array<String>) {
         job = scope.launch {
             var active: HostClient? = null
             try {
-                val host = HostEndpoint.parse(endpoint, hostProtocol); val connectedClient = HostClient(host, token); active = connectedClient; client = connectedClient
+                val host = HostEndpoint.parse(endpoint, hostProtocol); val connectedClient = HostClient(host, activeCredential?.let { credentials.resolve(it, host) } ?: token); active = connectedClient; client = connectedClient
                 val choices = withContext(Dispatchers.IO) { connectedClient.models() }
                 if (revision != currentRevision) throw CancellationException("Request superseded")
                 models = choices; model = choices.firstOrNull().orEmpty(); connected = true; observedAt = System.nanoTime()
@@ -157,6 +159,7 @@ fun main(args: Array<String>) {
         val selectedEndpoint = endpoint
         val selectedProtocol = hostProtocol
         val selectedToken = token
+        val selectedCredential = activeCredential
         val selectedBudget = budget.toInt()
         val selectedSession = localSession
         val route = UsageLedger.route(if(selectedLocal) "local:" + (customModelHash ?: customModel?.toString() ?: DesktopStarter.alias) else selectedEndpoint + "/" + selectedProtocol, selectedModel)
@@ -168,7 +171,8 @@ fun main(args: Array<String>) {
             val ledger = usageVault.journal()
             try {
                 val session = if (selectedLocal) checkNotNull(selectedSession) else null
-                val generationClient = HostClient(session?.endpoint ?: HostEndpoint.parse(selectedEndpoint, selectedProtocol), session?.token ?: selectedToken); active = generationClient; client = generationClient
+                val targetHost = session?.endpoint ?: HostEndpoint.parse(selectedEndpoint, selectedProtocol)
+                val generationClient = HostClient(targetHost, session?.token ?: selectedCredential?.let { credentials.resolve(it, targetHost) } ?: selectedToken); active = generationClient; client = generationClient
                 val reply = ReplyBuffer()
                 val updates = MutableStateFlow("")
                 val display = launch {
@@ -182,6 +186,7 @@ fun main(args: Array<String>) {
                         val groundedSystem = (system.orEmpty() + references).takeIf { it.isNotBlank() }
                         attempt = ledger.begin(route, selectedModel, selectedPrice,
                             (context.sumOf { it.content.length.toLong() } + (groundedSystem?.length ?: 0)) * 4 + 1024, selectedBudget.toLong())
+                        if (!selectedLocal && selectedCredential != null) credentials.resolve(selectedCredential, targetHost)
                         generationClient.generateConfigured(selectedModel, context, GenerationBudget(selectedBudget), groundedSystem) { chunk ->
                             reply.append(chunk)?.let { updates.value = it }
                         }
@@ -331,32 +336,35 @@ fun main(args: Array<String>) {
                         MenuHeading("models", t("Explicit host access", "明确授权主机访问"))
                         Row {
                             listOf("LM Studio" to "http://127.0.0.1:1234/v1", "Ollama" to "http://127.0.0.1:11434/v1", "Open WebUI" to "http://127.0.0.1:3000/api").forEach { (label, url) ->
-                                TextButton({ stop(true); gateway = false; pricedRoute = ""; hostProtocol = if (label == "Open WebUI") HostProtocol.OPEN_WEBUI else HostProtocol.OPENAI; endpoint = url; token = ""; network = false; colibriHost = false; messages = emptyList() }) { Text(label) }
+                                TextButton({ stop(true); gateway = false; pricedRoute = ""; hostProtocol = if (label == "Open WebUI") HostProtocol.OPEN_WEBUI else HostProtocol.OPENAI; endpoint = url; token = ""; activeCredential = null; network = false; colibriHost = false; messages = emptyList() }) { Text(label) }
                             }
                         }
                         Text(if (hostProtocol == HostProtocol.OPEN_WEBUI) t("Open WebUI API: /api. Obtain your account API key from that host's Settings → Account. The administrator must enable it. This connects to your existing host; it does not install or rebrand Open WebUI.", "Open WebUI API：/api。请从该主机设置 → 账户获取 API 密钥，管理员需要启用。此连接使用现有主机，不安装或重新品牌化 Open WebUI。") else t("OpenAI-compatible API: /v1. LM Studio/Ollama must already be installed and serving the selected model. No automatic installation or remote discovery.", "OpenAI 兼容 API：/v1。LM Studio/Ollama 需要已安装并提供所选模型。不自动安装或发现远程主机。"), style = MaterialTheme.typography.caption)
                         Text(t("The selected host may forward to a cloud provider or execute its configured server-side tools. Meshlit's local tool grants do not control that host; review its configuration.", "所选主机可能转发到云服务或执行其服务端工具。Meshlit 的本地工具授权不控制该主机，请检查主机配置。"), style = MaterialTheme.typography.caption)
                         if (!localMode && !colibriHost) Row { HostProtocol.entries.forEach { protocol ->
-                            TextButton({ stop(true); hostProtocol = protocol; endpoint = ""; token = ""; network = false; connected = false; messages = emptyList() }) { Text((if (hostProtocol == protocol) "✓ " else "") + protocol.label) }
+                            TextButton({ stop(true); hostProtocol = protocol; endpoint = ""; token = ""; activeCredential = null; network = false; connected = false; messages = emptyList() }) { Text((if (hostProtocol == protocol) "✓ " else "") + protocol.label) }
                         } }
                         Row {
                             listOf("OmniRoute", "FreeLLMAPI · experimental").forEach { label ->
                                 TextButton({ stop(true); localMode = false; hostProtocol = HostProtocol.OPENAI; gateway = true; colibriHost = false;
-                                    endpoint = ""; token = ""; network = false; connected = false; model = ""; models = emptyList(); messages = emptyList(); pricedRoute = "" }) { Text(label) }
+                                    endpoint = ""; token = ""; activeCredential = null; network = false; connected = false; model = ""; models = emptyList(); messages = emptyList(); pricedRoute = "" }) { Text(label) }
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(gateway, { stop(); gateway = it; pricedRoute = "" }); Text("This host is a routing gateway") }
                         if (gateway) Text("Optional /v1 gateway: enter your own deployment URL and scoped key. Meshlit adds no retries or fallback. Downstream routing and charges are controlled by the gateway; free-only and currency budgets block it. FreeLLMAPI is for personal experimentation. Neither gateway includes paid API entitlement.", style = MaterialTheme.typography.caption)
                         if (hostProtocol == HostProtocol.MESHLIT) Text("Meshlit nodes use authenticated buffered replies. Use a scoped client key and a reachable trusted HTTPS /v1 service. Worker enrollment and remote command permissions are separate.", style = MaterialTheme.typography.caption)
-                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(colibriHost, { stop(true); colibriHost = it; connected = false; observedAt = null; hostProtocol = HostProtocol.OPENAI; network = false; token = ""; endpoint = ""; messages = emptyList() }); Text(t("Use Colibri host", "使用 Colibri 主机")) }
+                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(colibriHost, { stop(true); colibriHost = it; connected = false; observedAt = null; hostProtocol = HostProtocol.OPENAI; network = false; token = ""; activeCredential = null; endpoint = ""; messages = emptyList() }); Text(t("Use Colibri host", "使用 Colibri 主机")) }
                         if (colibriHost) {
                             Row { ColibriMode.entries.forEach { mode -> TextButton({ stop(); colibriMode = mode; if (mode == ColibriMode.OFF) connected = false }) { Text((if (colibriMode == mode) "✓ " else "") + mode.name) } } }
                             Text(t("Auto uses this explicitly authorized, recently observed Colibri host while remote mode is selected. Refresh expires after 5 minutes. No server or model is installed. Agent switching is supported in the Android Experimental node with separate user grants; this preview has no agent controller.", "选择远程模式时，自动模式使用已授权且近期确认的 Colibri 主机。刷新记录在五分钟后失效，不会安装服务器或模型。代理切换需要 Android 实验性节点中的单独授权；本预览没有代理控制器。"), style = MaterialTheme.typography.caption)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(network, { network = it; if (!it) { stop(); connected = false; models = emptyList(); model = "" } }); Text(t("Allow requests to the selected host", "允许向所选主机发送请求")) }
                         Text(t("Prompts and your token go to this host. TLS uses the system trust store; redirects are blocked. HTTP is limited to literal loopback. Host model operation is managed separately.", "提示词和令牌将发送至此主机。TLS 使用系统信任库，并禁止重定向。HTTP 仅限本机回环地址。主机模型需要单独管理。"), style = MaterialTheme.typography.caption)
-                        OutlinedTextField(endpoint, { stop(true); endpoint = it.take(2048); network = false; token = ""; connected = false; model = ""; models = emptyList(); messages = emptyList() }, label = { Text("https://host:port${hostProtocol.basePath}") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                        OutlinedTextField(token, { stop(); token = it.take(8192); connected = false }, label = { Text(t("Client token · session only", "客户端令牌 · 仅当前会话")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                        OutlinedTextField(endpoint, { stop(true); endpoint = it.take(2048); network = false; token = ""; activeCredential = null; connected = false; model = ""; models = emptyList(); messages = emptyList() }, label = { Text("https://host:port${hostProtocol.basePath}") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(token, { stop(); activeCredential = null; token = it.take(8192); connected = false }, label = { Text(t("Client token · save only on request", "客户端令牌 · 仅主动保存")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                        CredentialControls(credentials, endpoint, hostProtocol, token,
+                            invalidate = { stop(); network = false; connected = false; token = ""; activeCredential = null },
+                            use = { lease, value -> activeCredential = lease; token = value })
                         Button(::connect, enabled = network && !busy && endpoint.isNotBlank() && (!colibriHost || colibriMode != ColibriMode.OFF)) { Text(t("Connect / refresh models", "连接 / 刷新模型")) }
                         models.forEach { id -> Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(model == id, { model = id }); Text(id) } }
                         if (connected && models.isEmpty()) Text(t("The host reports no models.", "主机未报告可用模型。"))
@@ -378,18 +386,18 @@ fun main(args: Array<String>) {
                         }
                         "nodes", "network" -> NodesPanel { node ->
                             stop(true); localMode = false; endpoint = node.endpoint; hostProtocol = node.protocol
-                            token = ""; network = false; colibriHost = false; messages = emptyList(); section = "providers"
+                            token = ""; activeCredential = null; network = false; colibriHost = false; messages = emptyList(); section = "providers"
                         }
                         "device-dashboard" -> DeviceDashboardPanel(onNodes = { section = "nodes" }, onMonitor = { section = "monitor" })
                         "securityprivacy" -> {
                             Text("Connection access is opt-in for each Studio session. Saved device addresses are not approved workers or authenticated identities.")
                             Text("Current remote access: ${if (network && connected && !localMode) "connected" else if (network && !localMode) "allowed for this session" else "off"}")
                             Text("Current request: ${if (busy) "running" else "idle"}. Session token: ${if (token.isBlank()) "none entered" else "entered, held in memory"}.")
-                            Button({ stop(true); network = false; token = ""; observedAt = null; connected = false }) { Text("Revoke session access and stop") }
+                            Button({ stop(true); credentials.lock(); network = false; token = ""; activeCredential = null; observedAt = null; connected = false }) { Text("Revoke session access and stop") }
                             TextButton({ section = "providers" }) { Text("Review host connection") }
                             TextButton({ section = "guardrails" }) { Text("Review response policy") }
                             TextButton({ section = "nodes" }) { Text("Review saved addresses") }
-                            Text("Chat history, host keys and response policy are session-only. Device addresses and appearance persist locally. Remote hosts may retain prompts under their own policy.", style = MaterialTheme.typography.caption)
+                            Text("Chat history and response policy are session-only. Host keys persist only when explicitly saved in the credential vault. Device addresses and appearance persist locally. Remote hosts may retain prompts under their own policy.", style = MaterialTheme.typography.caption)
                         }
                         "health", "memory", "device", "monitor", "power", "acceleration", "tasks" -> ResourceMonitor { stop(true) }
                         "crypto" -> { com.meshlit.desktop.peering.PeerWalletPanel(); Divider(); CryptoPanel() }
@@ -431,7 +439,7 @@ fun main(args: Array<String>) {
                             Text("Offline: Models → Local offline → Load. Import a trusted GGUF with Select GGUF. The bundled Qwen file is verified in full before loading.")
                             Text("Add a phone/PC/cluster: Nodes → enter its trusted HTTPS inference address and type → Save → Select & authenticate → enter client token → enable access → Connect. Then choose a reported model. The target must already expose a compatible API.")
                             Text("Existing LM Studio/Ollama/Open WebUI: Models → Remote host → choose preset, review the host, add its key where required, allow requests and Connect. Open WebUI uses /api; others use /v1.")
-                            Text("Stop cancels generation; local Stop also unloads. Closing the app stops its private model server. Node addresses and appearance persist; chats and keys are session-only.")
+                            Text("Stop cancels generation; local Stop also unloads. Closing the app stops its private model server. Node addresses and appearance persist; chats are session-only; keys persist only when explicitly saved.")
                         }
                         "legal" -> {
                             Text("Meshlit application: Apache-2.0. Qwen starter: Apache-2.0. llama.cpp: MIT and its retained dependency notices. Java runtime: GPL-2.0 with Classpath Exception; matching source accompanies the installers.")

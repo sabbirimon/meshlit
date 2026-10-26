@@ -4,6 +4,13 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Studio credential continuation — 2026-10-26
+
+The owner resumed development and requested keeping the black Studio UI. Optional saved host credentials now use a separate passphrase-unlocked AES-GCM vault, atomic replacement and exclusive process ownership. Save/use/forget/lock are explicit; loading a key leaves network access off. Credentials bind to the normalized host, protocol and interactive-inference purpose. Replacement/removal/locking invalidates issued leases; UI credential actions stop the current client and clear session access. Model refresh and chat validate saved credential access before dispatch. A failed write locks the vault rather than exposing uncertain state.
+
+This is Studio interactive-host coverage only: CLI/agent adapters, cross-device authority, OS keychain integration, Windows/Linux installed-app qualification and live provider testing remain open. Forgetting a local key does not revoke the provider-issued token or undo accepted charges. Black appearance is preserved; no automatic routing, paid request or release rebuild is introduced. Validation results are recorded in the usage guide.
+
+
 ## G1 contract hardening and math assessment — 2026-10-26
 
 Durable ledger replay now rejects invalid domains, duplicate currency policies, inconsistent terminal costs and illegal event shapes. Any uncertain write disables the current authority until reopen. Android profile/key edits use one checked encrypted transaction; a failed commit blocks further credentials in that instance, and current profile/local-key bindings are rechecked before dispatch. Independent integer accounting and write-then-fail regressions pass; full regression, both debug assemblies and both lints passed. Samsung device follow-up is in progress. Studio durable credentials, all-adapter revocation, cross-device authority and live account/device qualification remain open. No automatic routing or provider billing-cap promise was added.

@@ -17,7 +17,7 @@ History begins with requests made through this update. Earlier in-memory counter
 
 ## Everyday use
 
-Open **Dashboards → Usage & costs**. Android opens its Keystore-backed history. In Studio, create/unlock a separate usage passphrase (12–256 characters) before chatting. Studio never saves this passphrase; losing it means the encrypted history cannot be unlocked. A second Studio process cannot open the same vault concurrently. Host keys remain session-only.
+Open **Dashboards → Usage & costs**. Android opens its Keystore-backed history. In Studio, create/unlock a separate usage passphrase (12–256 characters) before chatting. Studio never saves this passphrase; losing it means the encrypted history cannot be unlocked. A second Studio process cannot open the same vault concurrently. Host keys remain session-only unless explicitly saved in the separate credential vault described below.
 
 Choose a three-letter currency. For an unpriced Studio host or gateway, use **Use currency; prices unknown** to bind its billing currency without inventing token rates. Budgets are independent for each currency; there is no exchange-rate conversion. Enter a monthly allowance and a per-request allowance, then save. Blank monthly allowance explicitly disables that currency's local limit. Changing policy affects future admission, not requests already sent. Month boundaries use UTC, not device locale.
 
@@ -57,3 +57,14 @@ Validation results for this increment are tracked in PROGRESS.md. Compile/unit c
 Malformed journal values and costs inconsistent with saved prices/reported units are rejected. If storage reports failure, the ledger blocks further reads/admission until reopened; this covers an uncertain write that may already have reached disk. Studio can lock and unlock its usage vault; restart Android before reviewing/reconciling interrupted records. Do not clear history to recover budget allowance.
 
 Android provider edits/removal now commit profile metadata and the endpoint-bound key together. A failed commit disables credential use in that provider instance until restart/review. Dispatch rechecks the current profile and local key after budget reservation. This check cannot retract a request already accepted by a remote provider, and does not claim global vault revocation across all adapters.
+
+
+## Optional Studio credential vault
+
+In the selected remote host settings, expand **Saved credentials (optional)**. Create or unlock a separate 12–256-character passphrase, enter the host token and choose **Save current token**. After restarting, unlock and choose **Use saved token**, then explicitly enable host access and connect. Changing the host/protocol clears the selected token; another host cannot use its saved lease. The passphrase is not retained on disk and has no recovery mechanism.
+
+**Lock and clear token** stops the active client and removes session access. **Forget this host** also removes its encrypted saved entry; revoke the actual API token with its provider when needed. Security → Revoke session access locks the vault but keeps encrypted entries for a later explicit unlock. Already accepted remote work cannot be recalled.
+
+The bounded `credentials.mcv` format uses PBKDF2-HMAC-SHA256 (210,000 iterations), a random salt, AES-256-GCM with authenticated version/salt header and a fresh nonce per write. Atomic replacement, forced writes, POSIX private permissions and exclusive ownership follow the existing usage-vault pattern. Failed/ambiguous persistence locks the instance. JVM strings cannot guarantee memory zeroization; this is encrypted-at-rest storage, not hardware-backed keychain storage. Windows ACL and installed-platform qualification remain open. No agent, CLI or automatic routing grants are added.
+
+Validation: Final `:desktopApp:test` regression succeeded: 52 cases, 51 passed and one physical SSH fixture skipped, zero failures/errors. Existing native workspace/dashboard render checks passed; the new credential controls still need interactive installed-app qualification. Documentation tracking, feature-map validation and `git diff --check` passed. Android and release packaging were not rerun for this Studio-only increment. Credential tests exercise restart, wrong passwords, exact host/protocol binding, stale leases, deletion, concurrent ownership, failed writes and authenticated corruption. No live credentials or paid calls are used.
