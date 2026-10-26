@@ -31,3 +31,7 @@ Local structured publication proof: `../meshlit-validation/github-beta-publicati
 
 Debug-signed experimental artifacts; no Play approval, physical phone oversized
 sharding/recovery, hosted Grafana or complete integration coverage is claimed.
+
+## Build45 beta.5 publication — 2026-10-26
+
+[Public prerelease](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5); [successful relay](https://github.com/sabbirimon/meshlit/actions/runs/40273491384). All thirteen uploaded assets match local release-input names, byte sizes and SHA-256 digests. No temporary relay parts remain; equivalent Mac PKG is local-only. See [structured validation](desktop/evidence/prerelease45-validation.json) for exact provenance, per-asset hashes and qualification limits. This is an experimental prerelease, not a signed production release.

@@ -100,3 +100,7 @@ Owner selected Android + macOS + Windows + Linux for the experimental prerelease
 ## Final prerelease validation — 2026-10-26
 
 Android + Intel macOS + Windows x64 + Linux amd64 prerelease packages are built and scoped. The owner disconnected Samsung after passing tests and authorized continuing while away. GitHub checkpoints are pushed; draft release asset transfer is in progress.
+
+## Four-platform prerelease delivered — 2026-10-26
+
+The authorized [beta.5 prerelease](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5) is public with thirteen verified final assets. [Relay reconstruction](https://github.com/sabbirimon/meshlit/actions/runs/40273491384) preserved the exact tested APK/DMG bytes and removed its temporary parts. Android and Intel Mac targeted evidence is recorded; Windows/Linux installers have CI evidence, not physical installation qualification. Publisher signing and broader platform parity remain open. No paid API calls, main merge or store submission were performed. This supersedes the draft-transfer status above.

@@ -10,7 +10,7 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-**Current checkpoint (2026-10-24):** [saved source, pending validation and resumption guide](docs/PAUSED_CHECKPOINT_2026-10-24.md). Build45 is not a qualified release; use the published beta assets for existing test builds.
+**Current prerelease (2026-10-26):** [v2.0.0-beta.5](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5) provides Android, Intel macOS, Windows x64 and Linux amd64 installers. All thirteen release assets passed size/SHA-256 verification. [Validation and platform limits](docs/desktop/evidence/prerelease45-validation.json): Windows/Linux physical installation and production publisher signing remain unqualified.
 
 
 **Local AI, GGUF models, owner-controlled agents and experimental device compute.**
@@ -23,7 +23,7 @@ and research labs are welcome to test the broader system and share measured resu
 This repository is the home for current Meshlit source and beta releases. The
 earlier `meshlit-v2` repository remains available for its original pull requests
 and release provenance.
-Installable applications: Android and an Experimental Intel Mac desktop preview. Optional source companions: operator-owned hosts.
+Installable applications: Android and experimental Intel Mac, Windows x64 and Linux amd64 Studio previews. Windows/Linux local inference is not bundled. Optional source companions: operator-owned hosts.
 
 > **Help test and contribute.** We welcome developers, researchers, workstation
 > owners and people testing on everyday phones. Try a narrow workflow on your

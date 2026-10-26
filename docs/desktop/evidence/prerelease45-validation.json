@@ -80,5 +80,100 @@
   "localOnlyAssets": {
     "MeshlitPreview-2.0.45-studio.45.1-macos-intel.pkg": "8145430266dc92687c37332dc334b68595cfac0b4b1e93cbb1615d7f33d1fca7"
   },
-  "localOnlyReason": "Equivalent Mac PKG retained locally; publish DMG to avoid a duplicate 1.1 GB upload"
+  "localOnlyReason": "Equivalent Mac PKG retained locally; publish DMG to avoid a duplicate 1.1 GB upload",
+  "publication": {
+    "verifiedAt": "2026-10-26T06:50:45.814829+00:00",
+    "releaseId": 423840929,
+    "assets": [
+      {
+        "name": "Meshlit-v2-build45-arm64-v8a-debug.apk",
+        "size": 561770801,
+        "sha256": "3ee2bd1ad24b32228ceefa1ddd44e192511e92c220d1309c52efc0c5d294f808",
+        "state": "uploaded"
+      },
+      {
+        "name": "MeshlitPreview-2.0.45-studio.45.1-macos-intel.dmg",
+        "size": 1210940277,
+        "sha256": "4cc5ea004ecc2d9b2685547e7fdb2b99d68eedef2869f60f8e154a047aa0fe79",
+        "state": "uploaded"
+      },
+      {
+        "name": "OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz",
+        "size": 115126841,
+        "sha256": "573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234",
+        "state": "uploaded"
+      },
+      {
+        "name": "RUNTIME_SOURCE.json",
+        "size": 723,
+        "sha256": "341b654155ec806d13129d071eaf88177a671eb1682f199db9c4671d0572e085",
+        "state": "uploaded"
+      },
+      {
+        "name": "PACKAGING.json",
+        "size": 4207,
+        "sha256": "3f476eb100efa7b3568f8e2e4a61058d51cbba8166e988f14a0783c33b2a7c74",
+        "state": "uploaded"
+      },
+      {
+        "name": "INSTALL.txt",
+        "size": 4954,
+        "sha256": "b64e27d01ae75ac9e91abac49da2fd0a9f1bb0a94e983854217d6310b65caa9a",
+        "state": "uploaded"
+      },
+      {
+        "name": "MeshlitPreview-2.0.45.msi",
+        "size": 73752881,
+        "sha256": "5abcba2f791ef9ae59e3e16273d202e7a98db5a3f8265c56f7c48d1aa882a840",
+        "state": "uploaded"
+      },
+      {
+        "name": "meshlitpreview_2.0.45_amd64.deb",
+        "size": 67327318,
+        "sha256": "878774ec06012e39c7184644779076bfbf6d6f8652df6b35ff81a05669eb30f7",
+        "state": "uploaded"
+      },
+      {
+        "name": "LINUX-BUILD.json",
+        "size": 201,
+        "sha256": "9e7f704bd45b910ba863c6bcca0eb65dc89753493780fc6807d63ffb4ccce31a",
+        "state": "uploaded"
+      },
+      {
+        "name": "WINDOWS-BUILD.json",
+        "size": 211,
+        "sha256": "9d89583da25752769589b518836d446aabf3de2fa82df9b54515ca96381a2597",
+        "state": "uploaded"
+      },
+      {
+        "name": "DESKTOP-RUNTIME-SOURCE.json",
+        "size": 536,
+        "sha256": "8a742879baaa21a88fce0577c68ad904ad234d5aea090c1c7cef14672faebd90",
+        "state": "uploaded"
+      },
+      {
+        "name": "DESKTOP-INSTALL.md",
+        "size": 2436,
+        "sha256": "ecf3018dda41b45c193bcec14f57113092cafb3d6f13595b08fa1704a6a6b485",
+        "state": "uploaded"
+      },
+      {
+        "name": "SHA256SUMS.txt",
+        "size": 1111,
+        "sha256": "9e614aa0b9d25d5395b5ebceeabd9ecd85ef043dbc1f11c131a35404f7956302",
+        "state": "uploaded"
+      }
+    ],
+    "temporaryPartsRemaining": 0,
+    "relayRun": "https://github.com/sabbirimon/meshlit/actions/runs/40273491384",
+    "status": "published",
+    "url": "https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5",
+    "publishedAt": "2026-10-26T06:52:57Z",
+    "prerelease": true,
+    "promotedToLatestStable": false,
+    "releaseCheckpoint": "397897d2eea2dc3dfb8d2832d7a627d20fbb248d",
+    "relaySource": "7fe340b3f9f8332e7b5650e22dd62ac41a11ff99",
+    "relayConclusion": "success",
+    "verificationMethod": "Local SHA-256 and byte size compared against GitHub uploaded asset state, size and digest for all 13 files; exact asset-name set matched."
+  }
 }

@@ -135,21 +135,21 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "4434403eee9d39e87f731b493723da9b1f9bf0959cb69587c5a4b84ee3ac97e5"
+      "contentSha256WithoutTrackingBlock": "158e39786e5bf13de5b46057a6651f6a943ef67737f4a00b3df03db3cf09c90f"
     },
     {
       "path": "README.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 Many devices. One mind.",
-      "contentSha256WithoutTrackingBlock": "5225bb6cccf33dac0733fa902a34eb6e88c55e152c83d1bfb3fb09f23e47aa70"
+      "contentSha256WithoutTrackingBlock": "4706bd69c19197e239f3b8766bd1bfce81401d93eeccfb66feffaedf0ca92067"
     },
     {
       "path": "REQUESTS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "d497a128789e6ad8a2a757f0640d074b10bc5cf132d829c39a0735e708eb51b5"
+      "contentSha256WithoutTrackingBlock": "b15118007d51de602a81ef8ddc1f7574d37ab18924628df413fcc3cc8e2e8afc"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "12b7dd64a9daa02b21c8b4dea55a6b34fbc7bf73e0c71a6f23d748e17358d833"
+      "contentSha256WithoutTrackingBlock": "c485598583d4e7906b8ca827cf92bc8fde78eaeb8f0704733f5ded6033012983"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -611,7 +611,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Release publication and qualification evidence",
-      "contentSha256WithoutTrackingBlock": "499dbca615e51863dc7627aa6a13e6bb8a247da945c8f323c7a4081f74e873b2"
+      "contentSha256WithoutTrackingBlock": "46e5c84e69ab6c20f849066fc48da1cfb4bdd099ff9acb9342dacaec9a8edaf5"
     },
     {
       "path": "docs/REWARD_METERING_AND_SETTLEMENT.md",

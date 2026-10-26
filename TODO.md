@@ -182,3 +182,11 @@ Prerelease evidence update: Samsung storage/native/usage checks and Windows/Linu
 Completed final build/lint gate for Android and Intel Mac; Windows/Linux CI installers and Samsung regression checks passed. Remaining delivery gate: finish beta.5 asset uploads, verify remote digests and publish. Platform signing and physical Windows/Linux acceptance remain open.
 
 Delivery recovery: finish verified temporary-part transfer and GitHub reconstruction workflow; verify all 13 final assets and remove temporary parts before publication. Preserve the exact locally tested Android APK signature. Do not rebuild or publish a differently signed replacement as the tested binary.
+
+## Beta.5 delivery completed — 2026-10-26
+
+- [x] Publish [beta.5](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5) for Android, Intel macOS, Windows x64 and Linux amd64 after verifying all thirteen remote asset names, uploaded states, sizes and SHA-256 digests.
+- [x] Complete the [relay](https://github.com/sabbirimon/meshlit/actions/runs/40273491384) and remove temporary parts; keep the equivalent Mac PKG local-only.
+- [ ] Complete physical Windows/Linux installation, production signing/notarization, broader device acceptance and live provider/VPN qualification. These remain separate from successful prerelease delivery.
+
+This supersedes the pending upload/publication delivery gate above.
