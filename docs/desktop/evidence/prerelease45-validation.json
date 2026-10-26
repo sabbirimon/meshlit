@@ -66,7 +66,6 @@
   "assetSha256": {
     "Meshlit-v2-build45-arm64-v8a-debug.apk": "3ee2bd1ad24b32228ceefa1ddd44e192511e92c220d1309c52efc0c5d294f808",
     "MeshlitPreview-2.0.45-studio.45.1-macos-intel.dmg": "4cc5ea004ecc2d9b2685547e7fdb2b99d68eedef2869f60f8e154a047aa0fe79",
-    "MeshlitPreview-2.0.45-studio.45.1-macos-intel.pkg": "8145430266dc92687c37332dc334b68595cfac0b4b1e93cbb1615d7f33d1fca7",
     "OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz": "573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234",
     "RUNTIME_SOURCE.json": "341b654155ec806d13129d071eaf88177a671eb1682f199db9c4671d0572e085",
     "PACKAGING.json": "3f476eb100efa7b3568f8e2e4a61058d51cbba8166e988f14a0783c33b2a7c74",
@@ -77,5 +76,9 @@
     "WINDOWS-BUILD.json": "9d89583da25752769589b518836d446aabf3de2fa82df9b54515ca96381a2597",
     "DESKTOP-RUNTIME-SOURCE.json": "8a742879baaa21a88fce0577c68ad904ad234d5aea090c1c7cef14672faebd90",
     "DESKTOP-INSTALL.md": "ecf3018dda41b45c193bcec14f57113092cafb3d6f13595b08fa1704a6a6b485"
-  }
+  },
+  "localOnlyAssets": {
+    "MeshlitPreview-2.0.45-studio.45.1-macos-intel.pkg": "8145430266dc92687c37332dc334b68595cfac0b4b1e93cbb1615d7f33d1fca7"
+  },
+  "localOnlyReason": "Equivalent Mac PKG retained locally; publish DMG to avoid a duplicate 1.1 GB upload"
 }

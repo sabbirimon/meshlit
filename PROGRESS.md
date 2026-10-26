@@ -1056,3 +1056,7 @@ Intel Mac payload from application source 5a2b179: dashboard render inspected; 1
 ## Final prerelease validation — 2026-10-26
 
 Final Android/Studio local validation passed in 18m43s: both APK assemblies, instrumentation assembly, HyperL JVM tests (18 cases, one native-host skip), Studio distributable and both lints (zero errors, 401 warnings/19 hints each). Nine crawler tests and provenance/document checks passed. Samsung three-case instrumentation and Intel Mac payload checks are recorded in docs/desktop/evidence/prerelease45-validation.json. Four-platform beta.5 draft exists; large asset uploads and final publication are pending.
+
+## Unattended publication handoff — 2026-10-26
+
+The owner asked to continue while away with the Samsung disconnected. GitHub timed out the first concurrent large-file transfer; eleven small/source assets are now uploaded, with source archive digest verified. Android APK and Intel Mac DMG are retrying through independent streaming HTTP/1.1 connections. The redundant Mac PKG remains local-only to avoid a second 1.1 GB payload transfer. The release stays a draft until all thirteen asset digests match. Temporary thread follow-up `finish-meshlit-beta-5-release` checks every 30 minutes, stays quiet on unchanged progress, and must pause after publishing/pushing completion or when human intervention is needed. Final local evidence is saved; publication is not yet claimed.
