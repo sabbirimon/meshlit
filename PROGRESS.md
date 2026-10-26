@@ -4,6 +4,35 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Code OSS development integration and mobile follow-up — 2026-10-27
+
+The development workbench now contains a Meshlit extension with Home/navigation,
+independent chat panels, model connections, a configured MCP directory, and
+Chat/Plan/Edit/Autopilot sessions through the actual Antigravity native runtime.
+Native workbench validation opened Home plus two chats, a real JavaScript editor,
+and the built-in Git extension; the terminal command exists (shell execution was
+not part of that check). One earlier real bundled-local inference completed with
+165 reported input and 6 output tokens; external provider accounts remain untested.
+SDK transport/Stop and MCP approval/denial tests use synthetic model fixtures.
+
+The Kotlin stdio broker reuses the durable usage vault and budget admission.
+Provider keys use editor SecretStorage; the macOS Keychain request is separate
+from Meshlit's usage-vault passphrase. Helper executable/name mismatch caused an
+initial launch crash and is corrected. Packaging now consistently sets Meshlit
+helper names, identifiers, icon and URL handler. Development signing is ad-hoc:
+Keychain access may still need approval after rebuilds. A stable Apple developer
+signing identity and notarization remain open; no Keychain ACLs were weakened.
+
+Requested next: Android with the same visual language and simpler navigation;
+paired-phone Studio task control with desktop approval, scoped access, Stop and
+revocation; optional full mobile IDE. These are pending, not working controls.
+The pinned Antigravity packages have no Android runtime. Evaluate an authenticated
+hosted Code OSS/code-server workbench first, with optional on-phone Linux hosting
+qualified separately. MCP Git import/removal/tool discovery, full vendor-dashboard
+migration, durable chat recovery, mobile pairing and full device execution remain
+open. The development workbench still depends on local SDK/JDK/Compose jars;
+previous Studio and published beta installers remain separate.
+
 ## Reuse-first Studio IDE and operator foundation — 2026-10-27
 
 The owner selected Antigravity SDK and a genuine built-in IDE with independent

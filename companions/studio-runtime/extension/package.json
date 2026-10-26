@@ -1,0 +1,122 @@
+{
+  "name": "meshlit-workbench",
+  "displayName": "Meshlit",
+  "publisher": "meshlit",
+  "version": "0.2.0",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "license": "Apache-2.0",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "meshlit.chat",
+        "title": "Meshlit: New Chat",
+        "icon": "$(add)"
+      },
+      {
+        "command": "meshlit.agent",
+        "title": "Meshlit: New Coding Agent",
+        "icon": "$(code)"
+      },
+      {
+        "command": "meshlit.unlockUsage",
+        "title": "Meshlit: Unlock Usage"
+      },
+      {
+        "command": "meshlit.usage",
+        "title": "Meshlit: Usage Summary"
+      },
+      {
+        "command": "meshlit.addConnection",
+        "title": "Meshlit: Add Model Connection"
+      },
+      {
+        "command": "meshlit.addMcp",
+        "title": "Meshlit: Add MCP Connector"
+      },
+      {
+        "command": "meshlit.home",
+        "title": "Meshlit: Home"
+      },
+      {
+        "command": "meshlit.models",
+        "title": "Meshlit: Model Connections"
+      },
+      {
+        "command": "meshlit.connectors",
+        "title": "Meshlit: MCP Directory"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "meshlit.chat"
+        },
+        {
+          "command": "meshlit.agent"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "meshlit.chat",
+          "when": "view == meshlit.sessions",
+          "group": "navigation@1"
+        },
+        {
+          "command": "meshlit.agent",
+          "when": "view == meshlit.sessions",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "meshlit",
+          "title": "Meshlit",
+          "icon": "media/meshlit.svg"
+        }
+      ]
+    },
+    "views": {
+      "meshlit": [
+        {
+          "id": "meshlit.navigation",
+          "name": "Studio"
+        },
+        {
+          "id": "meshlit.sessions",
+          "name": "Chats & agents"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "meshlit.sessions",
+        "contents": "Chat while coding agents work.\n[New chat](command:meshlit.chat)\n[New coding agent](command:meshlit.agent)\n[Unlock usage](command:meshlit.unlockUsage)\n[Add model connection](command:meshlit.addConnection)\n[Add MCP connector](command:meshlit.addMcp)"
+      }
+    ],
+    "configurationDefaults": {
+      "workbench.startupEditor": "none",
+      "workbench.colorTheme": "Meshlit Dark",
+      "workbench.activityBar.location": "default"
+    },
+    "themes": [
+      {
+        "label": "Meshlit Dark",
+        "uiTheme": "vs-dark",
+        "path": "./media/dark.json"
+      }
+    ]
+  }
+}

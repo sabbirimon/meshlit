@@ -5,8 +5,9 @@ Scope: optional host/schema/reference; not a bundled qualified service. Phase la
 <!-- meshlit-document-tracking:end -->
 
 Meshlit will reuse a full Code OSS workbench and the Google Antigravity agent
-SDK rather than implement another editor or agent loop. This directory currently
-contains **preflight tooling**, not the integrated IDE or a device operator.
+SDK rather than implement another editor or agent loop. This directory contains a development workbench extension, SDK host and Kotlin
+usage bridge, alongside the original preflight tooling. It is not a standalone
+installer or a completed device operator.
 
 ## Verified inputs
 
@@ -56,10 +57,32 @@ Config construction is not proof that runtime policy enforcement works.
    Keep Plan read-only; expose edit review and bounded Autopilot independently
    from permission level. Reuse provider dashboards rather than recreate them.
 
-Acceptance remains open for workbench launch, Meshlit UI/backend integration,
-live SDK inference, native runtime policy/Stop enforcement, per-call accounting,
-multi-chat isolation and physical device control. Do not replace these gates
-with fake model responses or successful-looking unavailable controls.
+## Current development evidence and limits
+
+The real Intel Mac workbench opened Meshlit Home plus two independent chat
+panels, a JavaScript editor and the built-in Git extension. A separate genuine
+bundled Qwen request completed through the SDK and usage broker (165 input,
+6 output tokens). Native SDK tests cover independent sessions and Stop using
+synthetic model responses; MCP fixtures cover approval and denial. External
+providers, physical phones and complete IDE UI migration remain unqualified.
+
+`prepare_workbench.py` creates a separate development app and retains upstream
+notices. It reuses existing local SDK/JDK/Studio dependency jars/model resources;
+it is not a portable release build. `--sign-identity` accepts an installed signing
+identity; its default is ad-hoc. No command installs a certificate or changes
+Keychain permissions. Ad-hoc rebuilds can cause new Keychain consent prompts.
+Keychain protects editor secrets; the separate Meshlit usage passphrase unlocks
+the existing usage vault. Cancelling an OS prompt must not trigger plaintext
+credential storage. Production Apple signing/notarization remains pending.
+
+Home, Chat, Workspace, Coding agent, Models, MCP directory, Usage and Settings
+are available through the Meshlit activity icon. The directory lists configured
+connectors; it does not claim automatic Git installation or tool discovery.
+Sessions are transient, with four open chats and a shared local inference queue.
+Older device/VPN/vendor dashboard views are not migrated. Android and paired
+phone control are requested follow-ups; the pinned SDK has no Android wheel.
+A hosted real workbench and on-device Linux/code-server are distinct candidates,
+not implemented mobile capabilities.
 
 Sources: [SDK product](https://antigravity.google/product/antigravity-sdk/),
 [SDK hooks](https://github.com/google-antigravity/antigravity-sdk-python/blob/main/google/antigravity/hooks/README.md),

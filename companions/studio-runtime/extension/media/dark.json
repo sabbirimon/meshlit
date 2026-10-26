@@ -1,0 +1,23 @@
+{
+  "name": "Meshlit Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#181818",
+    "sideBar.background": "#1F1F1F",
+    "activityBar.background": "#181818",
+    "titleBar.activeBackground": "#181818",
+    "statusBar.background": "#181818",
+    "panel.background": "#181818",
+    "tab.activeBackground": "#181818",
+    "tab.inactiveBackground": "#202020",
+    "editorGroupHeader.tabsBackground": "#181818",
+    "foreground": "#CCCCCC",
+    "focusBorder": "#4285F4",
+    "button.background": "#007ACC",
+    "button.foreground": "#FFFFFF",
+    "input.background": "#292929",
+    "sideBar.border": "#2B2B2B",
+    "panel.border": "#2B2B2B"
+  },
+  "tokenColors": []
+}

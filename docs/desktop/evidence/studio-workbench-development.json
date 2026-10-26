@@ -1,0 +1,17 @@
+{
+  "workbench": "1.143.1",
+  "meshlitExtension": true,
+  "realEditor": true,
+  "gitExtension": true,
+  "terminalCommand": true,
+  "modelCalls": 0,
+  "openWebviewPanels": 3,
+  "independentChatPanels": 2,
+  "date": "2026-10-27",
+  "scope": "Intel macOS development integration; not release qualification",
+  "sdkFixtureTests": 4,
+  "workspaceFileTestGroups": 1,
+  "signing": "ad-hoc; stable developer signing and Keychain repeat-prompt qualification pending",
+  "mobile": "not implemented; paired desktop control and Android workbench requested",
+  "externalProviderCalls": 0
+}

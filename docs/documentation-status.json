@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "9ccc61b301d2a6e066e56ec8652dac44439821d499c200062f19799d496b051a"
+      "contentSha256WithoutTrackingBlock": "e97e1a35abbe7b3d014851be2cc8e20769b9e46bebca67389698b524b1aa711b"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "333dae187bce893de309e3e0031330f7a52a25811ad381f1a9e59d90e86f8ad3"
+      "contentSha256WithoutTrackingBlock": "3bc3fe75be6d4da947f685327114debcb8e2be9f48996581cb1fb892127996b1"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "42fb19e995a7be59e8515332e2007e3d15bae9af35f654ce5bb402e960fa3c5f"
+      "contentSha256WithoutTrackingBlock": "29c459bf70cd7b962b45f9ec88ae77f1a06e4226030b169d2a5e94ee72f01331"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -289,7 +289,7 @@
       "class": "active",
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Studio upstream runtime qualification",
-      "contentSha256WithoutTrackingBlock": "fe01454a34066781277f228f8482c6b8dab5fac09d9fa8c418e005ed09fb3ab5"
+      "contentSha256WithoutTrackingBlock": "973f6fe388f82213e668e60adcd90d803a14fb833a9724938085f57777b4fdd0"
     },
     {
       "path": "companions/training/README.md",

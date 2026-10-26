@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict');
+const vscode=require('vscode');
+const fs=require('node:fs');
+exports.run=async()=>{
+ const extension=vscode.extensions.getExtension('meshlit.meshlit-workbench');
+ assert(extension,'Bundled Meshlit extension not found');await extension.activate();
+ const commands=await vscode.commands.getCommands(true);
+ for(const command of ['meshlit.chat','meshlit.agent','meshlit.unlockUsage','workbench.action.terminal.new','workbench.action.findInFiles'])assert(commands.includes(command),command);
+ await vscode.commands.executeCommand('meshlit.chat');
+ await vscode.commands.executeCommand('meshlit.chat');
+ for(let i=0;i<100&&!extension.exports.runtimeStatus().hostReady;i++)await new Promise(resolve=>setTimeout(resolve,100));
+ assert(extension.exports.runtimeStatus().hostReady,'Actual SDK host did not start');
+ const panels=vscode.window.tabGroups.all.flatMap(g=>g.tabs).filter(t=>t.input instanceof vscode.TabInputWebview);
+ assert.equal(extension.exports.runtimeStatus().panels,2,'Both chat panels must remain open');
+ const document=await vscode.workspace.openTextDocument({content:'Real Code OSS editor fixture',language:'javascript'});
+ await vscode.window.showTextDocument(document);
+ assert.equal(vscode.window.activeTextEditor.document.languageId,'javascript');
+ const git=vscode.extensions.getExtension('vscode.git');assert(git,'Built-in Git extension missing');
+ await git.activate();
+ fs.writeFileSync('/tmp/meshlit-workbench-ui-check.json',JSON.stringify({workbench:vscode.version,meshlitExtension:true,independentPanels:panels.length,realEditor:true,gitExtension:true,terminalCommand:true,modelCalls:0},null,2));
+ await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+};
