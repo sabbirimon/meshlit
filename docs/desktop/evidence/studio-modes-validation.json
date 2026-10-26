@@ -15,11 +15,18 @@
     "bundleVersion": "2.0.45",
     "buildChannel": "dev",
     "built": true,
-    "startupAndDuplicateProbe": "pending final source build"
+    "startupAndDuplicateProbe": "passed: native GUI owns the lock, duplicate native executable exits 0 after activation request, repeat developer launcher activates without rebuilding",
+    "sourceRevision": "468f3693fc34f5b923b1c9e139e7d506778b6571",
+    "dirtySource": false,
+    "builtAtUtc": "2026-10-26T19:50:30.631339Z",
+    "localAdHocSignature": "codesign --verify --deep --strict passed",
+    "developerIdNotarized": false
   },
   "render": {
     "assistantControls": "passed; actual shared Compose controls rendered and inspected",
-    "path": "/tmp/meshlit-assistant-controls.png"
+    "path": "/tmp/meshlit-assistant-controls.png",
+    "chat": "passed; actual chat with model, mode and approval controls rendered and inspected",
+    "chatPath": "/tmp/meshlit-modes-chat.png"
   },
   "identityTests": [
     "cross-JVM exclusion",
