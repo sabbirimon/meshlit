@@ -1,3 +1,4 @@
+import java.nio.file.Files
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -32,6 +33,9 @@ compose.desktop {
             modules("java.instrument", "java.logging", "java.net.http", "java.prefs", "java.rmi", "java.security.jgss", "java.management", "jdk.management", "jdk.crypto.ec", "jdk.unsupported")
             description = "Experimental Meshlit Studio; runtime availability depends on the installed package"
             vendor = "Sabbir Hassan Imon"
+            macOS { iconFile.set(project.file("distribution/icons/meshlit.icns")) }
+            windows { iconFile.set(project.file("distribution/icons/meshlit.ico")) }
+            linux { iconFile.set(project.file("distribution/icons/meshlit.png")) }
         }
     }
 }
@@ -46,4 +50,25 @@ tasks.withType<Test>().configureEach {
     systemProperty("java.awt.headless", "true")
     systemProperty("skiko.data.path", layout.buildDirectory.dir("skiko-test-cache").get().asFile.absolutePath)
     providers.gradleProperty("meshlit.previewDir").orNull?.let { systemProperty("meshlit.previewDir", it) }
+}
+
+// An open JVM must not read jars that a later compile/test replaces in place.
+// Snapshot each launch separately; another run cannot mutate its classpath.
+tasks.withType<JavaExec>().configureEach {
+    if (name == "run") {
+        notCompatibleWithConfigurationCache("Per-launch immutable development classpath")
+        val isolatedClasspath = objects.fileCollection()
+        doFirst {
+            temporaryDir.mkdirs()
+            val snapshot = Files.createTempDirectory(temporaryDir.toPath(), "runtime-").toFile()
+            val isolated = classpath.files.filter { it.exists() }.mapIndexed { index, source ->
+                val target = snapshot.resolve("$index-${source.name}")
+                if (source.isDirectory) source.copyRecursively(target, overwrite = false)
+                else source.copyTo(target, overwrite = false)
+                target
+            }
+            setClasspath(isolatedClasspath.from(isolated))
+        }
+        doLast { classpath.files.firstOrNull()?.parentFile?.deleteRecursively() }
+    }
 }

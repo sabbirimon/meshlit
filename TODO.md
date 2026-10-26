@@ -4,6 +4,13 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Studio icon and development runtime fix — 2026-10-26
+
+The owner reported Java error icons and `DesktopToolsKt` failures while the dev app remained open during recompilation. The current jar contains that class; the old process reported `ClassNotFoundException`. Development launches now copy the runtime classpath into a unique per-launch snapshot, preventing later builds from replacing an open JVM's jars/classes. The crashed earlier process was stopped for a fresh launch.
+
+Studio now reuses Meshlit's existing black M vector mark for the window and supported taskbar/Dock APIs, with PNG/ICO/ICNS distribution icons configured for Linux/Windows/macOS. Reproduce assets using `scripts/generate-desktop-icons.cjs` with Sharp available to Node. Black UI styling is unchanged. This source fix does not replace published beta.5 installers; installed-platform icon qualification remains separate. Validation: Studio suite passed (51 passed, one physical SSH fixture skipped); PNG/ICO/ICNS decode checks passed; the actual settings menu/dashboard rendered successfully through the isolated development launch. A first Gradle task-registration attempt failed before compilation and was corrected. Published installers were not rebuilt.
+
+
 ## Studio credential continuation — 2026-10-26
 
 The owner resumed development and requested keeping the black Studio UI. Optional saved host credentials now use a separate passphrase-unlocked AES-GCM vault, atomic replacement and exclusive process ownership. Save/use/forget/lock are explicit; loading a key leaves network access off. Credentials bind to the normalized host, protocol and interactive-inference purpose. Replacement/removal/locking invalidates issued leases; UI credential actions stop the current client and clear session access. Model refresh and chat validate saved credential access before dispatch. A failed write locks the vault rather than exposing uncertain state.

@@ -35,8 +35,10 @@ fun main(args: Array<String>) {
     if (args.size == 2 && args[0] == "--local-check") { localCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--models-check") { modelsCheck(args[1]); return }
     if (args.firstOrNull() == "--cli") { runCli(args.drop(1).toTypedArray()); return }
+    installDesktopIcon()
     application {
     Window(onCloseRequest = ::exitApplication, title = "Meshlit · Experimental desktop",
+        icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"),
         state = rememberWindowState(width = 1120.dp, height = 800.dp)) { Workspace() }
     }
 }
