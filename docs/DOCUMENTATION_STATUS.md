@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-141 active, 19 historical, 8 protected, 1 template, 6 third-party; 176 Markdown documents including this index.
+142 active, 19 historical, 8 protected, 1 template, 6 third-party; 177 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -65,6 +65,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [companions/deployment/README.md](../companions/deployment/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/node/README.md](../companions/node/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/pipeline/README.md](../companions/pipeline/README.md) | optional host/schema/reference; not a bundled qualified service |
+| [companions/studio-runtime/README.md](../companions/studio-runtime/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/training/README.md](../companions/training/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/vscode/README.md](../companions/vscode/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [configuration/README.md](../configuration/README.md) | optional host/schema/reference; not a bundled qualified service |

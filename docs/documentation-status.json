@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 141,
+    "active": 142,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "71086a04a00cc147b37b841d41d873246dd4e8d085ae843d002b3e62abd389ed"
+      "contentSha256WithoutTrackingBlock": "9ccc61b301d2a6e066e56ec8652dac44439821d499c200062f19799d496b051a"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "3e320d09a519f74d780c6927483884ae0e4e735094397e9fd815a0bfe95bd288"
+      "contentSha256WithoutTrackingBlock": "333dae187bce893de309e3e0031330f7a52a25811ad381f1a9e59d90e86f8ad3"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "9b3b4ac49dd88e989e2272d3f9189b6167d20f6c0faa20cc2b4c41c71ec1d47b"
+      "contentSha256WithoutTrackingBlock": "42fb19e995a7be59e8515332e2007e3d15bae9af35f654ce5bb402e960fa3c5f"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -283,6 +283,13 @@
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Native host worker without the Android app",
       "contentSha256WithoutTrackingBlock": "a2b646752f4d8ea1a9eee2a07cccf126089931110c8682b2c286d7f0d4b68ffd"
+    },
+    {
+      "path": "companions/studio-runtime/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Studio upstream runtime qualification",
+      "contentSha256WithoutTrackingBlock": "fe01454a34066781277f228f8482c6b8dab5fac09d9fa8c418e005ed09fb3ab5"
     },
     {
       "path": "companions/training/README.md",

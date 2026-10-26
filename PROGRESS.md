@@ -4,6 +4,18 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Reuse-first Studio IDE and operator foundation — 2026-10-27
+
+The owner selected Antigravity SDK and a genuine built-in IDE with independent
+chats, plus paired-device operator workflows. Pinned VSCodium 1.143.17183 and
+Antigravity SDK 0.1.22 official artifacts; Intel macOS checksum, SDK import,
+explicit no-tool/no-subagent/no-retry configuration and workbench archive checks
+passed without starting an agent or making model calls. This is upstream
+preflight only: existing Studio UI is unchanged and full integration remains open.
+[Integration sequence and gates](companions/studio-runtime/README.md);
+[evidence](docs/desktop/evidence/studio-upstreams-validation.json).
+
+
 ## Studio identity and assistant modes — 2026-10-27
 
 Studio now displays generated version, source revision, dirty-source marker and build time in its title/About. A per-profile OS file lock covers packaged and development GUIs; a second launch requests focus instead of opening another process. On macOS the development launcher builds/opens **Meshlit.app** with bundle identifier `com.meshlit.desktop`, serializes builds and checks the instance lock before replacing a bundle. Old Java/JCEF notification registrations are not modified; no JCEF runtime is used or notification permission enabled.
