@@ -318,9 +318,33 @@ object LargeData {
                 verified(directory, key, maxBytes) { data, _ -> output.write(data) }
             }
             currentCoroutineContext().ensureActive()
-            // Same-filesystem hard-link creation fails atomically if the destination
-            // already exists. Unsupported filesystems fail instead of overwriting.
-            Files.createLink(destination, stage)
+            // Android SELinux can deny hard links even within app-private storage.
+            // Verify everything first, then exclusively create an owner-only output.
+            // CREATE_NEW rejects existing destinations atomically without truncation.
+            var created = false
+            try {
+                Files.newByteChannel(destination,
+                    setOf(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), *privateAttributes()).use { channel ->
+                    created = true
+                    java.nio.channels.Channels.newOutputStream(channel).use { output ->
+                        Files.newInputStream(stage).use { input ->
+                            val buffer = ByteArray(64 * 1024)
+                            try {
+                                while (true) {
+                                    currentCoroutineContext().ensureActive()
+                                    val count = input.read(buffer)
+                                    if (count < 0) break
+                                    output.write(buffer, 0, count)
+                                }
+                            } finally { buffer.fill(0) }
+                        }
+                    }
+                }
+                currentCoroutineContext().ensureActive()
+            } catch (error: Exception) {
+                if (created) Files.deleteIfExists(destination)
+                throw error
+            }
             return summary
         } finally { cleanup(stageDir) }
     }

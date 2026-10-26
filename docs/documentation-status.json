@@ -79,7 +79,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current regressions, limitations and verification",
-      "contentSha256WithoutTrackingBlock": "cbf6432bd98daa230f1b0238c767040b9f6ca0fa29abd66abb146ec6c2bb2d28"
+      "contentSha256WithoutTrackingBlock": "b87e4917f1a8680388ee3ad686614daec2dc421e4aa811393f42f61c876ea057"
     },
     {
       "path": "BUILD.md",
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "629f3a6f10af3f1086d602afde07d71b524e9097417a8de8a491db15eb81370d"
+      "contentSha256WithoutTrackingBlock": "9022b32c5ad023f464759b83d62da042a1b48391455c5b7eec842b1ffac6a40a"
     },
     {
       "path": "README.md",
@@ -961,7 +961,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "HyperL alpha.6 in Meshlit",
-      "contentSha256WithoutTrackingBlock": "daf760214016debfe5f0ddcd5f88763b8e912aec918616d20febb727521cc307"
+      "contentSha256WithoutTrackingBlock": "e150bcad450af29856767a1aade91339bcd3923bcf4af9d8451e3d583f162cc4"
     },
     {
       "path": "docs/hyperl/APP_AND_LIBRARY.md",
