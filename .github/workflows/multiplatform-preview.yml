@@ -4,6 +4,11 @@ on:
   pull_request:
   push:
     branches: [main, dev, plan/studio-mobile-lts]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'scripts/release-asset-relay.py'
+      - '.github/workflows/prerelease-relay.yml'
 permissions:
   contents: read
 jobs:

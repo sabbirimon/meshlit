@@ -1,0 +1,27 @@
+name: Prerelease asset relay
+on:
+  push:
+    branches: [plan/studio-mobile-lts]
+    paths: ['docs/desktop/release-relay.json']
+permissions:
+  contents: write
+concurrency:
+  group: meshlit-beta5-asset-relay
+  cancel-in-progress: false
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Verify, reconstruct and upload exact tested installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release-asset-relay.py docs/desktop/release-relay.json
+      - name: Retain relay verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta5-relay-verification
+          path: relay-result.json
+          if-no-files-found: error
+          retention-days: 14
