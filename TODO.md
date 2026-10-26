@@ -4,6 +4,11 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Vendor dashboards and desktop menus — 2026-10-26
+
+Model services now have distinct Overview, Models, Connection and Usage pages. Vendor dashboards, catalogs and setup guides open explicitly in the browser; gateway dashboard addresses persist separately from API endpoints and reject credential-bearing URLs. OmniRoute and FreeLLMAPI use documented loopback server defaults, not invented installation status. Connected model selection still uses the real endpoint response. Native desktop menus and VS Code folder handoff are implemented; the built-in editor remains lightweight and full workbench embedding remains open. See [desktop scope and validation](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md).
+
+
 ## Studio visual redesign — 2026-10-26
 
 Implemented the owner's separate references: Gemini-style chat composition and an IDE-style coding window with explorer, editor, optional terminal and real assistant chat. Shared desktop typography, palette, settings selection and service cards are updated. See [progress](PROGRESS.md) and [desktop scope/validation](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md). Full VS Code engine/agent behavior, mobile visual port and installed package qualification remain open; this is a source/dev UI update.

@@ -4,6 +4,11 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Vendor dashboards and desktop menus — 2026-10-26
+
+Model services now have distinct Overview, Models, Connection and Usage pages. Vendor dashboards, catalogs and setup guides open explicitly in the browser; gateway dashboard addresses persist separately from API endpoints and reject credential-bearing URLs. OmniRoute and FreeLLMAPI use documented loopback server defaults, not invented installation status. Connected model selection still uses the real endpoint response. Native desktop menus and VS Code folder handoff are implemented; the built-in editor remains lightweight and full workbench embedding remains open. See [desktop scope and validation](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md).
+
+
 ## Studio visual redesign — 2026-10-26
 
 The owner's Gemini screenshots guide chat only; coding follows the explorer/editor/assistant arrangement used by IDEs such as Antigravity. Studio now opens to chat even when a project path was supplied. Chat uses a centered Meshlit wordmark, responsive draft suggestion cards, a bounded conversation column and a composer containing model selection and Online models access. Suggestions only populate drafts. Unknown token statistics are hidden on an empty conversation and remain honest after a response.

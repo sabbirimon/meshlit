@@ -40,14 +40,19 @@ fun main(args: Array<String>) {
         require(java.nio.file.Files.isDirectory(folder))
         System.setProperty("meshlit.workspace", folder.toString())
     }
+    System.setProperty("apple.laf.useScreenMenuBar", "true")
     installDesktopIcon()
     application {
     var unsavedCode by remember { mutableStateOf(false) }
     var confirmExit by remember { mutableStateOf(false) }
+    var menuCommand by remember { mutableStateOf(0 to "") }
+    fun dispatch(action: String) { menuCommand = menuCommand.first + 1 to action }
+    fun requestQuit() { if(unsavedCode) confirmExit = true else exitApplication() }
     Window(onCloseRequest = { if(unsavedCode) confirmExit = true else exitApplication() }, title = "Meshlit",
         icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"),
         state = rememberWindowState(width = 1120.dp, height = 800.dp)) {
-        Workspace { unsavedCode = it }
+        StudioMenus(::dispatch, ::requestQuit)
+        Workspace(command = menuCommand, onCommand = ::dispatch, onQuit = ::requestQuit) { unsavedCode = it }
         if(confirmExit) AlertDialog(onDismissRequest = { confirmExit = false }, title = { Text("Unsaved code") },
             text = { Text("Return to the editor to save, or discard edits and quit.") },
             confirmButton = { TextButton({ exitApplication() }) { Text("Discard and quit") } },
@@ -55,7 +60,7 @@ fun main(args: Array<String>) {
     }
     }
 }
-@Composable internal fun Workspace(onCodeDirty: (Boolean) -> Unit = {}) {
+@Composable internal fun Workspace(command: Pair<Int, String> = 0 to "", onCommand: (String) -> Unit = {}, onQuit: () -> Unit = {}, onCodeDirty: (Boolean) -> Unit = {}) {
     val preferences = remember { DesktopPreferences() }
     var language by remember { mutableStateOf(preferences.language()) }
     var look by remember { mutableStateOf(preferences.look()) }
@@ -100,6 +105,8 @@ fun main(args: Array<String>) {
     var settings by remember { mutableStateOf(false) }
     var section by remember { mutableStateOf("models") }
     var coding by remember { mutableStateOf(false) }
+    var codeCommand by remember { mutableStateOf(0 to "") }
+    LaunchedEffect(coding) { if(!coding) codeCommand = 0 to "" }
     var responsePolicy by remember { mutableStateOf(ResponsePolicy.ASSISTANT) }
     var instructions by remember { mutableStateOf(DesktopStarter.prompt) }
     fun openSection(id: String) { if(id == "code") { coding = true; settings = false } else { section = id; settings = true } }
@@ -243,6 +250,24 @@ fun main(args: Array<String>) {
         if (localMode && localSession == null && !busy && prompt.isNotBlank()) { loadLocal(); sendAfterLoad = true }
         else send()
     }
+    val clipboard = LocalClipboardManager.current
+    var navigationError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(command) {
+        runCatching {
+            when(command.second) {
+                "new-chat" -> { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false }
+                "paste-draft" -> { prompt = (prompt + (clipboard.getText()?.text ?: "")).take(131072) }
+                "copy-draft" -> clipboard.setText(AnnotatedString(prompt))
+                "clear-draft" -> { prompt = "" }
+                "open-folder", "terminal" -> { codeCommand = command; coding = true; settings = false }
+                "save-file", "focus-editor", "show-files" -> if(coding) { codeCommand = command }
+                "vscode" -> if(coding) { codeCommand = command } else openVsCode()
+                "guide" -> java.awt.Desktop.getDesktop().browse(java.net.URI("https://github.com/sabbirimon/meshlit/blob/plan/studio-mobile-lts/docs/USER_GUIDE.md"))
+                "vscode-guide" -> java.awt.Desktop.getDesktop().browse(java.net.URI("https://code.visualstudio.com/docs"))
+                "code", "providers", "models", "usage", "management", "appearance" -> openSection(command.second)
+            }
+        }.onFailure { navigationError = "Could not open the requested view or application. Check that VS Code is installed for workspace handoff." }
+    }
     val colors = desktopColors(look)
     DesktopTheme(look, scale) {
         val chatContent: @Composable RowScope.() -> Unit = {
@@ -257,6 +282,7 @@ fun main(args: Array<String>) {
                             onNew = { stop(); messages = emptyList(); usage = GenerationUsage() },
                             onSearch = { openSection("search") }, onManage = { openSection("management") })
                         if (messages.isNotEmpty()) OutlinedTextField(query, { query = it.take(256) }, label = { Text(t("Search this chat", "搜索当前对话")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), singleLine = true)
+                        navigationError?.let { Text(it, Modifier.padding(16.dp), color = colors.error) }
                         usageFailure?.let { Text(it, Modifier.padding(horizontal = 24.dp), color = colors.error) }
                         if (failure) Text(if (localMode) t("Local model failed. Check available memory, GGUF compatibility and packaged engine/model integrity. Try Unload and Load; partial replies are excluded from future requests.", "本地模型失败。请检查可用内存、GGUF 兼容性及引擎和模型完整性。尝试卸载再加载；未完成回复不会用于后续请求。") else t("Request failed. Check the host, trusted TLS, client token and context size. A partial reply is excluded from the next request.", "请求失败。请检查主机、可信 TLS、客户端令牌和上下文长度。未完成的回复不会发送至下一次请求。"), Modifier.padding(24.dp), color = colors.error)
                         if (messages.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -320,12 +346,13 @@ fun main(args: Array<String>) {
             if (coding) {
                 var codeDirty by remember { mutableStateOf(false) }
                 var closeCode by remember { mutableStateOf(false) }
-                DialogWindow(onCloseRequest = { if (codeDirty) closeCode = true else coding = false },
-                    title = "Meshlit · Coding workspace", state = rememberDialogState(width = 1420.dp, height = 860.dp)) {
+                Window(onCloseRequest = { if (codeDirty) closeCode = true else coding = false },
+                    title = "Meshlit · Coding workspace", icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1420.dp, height = 860.dp)) {
+                    StudioMenus(onCommand, onQuit, coding = true)
                     Surface(Modifier.fillMaxSize(), color = colors.background) {
                         Row(Modifier.fillMaxSize()) {
                             CodingWorkspace(Modifier.weight(1.6f).fillMaxHeight(), onDraft = { prompt = it }, onClose = { coding = false },
-                                onDirty = { codeDirty = it; onCodeDirty(it) })
+                                onDirty = { codeDirty = it; onCodeDirty(it) }, command = codeCommand)
                             Divider(Modifier.width(1.dp).fillMaxHeight(), color = colors.onSurface.copy(alpha = .10f))
                             chatContent()
                         }
@@ -336,7 +363,8 @@ fun main(args: Array<String>) {
                     }
                 }
             }
-            if (settings) DialogWindow(onCloseRequest = { settings = false }, title = t("Meshlit Studio · workspace", "Meshlit Studio · 工作区"), state = rememberDialogState(width = 1060.dp, height = 800.dp)) {
+            if (settings) Window(onCloseRequest = { settings = false }, title = t("Meshlit Studio · workspace", "Meshlit Studio · 工作区"), icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1060.dp, height = 800.dp)) {
+                StudioMenus(onCommand, onQuit)
                 Surface(Modifier.fillMaxSize(), color = colors.background) {
                     Row(Modifier.fillMaxSize()) {
                     Column(Modifier.width(228.dp).fillMaxHeight().background(colors.surface).padding(16.dp)) {

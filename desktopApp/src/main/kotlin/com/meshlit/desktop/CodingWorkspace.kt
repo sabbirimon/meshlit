@@ -18,7 +18,7 @@ import java.nio.file.*
 import java.util.prefs.Preferences
 import javax.swing.JFileChooser
 
-@Composable internal fun CodingWorkspace(modifier: Modifier, onDraft: (String) -> Unit, onClose: () -> Unit, onDirty: (Boolean) -> Unit) {
+@Composable internal fun CodingWorkspace(modifier: Modifier, onDraft: (String) -> Unit, onClose: () -> Unit, onDirty: (Boolean) -> Unit, command: Pair<Int, String> = 0 to "") {
     val preferences = remember { Preferences.userRoot().node("com/meshlit/studio-code") }
     var layout by remember { mutableStateOf(preferences.get("layout", "Code")) }
     var explorer by remember { mutableStateOf(preferences.getBoolean("explorer", true)) }
@@ -38,6 +38,16 @@ import javax.swing.JFileChooser
     fun openFolder(path: Path) = attempt { val opened = CodeFiles(path); val files = opened.entries(); workspace = opened; directory = opened.root; entries = files; document = null; text = "" }
     fun saveLayout() = attempt { preferences.put("layout", layout); preferences.putBoolean("explorer", explorer); preferences.putBoolean("terminal", terminal); preferences.flush() }
     LaunchedEffect(Unit) { System.getProperty("meshlit.workspace")?.let { openFolder(Path.of(it)) } }
+    LaunchedEffect(command) {
+        when(command.second) {
+            "open-folder" -> guarded { val picker = JFileChooser().apply { fileSelectionMode = JFileChooser.DIRECTORIES_ONLY }; if(picker.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) openFolder(picker.selectedFile.toPath()) }
+            "save-file" -> document?.let { opened -> attempt { document = workspace!!.save(opened, text) } }
+            "vscode" -> attempt { openVsCode(workspace?.root) }
+            "terminal" -> { terminal = true; saveLayout() }
+            "focus-editor" -> { layout = "Focus"; explorer = false; saveLayout() }
+            "show-files" -> { layout = "Code"; explorer = true; saveLayout() }
+        }
+    }
     val colors = MaterialTheme.colors
     Column(modifier.background(colors.background)) {
         Row(Modifier.fillMaxWidth().background(colors.surface).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -46,6 +56,7 @@ import javax.swing.JFileChooser
                 Text("Local files", style = MaterialTheme.typography.caption, color = colors.onSurface.copy(alpha = .55f))
             }
             TextButton({ guarded { val picker = JFileChooser().apply { fileSelectionMode = JFileChooser.DIRECTORIES_ONLY }; if(picker.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) openFolder(picker.selectedFile.toPath()) } }) { Text("Open folder") }
+            TextButton({ attempt { openVsCode(workspace?.root) } }) { Text("VS Code ↗") }
             TextButton({ guarded(onClose) }) { Text("Back to chat") }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {

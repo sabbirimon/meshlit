@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "dc1d1caeb19754231312cea8d57aedfaf489ce6a2a1c337720844bed897e1134"
+      "contentSha256WithoutTrackingBlock": "af93c2f61ef7e2ce535f9fccc1f01025dd8e548b3d3fbbdc61969d5d9a071468"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "a3ca2981d43bcf5e1cdfa1e4601324188695c3f250387c523941743652edcbc0"
+      "contentSha256WithoutTrackingBlock": "5e7747a45fd3e353677d1ad0278c600a63ad6e1d9b013c4583d21463464d7e70"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "a4c33a67fd9ffdd347fc825c60ffcd6b6998e1709f9f6777a0af58c9fcbe80de"
+      "contentSha256WithoutTrackingBlock": "b052bd792f9a06f13f87080d9e8b1f4d7b30396c8aecf79ec5d737e69d7ed5c2"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -835,7 +835,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Studio online models and coding workspace",
-      "contentSha256WithoutTrackingBlock": "59a086b33918a73336cfeeb4e2576b02fbd9e1de7a1bb3d20f1ac6a9158b44e8"
+      "contentSha256WithoutTrackingBlock": "92e16e70e3a9dfa18a47c2db274488d39daee67e0b802560febb89e3e371ff82"
     },
     {
       "path": "docs/desktop/RECOVERY.md",

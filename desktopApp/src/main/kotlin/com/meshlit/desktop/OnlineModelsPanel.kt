@@ -13,7 +13,7 @@ internal data class OnlinePreset(val name: String, val endpoint: String, val gat
 internal val onlinePresets = listOf(
     OnlinePreset("OpenRouter", "https://openrouter.ai/api/v1", true),
     OnlinePreset("Hugging Face", "https://router.huggingface.co/v1", true),
-    OnlinePreset("OmniRoute", "", true), OnlinePreset("FreeLLMAPI", "", true),
+    OnlinePreset("OmniRoute", "http://127.0.0.1:20128/v1", true), OnlinePreset("FreeLLMAPI", "http://127.0.0.1:3001/v1", true),
     OnlinePreset("OpenAI", "https://api.openai.com/v1"), OnlinePreset("Custom compatible", ""),
 )
 
@@ -27,46 +27,82 @@ internal val onlinePresets = listOf(
     saveConnection: () -> Unit = {}, forgetConnection: () -> Unit = {},
 ) {
     var advanced by remember { mutableStateOf(false) }
-    var filter by remember { mutableStateOf("") }
-    var connectionMessage by remember { mutableStateOf("") }
-    Text("One place for online models", style = MaterialTheme.typography.h6)
-    Text("Choose a service, connect your account, then pick its model in chat.")
+    var filter by remember(service) { mutableStateOf("") }
+    var tab by remember(service) { mutableStateOf("Overview") }
+    var connectionMessage by remember(service) { mutableStateOf("") }
+    val vendor = vendorPages[service]
+    val addresses = remember { VendorDashboardAddresses() }
+    var dashboard by remember(service) { mutableStateOf(addresses.load(service, vendor?.dashboard ?: "")) }
+    fun browse(url: String) { connectionMessage = runCatching { java.awt.Desktop.getDesktop().browse(dashboardUri(url)); "Opened in your browser." }.getOrElse { "Could not open this address. Use HTTPS, or HTTP on literal loopback for local dashboards." } }
+    Text("Model services", style = MaterialTheme.typography.h5)
+    Text("Choose a vendor to explore its products, manage your account or connect models to Meshlit.")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         onlinePresets.chunked(2).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            row.forEach { item -> OutlinedButton({ preset(item) }, Modifier.weight(1f).heightIn(min = 64.dp), enabled = !busy, shape = RoundedCornerShape(16.dp),
+            row.forEach { item -> OutlinedButton({ if(service != item.name) preset(item) else tab = "Overview" }, Modifier.weight(1f).heightIn(min = 64.dp), enabled = !busy, shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.outlinedButtonColors(backgroundColor = if(service == item.name) MaterialTheme.colors.primary.copy(alpha = .12f) else MaterialTheme.colors.surface)) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text((if (service == item.name) "✓  " else "") + item.name)
-                    Text(if(item.endpoint.isBlank()) "Your deployment" else "Connect your account", style = MaterialTheme.typography.caption, color = MaterialTheme.colors.onSurface.copy(alpha = .55f))
+                    Text(if(vendorPages[item.name]?.local == true) "Your gateway dashboard" else "Models and account", style = MaterialTheme.typography.caption)
                 }
             } }
         } }
     }
-    Text(service, style = MaterialTheme.typography.subtitle1)
-    if (service in setOf("OmniRoute", "FreeLLMAPI")) Text("Optional gateway: enter your own deployment URL and scoped key. FreeLLMAPI is experimental; a gateway does not include model access or paid credits.", style = MaterialTheme.typography.caption)
-    Text("Free and paid models depend on your account. Requests send this conversation to the selected service. Nothing is sent until you explicitly connect or send.", style = MaterialTheme.typography.caption)
-    OutlinedTextField(endpoint, setEndpoint, Modifier.fillMaxWidth(), label = { Text("API URL") }, singleLine = true, enabled = !busy)
-    TextButton({ connectionMessage = runCatching { saveConnection(); "Address saved. Keys and network consent are separate." }.getOrElse { "Could not save this connection. Check its URL and local storage." } }) { Text("Save connection address") }
+    Text(service, style = MaterialTheme.typography.h6)
+    Text(if(connected) "Connected · ${models.size} models returned" else "Not connected to Meshlit", style = MaterialTheme.typography.caption)
+    Row { listOf("Overview", "Models", "Connection", "Usage").forEach { page -> TextButton({ tab = page }) { Text((if(tab == page) "• " else "") + page) } } }
     if(connectionMessage.isNotBlank()) Text(connectionMessage, style = MaterialTheme.typography.caption)
-    OutlinedTextField(token, setToken, Modifier.fillMaxWidth(), label = { Text("API key") }, singleLine = true,
-        visualTransformation = PasswordVisualTransformation(), enabled = !busy)
-    credentialControls()
-    Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(allowed, setAllowed, enabled = !busy); Text("Allow access to this service for this session") }
-    Button(connect, enabled = allowed && !busy && endpoint.isNotBlank()) { Text(if (busy) "Connecting…" else "Connect / fetch models") }
-    if (connected) {
-        Text("Select a model to return to chat", style = MaterialTheme.typography.subtitle2)
-        if (models.isEmpty()) Text("The service returned no models.")
-        OutlinedTextField(filter, { filter = it.take(128) }, label = { Text("Find a model") }, modifier = Modifier.fillMaxWidth())
-        Text("${models.size} models returned · showing up to 100 matches", style = MaterialTheme.typography.caption)
-        models.filter { it.contains(filter, ignoreCase = true) }.take(100).forEach { id -> TextButton({ choose(id) }, enabled = !busy) { Text((if (model == id) "✓ " else "") + id) } }
-    }
-    TextButton(onUsage) { Text("Usage & budgets") }
-    if (gateway) Text("Gateway costs can include downstream routing. Strict free-only and currency-budget policies block opaque gateways until costs can be verified.", style = MaterialTheme.typography.caption)
-    TextButton({ advanced = !advanced }) { Text(if (advanced) "Hide advanced settings" else "Advanced settings") }
-    if (advanced) {
-        TextButton({ connectionMessage = runCatching { forgetConnection(); "Saved address removed; encrypted keys are managed separately." }.getOrElse { "Could not remove saved address." } }) { Text("Forget saved address") }
-        Row { HostProtocol.entries.forEach { p -> TextButton({ setProtocol(p) }, enabled = !busy) { Text((if (protocol == p) "✓ " else "") + p.label) } } }
-        Row { Checkbox(gateway, setGateway, enabled = !busy); Text("Routes through other providers") }
-        Text("HTTPS uses system certificate trust. Redirects are blocked; HTTP is restricted to literal loopback. Credentials are bound to the exact service and protocol.", style = MaterialTheme.typography.caption)
+    when(tab) {
+        "Overview" -> {
+            Text(vendor?.description ?: "Connect your compatible API and supply its dashboard address.")
+            if(vendor?.local == true) Text("The gateway must already be installed and running. These are standard server defaults, not a detected installation. FreeLLMAPI desktop and development builds can use different ports.", style = MaterialTheme.typography.caption)
+            if(vendor?.local == true || vendor == null) {
+                OutlinedTextField(dashboard, { dashboard = it.take(2048) }, label = { Text("Your dashboard URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                TextButton({ connectionMessage = runCatching { addresses.save(service, dashboard); "Dashboard address saved." }.getOrElse { "Invalid address. Use HTTPS or literal loopback HTTP, without credentials or query parameters." } }) { Text("Save dashboard address") }
+            }
+            Button({ browse(dashboard) }, enabled = dashboard.isNotBlank()) { Text("Open vendor dashboard ↗") }
+            vendor?.let { page ->
+                TextButton({ browse(page.catalog) }) { Text("Browse products / catalog ↗") }
+                TextButton({ browse(page.guide) }) { Text(if(page.local) "Installation and setup ↗" else "Service documentation ↗") }
+            }
+            Text("Vendor pages open in your browser, where you sign in directly. Meshlit does not forward your API key to those pages.", style = MaterialTheme.typography.caption)
+            OutlinedButton({ tab = "Connection" }) { Text("Connect this service to chat") }
+        }
+        "Models" -> {
+            vendor?.let { TextButton({ browse(it.catalog) }) { Text("Explore vendor catalog ↗") } }
+            if(!connected) {
+                Text("Connect to retrieve the models available from your endpoint. A public catalog does not prove account access or free usage.")
+                Button({ tab = "Connection" }) { Text("Set up connection") }
+            } else {
+                OutlinedTextField(filter, { filter = it.take(128) }, label = { Text("Search available models") }, modifier = Modifier.fillMaxWidth())
+                val matches = models.filter { it.contains(filter, ignoreCase = true) }
+                Text("${matches.size} matches · showing up to 100", style = MaterialTheme.typography.caption)
+                if(models.isEmpty()) Text("This endpoint returned no models.")
+                matches.take(100).forEach { id -> OutlinedButton({ choose(id) }, Modifier.fillMaxWidth(), enabled = !busy) { Text((if(model == id) "✓ " else "") + id) } }
+            }
+        }
+        "Usage" -> {
+            Text("Meshlit's history tracks requests made here. Provider invoices, balances and quotas remain in the vendor dashboard.")
+            Button(onUsage) { Text("Meshlit usage & budgets") }
+            vendor?.let { TextButton({ browse(it.billing.ifBlank { dashboard }) }) { Text("Vendor usage / account dashboard ↗") } }
+            Text("Device-local estimates are not provider billing caps.", style = MaterialTheme.typography.caption)
+        }
+        "Connection" -> {
+            Text("Use an API key from this service or your gateway's unified endpoint key.")
+            OutlinedTextField(endpoint, setEndpoint, Modifier.fillMaxWidth(), label = { Text("API URL") }, singleLine = true, enabled = !busy)
+            TextButton({ connectionMessage = runCatching { saveConnection(); "Connection address saved." }.getOrElse { "Could not save this connection." } }) { Text("Save connection address") }
+            OutlinedTextField(token, setToken, Modifier.fillMaxWidth(), label = { Text("API key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), enabled = !busy)
+            credentialControls()
+            Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(allowed, setAllowed, enabled = !busy); Text("Allow access to this service for this session") }
+            Button(connect, enabled = allowed && !busy && endpoint.isNotBlank()) { Text(if(busy) "Connecting…" else "Connect / refresh models") }
+            if(connected) Button({ tab = "Models" }) { Text("Choose from ${models.size} models") }
+            Text("Prompts and keys go to the selected API host only after explicit connection or sending.", style = MaterialTheme.typography.caption)
+            if(gateway) Text("Strict free-only and currency budgets block opaque gateway routes until costs can be verified.", style = MaterialTheme.typography.caption)
+            TextButton({ advanced = !advanced }) { Text(if(advanced) "Hide advanced" else "Advanced connection settings") }
+            if(advanced) {
+                TextButton({ connectionMessage = runCatching { forgetConnection(); "Saved address removed." }.getOrElse { "Could not remove address." } }) { Text("Forget saved connection") }
+                Row { HostProtocol.entries.forEach { p -> TextButton({ setProtocol(p) }, enabled = !busy) { Text((if(protocol == p) "✓ " else "") + p.label) } } }
+                Row { Checkbox(gateway, setGateway, enabled = !busy); Text("Routes through other providers") }
+            }
+        }
     }
 }
