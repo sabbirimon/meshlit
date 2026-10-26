@@ -180,3 +180,5 @@ Prerelease evidence update: Samsung storage/native/usage checks and Windows/Linu
 ## Final prerelease validation — 2026-10-26
 
 Completed final build/lint gate for Android and Intel Mac; Windows/Linux CI installers and Samsung regression checks passed. Remaining delivery gate: finish beta.5 asset uploads, verify remote digests and publish. Platform signing and physical Windows/Linux acceptance remain open.
+
+Delivery recovery: finish verified temporary-part transfer and GitHub reconstruction workflow; verify all 13 final assets and remove temporary parts before publication. Preserve the exact locally tested Android APK signature. Do not rebuild or publish a differently signed replacement as the tested binary.
