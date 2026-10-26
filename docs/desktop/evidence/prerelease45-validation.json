@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-26",
+  "applicationSource": "5a2b179",
+  "desktopCiSource": "4452c2bc79c96865955b7edd647e5a6a36ce34ce",
+  "desktopCiRun": "https://github.com/sabbirimon/meshlit/actions/runs/40264273957",
+  "finalBuild": {
+    "result": "passed",
+    "duration": "18m43s",
+    "tasks": [
+      "core-hyperl:testDebugUnitTest",
+      "app:assembleMeshlitV1Debug",
+      "app:assembleMeshlitV2Debug",
+      "app:assembleMeshlitV2DebugAndroidTest",
+      "desktopApp:createDistributable",
+      "app:lintMeshlitV1Debug",
+      "app:lintMeshlitV2Debug"
+    ]
+  },
+  "lint": {
+    "meshlitV1Debug": {
+      "Warning": 401,
+      "Hint": 19
+    },
+    "meshlitV2Debug": {
+      "Warning": 401,
+      "Hint": 19
+    }
+  },
+  "coreHyperlTests": {
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "samsung": {
+    "model": "SM-A207F",
+    "android": "11",
+    "tests": 3,
+    "failures": 0
+  },
+  "macos": {
+    "architecture": "x86_64",
+    "dashboardRender": "inspected",
+    "nativeHyperlRecipes": 12,
+    "offlineGeneration": "passed",
+    "unauthenticatedGeneration": "rejected",
+    "unload": "listener stopped",
+    "dmgIntegrity": "passed",
+    "signature": "ad-hoc",
+    "notarized": false
+  },
+  "windowsLinux": {
+    "ciTestsAndInstallerBuild": "passed",
+    "installerRuntimeVersion": "21.0.12.1",
+    "physicalInstallation": "not tested",
+    "bundledLocalInference": false
+  },
+  "crawlerTests": 9,
+  "boundaries": [
+    "No paid API requests",
+    "No live Tailscale account proof",
+    "Budgets remain device-local estimates",
+    "No new cryptography or mathematical speedup claim",
+    "Not production publisher-signed"
+  ],
+  "assetSha256": {
+    "Meshlit-v2-build45-arm64-v8a-debug.apk": "3ee2bd1ad24b32228ceefa1ddd44e192511e92c220d1309c52efc0c5d294f808",
+    "MeshlitPreview-2.0.45-studio.45.1-macos-intel.dmg": "4cc5ea004ecc2d9b2685547e7fdb2b99d68eedef2869f60f8e154a047aa0fe79",
+    "MeshlitPreview-2.0.45-studio.45.1-macos-intel.pkg": "8145430266dc92687c37332dc334b68595cfac0b4b1e93cbb1615d7f33d1fca7",
+    "OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz": "573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234",
+    "RUNTIME_SOURCE.json": "341b654155ec806d13129d071eaf88177a671eb1682f199db9c4671d0572e085",
+    "PACKAGING.json": "3f476eb100efa7b3568f8e2e4a61058d51cbba8166e988f14a0783c33b2a7c74",
+    "INSTALL.txt": "b64e27d01ae75ac9e91abac49da2fd0a9f1bb0a94e983854217d6310b65caa9a",
+    "MeshlitPreview-2.0.45.msi": "5abcba2f791ef9ae59e3e16273d202e7a98db5a3f8265c56f7c48d1aa882a840",
+    "meshlitpreview_2.0.45_amd64.deb": "878774ec06012e39c7184644779076bfbf6d6f8652df6b35ff81a05669eb30f7",
+    "LINUX-BUILD.json": "9e7f704bd45b910ba863c6bcca0eb65dc89753493780fc6807d63ffb4ccce31a",
+    "WINDOWS-BUILD.json": "9d89583da25752769589b518836d446aabf3de2fa82df9b54515ca96381a2597",
+    "DESKTOP-RUNTIME-SOURCE.json": "8a742879baaa21a88fce0577c68ad904ad234d5aea090c1c7cef14672faebd90",
+    "DESKTOP-INSTALL.md": "ecf3018dda41b45c193bcec14f57113092cafb3d6f13595b08fa1704a6a6b485"
+  }
+}

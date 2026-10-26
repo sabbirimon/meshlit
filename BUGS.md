@@ -94,3 +94,7 @@ The App permissions page has no storage/files row. Normal document-picker import
 Samsung Android 11 HyperL dataset import failed at Files.getFileStore despite an app-private path. Fixed the Android port to request owner-only POSIX attributes atomically rather than inspect the denied filesystem store. Device regression and permission assertions pending; native recipe comparisons completed before the original failure.
 
 Samsung follow-up: direct POSIX creation passed import, verify, rotation and owner-only permission assertions; export then exposed an Android hard-link denial. Export now verifies all bytes first, exclusively creates an owner-only destination with CREATE_NEW, and copies with bounded buffers/cancellation, removing incomplete output on handled failure. The adapter exposes the private staging file only after success. The intermediate validation was stopped before source edits; final rebuild and device retest are pending.
+
+## Final prerelease validation — 2026-10-26
+
+Resolved and physically verified on Samsung: HyperL Android getFileStore denial and hard-link export denial. Authenticated export and owner-only permissions now pass alongside import/verify/rotation. The original non-void instrumentation method is also corrected.

@@ -96,3 +96,7 @@ Plans and phase labels do not establish completion. See PLAN.md, BUILD_MILESTONE
 ## Prerelease continuation — 2026-10-26
 
 Owner selected Android + macOS + Windows + Linux for the experimental prerelease and authorized saving progress to GitHub. Publisher enrollment/signing is a separate owner identity step; do not label debug/ad-hoc/unsigned packages as verified publisher releases.
+
+## Final prerelease validation — 2026-10-26
+
+Android + Intel macOS + Windows x64 + Linux amd64 prerelease packages are built and scoped. The owner disconnected Samsung after passing tests and authorized continuing while away. GitHub checkpoints are pushed; draft release asset transfer is in progress.

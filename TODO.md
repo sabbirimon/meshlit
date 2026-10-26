@@ -176,3 +176,7 @@ All detailed categories, statuses, source anchors and missing controls: docs/DES
 Four-platform prerelease: complete Samsung storage regression, Intel Mac package/runtime checks, Windows/Linux CI installers, source checkpoint and checksummed GitHub prerelease. Clean-machine Windows/Linux installation and verified publisher signing remain separate gates.
 
 Prerelease evidence update: Samsung storage/native/usage checks and Windows/Linux installer CI passed. Intel Mac payload inference/render/native checks passed. Finish final Android lint and publish checksummed prerelease; physical Windows/Linux installs, signing, live Tailscale and paid account tests remain open.
+
+## Final prerelease validation — 2026-10-26
+
+Completed final build/lint gate for Android and Intel Mac; Windows/Linux CI installers and Samsung regression checks passed. Remaining delivery gate: finish beta.5 asset uploads, verify remote digests and publish. Platform signing and physical Windows/Linux acceptance remain open.
