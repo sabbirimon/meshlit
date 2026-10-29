@@ -4,6 +4,23 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Separate OmniRoute and FreeLLMAPI dashboards — 2026-10-29
+
+The new IDE source now has an explicit per-connection catalog health check:
+reachable/authentication/access/rate-limit/service/timeout states, timestamp and
+model presence, without generation requests. Three fixture test groups passed.
+Gateway upstream-provider health, real account qualification and installer/mobile
+delivery remain pending; a successful catalog is not proof that generation works.
+
+Source review confirms distinct desktop apps and authentication flows. Dedicated
+service dashboards, per-service free/paid/other filters, installation-aware ports,
+login/session isolation and chat selection are planned independently. Current
+Compose model search and Code OSS ID-only catalogs do not implement these filters.
+FreeLLMAPI desktop defaults to 31415 (may change on conflict); 3001 is the existing
+server preset. No matching standard-location app or usual-port listener was found.
+No installation, login or paid call was attempted. See the [separate integration
+plans and pinned source evidence](docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md#separate-gateway-integrations-source-review-and-plan-2026-10-29).
+
 ## Code OSS development integration and mobile follow-up — 2026-10-27
 
 The development workbench now contains a Meshlit extension with Home/navigation,

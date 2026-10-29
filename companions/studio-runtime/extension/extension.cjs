@@ -151,6 +151,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('meshlit.chat',()=>openChat(context,false)),
     vscode.commands.registerCommand('meshlit.agent',()=>openChat(context,true)),
     vscode.commands.registerCommand('meshlit.addConnection',()=>connections.addConnection(context)),
+    vscode.commands.registerCommand('meshlit.checkConnection',()=>connections.checkSavedConnection(context)),
     vscode.commands.registerCommand('meshlit.addMcp',()=>connections.addMcp(context)),
     vscode.commands.registerCommand('meshlit.unlockUsage',async()=>{
       boot(context);const password=await vscode.window.showInputBox({title:'Unlock Meshlit Usage',password:true,prompt:'Existing usage passphrase (12–256 characters). Close the older Studio if it has this vault unlocked.'});

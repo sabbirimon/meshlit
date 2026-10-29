@@ -80,4 +80,22 @@ async function chooseMcp(context) {
  const answer=await vscode.window.showWarningMessage('Start these trusted MCP servers? Local servers run with your user permissions; remote servers receive approved tool arguments.\n'+selected.map(s=>JSON.stringify(s.server)).join('\n'),{modal:true},'Start selected servers');
  return answer==='Start selected servers'?selected.map(s=>s.server):[];
 }
-module.exports={endpoint,chooseConnection,addConnection,addMcp,chooseMcp};
+async function checkSavedConnection(context) {
+ const profiles=saved(context);
+ if(!profiles.length){await vscode.window.showInformationMessage('Add a model connection first. No API was checked.');return;}
+ const choice=await vscode.window.showQuickPick(profiles.map(p=>({label:p.service+' · '+p.model,description:p.endpoint,profile:p})),{title:'Check API connection — reads /models; does not generate text'});
+ if(!choice)return;
+ const profile=choice.profile;
+ const answer=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Checking '+profile.service},async()=>{
+  endpoint(profile.endpoint);
+  const token=await context.secrets.get('meshlit.model.'+profile.id)||'';
+  return require('./connection-health.cjs').checkConnection(profile,token);
+ });
+ const history=context.globalState.get('meshlit.connectionHealth',{});history[profile.id]=answer;
+ await context.globalState.update('meshlit.connectionHealth',history);
+ const labels={'reachable':'API catalog reachable','authentication-failed':'Authentication failed','access-denied':'Access denied','rate-limited':'Rate limited','service-unavailable':'Service unavailable','catalog-unsupported':'Model catalog not supported at this address','http-error':'API returned an HTTP error','invalid-address':'Invalid address','invalid-catalog':'Response is not an OpenAI-compatible model catalog','catalog-too-large':'Catalog exceeds the size limit','timed-out':'Connection timed out','connection-failed':'Connection failed; network, TLS or redirect may be responsible'};
+ const details=answer.status==='reachable'?` · ${answer.modelCount} models · selected model ${answer.selectedModelListed?'listed':'not listed'}`:'';
+ await vscode.window.showInformationMessage(`${profile.service}: ${labels[answer.status]}${details}. Checked ${answer.checkedAt}. Generation and gateway upstream providers were not tested.`);
+ return answer;
+}
+module.exports={endpoint,chooseConnection,addConnection,addMcp,chooseMcp,checkSavedConnection};

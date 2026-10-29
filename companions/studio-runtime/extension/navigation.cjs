@@ -20,8 +20,9 @@ function register(context){
  }));
  context.subscriptions.push(vscode.commands.registerCommand('meshlit.models',async()=>{
   const profiles=context.globalState.get('meshlit.connections',[]);
-  const choice=await vscode.window.showQuickPick([{label:'$(add) Add model connection',id:'add'},{label:'$(chip) Bundled local model',detail:'Choose from any chat. No provider account needed.',id:'local'},...profiles.map(p=>({label:p.service+' · '+p.model,detail:p.endpoint,id:p.id}))],{title:'Meshlit · Models'});
+  const choice=await vscode.window.showQuickPick([{label:'$(add) Add model connection',id:'add'},{label:'$(pulse) Check API connection',id:'check'},{label:'$(chip) Bundled local model',detail:'Choose from any chat. No provider account needed.',id:'local'},...profiles.map(p=>({label:p.service+' · '+p.model,detail:p.endpoint,id:p.id}))],{title:'Meshlit · Models'});
   if(choice?.id==='add')return vscode.commands.executeCommand('meshlit.addConnection');
+  if(choice?.id==='check')return vscode.commands.executeCommand('meshlit.checkConnection');
   if(choice)await vscode.commands.executeCommand('meshlit.chat');
  }));
  context.subscriptions.push(vscode.commands.registerCommand('meshlit.connectors',async()=>{

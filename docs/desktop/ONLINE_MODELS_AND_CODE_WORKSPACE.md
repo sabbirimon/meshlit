@@ -99,3 +99,134 @@ The Mac developer launcher uses a named `Meshlit.app` and `com.meshlit.desktop` 
 Title/About metadata reports package version/channel (default `2.0.45-dev`), source revision, dirty-tree status and build time. This does not relabel the published `v2.0.0-beta.5` release. A second GUI launch activates the existing main window; it does not silently change its workspace. Closing/crashing releases the OS lock without stale-PID assumptions. Historical `java`/`jcef Helper` notification entries may remain in macOS settings; notification databases and permissions are not reset. The launcher ad-hoc signs and verifies the local bundle. Developer bundles are not Developer ID notarized releases.
 
 Latest validation: 72 desktop tests, 71 passed and one physical SSH fixture skipped, zero errors/failures. New cases cover cross-JVM duplicate exclusion, lock recovery, Plan denial under broad permission, one-edit stopping, denial/cancellation, stale/dirty editors, containment/private paths/symlinks, safe-policy approvals, eight-step limits and strict action parsing. Script syntax checks pass. Native bundle/render/launch outcome is recorded in `evidence/studio-modes-validation.json`. No paid model or authenticated provider calls, model download, Android rebuild or published installer replacement was performed. Live-model agent reliability, full IDE embedding, other-OS installed behavior and mobile controls remain unqualified.
+
+
+## Separate gateway integrations: source review and plan (2026-10-29)
+
+Status: planned. The owner's requirement is **two separate service dashboards**,
+not a combined OmniRoute/FreeLLMAPI account or routing page. Repository inspection
+found only model-name search in Compose and ID-only model catalog parsing in the
+new workbench. Free/paid/category filters are not implemented. Compose has an
+embedded vendor WebView; that view is not yet migrated into Code OSS.
+
+Read-only local checks found no matching applications in `/Applications` or
+`~/Applications`, and no listeners at loopback ports 20128, 3001 or 31415. This
+is not proof that no source installation or custom-port service exists. No
+installer, login, provider call or account change was performed.
+
+### OmniRoute plan
+
+Reviewed source revision `689b1eb573e21ea1bac4467c2ccfd9b8aaa7c518`
+(default branch `release/v3.8.53`). Its Electron wrapper owns a local server or
+can attach to an existing server; default port 20128 is configurable.
+
+1. Give OmniRoute its own Studio entry with Dashboard, Models, Routes, Usage and
+   Connection. Load its actual dashboard inside Studio; retain an independent
+   session per deployment/origin. Reuse the running upstream service rather than
+   duplicating its database, provider keys or router. Show stopped, connecting,
+   login-required and ready states from actual observations.
+2. Offer existing desktop app/local server/remote server setup. Keep dashboard
+   address separate from `/v1` API address and verify identity/version before
+   attaching. Starting an installed app is explicit; downloads and updates are
+   optional, pinned and verified. Inspect upstream OmniCopilot/Open VSX integration
+   for reuse, but qualify Code OSS API/auth compatibility before depending on it.
+3. Use upstream onboarding/password login or configured OIDC in the vendor UI.
+   The inspected code permits deployments to disable password login when OIDC is
+   active. Do not invent a shared Meshlit/vendor login or copy cookies/API keys
+   across origins. Review auth redirects and use the provider's supported OAuth
+   flow; an embedded-browser restriction must produce an explicit explanation.
+4. Add per-OmniRoute model filters: All, Free tier, Paid, Subscription/included,
+   Trial credits, Unknown; additional provider, capability, availability and
+   configured-account filters. Treat catalog classification separately from actual
+   route eligibility. Validate `/api/free-tier/summary` and pricing read adapters
+   against the pinned deployment and required auth. Retain source and freshness;
+   public free-tier totals do not prove the user's account balance or availability.
+5. Keep upstream routing controls and account billing in its dashboard. Chat
+   selects an explicit OmniRoute connection/model/route. A free catalog filter
+   does not prohibit paid fallback: strict free-only must verify every permitted
+   fallback or block the opaque route. Preserve Meshlit's existing conservative
+   budget admission until that contract is qualified.
+
+Source: [desktop wrapper](https://github.com/cheaper-inference/OmniRoute/blob/689b1eb573e21ea1bac4467c2ccfd9b8aaa7c518/electron/README.md),
+[login](https://github.com/cheaper-inference/OmniRoute/blob/689b1eb573e21ea1bac4467c2ccfd9b8aaa7c518/src/app/api/auth/login/route.ts),
+[free-tier summary](https://github.com/cheaper-inference/OmniRoute/blob/689b1eb573e21ea1bac4467c2ccfd9b8aaa7c518/src/app/api/free-tier/summary/route.ts),
+[pricing](https://github.com/cheaper-inference/OmniRoute/blob/689b1eb573e21ea1bac4467c2ccfd9b8aaa7c518/src/app/api/pricing/route.ts).
+
+### FreeLLMAPI plan
+
+Reviewed source revision `36826e7cfe9ba281d5815e865045f1333b598f13`
+(default branch `main`). Its desktop menu-bar app runs a local router/dashboard:
+port 31415 by default, with port scan-up on conflict. Server deployments use a
+separate configuration; Meshlit's current 3001 preset is not a desktop detector.
+
+1. Give FreeLLMAPI its own Studio entry with its real Models, Playground, Keys and
+   Analytics dashboard pages. Keep its connection, cookies/session, account and
+   usage separate from OmniRoute. Attach to the existing service; do not launch
+   a second router simply to display its dashboard.
+2. Distinguish Desktop app and Server installation in setup. Confirm the actual
+   desktop port (including a changed/conflicting port) and show the destination
+   before connecting. An open TCP port alone is insufficient service identity.
+3. Preserve upstream desktop-local automatic sign-in. The inspected auth routes
+   gate this on desktop mode and request locality. Server installs use their
+   setup/email/password flow; remote devices must not be treated as localhost.
+   Do not retrieve hidden desktop credentials, proxy remote callers into local
+   auto-login, or copy desktop auth tokens to a paired phone.
+4. Add a distinct FreeLLMAPI filter panel: All, Free tier, Custom endpoint,
+   Paid (only when explicitly evidenced), Unknown, plus provider/capability/
+   availability filters. FreeLLMAPI's name and a custom OpenAI-compatible endpoint
+   are not evidence that generation is free. Catalog subscription freshness is
+   separate from model inference price. Read real model/quota metadata through
+   versioned adapters, retain unknowns and avoid importing promotional totals as
+   account credits.
+5. Chat selects a FreeLLMAPI connection and model/route; the gateway retains its
+   own provider keys and routing. Show Meshlit request observations separately
+   from gateway totals, since other applications may use that gateway. Apply the
+   same conservative paid-fallback and unknown-cost checks, independently of
+   OmniRoute. Upstream describes personal experimentation usage; review its
+   documentation and redistribution terms before optional bundling.
+
+Source: [desktop app](https://github.com/tashfeenahmed/freellmapi/blob/36826e7cfe9ba281d5815e865045f1333b598f13/desktop/README.md),
+[authentication](https://github.com/tashfeenahmed/freellmapi/blob/36826e7cfe9ba281d5815e865045f1333b598f13/server/src/routes/auth.ts),
+[model routes](https://github.com/tashfeenahmed/freellmapi/blob/36826e7cfe9ba281d5815e865045f1333b598f13/server/src/routes/models.ts).
+
+### Delivery and acceptance
+
+Implement separate deployment profiles and dashboard/session lifecycle first;
+then upstream login/logout and model metadata adapters; then filters and chat
+selection. Qualify each gateway independently with an actual owner-controlled
+installation. Test wrong-service ports, changed port, logout/restart persistence,
+origin/session isolation, expired auth, missing/stale pricing, mixed-cost fallback,
+and strict-free blocking with zero paid calls. Do not remove CSP/frame protections
+to embed a dashboard; qualify a dedicated isolated top-level embedded view when
+framing is unsupported. Keep vendor pages outside the agent's host-command bridge.
+Read page remains reviewed, redacted, untrusted input; never read login fields.
+Android later presents separate simplified service entries via authenticated paired
+Studio access; a phone's loopback address is not the desktop's gateway.
+
+
+### Connection health implementation (2026-10-29)
+
+The Code OSS extension now includes **Models → Check API connection** and
+**Meshlit: Check API Connection**. The user selects one saved deployment; its
+scoped SecretStorage key is sent only to that endpoint's `GET /models`. No
+completion request, automatic retry or background polling is performed. Results
+are stored per connection with a check timestamp, never credentials or response
+bodies. Request timeout is eight seconds, redirects fail closed, catalog bodies
+are bounded to 2 MiB, and insecure non-loopback URLs are rejected.
+
+Statuses distinguish reachable catalog (including an empty catalog or missing
+selected model), authentication failed, access denied, rate limited, service
+unavailable, unsupported catalog, invalid response, timeout and connection failure.
+A redirect/TLS/network error is not diagnosed as a dead provider. Catalog success
+is explicitly not generation proof, credit availability or gateway upstream health.
+Three Node test groups passed covering these cases with fixture responses; no
+live account or paid generation test was made. This is source implementation in
+the development IDE, not a rebuilt installer or an Android feature.
+
+Next, separately for OmniRoute and FreeLLMAPI: use documented authenticated
+read-only provider/route health and quota adapters. Show **Unknown** for providers
+without evidence. A model invocation test must be a distinct, explicitly approved
+billable action using durable usage/budget admission, with bounded output and no
+hidden failover. Re-check before dispatch rather than treating an old green badge
+as a spending or availability guarantee. User-enabled refresh may later poll
+bounded read endpoints with backoff, Retry-After handling and manual stop.

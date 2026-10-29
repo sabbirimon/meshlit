@@ -55,6 +55,10 @@
       {
         "command": "meshlit.connectors",
         "title": "Meshlit: MCP Directory"
+      },
+      {
+        "command": "meshlit.checkConnection",
+        "title": "Meshlit: Check API Connection"
       }
     ],
     "menus": {
