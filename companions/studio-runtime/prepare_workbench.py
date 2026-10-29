@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--python',type=Path,required=True)
     parser.add_argument('--java',type=Path,required=True)
     parser.add_argument('--resources',type=Path,required=True)
+    parser.add_argument('--gateways',type=Path,help='Optional prepare_gateways.py manifest for reviewed development gateway builds')
     parser.add_argument('--sign-identity',default='-',help='Installed signing identity; default is ad-hoc development signing, not a trusted publisher.')
     args=parser.parse_args()
     here=Path(__file__).resolve().parent; repo=here.parent.parent
@@ -64,6 +65,8 @@ def main():
             backend=[str(args.java.resolve()),f'-Dmeshlit.dev.resources={args.resources.resolve()}',
                      '-cp',str(args.output.resolve()/'Contents/Resources/app/extensions/meshlit-workbench/meshlit-backend.jar')+':'+str(dependencies)+'/*',
                      'com.meshlit.desktop.MainKt','--ide-backend'])
+        if args.gateways:
+            config['gateways']=json.loads(args.gateways.read_text())
         (extension/'runtime.json').write_text(json.dumps(config,indent=2)+'\n')
         for helper in list((content/'Frameworks').glob('VSCodium Helper*.app')):
             old=helper.stem; name=old.replace('VSCodium','Meshlit',1)

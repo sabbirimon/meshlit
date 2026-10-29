@@ -20,6 +20,16 @@ class FixtureBackend:
 
 
 class NativeSdkTest(unittest.IsolatedAsyncioTestCase):
+    async def test_backend_write_failure_cleans_pending_request(self):
+        class BrokenInput:
+            def write(self, _): raise BrokenPipeError()
+        class Process:
+            stdin = BrokenInput()
+        backend = agent_host.Backend(Process())
+        with self.assertRaises(BrokenPipeError):
+            await backend.call('usage')
+        self.assertEqual(backend.pending, {})
+
     async def test_local_load_does_not_unlock_or_generate(self):
         events=[]
         class LocalBackend:

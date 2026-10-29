@@ -20,15 +20,24 @@ class SettingsNavigationBuild41Test {
     @Test fun advancedMenuAndCrossTabSearchReachRewardsAndNetwork() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         assertTrue("Owner must accept the app notices manually",LegalAgreementStore(context).accepted())
-        compose.waitUntil(180_000){compose.onAllNodesWithContentDescription("Menu").fetchSemanticsNodes().isNotEmpty() ||
-            compose.onAllNodesWithText("Later").fetchSemanticsNodes().isNotEmpty()}
+        val preferences = context.getSharedPreferences("settings-navigation", 0)
+        val hadAdvanced = preferences.contains("advanced")
+        val previousAdvanced = preferences.getBoolean("advanced", false)
+        try {
+        compose.waitUntil(180_000){runCatching {
+            compose.onAllNodesWithContentDescription("Menu").fetchSemanticsNodes().isNotEmpty() ||
+                compose.onAllNodesWithTag("boot-open-app").fetchSemanticsNodes().isNotEmpty() ||
+                compose.onAllNodesWithText("Later").fetchSemanticsNodes().isNotEmpty()
+        }.getOrDefault(false)}
+        if(compose.onAllNodesWithTag("boot-open-app").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithTag("boot-open-app").performClick()
         if(compose.onAllNodesWithText("Later").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("Later").performClick()
         compose.onNodeWithContentDescription("Menu").performClick()
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.onNodeWithText("Basic").performClick()
-        compose.onNodeWithText("Everyday setup and privacy").assertExists()
+        compose.onNodeWithTag("open-dashboards").assertExists()
+        compose.onNodeWithText("Everyday preferences.", substring=true).assertExists()
         compose.onNodeWithText("Advanced").performClick()
-        compose.onNodeWithText("Advanced tools and integrations").assertExists()
+        compose.onNodeWithText("Technical controls and integrations").assertExists()
         compose.onNodeWithTag("settings-search").performTextInput("rewards")
         closeSoftKeyboard()
         compose.onNodeWithText("Mesh rewards wallet").performClick()
@@ -37,7 +46,11 @@ class SettingsNavigationBuild41Test {
         compose.onNodeWithTag("settings-search").performTextReplacement("network")
         closeSoftKeyboard()
         compose.onNodeWithText("Network and pairing").performClick()
-        compose.onNodeWithText("Connect your hive").assertExists()
+        compose.onNodeWithText("Connect devices").assertExists()
         println("MESHLIT_SETTINGS_NAVIGATION basic=true advanced=true rewards=true network=true")
+        } finally {
+            if (hadAdvanced) preferences.edit().putBoolean("advanced", previousAdvanced).commit()
+            else preferences.edit().remove("advanced").commit()
+        }
     }
 }

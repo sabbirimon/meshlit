@@ -4,6 +4,52 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## AFK qualification, managed gateways and IDE usage — 2026-10-30
+
+Implemented separate managed OmniRoute/FreeLLMAPI lifecycle controls in the Code
+OSS development app, opening the real upstream dashboards in Meshlit. Reviewed
+local runtime manifests, private persistent state, loopback listeners, scrubbed
+credential environments, occupied-port rejection and owned-child shutdown replace
+manual service startup on this development Mac. Portable runtime redistribution
+and platform installers remain open; this is not a claim of bundled gateways on
+Android or every desktop release. Gateway owner setup and provider credentials
+remain human actions.
+
+Usage is now a full encrypted-ledger history/budget page, with known token totals,
+unknown counts, status/model filtering, per-currency spent/reserved estimates and
+persistent free-only/monthly/per-request policy. Existing admission blocks opaque
+gateways under spending budgets. Budgets are local estimates, not billing caps.
+Unlock errors reach the chat and usage UI; broken backend pipes clean pending RPCs.
+
+Real disposable-ledger validation on Intel macOS produced two independent SDK
+chat replies through the bundled Qwen model, then recovered both usage and budget
+policy after a backend restart. Wrong-password and locked-request rejection
+passed. No owner vault was opened/reset. Both real gateway runtimes started,
+returned 401 for unauthenticated API-key access, and released their listeners on
+Stop; no accounts or provider requests were created.
+
+Samsung tests found a repeated bundled-model load being charged against remaining
+RAM after startup had already loaded it. Same-ready-SDK-model loads now reuse the
+existing model, with gates and different-model memory admission retained. Settings
+navigation selectors were updated to current labels and tests restore the owner's
+Advanced preference. Physical results and build status are recorded in the
+[evidence](docs/desktop/evidence/studio-afk-20261030.json).
+
+Validation: 32 extension tests and eight SDK-host tests passed; desktop had 75
+cases, one existing skip, zero failures. Both Android variants assembled and
+passed lint. The Samsung produced a real bundled Qwen reply and reused the
+already-loaded model; native token counters remained unknown. Harness navigation,
+encrypted usage/credential mutation and native HyperL also passed. The final
+interactive Settings navigation retest is blocked by the Samsung lock screen
+(keyguard showing, not occluded); the startup wait and current-label fixes compiled.
+
+Native Mac computer-use inspection repeatedly timed out. Updated development
+files are staged for the next reload; new native Usage/gateway UI interaction is
+not claimed tested. Remaining gates include owner's existing vault unlock,
+provider account setup/live qualification, portable gateway packages, full mobile
+IDE/operator parity and mixed-device cluster acceptance. Existing roadmap items
+remain open; this checkpoint does not complete the entire product backlog.
+
 ## Default local chat and charcoal layout follow-up — 2026-10-30
 
 The bundled Qwen model now loads automatically when a local Studio chat opens,

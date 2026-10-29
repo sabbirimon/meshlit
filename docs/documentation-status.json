@@ -79,7 +79,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current regressions, limitations and verification",
-      "contentSha256WithoutTrackingBlock": "b68a2cb97c28a28cc5770b3c013c2e27c68629adb8b3eef0e27bc91ba48ce91d"
+      "contentSha256WithoutTrackingBlock": "f03282a651a7d25875ef53926923f317aa282cdff700bc28907448229cc20936"
     },
     {
       "path": "BUILD.md",
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "1e693db31ec4b39eeaece6b5de8495915ee3fb48fb5adfc9762444c23df64cb8"
+      "contentSha256WithoutTrackingBlock": "91e41598d646aeefd2f72ecd1300a6e1e94a6cc0bc23e3a919e100d43b59df87"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "c57899dacc7e1c2e33556a0972298fb3f672e4f980b5e53bfa091b60c8506194"
+      "contentSha256WithoutTrackingBlock": "8ee881fa5a9c7cdd6e05a8993dcc0d258ae741655b137f19b3e0b04be37c1135"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "a655bde6a66d08ff78e875d52e5205e4c196a1aa64c217295e442225ece9cae3"
+      "contentSha256WithoutTrackingBlock": "5bbcc6fa7cbb7c1746d4a8ff550a8ed9927a2d561c22cd2ca33221352a98f30a"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -296,7 +296,7 @@
       "class": "active",
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Studio upstream runtime qualification",
-      "contentSha256WithoutTrackingBlock": "973f6fe388f82213e668e60adcd90d803a14fb833a9724938085f57777b4fdd0"
+      "contentSha256WithoutTrackingBlock": "522b6deaece93eba7aacdddccb51a5490df1ad4600924183a11a718cafb2d49e"
     },
     {
       "path": "companions/training/README.md",
@@ -863,7 +863,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Studio online models and coding workspace",
-      "contentSha256WithoutTrackingBlock": "d35294266f59a647448f5276a46d48bf4acff7fe823310d51e98cfb194756917"
+      "contentSha256WithoutTrackingBlock": "2fadfdbae00e05e2cc8482db7b4886d50bf2ddc0d59eabddf50647b8bfcb3d88"
     },
     {
       "path": "docs/desktop/RECOVERY.md",

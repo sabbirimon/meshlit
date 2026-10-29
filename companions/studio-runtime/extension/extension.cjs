@@ -7,7 +7,7 @@ const readline = require('node:readline');
 const tools = require('./workspace-tools.cjs');
 const connections = require('./connections.cjs');
 const navigation = require('./navigation.cjs');
-let host, unlocked = false, hostReady = false, localModel={state:'idle'};
+let host, unlocked = false, hostReady = false, localModel={state:'idle'}, usagePage;
 const changed = new vscode.EventEmitter();
 const chats = new Map(), snapshots = new Map();
 const send = message => {
@@ -29,8 +29,15 @@ function boot(context) {
     let event; try { event=JSON.parse(line); } catch { return; }
     if(event.type==='ready') { hostReady=true;readiness();if([...chats.values()].some(c=>c.route.kind==='local'))loadLocal(); }
     else if(event.type==='local_model') {localModel=event;readiness();}
-    else if(event.type==='unlocked') { unlocked=true;readiness(); status('Usage unlocked. Model requests are recorded in Meshlit.'); }
-    else if(event.type==='usage') status(`Requests: ${event.requests}; reported input: ${event.inputTokens}; output: ${event.outputTokens}; unknown usage: ${event.unknownUsageRequests}. Totals include existing history.`);
+    else if(event.type==='unlocked') { unlocked=true;readiness();usagePage?.refresh(); status('Usage unlocked. Model requests are recorded in Meshlit.'); }
+    else if(event.type==='usage') usagePage?.accept(event);
+    else if(event.type==='error' && !event.session) {
+      if(event.operation==='unlock'){unlocked=false;readiness();}
+      const message=typeof event.message==='string'?event.message.slice(0,250):'The model host could not complete this action.';
+      vscode.window.showErrorMessage(message);
+      usagePage?.failure(message);
+      for(const chat of chats.values())chat.panel.webview.postMessage({type:'notice',message});
+    }
     else if(event.type==='tool') handleTool(event).catch(() => replyTool(event,'Denied or failed'));
     else if(chats.has(event.session)) {
       const chat=chats.get(event.session);
@@ -39,14 +46,18 @@ function boot(context) {
       chat.panel.webview.postMessage(event);
     } else if(event.type==='error') vscode.window.showErrorMessage(event.message);
   });
-  host.on('error', () => vscode.window.showErrorMessage('Cannot start the Meshlit SDK host.'));
-  host.on('exit', () => {
+  const child=host;
+  const closed=() => {
+    if(host!==child)return;
     host=undefined; unlocked=false;hostReady=false;localModel={state:'idle'};
+    readiness();usagePage?.failure('Agent host closed. Refresh Usage and unlock your ledger again.');
     for(const chat of chats.values()) {
       chat.busy=false;chat.closed=true;
       chat.panel.webview.postMessage({type:'error',message:'Agent host closed. Open a new chat after restarting the host.'});
     }
-  });
+  };
+  child.on('error', () => {closed();vscode.window.showErrorMessage('Cannot start the Meshlit SDK host.');});
+  child.on('exit', closed);
   context.subscriptions.push({dispose(){ if(host) host.stdin.end(); }});
 }
 function replyTool(event,result) { if(host) send({op:'tool_result',id:event.id,session:event.session,result}); }
@@ -174,6 +185,7 @@ async function chooseMode() {
   return picked?.id;
 }
 function activate(context) {
+  usagePage=require('./usage.cjs').create(context,message=>{boot(context);send(message);});
   navigation.register(context);
   require('./deepseek-harness.cjs').register(context);
   require('./protocols.cjs').register(context);
@@ -206,7 +218,7 @@ function activate(context) {
     vscode.commands.registerCommand('meshlit.unlockUsage',async()=>{
       boot(context);const password=await vscode.window.showInputBox({title:'Unlock Meshlit Usage',password:true,prompt:'Existing usage passphrase (12–256 characters). Close the older Studio if it has this vault unlocked.'});
       if(password && password.length>=12 && password.length<=256) send({op:'unlock',password});
-    }),vscode.commands.registerCommand('meshlit.usage',()=>{boot(context);send({op:'usage'});}));
+    }),vscode.commands.registerCommand('meshlit.usage',()=>{boot(context);usagePage.open();}));
   const button=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right,100);
   button.text='$(comment-discussion) Meshlit · New chat';button.command='meshlit.chat';button.show();context.subscriptions.push(button);
   if(!vscode.window.tabGroups.all.some(g=>g.tabs.length)) vscode.commands.executeCommand('meshlit.home');

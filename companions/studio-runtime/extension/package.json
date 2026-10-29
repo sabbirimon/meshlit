@@ -34,7 +34,7 @@
       },
       {
         "command": "meshlit.usage",
-        "title": "Meshlit: Usage Summary"
+        "title": "Meshlit: Usage and Budgets"
       },
       {
         "command": "meshlit.addConnection",

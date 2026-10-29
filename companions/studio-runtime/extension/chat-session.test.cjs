@@ -7,13 +7,13 @@ function fixture(){
   commands:{registerCommand:(name,fn)=>{commands.set(name,fn);return disposable;},executeCommand:async(name,...args)=>commands.get(name)?.(...args)},
   window:{showQuickPick:async()=>picks.shift(),showInformationMessage:m=>messages.push(m),showErrorMessage:m=>messages.push(m),registerTreeDataProvider:()=>disposable,createStatusBarItem:()=>({show(){}}),tabGroups:{all:[{tabs:[{}]}]},createWebviewPanel:(_type,_title,column)=>{const p={viewColumn:column===2?3:column,sent:[],webview:{postMessage:m=>p.sent.push(m),onDidReceiveMessage:f=>{p.receive=f;}},onDidDispose:f=>{p.dispose=f;}};panels.push(p);return p;}}
  };
- const child={stdin:{write:text=>outbound.push(JSON.parse(text)),end(){}},stdout:{},stderr:{on(){}},on(){}};
+ const hostEvents={};const child={stdin:{write:text=>outbound.push(JSON.parse(text)),end(){}},stdout:{},stderr:{on(){}},on:(name,fn)=>hostEvents[name]=fn};
  const exports={},context={extensionPath:'/fixture',subscriptions:[]};
  const noop={register(){}};
- const imports={vscode,'node:fs':{readFileSync:()=>JSON.stringify({python:'/python',agentHost:'/agent'})},'node:child_process':{spawn:()=>child},'node:readline':{createInterface:()=>({on:(name,fn)=>{event=fn;}})},'./connections.cjs':{chooseConnection:async()=>routes.shift(),chooseMcp:async()=>[]},'./navigation.cjs':noop,'./app-access.cjs':noop,'./protocols.cjs':noop,'./deepseek-harness.cjs':noop,'./gateways.cjs':noop};
+ const imports={vscode,'./usage.cjs':{create:()=>({open(){},accept(){},failure(){},refresh(){}})},'node:fs':{readFileSync:()=>JSON.stringify({python:'/python',agentHost:'/agent'})},'node:child_process':{spawn:()=>child},'node:readline':{createInterface:()=>({on:(name,fn)=>{event=fn;}})},'./connections.cjs':{chooseConnection:async()=>routes.shift(),chooseMcp:async()=>[]},'./navigation.cjs':noop,'./app-access.cjs':noop,'./protocols.cjs':noop,'./deepseek-harness.cjs':noop,'./gateways.cjs':noop};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'extension.cjs'),'utf8'),{exports,require:n=>imports[n]||require(n.startsWith('.')?path.join(__dirname,n):n),process:{env:{}},Map,JSON});
  exports.activate(context);
- return {panels,outbound,picks,routes,messages,open:()=>commands.get('meshlit.chat')(),unlock:()=>{event(JSON.stringify({type:'ready'}));event(JSON.stringify({type:'unlocked'}));event(JSON.stringify({type:'local_model',state:'ready',label:'Bundled fixture'}));},done:id=>event(JSON.stringify({type:'done',session:id}))};
+ return {panels,outbound,picks,routes,messages,hostEvents,event:e=>event(JSON.stringify(e)),open:()=>commands.get('meshlit.chat')(),unlock:()=>{event(JSON.stringify({type:'ready'}));event(JSON.stringify({type:'unlocked'}));event(JSON.stringify({type:'local_model',state:'ready',label:'Bundled fixture'}));},done:id=>event(JSON.stringify({type:'done',session:id}))};
 }
 test('composer changes reach the SDK; existing sessions fork without changing their permissions',async()=>{
  const f=fixture();await f.open();const p=f.panels[0];f.unlock();
@@ -35,4 +35,19 @@ test('locked host rejects send before creating a runtime request',async()=>{
  const f=fixture();await f.open();await f.panels[0].receive({op:'send',prompt:'hello'});
  assert.equal(f.outbound.filter(e=>e.op==='send').length,0);
  assert.equal(f.panels[0].sent.at(-1).type,'error');
+});
+test('unlock failures are visible and revoke stale unlocked state',async()=>{
+ const f=fixture();await f.open();f.unlock();
+ f.event({type:'error',operation:'unlock',message:'Cannot unlock usage'});
+ assert(f.messages.includes('Cannot unlock usage'));
+ assert.equal(f.panels[0].sent.at(-1).type,'notice');
+ assert.equal(f.panels[0].sent.filter(e=>e.type==='runtime').at(-1).unlocked,false);
+ await f.panels[0].receive({op:'send',prompt:'hello'});
+ assert.equal(f.outbound.filter(e=>e.op==='send').length,0);
+});
+test('failed host startup clears readiness and permits a fresh host attempt',async()=>{
+ const f=fixture();await f.open();f.unlock();f.hostEvents.error();
+ assert.equal(f.panels[0].sent.filter(e=>e.type==='runtime').at(-1).ready,false);
+ assert(f.messages.includes('Cannot start the Meshlit SDK host.'));
+ await f.open();assert.equal(f.panels.length,2);
 });

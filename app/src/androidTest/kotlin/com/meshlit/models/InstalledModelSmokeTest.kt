@@ -49,10 +49,15 @@ class InstalledModelSmokeTest {
             assertEquals(manifest.sha256,ModelFiles.sha256(File(model.path)))
             // Wait for any startup load to finish through the shared library lock.
             println("MESHLIT_BUNDLED_PHASE checksum-verified")
+            val before = GlobalContext.get().get<InferenceCoordinator>()
+            println("MESHLIT_BUNDLED_PHASE before-load sameModel=${before.loadedModel()?.modelPath == model.path} state=${before.state.value::class.simpleName} availableBytes=${library.availableMemory()}")
             library.load(model.id)
             println("MESHLIT_BUNDLED_PHASE model-loaded")
             val coordinator=GlobalContext.get().get<InferenceCoordinator>()
             assertEquals(model.path,coordinator.loadedModel()?.modelPath)
+            val firstLoad = coordinator.loadedModel()
+            library.load(model.id)
+            assertSame("Repeated load must reuse the ready SDK model", firstLoad, coordinator.loadedModel())
             val output=StringBuilder()
             val result=coordinator.infer(InferenceRequest(prompt="Say hello in one short sentence.",maxTokens=16,
                 temperature=0f,seed=42,onToken={output.append(it)}))

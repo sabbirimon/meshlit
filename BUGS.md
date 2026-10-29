@@ -4,6 +4,22 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Bundled-model duplicate load and IDE host failure states — 2026-10-30
+
+Fixed: Android model loading could wait for the startup load, then reject a
+second load of the same model against the remaining RAM budget. ModelLibrary
+now reuses a ready RunAnywhere model with the same library identity/path and
+active runtime. Different models/backends retain memory admission. Samsung
+SM-A207F physical generation and repeated-load identity checks passed.
+
+Fixed: failed SDK-host startup/exit could leave stale readiness, and an unlock
+failure could be absent from the visible chat. Host lifecycle now clears readiness,
+reports failure and permits a fresh attempt. Broken backend writes clear pending
+requests. Regression tests cover these paths; new native Mac interaction remains
+unqualified because computer-use AX/screenshot requests time out. No app crash
+was established from those timeouts. See the
+[checkpoint evidence](docs/desktop/evidence/studio-afk-20261030.json).
+
 ## Native worker default-kernel equivalence — 2026-10-29
 
 Open qualification issue: pinned CPU llama.cpp build on this Intel Mac produced

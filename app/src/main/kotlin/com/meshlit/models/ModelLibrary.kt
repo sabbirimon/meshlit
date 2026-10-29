@@ -314,6 +314,16 @@ class ModelLibrary(private val context: Context, private val coordinator: Infere
         ready.await()
         val model = _models.value.first { it.id == id }
         require(model.installed) { "Install the model before loading" }
+        // Startup and the model picker share this lock. Once startup has loaded the
+        // same SDK model, do not budget/allocate a second copy against remaining RAM.
+        // A different model or native runtime still goes through admission below.
+        val sdk = coordinator.runAnywhereEngine()
+        if (model.runtimeOptions.backend == LocalModelBackend.RUNANYWHERE &&
+            prefs.getString("last-loaded", null) == id &&
+            coordinator.state.value is CoordinatorState.Ready && coordinator.engineTag == "runanywhere" && sdk.isReady() &&
+            sdk.loadedModel()?.modelPath == model.path && coordinator.loadedModel()?.modelPath == model.path) {
+            return@withLock
+        }
         val plan=devicePlan()
         require(plan.localInferenceSupported) { "This OS/API/ABI has no installed supported inference engine" }
         require(plan.allowHeavyWork) { plan.reasons.joinToString("; ") }

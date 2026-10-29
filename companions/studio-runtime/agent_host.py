@@ -61,15 +61,16 @@ class Backend:
         request_id = str(uuid.uuid4())
         future = asyncio.get_running_loop().create_future()
         self.pending[request_id] = future
-        self.process.stdin.write((json.dumps(dict(id=request_id, op=op, **fields))+'\n').encode())
-        await self.process.stdin.drain()
         try:
+            self.process.stdin.write((json.dumps(dict(id=request_id, op=op, **fields))+'\n').encode())
+            await self.process.stdin.drain()
             result = await asyncio.wait_for(future, 180)
             if 'error' in result: raise RuntimeError(result['error'])
             return result
         except (asyncio.CancelledError, TimeoutError):
-            self.process.stdin.write((json.dumps(dict(id=str(uuid.uuid4()), op='cancel', target=request_id))+'\n').encode())
-            await self.process.stdin.drain()
+            with contextlib.suppress(BrokenPipeError, ConnectionResetError):
+                self.process.stdin.write((json.dumps(dict(id=str(uuid.uuid4()), op='cancel', target=request_id))+'\n').encode())
+                await self.process.stdin.drain()
             raise
         finally:
             self.pending.pop(request_id, None)
@@ -209,6 +210,8 @@ class Host:
             emit(dict(type='unlocked')); return
         if op == 'usage':
             emit(dict(type='usage', **await self.backend.call('usage'))); return
+        if op == 'budget':
+            emit(dict(type='usage', **await self.backend.call('budget', **{k: data[k] for k in ('freeOnly', 'currency', 'monthly', 'perRequest')}))); return
         if op == 'tool_result':
             pair = self.reviews.get(data.get('id'))
             if pair and pair[0] == session and not pair[1].done(): pair[1].set_result(str(data['result'])[:40000])
@@ -294,7 +297,7 @@ async def main():
     tasks = set()
     async def dispatch(data):
         try: await host.command(data)
-        except Exception as error: emit(dict(type='error', session=data.get('session'), message=str(error)[:250]))
+        except Exception as error: emit(dict(type='error', session=data.get('session'), operation=data.get('op'), message=str(error)[:250]))
     try:
         while line := await asyncio.to_thread(sys.stdin.buffer.readline, 600001):
             if len(line) > 600000: raise ValueError('IPC request too large')

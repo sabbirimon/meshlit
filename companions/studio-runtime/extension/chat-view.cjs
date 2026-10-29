@@ -25,6 +25,7 @@ function render(title,mode){
  prompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();el('send').onclick();}});
  el('stop').onclick=()=>{api.postMessage({op:'stop'});closed=true;busy=false;controls();state.textContent='Stopped. Open New chat to continue. Applied edits remain unsaved.';};
  window.addEventListener('message',({data:e})=>{
+  if(e.type==='notice')state.textContent=e.message;
   if(e.type==='runtime'){runtimeReady=!!e.ready;usageUnlocked=!!e.unlocked;localStatus(e.localModel||{state:'idle'});controls();if(!busy&&!closed)state.textContent=!runtimeReady?'Starting model host…':!usageUnlocked?'Unlock your Meshlit usage ledger to send messages. Your draft stays here.':'Ready · messages use the model shown above';}
   if(e.type==='configuration'){localRoute=e.local!==false;el('localStatus').hidden=!localRoute;if(!localRoute)el('loadLocal').hidden=true;controls();el('route').textContent=e.label+' · '+e.endpoint;el('connection').textContent=(e.label==='Bundled local model'?'Local model':e.label)+' ▾';el('connection').title=e.endpoint;el('mode').textContent=(modes.find(m=>m.id===e.mode)?.label||'Chat')+' ▾';el('modeHelp').textContent=(modes.find(m=>m.id===e.mode)?.description||'')+(e.started?'. Changing model or mode opens a new chat.':'');}
   if(e.type==='delta'){if(!answer)answer=row('','assistant');answer.textContent+=e.text;history.scrollTop=history.scrollHeight;}

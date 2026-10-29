@@ -4,6 +4,44 @@ Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRE
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Managed gateways and durable IDE usage — 2026-10-30
+
+The Code OSS development workbench now has separate **Start local gateway**,
+**Stop**, and **Copy API address** actions for OmniRoute and FreeLLMAPI. Start
+opens the actual upstream dashboard inside Meshlit's integrated browser. The
+owner completes that gateway's own setup/login and adds provider credentials;
+Meshlit does not manufacture free API keys or reuse another application's keys.
+Catalog free/paid/provider filters and connection checks remain separate from
+account entitlements and generation. Copy API address copies a URL, not a key.
+
+The reviewed development inputs are OmniRoute 3.8.52 and FreeLLMAPI server 0.2.1.
+`prepare_gateways.py` produces an explicit local manifest; pass it through
+`prepare_workbench.py --gateways`. Launch verifies version and entry checksum,
+uses a private persistent data directory and loopback listener, clears inherited
+provider/CLI credentials, disables background discovery/probes, and manages only
+its own child process. An occupied port is an error, not permission to adopt or
+stop another service. These checks do not hash every dependency or sandbox the
+upstream application. The local cache paths are development dependencies;
+portable installers still need complete runtime packaging, notices and platform
+qualification. A build without the manifest reports the runtime unavailable.
+
+**Usage → Usage & budgets** now reads the existing encrypted ledger, shows
+reported token totals and unknowns, the newest 200 records, model/status filters,
+and per-currency estimated spent/reserved amounts. Policy edits persist through
+the Kotlin ledger: free-only, positive monthly/per-request limits, and removal
+of one currency without losing others. Unknown pricing stays unknown. Opaque
+gateways cannot be protected by these estimates; existing admission rules apply.
+These are device-local admission estimates, not provider invoice caps.
+
+Reproducible opt-in qualification scripts use disposable state:
+`qualify_local_chat.py` exercises real bundled inference, SDK sessions, encrypted
+restart and budgets; `qualify-gateways.cjs` exercises real upstream startup,
+unauthenticated API-key rejection and owned-process shutdown. Neither needs
+owner credentials or paid calls. See
+[evidence](evidence/studio-afk-20261030.json) for actual results and open gates.
+
+## Earlier native Studio implementation (historical)
+
 Desktop first, as requested on 2026-10-26. Mobile retains the verified Meshlit name/M icon update; a simpler chat selector is deferred until the desktop flow is qualified.
 
 ## Online models

@@ -7,7 +7,7 @@ import java.net.http.*
 import java.time.Duration
 import java.util.concurrent.*
 
-/** Private stdio backend for the Code OSS extension. No remote endpoint input. */
+/** Private stdio backend for the Code OSS extension and explicit model routes. */
 internal fun runIdeBackend() {
     val vault = DesktopUsage()
     val engine = LocalEngine()
@@ -54,12 +54,11 @@ internal fun runIdeBackend() {
                                 put("context", session!!.context)
                             }
                         }
-                        "usage" -> buildJsonObject {
-                            val rows = vault.journal().snapshot().attempts
-                            put("requests", rows.size)
-                            put("inputTokens", rows.mapNotNull { it.input }.sum())
-                            put("outputTokens", rows.mapNotNull { it.output }.sum())
-                            put("unknownUsageRequests", rows.count { it.input == null || it.output == null })
+                        "usage" -> ideUsage(vault.journal())
+                        "budget" -> {
+                            val ledger = vault.journal()
+                            updateIdeBudget(ledger, request)
+                            ideUsage(ledger)
                         }
                         "complete" -> {
                             val ledger = vault.journal() // Fail before model load or request when locked.
@@ -116,6 +115,8 @@ internal fun runIdeBackend() {
                     emit(id, buildJsonObject { put("error", when (operation) {
                         "load_local" -> "Bundled model could not load. Check packaged model/engine files and available memory. No online fallback was attempted."
                         "unlock" -> "Cannot unlock usage: check passphrase and close the older Studio if it owns this vault."
+                        "usage" -> "Unlock your Meshlit usage ledger to view history and manage budgets."
+                        "budget" -> "Budget was not saved. Unlock Usage and use a positive monthly limit with a per-request limit no greater than it, or leave both amounts blank to remove that currency limit."
                         else -> "Request failed or was cancelled. Check Usage unlock, free-only/budget rules, model context, endpoint and credentials. Opaque gateways cannot use local spending budgets."
                     }) })
                 } finally { jobs.remove(id) }
