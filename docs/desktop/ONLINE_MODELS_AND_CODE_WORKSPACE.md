@@ -230,3 +230,36 @@ billable action using durable usage/budget admission, with bounded output and no
 hidden failover. Re-check before dispatch rather than treating an old green badge
 as a spending or availability guarantee. User-enabled refresh may later poll
 bounded read endpoints with backoff, Retry-After handling and manual stop.
+
+## Chat controls and gateway setup (2026-10-30)
+
+Open **Chat** from the Meshlit rail. The composer has a mode chip and a model chip.
+Use **+ → Connect a model or gateway**, choose the source/service, enter the API
+base and service API key, and select a model returned by `/models` (or enter an
+exact model ID when catalog retrieval is unavailable). A dashboard password is not
+a gateway API key. After setup, use the model chip to select the saved connection
+and its cached models. The header shows the destination. Use **+ → Models and
+provider dashboards** for separate OmniRoute/FreeLLMAPI/Hugging Face pages, catalog
+refresh, cost/provider filters and the catalog-only health check.
+
+For an already running local OmniRoute the preset is
+`http://127.0.0.1:20128/v1`; FreeLLMAPI desktop uses `31415`, server uses `3001`.
+These addresses do not start a service. A phone's loopback addresses the phone,
+not the Mac: remote connections require the owner's verified HTTPS host/tunnel.
+OmniRoute main upstream is https://github.com/cheaper-inference/OmniRoute; its
+local dashboard setup and provider credentials remain independent from Meshlit.
+FreeLLMAPI main upstream is https://github.com/tashfeenahmed/freellmapi.
+No bundled gateway runtime is delivered by this composer patch.
+
+**Chat** has no workspace tools; **Plan** inspects approved files without editing;
+**Edit / Build** proposes one reviewed edit per turn; **Autopilot** allows bounded
+multiple steps with approvals and diff review retained. Open a local folder for
+non-Chat modes. Changes remain unsaved until the owner saves them. This Build label
+does not mean shell/build execution. Mode or route changes after the first message
+open a new independent session rather than forwarding old conversation history.
+
+**Enter** sends, **Shift+Enter** inserts a newline. Composing an IME character does
+not submit. Send becomes Stop while running; New chat stays available. The usage
+ledger must be unlocked before generation; this is separate from vendor login.
+Reasoning effort, microphone input and unrestricted permission modes are not yet
+implemented in the Meshlit composer. Harness has its own model/mode/settings UI.

@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from qualify import verify
+from prepare_app_access import build as build_app_access
 
 
 def main():
@@ -38,6 +39,12 @@ def main():
             reportIssueUrl='https://github.com/sabbirimon/meshlit/issues',enableTelemetry=False)
         for key in ('updateUrl','darwinProfileUUID','darwinProfilePayloadUUID'):
             product.pop(key,None)
+        # Electron uses its package productName for its Keychain service name.
+        # New builds use Meshlit's own item; do not delete/migrate the owner's old item silently.
+        electron_package=app_resources/'package.json'
+        electron_metadata=json.loads(electron_package.read_text())
+        electron_metadata.update(name='meshlit-studio',productName='Meshlit')
+        electron_package.write_text(json.dumps(electron_metadata,indent=2)+'\n')
         # Retain upstream extension gallery and all licences/notices.
         product_path.write_text(json.dumps(product,indent=2)+'\n')
         plist_path=content/'Info.plist'; plist=plistlib.loads(plist_path.read_bytes())
@@ -49,6 +56,7 @@ def main():
         plist_path.write_bytes(plistlib.dumps(plist))
         extension=app_resources/'extensions/meshlit-workbench'
         shutil.copytree(here/'extension',extension,ignore=shutil.ignore_patterns('*.test.cjs'))
+        build_app_access(extension,args.sign_identity)
         # Snapshot our jar; reused dependency jars/resources stay read-only. This is a dev build.
         shutil.copy2(jar,extension/'meshlit-backend.jar')
         # agent_host remains a source development path so fixes do not require another large archive extraction.

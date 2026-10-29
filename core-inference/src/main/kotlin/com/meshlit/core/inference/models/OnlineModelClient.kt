@@ -10,17 +10,18 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 @Serializable enum class OnlineGateway { DIRECT, OMNIROUTE, FREELLMAPI, CUSTOM }
+@Serializable enum class ModelSourceKind { CLOUD, LOCAL_SERVER, MULTI_LOCAL, REMOTE_DEVICE, GROUP_CLUSTER }
 @Serializable enum class OnlineProtocol { OPENAI, OPENAI_COMPATIBLE, ANTHROPIC, GEMINI }
 @Serializable data class OnlineProfile(val id:String,val name:String,val endpoint:String,val model:String="",
     val protocol:OnlineProtocol=OnlineProtocol.OPENAI_COMPATIBLE,val enabled:Boolean=false,val agentAllowed:Boolean=false,
-    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT) {
+    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT, val sourceKind:ModelSourceKind=ModelSourceKind.CLOUD) {
     fun validate() {
         require(gateway == OnlineGateway.DIRECT || protocol == OnlineProtocol.OPENAI_COMPATIBLE) { "Gateways use OpenAI-compatible protocol" }
         require(credentialEnvironmentId==null || credentialEnvironmentId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
         require(credentialVariable.matches(Regex("[A-Z_][A-Z0-9_]{0,79}")))
         require(id.matches(Regex("[a-zA-Z0-9-]{1,80}")) && name.length in 1..100)
         val url=endpoint.toHttpUrl()
-        require(url.isHttps && url.username.isEmpty() && url.password.isEmpty() && url.query==null && url.fragment==null) { "Use an HTTPS API base URL without credentials or query parameters" }
+        require((url.isHttps || url.scheme=="http" && url.host in setOf("127.0.0.1","::1")) && url.username.isEmpty() && url.password.isEmpty() && url.query==null && url.fragment==null) { "Use HTTPS or literal loopback HTTP, without credentials or query parameters" }
         require(model.length<=200 && model.none{it.isWhitespace() || it=='?' || it=='#' || it=='\\'})
         require(currency.matches(Regex("[A-Z]{3}")))
         listOf(inputPricePerMillion,outputPricePerMillion).forEach{require(it==null || it.isFinite() && it in 0.0..100000.0)}

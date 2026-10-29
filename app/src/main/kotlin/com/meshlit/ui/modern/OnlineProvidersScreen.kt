@@ -27,10 +27,16 @@ import java.util.UUID
     var inputRate by remember{mutableStateOf("")};var outputRate by remember{mutableStateOf("")}
     fun edit(profile:OnlineProfile){editing=profile;key="";discovered=emptyList();prices=emptyList();inputRate=profile.inputPricePerMillion?.toString().orEmpty();outputRate=profile.outputPricePerMillion?.toString().orEmpty()}
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item{TextButton(onClick=onBack){Text("Back")};Text("Online models",style=MaterialTheme.typography.headlineSmall)
+        item{TextButton(onClick=onBack){Text("Back")};Text("Model connections",style=MaterialTheme.typography.headlineSmall)
             Text("Requests send conversation content to the selected provider. Keys are encrypted locally. Local failures never trigger a cloud request. API access and billing are separate from consumer chat subscriptions.")}
         items(profiles,key={it.id}){profile->Card{Column(Modifier.padding(16.dp)){Text(profile.name,style=MaterialTheme.typography.titleMedium);Text("${profile.model.ifBlank{"Model not selected"}} · ${if(profile.enabled) "Enabled" else "Disabled"}");Text(profile.endpoint,style=MaterialTheme.typography.bodySmall)
             Row{TextButton(onClick={edit(profile)}){Text("Edit")};TextButton(onClick={providers.remove(profile.id)}){Text("Remove profile and key")}}}}}
+        item{Text("Device and cluster endpoints",style=MaterialTheme.typography.titleMedium)
+            Text("The phone's loaded model and negotiated group are selected in Chat → Conversation settings. Add a compatible endpoint here for a local server, remote device or existing cluster. Saving a group endpoint does not start or shard a model.")
+            FlowRow { listOf(ModelSourceKind.LOCAL_SERVER to "Local server",ModelSourceKind.MULTI_LOCAL to "Multiple local models",ModelSourceKind.REMOTE_DEVICE to "Remote device",ModelSourceKind.GROUP_CLUSTER to "Group / cluster").forEach { (kind,label) ->
+                OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),label,"",sourceKind=kind))}) { Text(label) }
+            } }
+        }
         item{Text("Add a provider",style=MaterialTheme.typography.titleMedium);FlowRow{
             listOf(Triple("OpenAI","https://api.openai.com/v1",OnlineProtocol.OPENAI),Triple("Claude","https://api.anthropic.com/v1",OnlineProtocol.ANTHROPIC),
                 Triple("DeepSeek","https://api.deepseek.com/v1",OnlineProtocol.OPENAI_COMPATIBLE),Triple("Qwen · US region","https://dashscope-us.aliyuncs.com/compatible-mode/v1",OnlineProtocol.OPENAI_COMPATIBLE),
@@ -39,9 +45,10 @@ import java.util.UUID
                 Triple("Agentgateway / LiteLLM","",OnlineProtocol.OPENAI_COMPATIBLE),Triple("Custom compatible","",OnlineProtocol.OPENAI_COMPATIBLE)).forEach{(name,url,protocol)->OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),name,url,protocol=protocol,gateway=when { name.startsWith("OmniRoute") -> OnlineGateway.OMNIROUTE; name.startsWith("FreeLLMAPI") -> OnlineGateway.FREELLMAPI; name.startsWith("Agentgateway") -> OnlineGateway.CUSTOM; else -> OnlineGateway.DIRECT }))}){Text(name)}}}}
         editing?.let{profile->item{Card{Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("Configure ${profile.name}",style=MaterialTheme.typography.titleMedium)
+            Text("Source: ${profile.sourceKind.name.lowercase().replace('_',' ')}")
             if (profile.gateway != OnlineGateway.DIRECT) Text("Optional gateway: prompts and keys go to your chosen deployment. Downstream routing, retries, quota and costs are controlled there. Local free-only and budgeted requests block opaque gateways. FreeLLMAPI is experimental, for personal use. No provider entitlement is included.")
             OutlinedTextField(profile.name,{editing=profile.copy(name=it)},label={Text("Profile name")})
-            OutlinedTextField(profile.endpoint,{editing=profile.copy(endpoint=it,pricingSource=null,priceCheckedAtMs=null);inputRate="";outputRate=""},label={Text("HTTPS API base URL")},supportingText={Text("Qwen requires an endpoint and key for your region/workspace. Changing endpoint or protocol clears the old key; enter a key bound to the new endpoint.")})
+            OutlinedTextField(profile.endpoint,{editing=profile.copy(endpoint=it,pricingSource=null,priceCheckedAtMs=null);inputRate="";outputRate=""},label={Text("API base URL · HTTPS or loopback") },supportingText={Text("Qwen requires an endpoint and key for your region/workspace. Changing endpoint or protocol clears the old key; enter a key bound to the new endpoint.")})
             if(profile.protocol==OnlineProtocol.OPENAI_COMPATIBLE) Row {
                 Text("This endpoint routes to other providers", Modifier.weight(1f))
                 Switch(profile.gateway != OnlineGateway.DIRECT, { editing=profile.copy(gateway=if(it) OnlineGateway.CUSTOM else OnlineGateway.DIRECT) })

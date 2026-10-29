@@ -1,6 +1,6 @@
 const vscode=require('vscode');
 const crypto=require('node:crypto');
-const entries=[['Home','home','home'],['Chat','chat','comment-discussion'],['Workspace','workbench.action.files.openFolder','folder-opened'],['Coding agent','agent','code'],['Models','models','server'],['DeepSeek Harness','deepseekHarness','hubot'],['MCP directory','connectors','plug'],['Usage','usage','graph'],['Settings','workbench.action.openSettings','settings-gear']];
+const entries=[['Home','home','home'],['Chat','chat','comment-discussion'],['Workspace','workbench.action.files.openFolder','folder-opened'],['Coding agent','agent','code'],['Models','models','server'],['APIs and protocols','protocols','radio-tower'],['Agent app access','appAccess','accessibility'],['Stop app access','stopAppAccess','debug-stop'],['OmniRoute','gateway.OmniRoute','globe'],['FreeLLMAPI','gateway.FreeLLMAPI','globe'],['Hugging Face','gateway.Hugging Face','globe'],['DeepSeek Harness','deepseekHarness','hubot'],['MCP directory','connectors','plug'],['Usage','usage','graph'],['Settings','workbench.action.openSettings','settings-gear']];
 const command=id=>id.startsWith('workbench.')?id:'meshlit.'+id;
 function register(context){
  let home;
@@ -20,10 +20,11 @@ function register(context){
  }));
  context.subscriptions.push(vscode.commands.registerCommand('meshlit.models',async()=>{
   const profiles=context.globalState.get('meshlit.connections',[]);
-  const choice=await vscode.window.showQuickPick([{label:'$(add) Add model connection',id:'add'},{label:'$(pulse) Check API connection',id:'check'},{label:'$(chip) Bundled local model',detail:'Choose from any chat. No provider account needed.',id:'local'},...profiles.map(p=>({label:p.service+' · '+p.model,detail:p.endpoint,id:p.id}))],{title:'Meshlit · Models'});
-  if(choice?.id==='add')return vscode.commands.executeCommand('meshlit.addConnection');
+  const choice=await vscode.window.showQuickPick([{label:'OmniRoute dashboard',id:'OmniRoute'},{label:'FreeLLMAPI dashboard',id:'FreeLLMAPI'},{label:'Hugging Face dashboard',id:'Hugging Face'},{label:'$(add) Add model connection',id:'add'},{label:'$(pulse) Check API connection',id:'check'},{label:'$(chip) Bundled local model',detail:'Choose from any chat. No provider account needed.',id:'local'},...profiles.map(p=>({label:p.service+' · '+p.model,detail:p.endpoint,id:p.id}))],{title:'Meshlit · Models'});
+  if(['OmniRoute','FreeLLMAPI','Hugging Face'].includes(choice?.id))return vscode.commands.executeCommand('meshlit.gateway.'+choice.id);
+  if(choice?.id==='add')return vscode.commands.executeCommand('meshlit.addModelSource');
   if(choice?.id==='check')return vscode.commands.executeCommand('meshlit.checkConnection');
-  if(choice)await vscode.commands.executeCommand('meshlit.chat');
+  if(choice)await vscode.commands.executeCommand('meshlit.chat',choice.id==='local'?undefined:choice.id);
  }));
  context.subscriptions.push(vscode.commands.registerCommand('meshlit.connectors',async()=>{
   const servers=context.globalState.get('meshlit.mcp',[]);

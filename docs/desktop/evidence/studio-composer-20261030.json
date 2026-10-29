@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-30",
+  "host": "Intel macOS",
+  "javascriptCases": 18,
+  "nativeUi": {
+    "modelPickerOpened": true,
+    "bundledModelSelected": true,
+    "modeChoices": [
+      "Chat",
+      "Plan",
+      "Edit / Build",
+      "Autopilot"
+    ],
+    "missingWorkspaceNotice": true,
+    "compactComposerInspected": true,
+    "enterReachedLockedLedgerWithoutModelCall": true,
+    "shiftEnterInsertedNewline": true,
+    "rejectedSendPreservedDraft": true,
+    "finalCompactControlsRendered": true
+  },
+  "modelRequests": 0,
+  "providerAuthentication": false,
+  "limits": [
+    "No generation or tool action qualification",
+    "Test profile had no saved provider connections",
+    "Gateway runtime packaging remains pending"
+  ],
+  "developmentBundleAdHocSignatureVerified": true
+}

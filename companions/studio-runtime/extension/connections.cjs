@@ -11,46 +11,53 @@ function endpoint(text) {
  u.pathname=base;return u.toString().replace(/\/$/,'');
 }
 const saved=c=>c.globalState.get('meshlit.connections',[]);
-async function addConnection(context) {
- const service=await vscode.window.showQuickPick(['OmniRoute','FreeLLMAPI','OpenRouter','Hugging Face','OpenAI','Local/distributed server','Other OpenAI-compatible'],{title:'Add model connection'});if(!service)return;
+async function addConnection(context, requestedService, sourceKind) {
+ const service=requestedService||await vscode.window.showQuickPick(['OmniRoute','FreeLLMAPI','OpenRouter','Hugging Face','OpenAI','Local/distributed server','Other OpenAI-compatible'],{title:'Add model connection'});if(!service)return;
  const defaults={'OmniRoute':'http://127.0.0.1:20128/v1','FreeLLMAPI':'http://127.0.0.1:3001/v1','OpenRouter':'https://openrouter.ai/api/v1','Hugging Face':'https://router.huggingface.co/v1','OpenAI':'https://api.openai.com/v1'};
+ if(service==='FreeLLMAPI'){
+  const kind=await vscode.window.showQuickPick(['Desktop app','Server / Docker'],{title:'FreeLLMAPI installation'});if(!kind)return;
+  if(kind==='Desktop app')defaults.FreeLLMAPI='http://127.0.0.1:31415/v1';
+ }
  const input=await vscode.window.showInputBox({title:service+' API endpoint',value:defaults[service]||'',prompt:'Your running OpenAI-compatible endpoint. No service is installed automatically.'});if(!input)return;
  const url=endpoint(input);
  const token=await vscode.window.showInputBox({title:service+' API key',password:true,prompt:'Stored in editor SecretStorage, bound to this connection. Leave empty only for an unauthenticated loopback service.'});if(token===undefined)return;
  if(!new URL(url).hostname.match(/^(127\.0\.0\.1|\[::1\])$/)&&!token)throw Error('Remote endpoints require a token');
  let models=[];
  try {
-  const r=await fetch(url+'/models',{headers:token?{Authorization:'Bearer '+token}:{},redirect:'error',signal:AbortSignal.timeout(8000)});
-  if(!r.ok)throw Error('Catalog unavailable');
-  const reader=r.body.getReader();let size=0,chunks=[];
-  try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>2097152)throw Error('Catalog too large');chunks.push(Buffer.from(value));}}finally{await reader.cancel();}
-  models=JSON.parse(Buffer.concat(chunks).toString()).data.map(x=>x.id).filter(x=>typeof x==='string'&&x.length<=512).slice(0,2048);
+  models=await require('./model-catalog.cjs').fetchCatalog(url,token);
  }catch{await vscode.window.showInformationMessage('Model catalog unavailable. You can enter a model ID from your provider; connectivity is not confirmed.');}
  let model;
- if(models.length) model=await vscode.window.showQuickPick(models,{title:'Select a model reported by '+service});
+ if(models.length){const picked=await vscode.window.showQuickPick(models.map(m=>({label:m.id,description:m.cost+' · provider-reported',model:m.id})),{title:'Select a model reported by '+service});model=picked?.model;}
  else model=await vscode.window.showInputBox({title:'Exact provider model ID'});
  if(!model)return;
- const gateway=['OmniRoute','FreeLLMAPI','Local/distributed server','Other OpenAI-compatible'].includes(service);
+ const gateway=['OmniRoute','FreeLLMAPI','OpenRouter','Hugging Face','Local/distributed server','Other OpenAI-compatible'].includes(service);
  let pricing={};
  if(!gateway){
   const rates=await vscode.window.showInputBox({title:'Optional reviewed USD prices per million tokens',prompt:'input,output (for example 0.20,0.80). Leave blank for unknown. Estimates are not provider billing caps.'});
   if(rates){const parts=rates.split(',').map(Number);if(parts.length!==2||parts.some(x=>!Number.isFinite(x)||x<0||x>100000))throw Error('Invalid prices');pricing={inputRate:Math.round(parts[0]*1e9),outputRate:Math.round(parts[1]*1e9),checkedAt:Date.now()};}
  }
- const id=crypto.randomUUID(), profile={id,kind:'compatible',service,endpoint:url,model,gateway,...pricing};
+ const id=crypto.randomUUID(), profile={id,kind:'compatible',service,sourceKind:sourceKind||'cloud',endpoint:url,model,gateway,...pricing};
  await context.secrets.store('meshlit.model.'+id,token);
  await context.globalState.update('meshlit.connections',[...saved(context),profile]);
+ await context.globalState.update('meshlit.catalog.'+id,models);
  return profile;
 }
-async function chooseConnection(context) {
+async function chooseConnection(context, preferredId) {
  const profiles=saved(context);
- const choice=await vscode.window.showQuickPick([{label:'Bundled local model',id:'local'},...profiles.map(p=>({label:p.service+' · '+p.model,description:p.endpoint,id:p.id})),{label:'Add a connection…',id:'add'}],{title:'Model for this conversation'});
+ const choice=preferredId?{id:preferredId}:await vscode.window.showQuickPick([{label:'Bundled local model',id:'local'},...profiles.map(p=>({label:require('./model-sources.cjs').label(p)+' · '+p.model,description:p.endpoint,id:p.id})),{label:'Add a connection…',id:'add'}],{title:'Model for this conversation'});
  if(!choice)return;
  if(choice.id==='local')return {kind:'local',label:'Bundled local model'};
- const profile=choice.id==='add'?await addConnection(context):profiles.find(p=>p.id===choice.id);
+ let profile=choice.id==='add'?await addConnection(context):profiles.find(p=>p.id===choice.id);
  if(!profile)return;
+ if(!preferredId && choice.id!=='add'){
+  const catalog=context.globalState.get('meshlit.catalog.'+profile.id,[]);
+  const models=[{label:profile.model,description:'Current model',model:profile.model},...catalog.filter(m=>m.id!==profile.model).map(m=>({label:m.id,description:(m.provider?m.provider+' · ':'')+m.cost+' (reported)',model:m.id}))];
+  const selected=await vscode.window.showQuickPick(models,{title:profile.service+' · model for this chat',placeHolder:'Search available models',matchOnDescription:true});
+  if(!selected)return;profile={...profile,model:selected.model};
+ }
  const allowed=await vscode.window.showWarningMessage(`Send this conversation and approved file content to ${profile.endpoint} using ${profile.model}? Charges may apply. Unknown/gateway prices stay unknown; existing budget rules may block the request.`,{modal:true},'Use connection');
  if(allowed!=='Use connection')return;
- return {...profile,token:await context.secrets.get('meshlit.model.'+profile.id)||'',label:profile.service+' · '+profile.model};
+ return {...profile,token:await context.secrets.get('meshlit.model.'+profile.id)||'',label:require('./model-sources.cjs').label(profile)+' · '+profile.model};
 }
 async function addMcp(context) {
  const type=await vscode.window.showQuickPick(['stdio','http'],{title:'MCP transport: installed local server or Streamable HTTP'});if(!type)return;
@@ -83,7 +90,7 @@ async function chooseMcp(context) {
 async function checkSavedConnection(context) {
  const profiles=saved(context);
  if(!profiles.length){await vscode.window.showInformationMessage('Add a model connection first. No API was checked.');return;}
- const choice=await vscode.window.showQuickPick(profiles.map(p=>({label:p.service+' · '+p.model,description:p.endpoint,profile:p})),{title:'Check API connection — reads /models; does not generate text'});
+ const choice=await vscode.window.showQuickPick(profiles.map(p=>({label:require('./model-sources.cjs').label(p)+' · '+p.model,description:p.endpoint,profile:p})),{title:'Check API connection — reads /models; does not generate text'});
  if(!choice)return;
  const profile=choice.profile;
  const answer=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Checking '+profile.service},async()=>{

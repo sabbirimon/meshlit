@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "settings-to-harness",
+    "plaintext-lan-rejected",
+    "connection-confirmation-cancel",
+    "real-host-dom-with-interactive-controls",
+    "bootstrap-token-removed-and-clean-address-saved",
+    "disconnect-returns-to-setup",
+    "cookie-reconnect-without-token",
+    "back-to-settings"
+  ],
+  "modelRequests": 0,
+  "webView": "155.0.8059.43",
+  "device": "SM-A207F",
+  "android": "11",
+  "visualQualification": "DOM and navigation passed; initial screenshot was blank. Updated compositor-wait capture is not yet requalified."
+}

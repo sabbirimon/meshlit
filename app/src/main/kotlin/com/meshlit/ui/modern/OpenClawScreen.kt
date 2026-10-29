@@ -28,6 +28,15 @@ import java.util.UUID
     var agent by remember{mutableStateOf(host.agent())};var prompt by remember{mutableStateOf("")};var answer by remember{mutableStateOf("")}
     var error by remember{mutableStateOf<String?>(null)};var sending by remember{mutableStateOf(false)};var task by remember{mutableStateOf<Job?>(null)}
     val session=remember{UUID.randomUUID().toString()}
+    val lifecycleOwner=androidx.lifecycle.compose.LocalLifecycleOwner.current
+    var accessibilityBound by remember { mutableStateOf(com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService.instance!=null) }
+    DisposableEffect(lifecycleOwner) {
+        val observer=androidx.lifecycle.LifecycleEventObserver { _,event ->
+            if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME) accessibilityBound=com.meshlit.core.cloudmcp.android.MeshlitAccessibilityService.instance!=null
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var delegated by remember{mutableStateOf(control.enabled())};var allApps by remember{mutableStateOf(control.allApps())}
     var installedBrowsers by remember{mutableStateOf<List<Pair<String,String>>>(emptyList())}
     LaunchedEffect(context){installedBrowsers=withContext(Dispatchers.IO){context.packageManager.queryIntentActivities(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://example.com")),android.content.pm.PackageManager.MATCH_DEFAULT_ONLY).map{it.activityInfo.packageName to it.loadLabel(context.packageManager).toString()}.distinctBy{it.first}.sortedBy{it.second}}}
@@ -39,7 +48,9 @@ import java.util.UUID
                 Text("Runs with a model loaded on this device. In Chat → Conversation settings, choose the local model and turn on Allow phone tools. Enable delegation and save an app scope below. No gateway, cloud account or other host is required for phone actions.")
                 Text("The agent can inspect and operate approved apps while this task runs. It stops after eight actions or five minutes, and Chat Stop cancels it. A small starter model may fail to plan a complex task; the app reports that failure instead of pretending it succeeded.",style=MaterialTheme.typography.bodySmall)}
             if(!com.meshlit.BuildConfig.PLAY_REVIEW){
-            item{HorizontalDivider();Text("Android app control",style=MaterialTheme.typography.titleLarge)
+            item{HorizontalDivider();Text("Agent app access",style=MaterialTheme.typography.titleLarge)
+                Text(if(accessibilityBound) "Accessibility service connected" else "Accessibility service disconnected · app control unavailable")
+                OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))}){Text("Open Android accessibility settings")}
                 Text("Allow the local agent to snapshot, open, tap, type, go Back and Home within saved scope. Enable the Android accessibility service separately. Root, protected OS surfaces and password input are outside this permission.")
                 Row{Text("Autonomous delegation",Modifier.weight(1f));Switch(delegated,{on ->run{
                     settings.setAndroidAutomationEnabled(on);control.setEnabled(on);delegated=on

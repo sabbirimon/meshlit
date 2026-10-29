@@ -4,6 +4,54 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Composer, model routes and device access — 2026-10-30
+
+Studio now exposes Chat, Plan, Edit / Build and Autopilot directly in each chat
+composer, alongside the selected model and API endpoint. Enter sends; Shift+Enter
+adds a newline; IME composition does not submit. Buttons use compact workbench
+styling with a round send control. The + menu opens model setup, provider pages,
+MCP connections, workspace selection and Usage unlock. The review-policy control
+explains actual tool/diff approval; it does not offer an unimplemented Full access
+setting. Build currently means reviewed edits, not autonomous terminal builds.
+
+Changing mode/model before a first request updates that session. After it has
+started, selection opens an independent chat, retaining the old history/permissions.
+Per-provider cached catalogs are selectable from the model picker. In the native
+Mac UI, the picker opened and selected the bundled model, all four modes were
+visible, and Plan without a local folder displayed the workspace requirement.
+18 JavaScript cases passed, including runtime mode/route wiring, concurrent chat
+creation, keyboard behavior, endpoint/cost labels and approval contracts. No model
+request was sent during this qualification.
+
+Separate OmniRoute, FreeLLMAPI and Hugging Face pages now expose catalog filters
+and integrated dashboard navigation. Dashboard authentication does not configure
+Meshlit's API connection. Catalog metadata is not proof of account access, usable
+credits, free fallback, or generation. Bundled OmniRoute/FreeLLMAPI runtime packaging
+is still in preparation; the npm artifact/pinned source are cached outside Git,
+not shipped or running. Hugging Face remains a hosted account dashboard; official
+huggingface.js hub/inference/gguf modules are candidates, not bundled integrations.
+
+Source includes device-local/remote/group/cluster connection labels, the Studio
+API/protocol directory, and a scoped native Mac app-access helper. Mac access is
+off until the owner grants its separate Accessibility permission and chooses apps;
+no real external-app action is qualified. Android shows the existing service's
+connection state and opens its Accessibility settings. Group labels do not create
+model sharding. Core-inference tests passed (289 cases); both APK assembly tasks completed.
+Android lint remains running at this progress checkpoint, so no fresh Android
+qualification or release is claimed.
+
+Samsung SM-A207F/Android 11 passed the Harness connection/navigation instrumentation
+with no model calls; its first screenshot showed a blank WebView despite DOM
+success. A compositor-wait capture is added but visual requalification remains open.
+Mac native Harness rendered its real workspace, settings and custom model API form.
+No account login or provider call was completed. See the dated evidence files.
+
+Remaining: bundled gateway lifecycle and authenticated account qualification,
+physical Android visual recheck, enabled app-access device proof, provider-supported
+reasoning controls, attachments/voice, task/terminal execution policy and complete
+installer/mobile UI parity. These are not implied by the new composer.
+
+
 ## DeepSeek Harness hosted workspace — 2026-10-30
 
 Implemented an optional connection to the real upstream Harness workspace inside

@@ -51,5 +51,16 @@
       "apkSha256": "a7831989e5746135f6fa9c22d5249389aef5f253b54254f98752481094bbbc89"
     }
   ],
-  "physicalPhoneTested": false
+  "physicalPhoneTested": false,
+  "followUp20261030": {
+    "nativeMacRenderedHarnessUi": true,
+    "nativeMacObserved": [
+      "real workspace",
+      "Read Only permission control",
+      "Settings \u2192 Models \u2192 Custom model API"
+    ],
+    "physicalSamsungFunctionalTest": "harness-samsung-20261030.json",
+    "physicalScreenshot": "Initial capture blank; compositor-wait recheck remains open",
+    "modelRequests": 0
+  }
 }
