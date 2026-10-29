@@ -79,7 +79,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current regressions, limitations and verification",
-      "contentSha256WithoutTrackingBlock": "cdddfef65c8e2dabd25bb320909cda06451e9f3e1e24f38ac0e7bc19690d0f29"
+      "contentSha256WithoutTrackingBlock": "b68a2cb97c28a28cc5770b3c013c2e27c68629adb8b3eef0e27bc91ba48ce91d"
     },
     {
       "path": "BUILD.md",
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "296377b2d3119903c061835f179f9d2ca6b65db60a34c6e471084030d1c4f2d3"
+      "contentSha256WithoutTrackingBlock": "bb1d3b01d379e1ec66b73f26f8120572d195682091ac5b0b2579b86538a2d182"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "5447effa17bf78b6344b180d844c2711c9d317a109eec21a9c994e2723e137fc"
+      "contentSha256WithoutTrackingBlock": "3ef358c4127cec43fb24a5cd88df40e152fc7325329d6559e4be86a2e5b1399e"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "38f4054936405069c9f815013788276626275674f0ffe37fc88ff4ff7a6c6a9a"
+      "contentSha256WithoutTrackingBlock": "d77e1facca4b61350e14b0bcba83e06b915a2b530b283589f428bd00d87af6c6"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -793,7 +793,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Dedicated inference runtime and HyperL cluster plan",
-      "contentSha256WithoutTrackingBlock": "4b9e3212d59485fa5d21e379ab52931934781096663a2d3e15aa4b1d80f0ec59"
+      "contentSha256WithoutTrackingBlock": "92983a0ba33416ed52dcedb95fa962116b352048f552100e76f65723e90f4af5"
     },
     {
       "path": "docs/cloud-and-credential-management.md",

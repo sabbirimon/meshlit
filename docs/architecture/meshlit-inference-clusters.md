@@ -38,3 +38,28 @@ Next: reproduce existing local/worker evidence, inventory exact capabilities,
 define versioned admission/reservation contracts and qualify one paired worker.
 Studio/Android dashboards and optional provider gateways remain in this app repo.
 The new repository does not resolve existing gateway, phone or packaging gates.
+
+## First implementation and updated evidence
+
+[Runtime branch](https://github.com/sabbirimon/meshlit-inference/tree/feat/worker-admission)
+adds a Kotlin/JVM capability codec and local admission ledger with 23 passing tests.
+[Adapter contract](https://github.com/sabbirimon/meshlit-inference/blob/feat/worker-admission/docs/ADMISSION.md)
+explains the authentication/worker binding still required. Resource credits are
+local accounting, not OS memory reservation or durable cluster leases.
+
+[HyperL commit 69d2ad8](https://github.com/sabbirimon/HyperL/commit/69d2ad8) implements
+native buffer liveness with unchanged numerical/ABI/admission contracts. No newly
+restricted code is copied into this app. Its newer standalone split/map/gather
+and TLS worker implementation is reused for qualification rather than rebuilt.
+
+[Baseline report](https://github.com/sabbirimon/meshlit-inference/blob/feat/worker-admission/evidence/2026-10-29.json)
+retains both the failed default-kernel output comparison and passing reference
+profile on two native loopback RPC workers. `scripts/verify-pipeline-host.py` now
+accepts an explicit reviewed binary directory, streams model hashing, records
+binary hashes/native timings and exposes the explicit reference-kernels option.
+No production kernel defaults were changed. Passing reference output does not
+qualify arbitrary models, GPUs, remote phones or the default kernel profile.
+
+M0/M1 remain partial: physical devices, measured sustained memory/streaming latency
+and admission-to-worker integration remain open. HyperL CPU memory optimization
+is implemented upstream, not yet shipped in Meshlit or a new installer.

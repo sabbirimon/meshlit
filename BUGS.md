@@ -4,6 +4,19 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Native worker default-kernel equivalence — 2026-10-29
+
+Open qualification issue: pinned CPU llama.cpp build on this Intel Mac produced
+different continuation text between local and two-RPC-worker execution with
+default repacking/flash-attention settings. Both executed real model layers.
+Disabling repacking and flash attention for both paths restored identical output
+for the fixed 32-token test. The individual source of the difference is not yet
+isolated; do not generalize this to a corruption bug or universal determinism.
+Retain both results in the [runtime evidence](https://github.com/sabbirimon/meshlit-inference/blob/feat/worker-admission/evidence/2026-10-29.json).
+Default-profile numerical/performance qualification and broader model/device
+coverage are pending. No app default was changed to hide this result.
+
+
 ## G1 contract hardening and math assessment — 2026-10-26
 
 Durable ledger replay now rejects invalid domains, duplicate currency policies, inconsistent terminal costs and illegal event shapes. Any uncertain write disables the current authority until reopen. Android profile/key edits use one checked encrypted transaction; a failed commit blocks further credentials in that instance, and current profile/local-key bindings are rechecked before dispatch. Independent integer accounting and write-then-fail regressions pass; full regression, both debug assemblies and both lints passed. Samsung device follow-up is in progress. Studio durable credentials, all-adapter revocation, cross-device authority and live account/device qualification remain open. No automatic routing or provider billing-cap promise was added.

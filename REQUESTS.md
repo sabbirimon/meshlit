@@ -4,6 +4,32 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Device runtime and HyperL first implementation — 2026-10-29
+
+The private [runtime feature branch](https://github.com/sabbirimon/meshlit-inference/tree/feat/worker-admission)
+now contains a bounded capability codec and local worker-admission library: 23 JVM
+contract tests pass. It checks exact backend/build/model identity, atomic memory
+credits, headroom, expiry, ownership, revocation and authority epochs. Cancellation
+retains running-job credits until native cleanup is confirmed. This library is not
+yet wired into authenticated workers or the Studio/Android UI.
+
+Standalone [HyperL native liveness](https://github.com/sabbirimon/HyperL/commit/69d2ad8)
+releases intermediates after last use while preserving ABI, numerical rules and
+conservative admission. Four Release CTest cases, three sanitizer CPU cases and
+500 before/after bitwise/status comparisons pass. A controlled chain used 32,768
+versus 212,992 bytes of live native buffer payload; this is not overall RSS or a
+speed claim. Newly covered changes retain HyperL's separate license and are not
+automatically imported into Meshlit's Android port.
+
+Real llama.cpp local/two-RPC-worker generation was rerun on this Mac. Default
+kernel settings produced different text; matched reference settings (no repack,
+flash attention off) produced identical 32-token output with two-worker placement.
+Both results are retained. Existing HyperL two-worker/eight-shard TLS tests also
+passed on this host. No phone connected; physical-device, oversized-model, sustained
+RSS/latency and production worker integration gates remain open. No paid API calls
+or model downloads. See [implementation and evidence](docs/architecture/meshlit-inference-clusters.md).
+
+
 ## Device clusters and HyperL runtime plan — 2026-10-29
 
 Created the private [meshlit-inference](https://github.com/sabbirimon/meshlit-inference)

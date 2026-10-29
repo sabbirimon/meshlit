@@ -6,9 +6,19 @@ from pathlib import Path
 def port():
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));return sock.getsockname()[1]
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--model',type=Path,required=True);parser.add_argument('--sha256',required=True);parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
-    root=Path(__file__).resolve().parents[1];binary=root/'build/pipeline-host/bin';model=args.model.resolve()
-    digest=hashlib.sha256(model.read_bytes()).hexdigest()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--model',type=Path,required=True);parser.add_argument('--sha256',required=True);parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--binary-dir',type=Path,help='Existing reviewed host build; no download or rebuild')
+    parser.add_argument('--reference-kernels',action='store_true',help='Disable repacking and flash attention on both paths for a controlled CPU comparison')
+    args=parser.parse_args()
+    root=Path(__file__).resolve().parents[1];binary=(args.binary_dir or root/'build/pipeline-host/bin').resolve();model=args.model.resolve()
+    def sha256(path):
+        digest=hashlib.sha256()
+        with path.open('rb') as stream:
+            for chunk in iter(lambda:stream.read(1024*1024),b''):digest.update(chunk)
+        return digest.hexdigest()
+    for name in ('llama-server','ggml-rpc-server'):
+        if not (binary/name).is_file():raise ValueError('Missing installed native binary: '+name)
+    digest=sha256(model)
     if digest!=args.sha256:raise ValueError('Model digest mismatch')
     args.output.mkdir(parents=True,exist_ok=True);processes=[];logs=[];token=uuid.uuid4().hex+uuid.uuid4().hex
     key=args.output/'temporary-api-key';key.write_text(token);os.chmod(key,0o600)
@@ -23,6 +33,7 @@ def main():
             return json.loads(raw)
     def server(name,rpc=None):
         number=port();argv=[str(binary/'llama-server'),'-m',str(model),'--host','127.0.0.1','--port',str(number),'--api-key-file',str(key),'--no-ui','-v','-t','2','-c','256','--parallel','1']
+        if args.reference_kernels:argv+=['--no-repack','--flash-attn','off']
         argv+=['--device','none','-ngl','0'] if rpc is None else ['--rpc',rpc,'--device','RPC0,RPC1','-ngl','99','--split-mode','layer','--tensor-split','1,1']
         proc=launch(name,argv);deadline=time.monotonic()+90
         while time.monotonic()<deadline:
@@ -46,7 +57,15 @@ def main():
         logs[-1].flush();text=(args.output/'distributed.log').read_text()
         identical=baseline['content']==distributed['content'];placement=all(('assigned to device RPC'+str(i)) in text and ('127.0.0.1:'+str(workers[i])+'] model buffer size') in text for i in range(2))
         for name,value in [('baseline-response',baseline),('distributed-response',distributed)]:(args.output/(name+'.json')).write_text(json.dumps(value,indent=2))
-        result={'model_sha256':digest,'model_bytes':model.stat().st_size,'identical_output':identical,'two_remote_buffers':placement,'physical_phone_proof':False,'oversized_model_proof':False,'tls_transport_proof':False,'runtime':'existing pinned native CPU host binaries'}
+        def measurements(response):
+            return {'prompt_tokens':response.get('tokens_evaluated'), 'output_tokens':response.get('tokens_predicted'),
+                'timings':response.get('timings'), 'peak_memory_bytes':None, 'first_token_ms':None,
+                'inter_token_ms':None}
+        result={'model_sha256':digest,'model_bytes':model.stat().st_size,'identical_output':identical,'two_remote_buffers':placement,'physical_phone_proof':False,'oversized_model_proof':False,'tls_transport_proof':False,'runtime':'existing pinned native CPU host binaries',
+            'binary_sha256':{name:sha256(binary/name) for name in ('llama-server','ggml-rpc-server')},
+            'baseline':measurements(baseline),'two_workers':measurements(distributed),
+            'reference_kernels':args.reference_kernels,
+            'measurement_scope':'Non-streaming CPU generation on one host; memory and streaming latency unmeasured'}
         (args.output/'proof.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
         if not identical or not placement:raise ValueError('Native output/placement check failed')
     finally:
