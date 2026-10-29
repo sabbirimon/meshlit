@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-142 active, 19 historical, 8 protected, 1 template, 6 third-party; 177 Markdown documents including this index.
+143 active, 19 historical, 8 protected, 1 template, 6 third-party; 178 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -125,6 +125,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/architecture/current-state.md](architecture/current-state.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/federation.md](architecture/federation.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/hooks.md](architecture/hooks.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/architecture/meshlit-inference-clusters.md](architecture/meshlit-inference-clusters.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/cloud-and-credential-management.md](cloud-and-credential-management.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/code-workspace-and-permissions.md](code-workspace-and-permissions.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/declarative-federation-roadmap.md](declarative-federation-roadmap.md) | Android/shared reference; desktop ports have separate acceptance |

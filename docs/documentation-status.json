@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 142,
+    "active": 143,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "e88a20179104b153a744929d6c2f1eac66ef8e91142953f4f0af79ce7d30da07"
+      "contentSha256WithoutTrackingBlock": "296377b2d3119903c061835f179f9d2ca6b65db60a34c6e471084030d1c4f2d3"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "4e152f87933c0d3bfd7589c62e55ec1392446a05c72526f85bf91cdbf79a66e3"
+      "contentSha256WithoutTrackingBlock": "5447effa17bf78b6344b180d844c2711c9d317a109eec21a9c994e2723e137fc"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "c890422cba0b0d995e112f915ab8362edaff1b9d1c1dcb50cd80f11c7612db31"
+      "contentSha256WithoutTrackingBlock": "38f4054936405069c9f815013788276626275674f0ffe37fc88ff4ff7a6c6a9a"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -787,6 +787,13 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Phase 8 \u2014 Hooks",
       "contentSha256WithoutTrackingBlock": "48d9c4cecc2af4307e9b3231ff82071ce6e021466b083ed461cabdcaf7d797c6"
+    },
+    {
+      "path": "docs/architecture/meshlit-inference-clusters.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Dedicated inference runtime and HyperL cluster plan",
+      "contentSha256WithoutTrackingBlock": "4b9e3212d59485fa5d21e379ab52931934781096663a2d3e15aa4b1d80f0ec59"
     },
     {
       "path": "docs/cloud-and-credential-management.md",

@@ -4,6 +4,18 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Device clusters and HyperL runtime plan — 2026-10-29
+
+Created the private [meshlit-inference](https://github.com/sabbirimon/meshlit-inference)
+repository with reviewed architecture, staged acceptance gates and source pins.
+Scope includes device-to-device jobs, compatible model layer execution, an optional
+HyperL adapter and measured HyperL improvements. DeepInfer is a future supported-host
+backend, not a working Mac/Android engine. This delivery is a plan only; no new
+cluster/HyperL runtime or performance claim. First gate: reproduce existing native
+baselines, then capability admission and one approved pair. See the
+[integration record](docs/architecture/meshlit-inference-clusters.md).
+
+
 ## Separate OmniRoute and FreeLLMAPI dashboards — 2026-10-29
 
 The new IDE source now has an explicit per-connection catalog health check:
