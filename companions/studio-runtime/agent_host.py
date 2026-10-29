@@ -197,6 +197,13 @@ class Host:
 
     async def command(self, data):
         op, session = data.get('op'), data.get('session')
+        if op == 'load_local':
+            try:
+                result = await self.backend.call('load_local')
+                emit(dict(type='local_model', state='ready', label=result['label'], context=result['context']))
+            except Exception:
+                emit(dict(type='local_model', state='error', message='Bundled model could not load. Check installed resources and free memory. No online fallback was used.'))
+            return
         if op == 'unlock':
             await self.backend.call('unlock', password=data['password'])
             emit(dict(type='unlocked')); return

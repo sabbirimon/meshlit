@@ -47,6 +47,13 @@ internal fun runIdeBackend() {
                             try { vault.unlock(pass) } finally { pass.fill('\u0000') }
                             buildJsonObject { put("ready", true) }
                         }
+                        "load_local" -> {
+                            if (session == null || !engine.isRunning()) session = engine.start()
+                            buildJsonObject {
+                                put("ready", true); put("label", DesktopStarter.label)
+                                put("context", session!!.context)
+                            }
+                        }
                         "usage" -> buildJsonObject {
                             val rows = vault.journal().snapshot().attempts
                             put("requests", rows.size)
@@ -62,7 +69,7 @@ internal fun runIdeBackend() {
                             require(messages.size in 1..64)
                             val route = request["route"] as? JsonObject
                             val local = route == null || route["kind"]?.jsonPrimitive?.content == "local"
-                            val active = if (local) session ?: engine.start().also { session = it } else null
+                            val active = if (local) session?.takeIf { engine.isRunning() } ?: engine.start().also { session = it } else null
                             val endpoint = active?.endpoint ?: HostEndpoint.parse(route!!.getValue("endpoint").jsonPrimitive.content)
                             val token = active?.token ?: route?.get("token")?.jsonPrimitive?.content.orEmpty()
                             require(token.length <= 8192 && token.none(Char::isISOControl))
@@ -107,6 +114,7 @@ internal fun runIdeBackend() {
                 } catch (e: Exception) {
                     attempt?.let { runCatching { vault.journal().finish(it, if (Thread.currentThread().isInterrupted) "cancelled" else "failed", null, null) } }
                     emit(id, buildJsonObject { put("error", when (operation) {
+                        "load_local" -> "Bundled model could not load. Check packaged model/engine files and available memory. No online fallback was attempted."
                         "unlock" -> "Cannot unlock usage: check passphrase and close the older Studio if it owns this vault."
                         else -> "Request failed or was cancelled. Check Usage unlock, free-only/budget rules, model context, endpoint and credentials. Opaque gateways cannot use local spending budgets."
                     }) })

@@ -7,13 +7,15 @@ const readline = require('node:readline');
 const tools = require('./workspace-tools.cjs');
 const connections = require('./connections.cjs');
 const navigation = require('./navigation.cjs');
-let host, unlocked = false, hostReady = false;
+let host, unlocked = false, hostReady = false, localModel={state:'idle'};
 const changed = new vscode.EventEmitter();
 const chats = new Map(), snapshots = new Map();
 const send = message => {
   if (!host || host.killed) throw Error('Meshlit agent host is unavailable');
   host.stdin.write(JSON.stringify(message)+'\n');
 };
+function readiness() { for(const chat of chats.values()) chat.panel.webview.postMessage({type:'runtime',ready:hostReady,unlocked,localModel}); }
+function loadLocal(){if(!hostReady || ['loading','ready'].includes(localModel.state))return;localModel={state:'loading'};readiness();send({op:'load_local'});}
 function status(message) { vscode.window.showInformationMessage(message); }
 function boot(context) {
   if (host) return;
@@ -25,8 +27,9 @@ function boot(context) {
   host.stderr.on('data', () => {});
   readline.createInterface({input:host.stdout}).on('line', line => {
     let event; try { event=JSON.parse(line); } catch { return; }
-    if(event.type==='ready') { hostReady=true; }
-    else if(event.type==='unlocked') { unlocked=true; status('Usage unlocked. Model requests are recorded in Meshlit.'); }
+    if(event.type==='ready') { hostReady=true;readiness();if([...chats.values()].some(c=>c.route.kind==='local'))loadLocal(); }
+    else if(event.type==='local_model') {localModel=event;readiness();}
+    else if(event.type==='unlocked') { unlocked=true;readiness(); status('Usage unlocked. Model requests are recorded in Meshlit.'); }
     else if(event.type==='usage') status(`Requests: ${event.requests}; reported input: ${event.inputTokens}; output: ${event.outputTokens}; unknown usage: ${event.unknownUsageRequests}. Totals include existing history.`);
     else if(event.type==='tool') handleTool(event).catch(() => replyTool(event,'Denied or failed'));
     else if(chats.has(event.session)) {
@@ -38,7 +41,7 @@ function boot(context) {
   });
   host.on('error', () => vscode.window.showErrorMessage('Cannot start the Meshlit SDK host.'));
   host.on('exit', () => {
-    host=undefined; unlocked=false;hostReady=false;
+    host=undefined; unlocked=false;hostReady=false;localModel={state:'idle'};
     for(const chat of chats.values()) {
       chat.busy=false;chat.closed=true;
       chat.panel.webview.postMessage({type:'error',message:'Agent host closed. Open a new chat after restarting the host.'});
@@ -107,14 +110,17 @@ async function openChat(context,coding,profileId,options={}) {
   const initialRoute=options.route||(profileId?await connections.chooseConnection(context,profileId):{kind:'local',label:'Bundled local model'});
   if(!initialRoute)return;
   const id=crypto.randomUUID(), title=mode!=='chat' ? `Agent · ${mode}` : `Chat ${chats.size+1}`;
-  const panel=vscode.window.createWebviewPanel('meshlit.chat',title,vscode.ViewColumn.Beside,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});
+  const column=[...chats.values()].find(c=>c.panel.viewColumn)?.panel.viewColumn || vscode.ViewColumn.Beside;
+  const panel=vscode.window.createWebviewPanel('meshlit.chat',title,column,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});
   context.subscriptions.push(panel);
   const chat={panel,mode,root,title,busy:false,writes:0,receipts:new Map(),route:initialRoute,connectors:selectedConnectors,started:false,closed:false}; chats.set(id,chat); changed.fire();
-  const update=()=>panel.webview.postMessage({type:'configuration',mode:chat.mode,label:chat.route.label||'Bundled local model',endpoint:chat.route.endpoint||'On this device',started:chat.started});
+  const update=()=>panel.webview.postMessage({type:'configuration',mode:chat.mode,label:chat.route.label||'Bundled local model',endpoint:chat.route.endpoint||'On this device',started:chat.started,local:chat.route.kind==='local'});
   panel.webview.html=require('./chat-view.cjs').render(title,mode);
   panel.webview.onDidReceiveMessage(async message => {
     try {
-      if(message.op==='ready'){update();return;}
+      if(message.op==='ready'){update();readiness();if(chat.route.kind==='local')loadLocal();return;}
+      if(message.op==='loadLocal'){loadLocal();return;}
+      if(message.op==='unlock'){await vscode.commands.executeCommand('meshlit.unlockUsage');return;}
       if(message.op==='newChat'){await openChat(context,false);return;}
       if(message.op==='approvals'){status('Workspace reads and tool calls require approval. Edits open a diff for review and remain unsaved. Autopilot keeps these controls; Full access is not implemented.');return;}
       if(message.op==='actions'){
@@ -145,20 +151,21 @@ async function openChat(context,coding,profileId,options={}) {
             if(chat.closed || !chats.has(id))return;
             chat.mode=selected;chat.root=selected==='chat'?undefined:folder.uri.fsPath;chat.connectors=connectors;
           } else chat.route=selected;
-          update();changed.fire();
+          update();changed.fire();if(chat.route.kind==='local')loadLocal();
         } finally {chat.configuring=false;}
         return;
       }
       if(message.op==='stop') { send({op:'stop',session:id}); chat.busy=false; chat.closed=true; }
       if(message.op==='send' && !chat.busy) {
         if(chat.configuring){panel.webview.postMessage({type:'error',message:'Finish choosing the model or mode before sending.'});return;}
-        if(!unlocked) { panel.webview.postMessage({type:'error',message:'Run Meshlit: Unlock Usage from the Command Palette first.'}); return; }
+        if(!hostReady || !unlocked) { readiness();panel.webview.postMessage({type:'error',message:!hostReady?'The model host is still starting. Wait for it to become ready.':'Unlock the Meshlit usage ledger with its existing passphrase, then send again. This is not your Mac login or provider password.'}); return; }
+        if(chat.route.kind==='local'&&localModel.state!=='ready'){loadLocal();panel.webview.postMessage({type:'error',message:'The bundled local model is not ready yet. Wait for Local model ready, then send again.'});return;}
         if(typeof message.prompt!=='string' || !message.prompt.trim() || message.prompt.length>16000) return;
         chat.busy=true; chat.writes=0;chat.started=true;
         changed.fire();
         update();send({op:'send',session:id,prompt:message.prompt,mode:chat.mode,workspace:chat.root,route:chat.route,connectors:chat.connectors});
       }
-    } catch { panel.webview.postMessage({type:'error',message:['connection','setup'].includes(message.op)?'Model setup did not finish. Check the API address and saved-key access; cancel any unwanted Keychain prompt and try again.':'Action could not complete. Check the selected workspace and runtime, then try again.'}); }
+    } catch { chat.busy=false;changed.fire();panel.webview.postMessage({type:'error',message:['connection','setup'].includes(message.op)?'Model setup did not finish. Check the API address and saved-key access; cancel any unwanted Keychain prompt and try again.':'Action could not complete. Check the selected workspace and runtime, then try again.'}); }
   });
   panel.onDidDispose(()=>{chats.delete(id); changed.fire(); if(host) send({op:'close',session:id});});
 }

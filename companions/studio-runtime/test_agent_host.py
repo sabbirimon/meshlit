@@ -20,6 +20,31 @@ class FixtureBackend:
 
 
 class NativeSdkTest(unittest.IsolatedAsyncioTestCase):
+    async def test_local_load_does_not_unlock_or_generate(self):
+        events=[]
+        class LocalBackend:
+            async def call(self, op, **fields):
+                self_outer.assertEqual(op, 'load_local')
+                self_outer.assertFalse(fields)
+                return dict(label='bundled fixture', context=4096)
+        self_outer=self
+        host=agent_host.Host(LocalBackend())
+        with patch.object(agent_host,'emit',events.append):
+            await host.command(dict(op='load_local'))
+        self.assertEqual(events,[dict(type='local_model',state='ready',label='bundled fixture',context=4096)])
+        self.assertEqual(host.sessions,{})
+
+    async def test_local_load_failure_does_not_fall_back_online(self):
+        events=[]
+        class MissingBackend:
+            async def call(self, op, **fields): raise RuntimeError('private path')
+        host=agent_host.Host(MissingBackend())
+        with patch.object(agent_host,'emit',events.append):
+            await host.command(dict(op='load_local'))
+        self.assertEqual(events[0]['state'],'error')
+        self.assertNotIn('private path',events[0]['message'])
+        self.assertEqual(host.sessions,{})
+
     async def test_independent_chats_and_read_only_plan_tools(self):
         events=[]; backend=FixtureBackend(); host=agent_host.Host(backend); host.start_proxy()
         slow,fast=str(uuid.uuid4()),str(uuid.uuid4())

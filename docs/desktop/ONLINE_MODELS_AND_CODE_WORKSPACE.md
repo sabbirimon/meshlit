@@ -263,3 +263,13 @@ not submit. Send becomes Stop while running; New chat stays available. The usage
 ledger must be unlocked before generation; this is separate from vendor login.
 Reasoning effort, microphone input and unrestricted permission modes are not yet
 implemented in the Meshlit composer. Harness has its own model/mode/settings UI.
+
+### Default local model and locked chat
+
+New Studio chats default to the shipped Qwen2.5 1.5B model. Opening a local chat
+loads and validates the packaged engine/model; the header reports Loading, Ready
+or Failed. This operation does not send a prompt or contact a model provider.
+Send requires both a ready local model and the unlocked Meshlit usage ledger.
+Use **Unlock chat** and enter the existing Meshlit usage passphrase in the app;
+this is separate from a Mac login password or provider account. Drafts remain
+editable while locked. There is no automatic reset of an existing vault.

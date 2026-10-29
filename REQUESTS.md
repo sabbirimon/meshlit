@@ -4,6 +4,30 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Default local chat and charcoal layout follow-up — 2026-10-30
+
+The bundled Qwen model now loads automatically when a local Studio chat opens,
+independently of the encrypted usage ledger. The real native UI reported Qwen2.5
+1.5B Instruct Q4_K_M ready on this Intel Mac; no generation or provider request
+was made. Remote routes never silently substitute for a missing local engine.
+Loading failure has an explicit retry action. A ready model does not unlock the
+ledger or bypass paid-route/budget checks.
+
+Chat now shows an actionable Unlock chat state before a request can be sent,
+retains drafts when blocked, aligns user messages right and reuses the chat editor
+group instead of making another split for every conversation. Meshlit Dark uses
+neutral charcoal surfaces, quiet borders and blue accents, including its no-folder
+status bar; syntax colors inherit the bundled Code OSS Dark Modern theme. The
+conversation has a centered width and a compact composer.
+
+Validation: 21 JS cases and four SDK transport/load-contract cases passed. Desktop
+72 cases, one existing skip, zero failures; jar build passed with configuration
+cache disabled (generateStudioIdentity is not cache-compatible). Previous Android
+builds and both lints also finished successfully. The native default model loaded,
+but a chat reply remains unqualified until the owner unlocks the existing usage
+ledger. No password reset, provider login or online generation was performed.
+
+
 ## Composer, model routes and device access — 2026-10-30
 
 Studio now exposes Chat, Plan, Edit / Build and Autopilot directly in each chat

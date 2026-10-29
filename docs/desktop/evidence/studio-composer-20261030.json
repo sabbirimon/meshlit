@@ -25,5 +25,21 @@
     "Test profile had no saved provider connections",
     "Gateway runtime packaging remains pending"
   ],
-  "developmentBundleAdHocSignatureVerified": true
+  "developmentBundleAdHocSignatureVerified": true,
+  "followUp": {
+    "javascriptCases": 21,
+    "sdkTests": 4,
+    "desktopCases": 72,
+    "desktopSkipped": 1,
+    "desktopFailures": 0,
+    "defaultLocalAutoLoad": true,
+    "nativeModelReady": "Qwen2.5 1.5B Instruct \u00b7 Q4_K_M",
+    "modelLoadRequestsProvider": 0,
+    "generationStillRequiresUsageUnlock": true,
+    "draftPreserved": true,
+    "androidBothBuildsAndLints": "passed; completed previous background run",
+    "nativeCharcoalThemeInspected": true,
+    "nativeChatGroupMaximized": true,
+    "draftRestoredAfterDevelopmentReload": "hello"
+  }
 }
