@@ -2,7 +2,7 @@
   "name": "meshlit-workbench",
   "displayName": "Meshlit",
   "publisher": "meshlit",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -59,6 +59,10 @@
       {
         "command": "meshlit.checkConnection",
         "title": "Meshlit: Check API Connection"
+      },
+      {
+        "command": "meshlit.deepseekHarness",
+        "title": "Meshlit: DeepSeek Harness"
       }
     ],
     "menus": {

@@ -139,6 +139,7 @@ function html(title,mode) {
 }
 function activate(context) {
   navigation.register(context);
+  require('./deepseek-harness.cjs').register(context);
   context.subscriptions.push(vscode.commands.registerCommand('meshlit.reveal',id=>chats.get(id)?.panel.reveal()),
     vscode.window.registerTreeDataProvider('meshlit.sessions', {
       onDidChangeTreeData:changed.event,

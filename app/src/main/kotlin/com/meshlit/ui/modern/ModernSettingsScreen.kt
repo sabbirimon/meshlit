@@ -113,6 +113,7 @@ import kotlinx.coroutines.*
     if(destination=="tasks"){TaskManagerScreen(back,{navigate("operations")});return}
     if(destination=="files"){FileManagerScreen(back);return}
     if(destination=="termux"){ExistingTermuxSettings(back);return}
+    if(destination=="deepseek-harness"){com.meshlit.harness.HarnessScreen(back);return}
     if(destination=="ide"){com.meshlit.ide.CodeWorkspaceScreen(back);return}
     if(destination=="hyperl"){HyperLScreen(back);return}
     if(destination=="resources"){ResourcesScreen(back);return}

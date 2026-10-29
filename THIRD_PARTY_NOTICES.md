@@ -45,3 +45,15 @@ remote images are not executed or automatically fetched.
 ### Offline host map
 
 The Android host map bundles unmodified Leaflet 1.9.4 JavaScript/CSS, BSD-2-Clause, copyright Volodymyr Agafonkin and contributors. Its licence is in `app/src/main/assets/map/LEAFLET_LICENSE.txt`. Land geometry comes from Natural Earth 1:110m land version 4.0.0, public domain, converted from the published shapefile to GeoJSON. Source URLs and processing are recorded in `app/src/main/assets/map/SOURCE.txt`. The offline layer makes no network requests. When the owner enables the optional street layer, tiles load from OpenStreetMap with visible contributor attribution and Meshlit's identifying user agent.
+
+
+### Optional DeepSeek Harness host
+
+DeepSeek Harness, copyright (c) 2026 DeepSeek, MIT license. Reviewed source
+`f3803c96974ad4a94195fb97e5c637e9c2a3afe3`; npm `@deepseek-ai/dsh`
+`0.2.2-alpha.2`. The full upstream MIT text is retained in
+`companions/deepseek-harness/UPSTREAM-LICENSE`. Source and artifact provenance
+and the transitive integrity lock accompany that directory. Upstream dependencies
+retain their individual licenses in the installed packages and upstream third-party
+notices. Meshlit connects to this separately installed runtime; no Harness runtime
+or upstream web bundle is redistributed in the APK or Studio app.

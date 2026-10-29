@@ -1174,6 +1174,24 @@
       "docs": [
         "docs/TAILSCALE_AND_VPN.md"
       ]
+    },
+    {
+      "id": "deepseek-harness-workspace",
+      "title": "Optional DeepSeek Harness host workspace",
+      "status": "implemented host connection; shared agent engine and physical mobile qualification pending",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/harness/HarnessScreen.kt",
+        "app/src/main/kotlin/com/meshlit/harness/HarnessEndpoint.kt",
+        "companions/studio-runtime/extension/deepseek-harness.cjs",
+        "companions/deepseek-harness/launch.py"
+      ],
+      "limitations": [
+        "Separate host runtime and upstream account/tool policy; no native Android SDK, Meshlit usage ledger integration or paired-device delegation. Disconnect does not cancel host jobs."
+      ],
+      "docs": [
+        "docs/architecture/deepseek-harness.md",
+        "companions/deepseek-harness/README.md"
+      ]
     }
   ],
   "modules": [

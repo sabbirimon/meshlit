@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-143 active, 19 historical, 8 protected, 1 template, 6 third-party; 178 Markdown documents including this index.
+145 active, 19 historical, 8 protected, 1 template, 6 third-party; 180 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -62,6 +62,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [companions/colibri/README.md](../companions/colibri/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/crawler/README.md](../companions/crawler/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/cyber/README.md](../companions/cyber/README.md) | optional host/schema/reference; not a bundled qualified service |
+| [companions/deepseek-harness/README.md](../companions/deepseek-harness/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/deployment/README.md](../companions/deployment/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/node/README.md](../companions/node/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/pipeline/README.md](../companions/pipeline/README.md) | optional host/schema/reference; not a bundled qualified service |
@@ -123,6 +124,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/architecture/PRODUCTION_CHANNELS.md](architecture/PRODUCTION_CHANNELS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/README.md](architecture/README.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/current-state.md](architecture/current-state.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/architecture/deepseek-harness.md](architecture/deepseek-harness.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/federation.md](architecture/federation.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/hooks.md](architecture/hooks.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/meshlit-inference-clusters.md](architecture/meshlit-inference-clusters.md) | Android/shared reference; desktop ports have separate acceptance |

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "reviewedAt": "2026-10-30",
+  "source": "https://github.com/deepseek-ai/deepseek-harness",
+  "reviewedSourceRevision": "f3803c96974ad4a94195fb97e5c637e9c2a3afe3",
+  "package": "@deepseek-ai/dsh",
+  "version": "0.2.2-alpha.2",
+  "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.2.2-alpha.2.tgz",
+  "integrity": "sha512-mdcpgF8D1eFQV8Gu3T/sYLkBwfw9h/Li0uPIxXyby1VybJgrFg8BU1Le40FiMnN+heL7k3zOMuAVe7sFq/JO4w==",
+  "license": "MIT",
+  "note": "Source review and published npm artifact pins are recorded separately; npm ci checks the committed transitive integrity lock."
+}

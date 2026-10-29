@@ -4,6 +4,29 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## DeepSeek Harness hosted workspace — 2026-10-30
+
+Implemented an optional connection to the real upstream Harness workspace inside
+Studio's integrated browser and both Android flavors. Android has Settings,
+Tools and automation, and Code workspace entry points; Studio has a rail/command
+entry. Connector settings persist clean host addresses, never launch tokens. Remote connections
+require HTTPS; literal loopback HTTP is supported for local hosts/tunnels.
+Android exposes no native JS/device bridge and refuses certificate bypass.
+
+The pinned Node host uses a separate private home, read-only initial permissions,
+no inherited provider keys, and disables official-model session-log contribution
+and session/product telemetry. Real Intel Mac host startup, cookie login, 401
+without authentication and foreign-origin API rejection passed with zero model
+requests. Adapter/launcher tests and Android build results are recorded in
+[the evidence](docs/desktop/evidence/deepseek-harness-20261030.json).
+
+This is a hosted-workspace integration, not a native Android Harness runtime or
+shared Meshlit agent engine. Harness owns its model bills, tools, approvals and
+jobs; disconnect is not Stop or logout. Shared model/usage admission, paired
+operations, native phone task controls and physical/TLS/provider qualification
+remain open in the [H1–H5 plan](docs/architecture/deepseek-harness.md).
+No paid API call, device enrollment, VPN change or release publication was made.
+
 ## Device runtime and HyperL first implementation — 2026-10-29
 
 The private [runtime feature branch](https://github.com/sabbirimon/meshlit-inference/tree/feat/worker-admission)

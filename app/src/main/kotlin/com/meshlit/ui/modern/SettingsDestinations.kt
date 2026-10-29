@@ -17,6 +17,7 @@ object SettingsDestinations {
         SettingsDestination("device-dashboard","Device management","Review and revoke saved endpoints, groups, workers, relay members and peer chat",keywords="approved group local remote single multi cluster pause stop revoke"),
         SettingsDestination("meshchat","Mesh chat","Foreground peer conversations over verified direct or relay connections",keywords="group device agent person message WhatsApp Telegram remote local chat"),
         SettingsDestination("securityprivacy","Security and privacy","Permissions, identity, guardrails, network access, audit and policy",keywords="privacy safety fraud trust auto on off customize settings"),
+        SettingsDestination("deepseek-harness","DeepSeek Harness","Connect to your host agent workspace",keywords="DeepSeek harness agents plugins remote IDE"),
         SettingsDestination("tools-automation","Tools and automation","MCP registry, Gateway routes, agent jobs and reviewed hooks",keywords="MCP A2A agents tool registry hooks scripts"),
         SettingsDestination("mcp-catalog","MCP connections","Browse common servers and enroll an approved HTTPS route",keywords="MCP filesystem fetch memory GitHub Playwright custom server tools"),
         SettingsDestination("rag","RAG settings","Select local or remote retrieval mode; source connectors remain experimental",keywords="documents files search retrieval knowledge base vector embeddings local remote"),

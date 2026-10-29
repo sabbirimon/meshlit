@@ -1,0 +1,55 @@
+{
+  "version": "0.2.2-alpha.2",
+  "runtimeStarted": true,
+  "unauthenticatedStatus": 401,
+  "authenticatedStatus": 200,
+  "foreignOriginApiStatus": 403,
+  "tokenRemovedByRedirect": true,
+  "sessionLogUpload": false,
+  "sessionTelemetry": "DISABLED",
+  "modelRequests": 0,
+  "uiHtmlSha256": "4c215429ebc51eb90b1e133af4965b51ac14e7dfa165336ae4f5b7114428b3dc",
+  "limits": [
+    "No live provider call or agent tool execution",
+    "No physical phone or HTTPS deployment qualification",
+    "Native Mac UI smoke timed out with SecurityAgent active; no rendered Harness UI proof",
+    "Harness jobs do not use Meshlit budgets or paired-device grants"
+  ],
+  "date": "2026-10-30",
+  "host": "macOS Intel x64",
+  "node": "24.18.0",
+  "sourceRevision": "f3803c96974ad4a94195fb97e5c637e9c2a3afe3",
+  "tests": {
+    "javascriptHarnessCases": 6,
+    "pythonLauncherCases": 4,
+    "androidEndpointCases": 4
+  },
+  "studioDevelopmentBundle": {
+    "extensionVersion": "0.3.1",
+    "updatedInPlace": true,
+    "adHocSignatureVerified": true,
+    "nativeSmoke": "Timed out while macOS SecurityAgent was active; isolated fixture stopped",
+    "renderedHarnessUi": false
+  },
+  "android": [
+    {
+      "flavor": "meshlitV1",
+      "assemble": "passed",
+      "lint": "passed",
+      "lintErrors": 0,
+      "apk": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-arm64-v8a-debug.apk",
+      "apkBytes": 561878670,
+      "apkSha256": "f88b22a1099db5b33f0284061554a38573265fb49681d2eb66a54141ea765346"
+    },
+    {
+      "flavor": "meshlitV2",
+      "assemble": "passed",
+      "lint": "passed",
+      "lintErrors": 0,
+      "apk": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+      "apkBytes": 561878660,
+      "apkSha256": "a7831989e5746135f6fa9c22d5249389aef5f253b54254f98752481094bbbc89"
+    }
+  ],
+  "physicalPhoneTested": false
+}

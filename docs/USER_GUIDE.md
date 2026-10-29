@@ -676,3 +676,20 @@ Open Dashboards → VPN & network. Studio can optionally read an installed Tails
 ## Usage storage recovery
 
 Usage history blocks further admission after an uncertain storage failure until it is reopened. Studio users can lock/unlock the usage vault; Android users should restart and review interrupted entries. Do not erase history to recover allowance. Provider budgets remain local estimates, not invoice caps.
+
+
+## DeepSeek Harness host workspace
+
+In experimental Studio use **DeepSeek Harness** in the Meshlit rail or command
+palette. On Android use **Settings → DeepSeek Harness**, Tools and automation,
+or the Code workspace button. This opens the actual optional host UI inside
+Meshlit. Start the pinned host using
+[the setup guide](../companions/deepseek-harness/README.md), then paste its private
+launch URL. Use trusted HTTPS from a phone; phone loopback does not reach desktop
+loopback automatically. Only the clean address is saved.
+
+Harness runs on the host with its own accounts, model selection, MCP plugins,
+approvals and history. Meshlit's budgets and device permissions are not inherited.
+Disconnecting does not stop host jobs: use Harness Stop first. Android WebView
+login cookies may survive disconnect; forgetting the address is not logout.
+This is not a native Android Harness SDK or a shared Meshlit agent engine yet.

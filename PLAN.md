@@ -115,3 +115,13 @@ For every change record request/feature IDs, source, commands and failures, mode
 ## Prerelease continuation — 2026-10-26
 
 Prepare Android and Intel macOS packages from validated source; build Windows/Linux Studio clients on their native CI runners. Preserve unavailable local runtime states and platform qualification limits. Publish an experimental prerelease only with successful artifacts and checksums.
+
+
+## Optional DeepSeek Harness integration — 2026-10-30
+
+The hosted workspace is implemented for Code OSS Studio and experimental Android.
+The [H1–H5 integration plan](docs/architecture/deepseek-harness.md) separates this
+usable upstream UI from future shared model/usage admission, scoped paired tools,
+native mobile task controls and release qualification. The pinned private-home
+launcher disables upstream session-log uploads and telemetry. Harness jobs retain
+their own accounts and permission policy; disconnecting is not cancellation.

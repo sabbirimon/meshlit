@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 143,
+    "active": 145,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -128,14 +128,14 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit implementation and qualification plan",
-      "contentSha256WithoutTrackingBlock": "0ff2e69c97d26e0401a32936cb1fb1882d2ff135cc787e5290fba4d02f22b351"
+      "contentSha256WithoutTrackingBlock": "a98cf2e0ebf9aad2ec1f58071adc9cb7a6c61a8fa3f6c20dbccffce940502381"
     },
     {
       "path": "PROGRESS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "bb1d3b01d379e1ec66b73f26f8120572d195682091ac5b0b2579b86538a2d182"
+      "contentSha256WithoutTrackingBlock": "49a46d8e96369bf56a6444fc448050a1150c82ba318626b88ec37afcc45a7d36"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "3ef358c4127cec43fb24a5cd88df40e152fc7325329d6559e4be86a2e5b1399e"
+      "contentSha256WithoutTrackingBlock": "9e9289bae313a155f7a73d5d67fa066197ac5bfcf59770a12af92d6dfe3ede30"
     },
     {
       "path": "SECURITY.md",
@@ -163,14 +163,14 @@
       "class": "protected",
       "scope": "licence, attribution or versioned agreement",
       "title": "Third-party notices for current additions",
-      "contentSha256WithoutTrackingBlock": "937d5cadd8c7a74221176b43ab19f64fb2d6bf3c9c2b3efc7b041fd477c8c2bc"
+      "contentSha256WithoutTrackingBlock": "e4786abb4f14ff4eb2d72606ac8bc486de0af1494042fcf7e82f2e41b1e8cc26"
     },
     {
       "path": "TODO.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "d77e1facca4b61350e14b0bcba83e06b915a2b530b283589f428bd00d87af6c6"
+      "contentSha256WithoutTrackingBlock": "84ba5dd0f4b9d08bb06e64f316f00c591afff78c9f9dad7a4fc1f7d548efa9bf"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -262,6 +262,13 @@
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Meshlit Security Lab companions",
       "contentSha256WithoutTrackingBlock": "6508714dad71d36220d949ea0f19db05da2b8e89dba3d75ca884a670a1d6fbf0"
+    },
+    {
+      "path": "companions/deepseek-harness/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "DeepSeek Harness host integration",
+      "contentSha256WithoutTrackingBlock": "80791f434c5cf7a8fd127c1898ac9a8664bdd616ba1bcbadee14e48a2460150e"
     },
     {
       "path": "companions/deployment/README.md",
@@ -723,7 +730,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "c29385b522994a94778ad010304c38fb257d8080a0381c635e901f02c1b4e38c"
+      "contentSha256WithoutTrackingBlock": "dec87f3b48f97ff01d641b4eef8054a0c7b1cd899d45c1f4e6d227c78b9a7316"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",
@@ -766,6 +773,13 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Current architecture and evidence boundaries",
       "contentSha256WithoutTrackingBlock": "f794a67f46b247123c40b426d5f12a83fa78c4efaa28d75c78562e6512a97259"
+    },
+    {
+      "path": "docs/architecture/deepseek-harness.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "DeepSeek Harness integration plan and implementation",
+      "contentSha256WithoutTrackingBlock": "45f8dc57fa70b80adbd0e447692e1b5ccd9d21a46accab6e347230013a7aaf8a"
     },
     {
       "path": "docs/architecture/dirty-tree-inventory-redesign-drawer-gemini.md",

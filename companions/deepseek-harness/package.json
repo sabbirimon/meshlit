@@ -1,0 +1,13 @@
+{
+  "name": "meshlit-deepseek-harness-host",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned optional DeepSeek Harness host; no automatic installation",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24.9.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.2-alpha.2"
+  }
+}

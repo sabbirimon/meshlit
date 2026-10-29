@@ -16,6 +16,11 @@ import kotlinx.serialization.json.JsonPrimitive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun CodeWorkspaceScreen(onBack:()->Unit){
+    var showHarness by remember { mutableStateOf(false) }
+    if(showHarness) androidx.compose.ui.window.Dialog(onDismissRequest={showHarness=false},
+        properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
+        Surface(Modifier.fillMaxSize()) { com.meshlit.harness.HarnessScreen { showHarness=false } }
+    }
     val context=LocalContext.current;val workspace=koinInject<CodeWorkspace>();val scope=rememberCoroutineScope()
     var files by remember{mutableStateOf<List<String>>(emptyList())};var name by remember{mutableStateOf("main.kt")}
     var text by remember{mutableStateOf("fun main() {\n    println(\"Hello, Meshlit\")\n}\n")};var hash by remember{mutableStateOf<String?>(null)}
@@ -36,6 +41,7 @@ import kotlinx.serialization.json.JsonPrimitive
                 var expanded by remember{mutableStateOf(false)}
                 Box{OutlinedButton(onClick={expanded=true}){Text("Files (${files.size})")};DropdownMenu(expanded,{expanded=false}){files.forEach{file ->DropdownMenuItem(text={Text(file)},onClick={expanded=false;scope.launch{try{val item=withContext(Dispatchers.IO){workspace.read(file)};name=file;text=item.text.orEmpty();hash=item.sha256}catch(e:Exception){message=e.message}}})}}}
             }
+            if(!com.meshlit.BuildProfile.coreCandidate) TextButton(onClick={showHarness=true}){Text("DeepSeek Harness · host workspace")}
             Text(name,Modifier.padding(horizontal=T.large),style=MaterialTheme.typography.titleSmall)
             Text("Offline CodeMirror editor · Save before switching files · Compiling uses an optional external/Linux toolchain",Modifier.padding(horizontal=T.large),style=MaterialTheme.typography.bodySmall)
             message?.let{Text(it,Modifier.padding(T.small),color=MaterialTheme.colorScheme.primary)}
