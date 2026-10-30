@@ -1,10 +1,12 @@
 package com.meshlit.qualification
 
 import androidx.test.platform.app.InstrumentationRegistry
-import com.meshlit.core.inference.models.OnlineMessage
+import com.meshlit.chat.ChatController
+import com.meshlit.chat.ChatOptions
 import com.meshlit.core.inference.models.OnlineProfile
 import com.meshlit.providers.OnlineProviders
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -23,8 +25,18 @@ class OwnerProviderSetupDeviceTest {
         val profile=OnlineProfile(id="owner-openrouter-free",name="OpenRouter · free model",endpoint="https://openrouter.ai/api/v1",
             model=model,enabled=true,agentAllowed=false)
         providers.save(profile,key)
-        assertTrue("Credential must be saved in encrypted provider storage",providers.hasStoredKey(profile))
-        val reply=providers.generate(profile.id,listOf(OnlineMessage("user","Reply exactly MESHLIT_OK")),maxTokens=256).second
-        assertTrue("Provider returned no visible answer",reply.text.isNotBlank())
+        assertTrue("Credential must be saved in encrypted provider storage",providers.tokenFor(profile).isNotBlank())
+        val chat=GlobalContext.get().get<ChatController>()
+        chat.ready.await()
+        check(!chat.state.value.running && chat.state.value.conversations.size<40) { "Finish the active task or make room for a dedicated provider chat" }
+        withContext(Dispatchers.Main) {
+            chat.newChat()
+            chat.setOptions(ChatOptions(onlineProfileId=profile.id,maxTokens=256))
+            assertNotNull("Test chat must start",chat.send("Reply exactly MESHLIT_OK"))
+        }
+        val state=withTimeout(120_000) { chat.state.first { !it.running && (it.error!=null || it.current?.messages?.any{m->m.role=="assistant" && m.text.isNotBlank()}==true) } }
+        assertNull("Provider chat failed",state.error)
+        assertEquals(profile.id,state.current?.options?.onlineProfileId)
+        assertTrue("Provider returned no visible answer",state.current!!.messages.any{it.role=="assistant" && it.text.isNotBlank()})
     }
 }

@@ -61,9 +61,9 @@ real chat history into provider qualification. Do not pass secrets in saved scri
 ## Validation and resume
 
 The initial access/preset batch passed core-common and both app unit suites plus
-V2 instrumentation assembly. Combined final checks are running in
+V2 instrumentation assembly. All 786 unit tests passed (31 core-common, 155 core-mcp, 300 per Android flavor). Both debug APKs assembled. Full lint is still running in
 `/tmp/meshlit-agent-checkpoint-final.log`; record their outcome before claiming
-success. New device test compilation and actual Samsung installation follow.
+success. The explicit credential-setup test APK compiled and installed on Samsung. Credential transfer is pending: the system clipboard changed after the successful API test; the owner has been asked to copy the key again. No provider credential was written to the phone by the failed transfer attempt. The production APK update awaits lint completion.
 
 ```sh
 python3 scripts/prepare-bundled-model.py
