@@ -361,7 +361,7 @@ val coreModule = module {
     // short-circuits on every `fire` / `firePre` call when this is
     // false.
     single(named("hooksEnabled")) {
-        kotlinx.coroutines.flow.MutableStateFlow(true)
+        kotlinx.coroutines.flow.MutableStateFlow(false)
     }
 
     // -----------------------------------------------------------------

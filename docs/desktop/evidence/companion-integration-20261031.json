@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "reviewDate": "2026-10-31",
+  "scope": "optional desktop companions; source caches are external and not bundled",
+  "sourcePreparation": {
+    "schemaVersion": 1,
+    "sources": [
+      {
+        "id": "claude-mem",
+        "directory": "/Users/code/Documents/Codex/meshlit-companion-cache/claude-mem",
+        "revision": "70aa40042cfb8157a0d84954b9c0d2b30b50af80",
+        "repository": "https://github.com/thedotmack/claude-mem",
+        "license": "Apache-2.0",
+        "licenseSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "sourceVerified": true,
+        "dependenciesInstalled": false,
+        "runtimeVerified": false
+      },
+      {
+        "id": "openmausbot",
+        "directory": "/Users/code/Documents/Codex/meshlit-companion-cache/openmausbot",
+        "revision": "21628af229abe8100cdd1f8761ccca391ff56bff",
+        "repository": "https://github.com/milind-soni/OpenMausBot",
+        "license": "Apache-2.0",
+        "licenseSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "sourceVerified": true,
+        "dependenciesInstalled": false,
+        "runtimeVerified": false
+      },
+      {
+        "id": "openbot",
+        "directory": "/Users/code/Documents/Codex/meshlit-companion-cache/openbot",
+        "revision": "743649efc3f21d7bf0badbe6af2bcd5daedd97ce",
+        "repository": "https://github.com/CopilotKit/OpenBot",
+        "license": "MIT",
+        "licenseSha256": "6d35a6bb107ae508da34636387f6208e75a6938e797bc0d5bfa9489d2ca95bad",
+        "sourceVerified": true,
+        "dependenciesInstalled": false,
+        "runtimeVerified": false
+      }
+    ],
+    "note": "Source only. No hooks, dependency installers, providers, models or services were started."
+  },
+  "runtime": {
+    "version": "1.4.3",
+    "source": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-darwin-x64-baseline.zip",
+    "archiveSha256": "0fde04e8b092156b97fe6432e899baf16d9ed6ce52cbb4218d2d9c07a2f827ef",
+    "platform": "darwin-x64-baseline"
+  },
+  "builds": {
+    "claude-mem": {
+      "status": "passed",
+      "command": "npm run build",
+      "log": "/tmp/meshlit-claudemem-build-retry.log",
+      "scope": "complete source plugin/viewer build",
+      "dependencyLock": "root resolved locally; upstream root has no committed lock",
+      "lifecycleScriptsDisabled": true,
+      "logSha256": "612b56dbdbd95a863c81b49cb95b6e03adbe6d13f24bf1f4e5cc5e0631f888a4"
+    },
+    "openbot": {
+      "status": "frontend-passed-backend-unqualified",
+      "commands": [
+        "bun run generate:app-config",
+        "bun run --filter app build"
+      ],
+      "log": "/tmp/meshlit-openbot-build.log",
+      "output": "/Users/code/Documents/Codex/meshlit-companion-cache/openbot/app/dist",
+      "blockers": [
+        "Docker absent",
+        "CopilotKit Intelligence and model/account configuration not provided"
+      ],
+      "serverStarted": false,
+      "lifecycleScriptsDisabled": true,
+      "logSha256": "f68bcbda7755dd830bd48449f80bccdd3735a79eb3cf41610f8c148a966ca651"
+    },
+    "openmausbot": {
+      "status": "incomplete-stopped-for-requested-checkpoint",
+      "passed": [
+        "node node_modules/typescript/bin/tsc -b",
+        "node node_modules/typescript/bin/tsc -p tsconfig.server.json"
+      ],
+      "incomplete": [
+        "node node_modules/vite/bin/vite.js build",
+        "node node_modules/typescript/bin/tsc -p tsconfig.server.build.json",
+        "node scripts/bundle-server.mjs"
+      ],
+      "log": "/tmp/meshlit-openmausbot-build-direct.log",
+      "lifecycleScriptsDisabled": true,
+      "serverStarted": false,
+      "desktopInstallerQualified": false,
+      "lastObservedStage": "Vite: 5655 modules transformed, rendering chunks",
+      "stopExitCode": 143,
+      "buildProcessLeftRunning": false,
+      "logSha256": "210a640b48b83cb1bed97ffc367236ea24ec48a5e85acb4adf4e4c07d1a5af67"
+    }
+  },
+  "claudeMemRuntime": {
+    "sourceRevision": "70aa40042cfb8157a0d84954b9c0d2b30b50af80",
+    "workerBundleSha256": "a97767c02560647c870c1891a4c2c0047405662500ff629f2fe799b66a629d30",
+    "bunVersion": "1.4.3",
+    "workerVersion": "15.7.0",
+    "health": {
+      "initialized": true,
+      "mcpReady": true
+    },
+    "viewerHtml": true,
+    "manualSaveRead": true,
+    "persistsAcrossRestart": true,
+    "forget": true,
+    "networkBoundary": "macOS sandbox-exec, loopback only",
+    "transcriptCapture": false,
+    "telemetry": false,
+    "cloudSync": false,
+    "providerFallback": false,
+    "llmGenerationRequested": false,
+    "semanticSearchQualified": false,
+    "dataDirectory": "temporary, removed after qualification"
+  },
+  "tests": {
+    "node": {
+      "passed": 14,
+      "files": [
+        "companion-client.test.cjs",
+        "companions.test.cjs",
+        "mcp-auth.test.cjs"
+      ]
+    },
+    "python": {
+      "passed": 6,
+      "modules": [
+        "test_connector_auth",
+        "test_mcp"
+      ],
+      "sdk": "actual Antigravity SDK and MCP local fixture processes",
+      "syntheticModelBackend": true
+    },
+    "syntax": "prepare.py, qualify-memory.py, agent_host.py parsed successfully"
+  },
+  "security": {
+    "productionCleared": false,
+    "zeroDayClaim": false,
+    "countsDeduplicatedBy": "advisory URL per repository",
+    "advisoryMatchesAreExploits": false,
+    "audits": {
+      "claude-mem": {
+        "uniqueAdvisoryUrlsBySeverity": {
+          "high": 5,
+          "moderate": 3,
+          "low": 1,
+          "critical": 1
+        },
+        "registryEntries": 10,
+        "nonDevFindingUrlsBySeverity": null,
+        "critical": [
+          {
+            "package": "shell-quote",
+            "url": "https://github.com/advisories/GHSA-pqg4-j6r4-53mv",
+            "title": "shell-quote: `quote()` command injection via a line terminator in a token after a `{ comment }` token",
+            "findings": null,
+            "vulnerableVersions": ">=1.8.4 <1.11.0",
+            "patchedVersions": null
+          }
+        ],
+        "rawReportPath": "/Users/code/Documents/Codex/meshlit-companion-cache/security/claude-mem-audit.json",
+        "rawReportSha256": "01c5eb662589110bf32c6c12556eb23b6c779a18e85baa02d317b60825c04a26"
+      },
+      "openmausbot": {
+        "uniqueAdvisoryUrlsBySeverity": {
+          "moderate": 18,
+          "high": 26,
+          "low": 6,
+          "critical": 1
+        },
+        "registryEntries": 74,
+        "nonDevFindingUrlsBySeverity": {
+          "low": 3,
+          "high": 9,
+          "moderate": 10,
+          "critical": 1
+        },
+        "critical": [
+          {
+            "package": "better-auth",
+            "url": "https://github.com/advisories/GHSA-965c-763c-88jm",
+            "title": "better-auth: OAuth state can be used as a Magic Link to sign in as another user",
+            "findings": [
+              {
+                "version": "1.7.1",
+                "paths": [
+                  "cloudflare__control-plane>better-auth"
+                ],
+                "dev": false,
+                "optional": false,
+                "bundled": false
+              }
+            ],
+            "vulnerableVersions": ">=1.4.0-beta.18 <1.7.7",
+            "patchedVersions": ">=1.7.7"
+          }
+        ],
+        "rawReportPath": "/Users/code/Documents/Codex/meshlit-companion-cache/security/openmausbot-audit.json",
+        "rawReportSha256": "d46b48597b12662db9498e686932f18459df2b27222d021e43762ab29893be4a"
+      },
+      "openbot": {
+        "uniqueAdvisoryUrlsBySeverity": {
+          "low": 16,
+          "high": 41,
+          "moderate": 50,
+          "critical": 3
+        },
+        "registryEntries": 122,
+        "nonDevFindingUrlsBySeverity": null,
+        "critical": [
+          {
+            "package": "better-auth",
+            "url": "https://github.com/advisories/GHSA-965c-763c-88jm",
+            "title": "better-auth: OAuth state can be used as a Magic Link to sign in as another user",
+            "findings": null,
+            "vulnerableVersions": ">=1.4.0-beta.18 <1.7.7",
+            "patchedVersions": null
+          },
+          {
+            "package": "dompurify",
+            "url": "https://github.com/advisories/GHSA-cg2g-xh64-v4q7",
+            "title": "DOMPurify SAFE_FOR_TEMPLATES bypass: split template expressions survive in attached shadow root content on DOM output modes",
+            "findings": null,
+            "vulnerableVersions": ">=3.4.4 <=3.4.16",
+            "patchedVersions": null
+          },
+          {
+            "package": "proxy-addr",
+            "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h",
+            "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+            "findings": null,
+            "vulnerableVersions": ">=1.1.0 <2.0.8",
+            "patchedVersions": null
+          }
+        ],
+        "rawReportPath": "/Users/code/Documents/Codex/meshlit-companion-cache/security/openbot-audit.json",
+        "rawReportSha256": "21e430a9743461a856edfe743215f7441c12389b518a6f1353188e9ddd9ed7f8"
+      },
+      "openlive": {
+        "uniqueAdvisoryUrlsBySeverity": {
+          "high": 30,
+          "moderate": 26,
+          "critical": 3,
+          "low": 4
+        },
+        "registryEntries": 89,
+        "nonDevFindingUrlsBySeverity": {
+          "high": 11,
+          "moderate": 13,
+          "low": 1,
+          "critical": 2
+        },
+        "critical": [
+          {
+            "package": "shell-quote",
+            "url": "https://github.com/advisories/GHSA-pqg4-j6r4-53mv",
+            "title": "shell-quote: `quote()` command injection via a line terminator in a token after a `{ comment }` token",
+            "findings": [
+              {
+                "version": "1.9.0",
+                "paths": [
+                  ".>concurrently>shell-quote"
+                ],
+                "dev": true,
+                "optional": false,
+                "bundled": false
+              }
+            ],
+            "vulnerableVersions": ">=1.8.4 <1.11.0",
+            "patchedVersions": ">=1.11.0"
+          },
+          {
+            "package": "next",
+            "url": "https://github.com/advisories/GHSA-2464-fhr4-w9xw",
+            "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used",
+            "findings": [
+              {
+                "version": "16.3.6",
+                "paths": [
+                  "apps__web>next"
+                ],
+                "dev": false,
+                "optional": false,
+                "bundled": false
+              }
+            ],
+            "vulnerableVersions": ">=16.0.0 <=16.4.0",
+            "patchedVersions": ">=16.4.1"
+          },
+          {
+            "package": "next",
+            "url": "https://github.com/advisories/GHSA-673q-mjm6-r5xr",
+            "title": "Next.js: Unauthenticated Remote Code Execution in `use cache` functions returning typed arrays",
+            "findings": [
+              {
+                "version": "16.3.6",
+                "paths": [
+                  "apps__web>next"
+                ],
+                "dev": false,
+                "optional": false,
+                "bundled": false
+              }
+            ],
+            "vulnerableVersions": ">=16.0.0 <=16.4.0",
+            "patchedVersions": ">=16.4.1"
+          }
+        ],
+        "rawReportPath": "/Users/code/Documents/Codex/meshlit-companion-cache/security/openlive-audit.json",
+        "rawReportSha256": "dfe92cb924758c42c70c4762a72a2c36362cd17123a88eaf2eced0357572c15f"
+      }
+    },
+    "notAudited": [
+      "Impeccable installer/runtime; only unpinned read-only guidance consulted",
+      "Pipecat optional uninstalled reference",
+      "Hugging Face speech-to-speech optional uninstalled reference"
+    ]
+  },
+  "automaticServicesStarted": false,
+  "paidModelCallsRequested": false,
+  "companionWorkersLeftRunning": false,
+  "limitations": [
+    "Source preparation provenance was captured before builds changed generated files",
+    "Full upstream desktop installers and Android companion runtimes not bundled",
+    "No live OpenMausBot pairing/account qualification",
+    "No OpenBot full deployment qualification",
+    "No semantic memory or paid observer qualification",
+    "No exhaustive source audit or absence-of-unknown-vulnerability guarantee"
+  ]
+}

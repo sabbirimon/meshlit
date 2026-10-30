@@ -25,6 +25,11 @@ import ai.runanywhere.proto.v1.TTSOptions
 import ai.runanywhere.proto.v1.TTSOutput
 import ai.runanywhere.proto.v1.VADOptions
 import ai.runanywhere.proto.v1.VADResult
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -211,8 +216,7 @@ class RunAnywhereVoiceEngine(
             }
             awaitClose {
                 thread.interrupt()
-                recorder.stop()
-                recorder.release()
+                try { recorder.stop() } finally { recorder.release() }
                 log.info("runanywhere.voice.capture.stopped", "Mic capture stopped")
             }
         } catch (t: Throwable) {
@@ -268,6 +272,8 @@ class RunAnywhereVoiceEngine(
                     emit(TranscriptEvent.Partial(text, event.stability))
                 }
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             log.warn(
                 "runanywhere.voice.stt.failed",
@@ -309,6 +315,8 @@ class RunAnywhereVoiceEngine(
                     emit(VadEvent.Silence(result.duration_ms, ts))
                 }
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             log.warn(
                 "runanywhere.voice.vad.failed",
@@ -336,6 +344,13 @@ class RunAnywhereVoiceEngine(
         voice: String = "",
         speakingRate: Float = 1.0f,
     ): Boolean {
+        if(text.isBlank() || text.length>4000 || !speakingRate.isFinite() || speakingRate !in 0.5f..2f)return false
+        val session=playback.begin() ?: return false
+        try{return synthesizeOwned(text,voice,speakingRate,session)}finally{playback.finish(session)}
+    }
+
+    private val playback=VoicePlaybackLease()
+    private suspend fun synthesizeOwned(text:String,voice:String,speakingRate:Float,session:VoicePlaybackLease.Session):Boolean {
         val options = TTSOptions(
             voice = voice,
             language_code = "",
@@ -371,7 +386,11 @@ class RunAnywhereVoiceEngine(
             return false
         }
         return try {
+            check(track.state == AudioTrack.STATE_INITIALIZED)
+            session.attachStop{runCatching{track.pause();track.flush()}}
+            session.requireActive()
             track.play()
+            session.requireActive()
             // Pin the playback loop to [dispatcher]; the SDK's
             // collect runs suspend, so we need a coroutine
             // context — this method is itself a suspend fun on
@@ -380,21 +399,35 @@ class RunAnywhereVoiceEngine(
             val sdkFlow: Flow<TTSOutput> = RunAnywhere.synthesizeStream(text, options)
             var completed = false
             withContext(dispatcher) {
-                sdkFlow.collect { event ->
-                    val bytes = event.audio_data
-                    if (bytes != null && bytes.size > 0) {
-                        track.write(bytes.toByteArray(), 0, bytes.size)
+                withTimeout(185_000) {
+                    var totalBytes=0L
+                    sdkFlow.collect { event ->
+                        currentCoroutineContext().ensureActive();session.requireActive()
+                        check(event.error_message.isNullOrBlank()) { "Speech synthesis failed" }
+                        if(event.audio_data.size>0) {
+                            require(event.sample_rate==sampleRate) { "Speech output sample rate changed; resampling is unavailable" }
+                            val pcm=speechOutputPcm16(event.audio_data.toByteArray(),event.audio_format,event.sample_rate)
+                            totalBytes+=pcm.size
+                            require(totalBytes<=sampleRate*2L*180) { "Voice reply exceeds 3 minutes" }
+                            var offset=0
+                            while(offset<pcm.size) {
+                                currentCoroutineContext().ensureActive();session.requireActive()
+                                val written=track.write(pcm,offset,minOf(8192,pcm.size-offset),AudioTrack.WRITE_NON_BLOCKING)
+                                check(written>=0) { "Audio playback write failed" }
+                                if(written==0) delay(10) else offset+=written
+                            }
+                        }
+                        if(event.is_final) completed=true
                     }
-                    if (event.is_final) {
-                        completed = true
-                        return@collect
+                    while(track.playbackHeadPosition.toLong()<totalBytes/2) {
+                        currentCoroutineContext().ensureActive();session.requireActive();delay(20)
                     }
                 }
             }
-            // Drain the track so the user hears the tail of the
-            // last buffer.
-            try { track.stop() } catch (_: Throwable) { /* ignore */ }
+            try { track.stop() } catch (_: Throwable) { /* released below */ }
             completed
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             log.warn(
                 "runanywhere.voice.tts.failed",
@@ -403,6 +436,7 @@ class RunAnywhereVoiceEngine(
             )
             false
         } finally {
+            session.detachStop()
             try { track.release() } catch (_: Throwable) { /* ignore */ }
         }
     }
@@ -413,14 +447,19 @@ class RunAnywhereVoiceEngine(
      * to stop synthesizing.
      */
     suspend fun stop() {
+        val session=playback.stop() ?: return
         try {
             RunAnywhere.stopSynthesis()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             log.warn(
                 "runanywhere.voice.tts.stop_failed",
                 "stopSynthesis failed",
                 mapOf("error" to (t.message ?: t.javaClass.simpleName)),
             )
+        } finally {
+            playback.completeStop(session)
         }
     }
 
@@ -430,6 +469,8 @@ class RunAnywhereVoiceEngine(
     suspend fun resetVad() {
         try {
             RunAnywhere.resetVAD()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             log.warn(
                 "runanywhere.voice.vad.reset_failed",

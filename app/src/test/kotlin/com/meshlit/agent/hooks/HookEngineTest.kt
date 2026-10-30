@@ -5,6 +5,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.meshlit.core.common.ConfigScript
 import com.meshlit.core.common.ConfigScriptStep
+import com.meshlit.core.common.ConfigScriptTarget
+import com.meshlit.core.common.ScriptEvent
 import com.meshlit.core.common.HookDefinition
 import com.meshlit.core.common.HookResult
 import com.meshlit.core.common.HookTrigger
@@ -17,6 +19,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -70,9 +77,12 @@ class HookEngineTest {
         trigger = trigger, script = script, timeoutMs = timeoutMs,
     )
 
-    private class Harness(val sink: HookAuditSink, val engine: HookEngine) {
+    private class Harness(val sink: HookAuditSink, val engine: HookEngine, val runner: ConfigScriptRunner,
+        val hooksFlow: MutableStateFlow<List<HookDefinition>>, val masterFlow: MutableStateFlow<Boolean>, val storeScope: CoroutineScope) {
         val auditLines: List<String> get() = sink.readAllLines()
     }
+    private val harnesses = mutableListOf<Harness>()
+    @After fun closeHarnesses() { harnesses.forEach { it.engine.shutdown(); it.runner.shutdown(); it.storeScope.cancel() } }
 
     private fun build(hooks: List<HookDefinition>, master: Boolean = true): Harness {
         val sink = HookAuditSink(
@@ -99,7 +109,7 @@ class HookEngineTest {
             runner = runner,
             auditSink = sink,
         )
-        return Harness(sink, engine)
+        return Harness(sink, engine, runner, hooksFlow, masterFlow, dsScope).also { harnesses += it }
     }
 
     @Test
@@ -215,5 +225,61 @@ class HookEngineTest {
         val result = h.engine.firePre(HookTrigger.OnError, mapOf("phase" to "x"))
         assertEquals(HookResult.NoOp, result)
         assertEquals(0, h.auditLines.size)
+    }
+
+    @Test fun `timeout cancels the actual script and never emits late success`() = runBlocking {
+        val script = ConfigScript(name = "bounded", steps = listOf(ConfigScriptStep.Wait(durationMs = 5000), ConfigScriptStep.Set(key = "late", value = "bad")))
+        val h = build(listOf(hook("bounded", "bounded", HookTrigger.PreToolCall, script, timeoutMs = 40)))
+        assertFalse(h.engine.firePre(HookTrigger.PreToolCall, emptyMap()).success)
+        val terminal = h.runner.events.value
+        assertTrue(terminal is ScriptEvent.Done && !terminal.success)
+        delay(80)
+        assertEquals(terminal, h.runner.events.value)
+        assertFalse(h.auditLines.any { it.contains("\"outcome\":\"SUCCESS\"") })
+    }
+
+    @Test fun `master and per-hook revocation stop an in-flight wait`() = runBlocking {
+        val original = hook("wait", "wait", HookTrigger.PreToolCall, scriptWithWait("wait", 5000))
+        val h = build(listOf(original))
+        val first = async { h.engine.firePre(HookTrigger.PreToolCall, emptyMap()) }
+        withTimeout(2000) { while (h.runner.events.value !is ScriptEvent.Start) delay(5) }
+        h.masterFlow.value = false
+        assertEquals("permission revoked", withTimeout(1000) { first.await() }.lastError)
+        h.masterFlow.value = true
+        val second = async { h.engine.firePre(HookTrigger.PreToolCall, emptyMap()) }
+        withTimeout(2000) { while (h.runner.events.value !is ScriptEvent.Start) delay(5) }
+        h.hooksFlow.value = listOf(original.copy(enabled = false))
+        assertEquals("permission revoked", withTimeout(1000) { second.await() }.lastError)
+        assertTrue(h.auditLines.all { it.contains("\"outcome\":\"DENIED\"") })
+    }
+
+    @Test fun `caller cancellation remains cancellation and stops the runner`() = runBlocking {
+        val h = build(listOf(hook("wait", "wait", HookTrigger.PreToolCall, scriptWithWait("wait", 5000))))
+        val call = async { h.engine.firePre(HookTrigger.PreToolCall, emptyMap()) }
+        withTimeout(2000) { while (h.runner.events.value !is ScriptEvent.Start) delay(5) }
+        call.cancelAndJoin()
+        assertTrue(call.isCancelled)
+        assertTrue((h.runner.events.value as ScriptEvent.Done).success.not())
+    }
+
+    @Test fun `concurrent scripts have isolated results and remote execution is unavailable`() = runBlocking {
+        val h = build(emptyList())
+        val bad = async { h.runner.execute(ConfigScript(name = "bad", steps = listOf(ConfigScriptStep.Wait(durationMs = 30), ConfigScriptStep.Assert(expression = "false")))) }
+        val good = async { h.runner.execute(scriptWithSet("good", "onlyGood", "yes")) }
+        assertTrue(good.await().success)
+        assertFalse(bad.await().success)
+        assertFalse(bad.await().variables.containsKey("onlyGood"))
+        val remote = h.runner.execute(ConfigScript(name = "remote", steps = listOf(ConfigScriptStep.Set(target = ConfigScriptTarget.Peer("127.0.0.1"), key = "notRun", value = "yes"))))
+        assertFalse(remote.success); assertFalse(remote.variables.containsKey("notRun"))
+        assertFalse(remote.events.any { it is ScriptEvent.StepOk })
+        val nested = h.runner.execute(ConfigScript(name = "recursive", steps = listOf(ConfigScriptStep.Step(scriptName = "recursive", continueOnError = true))))
+        assertFalse(nested.success); assertTrue(nested.events.size < 40)
+    }
+
+    @Test fun `hook variables reach the script and unmet wait conditions fail honestly`() = runBlocking {
+        val script = ConfigScript(name = "condition", steps = listOf(ConfigScriptStep.Wait(untilVar = "ready", expectedValue = "yes", timeoutMs = 30)))
+        val h = build(listOf(hook("condition", "condition", HookTrigger.PreToolCall, script)))
+        assertTrue(h.engine.firePre(HookTrigger.PreToolCall, mapOf("ready" to "yes")).success)
+        assertFalse(h.engine.firePre(HookTrigger.PreToolCall, mapOf("ready" to "no")).success)
     }
 }

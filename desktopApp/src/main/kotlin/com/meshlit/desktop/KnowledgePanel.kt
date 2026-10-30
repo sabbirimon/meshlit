@@ -35,7 +35,7 @@ import java.nio.file.LinkOption
         }
     }
     LaunchedEffect(library) { action {} }
-    Text("Knowledge library", style = MaterialTheme.typography.h6)
+    Text("Private knowledge library", style = MaterialTheme.typography.h5)
     Text("Encrypted local documents with offline word matching and source labels. The vault uses a separate passphrase; it must be unlocked after each app restart. There is no password recovery.")
     if (!unlocked) {
         OutlinedTextField(passphrase, { if (it.length <= 256) passphrase = it }, label = { Text("Library passphrase · at least 12 characters") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !busy)
@@ -47,8 +47,14 @@ import java.nio.file.LinkOption
         OutlinedButton(enabled = !busy, onClick = { library.lock(); state = null; matches = emptyList(); unlocked = false }) { Text("Lock library") }
         Text("Turning off retrieval or locking stops future lookups. Excerpts already sent to a model or host cannot be recalled.", style = MaterialTheme.typography.caption)
         state?.let { current ->
+            Divider()
+            Text("Sharing permissions", style = MaterialTheme.typography.subtitle1)
             Row { Checkbox(current.policy.localChat, { value -> action { library.lockedCorpus().setPolicy(current.policy.copy(localChat = value)) } }, enabled = !busy); Text("Use excerpts in local chat") }
             Row { Checkbox(current.policy.remoteChat, { value -> action { library.lockedCorpus().setPolicy(current.policy.copy(remoteChat = value)) } }, enabled = !busy); Text("Allow excerpts to the selected remote host") }
+            Row { Checkbox(current.policy.agents, { value -> action { library.lockedCorpus().setPolicy(current.policy.copy(agents = value)) } }, enabled = !busy); Text("Allow excerpts in Plan, Edit and Autopilot") }
+            Text("Agent access is an additional permission. The selected model still needs local or remote sharing enabled. Permissions are checked again for each model step.", style = MaterialTheme.typography.caption)
+            Divider()
+            Text("Reference documents", style = MaterialTheme.typography.subtitle1)
             Text("${current.documents.size} / ${KnowledgeCorpus.MAX_DOCUMENTS} documents · ${current.documents.sumOf { it.text.length }} characters")
             Button(enabled = !busy, onClick = {
                 val chooser = javax.swing.JFileChooser().apply { dialogTitle = "Import UTF-8 text, Markdown, CSV, TSV or JSON"; fileFilter = javax.swing.filechooser.FileNameExtensionFilter("Text documents", "txt", "md", "csv", "tsv", "json"); isAcceptAllFileFilterUsed = false }

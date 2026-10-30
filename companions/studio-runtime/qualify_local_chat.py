@@ -14,10 +14,11 @@ import uuid
 from unittest.mock import patch
 
 import agent_host
+from runtime_config import load_runtime
 
 
 async def qualify(runtime):
-    config = json.loads(Path(runtime).read_text())
+    config = load_runtime(Path(runtime))
     with tempfile.TemporaryDirectory(prefix='meshlit-local-qualification-') as directory:
         # Java's user.home controls DesktopUsage only; resource paths stay explicit.
         command = [arg for arg in config['backend'] if not arg.startswith('-Duser.home=')]

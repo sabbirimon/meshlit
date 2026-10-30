@@ -4,6 +4,9 @@ Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+See the [current detailed user manual](USER_MANUAL.md) for the desktop workbench, project memory, companion setup, settings navigation and troubleshooting. The feature guide below retains the wider Android/Studio reference.
+
+
 Updated 2026-10-24 for the consolidated Meshlit repository. The Chat reply below was captured on Samsung build42, and the photo composer on Samsung build44. The model library and settings captures are earlier API 35 emulator images. The app packages an offline version under Settings → Guide and tutorial. Reading progress is not execution evidence.
 
 **Get started:** [download a beta build](https://github.com/sabbirimon/meshlit/releases) → [install and verify](#visual-map-and-installation) → [first-run walkthrough](#first-run-walkthrough) → [models and local chat](#local-models-downloads-and-import). Use [agent and tool controls](#tasks-agents-and-human-controls) or [device pairing](#phone-clusters-mixed-devices-and-pairing) only after the local path works. [HyperL libraries](#hyperl-local-libraries), [privacy and audit](#audit-telemetry-and-exports), and [troubleshooting](#configuration-transfer-logs-and-troubleshooting) have separate setup and limits.
@@ -214,6 +217,10 @@ You may save several installed local models and configure up to three steps in a
 Use attachment/media options appropriate to the selected backend. Text file input, vision, image generation, speech or video are separate adapters; attaching a file is not proof that the model can perceive or generate its modality. The chat menu exports the selected conversation as JSON.
 
 The compact chat layout centers the welcome message and anchors a rounded composer above the keyboard. Welcome text and the secondary caption hide while typing. The plus menu opens text files, photo/camera input, media generation and chat options. Reply Copy and Share use the clipboard and a human-initiated Android chooser. Generated media has Save and Share controls. Photo questions use the same message box and Send/Stop controls. The attachment names the selected provider/model and sharing destination; changing it never uploads the photo. The compact mobile dock links Chat, Models, Devices, Agents and Settings; it hides while the keyboard is open. Voice opens an inline panel with manual Start live / End conversation, mute, tap interruption and optional phrase captions. Detailed voice choices stay under the tune icon.
+
+Voice settings → Voice tuning saves microphone threshold and pause duration (300–2000 ms) for offline/provider PCM capture. Lower thresholds hear quieter speech and more background noise. Android recognizer controls its own endpoint detection. Android voice speed and pitch sliders multiply the selected style within 0.5–2×; Play real voice sample auditions the result. Reset voice tuning restores defaults. These controls do not change GGUF weights or give a text model vision.
+
+Natural voice choices: select Kokoro / Pocket for speech on your approved OpenLive host, or ElevenLabs with your own credential profile. Load actual voices before preview. Local engines have no speech API fee; model licence terms apply. ElevenLabs free-tier-only is on by default and checks the reported free plan/allowance before requests. Unknown or exhausted allowance blocks speech. Turning it off permits paid-account usage. These checks are not provider billing caps. Kokoro/Pocket currently run on the host, not natively inside this phone. See [setup](NATURAL_VOICES.md).
 
 ## Files, AI assets and ZIP / unzip
 

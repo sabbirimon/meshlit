@@ -38,10 +38,13 @@ import java.util.UUID
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     var delegated by remember{mutableStateOf(control.enabled())};var allApps by remember{mutableStateOf(control.allApps())}
+    val automationEnabled by settings.androidAutomationEnabledFlow.collectAsState(initial=false)
+    LaunchedEffect(automationEnabled){delegated=control.enabled();allApps=control.allApps()}
     var installedBrowsers by remember{mutableStateOf<List<Pair<String,String>>>(emptyList())}
     LaunchedEffect(context){installedBrowsers=withContext(Dispatchers.IO){context.packageManager.queryIntentActivities(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://example.com")),android.content.pm.PackageManager.MATCH_DEFAULT_ONLY).map{it.activityInfo.packageName to it.loadLabel(context.packageManager).toString()}.distinctBy{it.first}.sortedBy{it.second}}}
     var packages by remember{mutableStateOf(control.packages().sorted().joinToString("\n"))}
-    fun run(action:suspend()->Unit){scope.launch{try{action()}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}}}
+    fun run(action:suspend()->Unit){scope.launch{try{action();error=null}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}
+        finally{delegated=control.enabled();allApps=control.allApps()}}}
     Scaffold(topBar={TopAppBar(title={Text("Phone agent and autonomy")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
             item{Text("Built-in phone agent",style=MaterialTheme.typography.titleLarge)
@@ -52,11 +55,16 @@ import java.util.UUID
                 Text(if(accessibilityBound) "Accessibility service connected" else "Accessibility service disconnected · app control unavailable")
                 OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))}){Text("Open Android accessibility settings")}
                 Text("Allow the local agent to snapshot, open, tap, type, go Back and Home within saved scope. Enable the Android accessibility service separately. Root, protected OS surfaces and password input are outside this permission.")
-                Row{Text("Autonomous delegation",Modifier.weight(1f));Switch(delegated,{on ->run{
-                    settings.setAndroidAutomationEnabled(on);control.setEnabled(on);delegated=on
+                Text(if(delegated && automationEnabled) "Saved phone-agent grants are on. Android Accessibility and app scope are still required."
+                    else if(delegated) "Autonomous delegation is saved, but Android automation is off. Turn this switch on to enable both saved gates."
+                    else "Phone-agent delegation is off.",style=MaterialTheme.typography.bodySmall)
+                Row{Text("Enable phone-agent access",Modifier.weight(1f));Switch(delegated && automationEnabled,{on ->run{
+                    if(on) {settings.setAndroidAutomationEnabled(true);control.setEnabled(true)}
+                    else {try{control.setEnabled(false)}finally{settings.setAndroidAutomationEnabled(false)}}
+                    delegated=control.enabled()
                     if(on) context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 }})}
-                Row{Text("All supported apps",Modifier.weight(1f));Switch(allApps,{control.setAllApps(it);allApps=it},enabled=delegated)}}
+                Row{Text("All supported apps",Modifier.weight(1f));Switch(allApps,{value->run{control.setAllApps(value);allApps=control.allApps()}},enabled=delegated && automationEnabled)}}
             item{Text("Phone web browsers",style=MaterialTheme.typography.titleMedium)
                 Text("The local agent can use android_control open/snapshot/click/type/back after saved app scope and Android Accessibility permission. Login and verification need human input.")
                 if(installedBrowsers.isEmpty())Text("No visible HTTPS browser found")
@@ -65,7 +73,7 @@ import java.util.UUID
             }
             item{OutlinedTextField(packages,{packages=it},Modifier.fillMaxWidth(),label={Text("Delegated package names, one per line")},minLines=3,enabled=!allApps)
                 Button(onClick={run{control.savePackages(packages.lines().map{it.trim()}.filter{it.isNotBlank()}.toSet())}}){Text("Save app scope")}
-                Button(onClick={control.setEnabled(false);delegated=false;node.disconnect();host.stopSharing();task?.cancel();run{settings.setAndroidAutomationEnabled(false)}}){Text("Emergency stop")}
+                Button(onClick={node.disconnect();host.stopSharing();task?.cancel();run{try{control.setEnabled(false)}finally{delegated=control.enabled();settings.setAndroidAutomationEnabled(false)}}}){Text("Emergency stop")}
                 Text("Revocation affects the next dispatched action. Android grants remain managed by the operating system.",style=MaterialTheme.typography.bodySmall)}
             } else item{Text("Cross-app Android autonomy is unavailable in the Play review build.")}
             item{HorizontalDivider();Text("Optional OpenClaw gateway",style=MaterialTheme.typography.titleLarge)

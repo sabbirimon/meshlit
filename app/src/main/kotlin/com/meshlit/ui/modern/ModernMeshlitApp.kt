@@ -359,7 +359,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
             if(!nearBottom && rows.isNotEmpty()) SmallFloatingActionButton(onClick={followLatest=true;scope.launch{list.animateScrollToItem(rows.lastIndex)}},
                 modifier=Modifier.align(Alignment.BottomCenter).padding(T.small)) {Icon(Icons.Default.ArrowDownward,stringResource(R.string.modern_latest))}
         }
-        if(showVoice && !com.meshlit.BuildProfile.coreCandidate) HandsFreeVoiceDialog(controller,maxHeight=panelHeight){showVoice=false}
+        if(showVoice && !com.meshlit.BuildProfile.coreCandidate) VoiceConversationOverlay(controller){showVoice=false}
         if(photo!=null) ChatPhotoAttachment(checkNotNull(photo),visionProfiles,photoProvider,!state.running,
             onProvider={photoProvider=it},onRemove={clearPhoto()},onSetup=onProviders,maxHeight=panelHeight)
         val access=state.current?.options ?: com.meshlit.chat.ChatOptions()

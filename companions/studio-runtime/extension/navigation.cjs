@@ -1,6 +1,6 @@
 const vscode=require('vscode');
 const crypto=require('node:crypto');
-const entries=[['Home','home','home'],['Chat','chat','comment-discussion'],['Workspace','workbench.action.files.openFolder','folder-opened'],['Coding agent','agent','code'],['Models','models','server'],['APIs and protocols','protocols','radio-tower'],['Agent app access','appAccess','accessibility'],['Stop app access','stopAppAccess','debug-stop'],['OmniRoute','gateway.OmniRoute','globe'],['FreeLLMAPI','gateway.FreeLLMAPI','globe'],['Hugging Face','gateway.Hugging Face','globe'],['DeepSeek Harness','deepseekHarness','hubot'],['MCP directory','connectors','plug'],['Usage','usage','graph'],['Settings','workbench.action.openSettings','settings-gear']];
+const entries=[['Home','home','home'],['Chat','chat','comment-discussion'],['Workspace','workbench.action.files.openFolder','folder-opened'],['Coding agent','agent','code'],['Models','models','server'],['Voice and vision','voice','mic'],['Project memory','memory','book'],['Computer companions','companions','remote'],['Usage','usage','graph'],['Settings','settings','settings-gear']];
 const command=id=>id.startsWith('workbench.')?id:'meshlit.'+id;
 function register(context){
  let home;
@@ -13,7 +13,7 @@ function register(context){
   home=vscode.window.createWebviewPanel('meshlit.home','Meshlit',vscode.ViewColumn.One,{enableScripts:true,localResourceRoots:[]});
   home.webview.html=render();
   home.webview.onDidReceiveMessage(async({action})=>{
-   const allowed={folder:'workbench.action.files.openFolder',clone:'git.clone',chat:'meshlit.chat',agent:'meshlit.agent',models:'meshlit.models',mcp:'meshlit.connectors',usage:'meshlit.usage',settings:'workbench.action.openSettings',unlock:'meshlit.unlockUsage'};
+   const allowed={folder:'workbench.action.files.openFolder',clone:'git.clone',chat:'meshlit.chat',agent:'meshlit.agent',models:'meshlit.models',mcp:'meshlit.connectors',usage:'meshlit.usage',settings:'meshlit.settings',unlock:'meshlit.unlockUsage'};
    if(allowed[action])await vscode.commands.executeCommand(allowed[action]);
   });
   home.onDidDispose(()=>home=undefined);

@@ -4,6 +4,9 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+Current increment: grouped settings, project memory, optional agent companions and voice diagnostics are tracked in [the structured map](docs/feature-map.json) and [the 2026-10-31 checkpoint](docs/CHECKPOINT_2026-10-31.md). Runtime, hardware and security acceptance remain separate.
+
+
 Updated 2026-10-09. This is the map of the separate Meshlit implementation, not the
 old Android checkout. `PROGRESS.md` records evidence; `PLAN.md` records unfinished
 acceptance. Machine-readable companion: `docs/feature-map.json`.

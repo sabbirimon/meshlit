@@ -7,7 +7,7 @@ const readline = require('node:readline');
 const tools = require('./workspace-tools.cjs');
 const connections = require('./connections.cjs');
 const navigation = require('./navigation.cjs');
-let host, unlocked = false, hostReady = false, localModel={state:'idle'}, usagePage;
+let host, unlocked = false, hostReady = false, localModel={state:'idle'}, usagePage, projectMemory;
 const changed = new vscode.EventEmitter();
 const chats = new Map(), snapshots = new Map();
 const send = message => {
@@ -20,9 +20,9 @@ function status(message) { vscode.window.showInformationMessage(message); }
 function boot(context) {
   if (host) return;
   const configPath = path.join(context.extensionPath,'runtime.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const config = require('./runtime-config.cjs').resolveRuntime(context.extensionPath,JSON.parse(fs.readFileSync(configPath, 'utf8')));
   const environment = Object.fromEntries(['HOME','PATH','TMPDIR','LANG','LC_ALL','SYSTEMROOT'].filter(k => process.env[k]).map(k=>[k,process.env[k]]));
-  host = spawn(config.python, [config.agentHost, configPath], {shell:false, env:environment, stdio:['pipe','pipe','pipe']});
+  host = spawn(config.python, [...(config.pythonArgs||[]),config.agentHost, configPath], {shell:false, env:environment, stdio:['pipe','pipe','pipe']});
   // Do not surface raw SDK diagnostics, which may contain prompts or runtime URLs.
   host.stderr.on('data', () => {});
   readline.createInterface({input:host.stdout}).on('line', line => {
@@ -38,7 +38,7 @@ function boot(context) {
       usagePage?.failure(message);
       for(const chat of chats.values())chat.panel.webview.postMessage({type:'notice',message});
     }
-    else if(event.type==='tool') handleTool(event).catch(() => replyTool(event,'Denied or failed'));
+    else if(event.type==='tool') handleTool(event).catch(async() => {try{await replyTool(event,'Denied or failed','failed');}catch{status('A tool result could not be delivered. No automatic retry was made.');}});
     else if(chats.has(event.session)) {
       const chat=chats.get(event.session);
       if(['done','stopped','error'].includes(event.type)) chat.busy=false;
@@ -60,32 +60,51 @@ function boot(context) {
   child.on('exit', closed);
   context.subscriptions.push({dispose(){ if(host) host.stdin.end(); }});
 }
-function replyTool(event,result) { if(host) send({op:'tool_result',id:event.id,session:event.session,result}); }
+async function replyTool(event,result,outcome='complete') {
+  const chat=chats.get(event.session);
+  const active=()=>chat&&chats.get(event.session)===chat&&chat.busy&&!chat.closed&&vscode.workspace.isTrusted;
+  if(outcome==='approved'&&!active()){result='denied: session stopped or permission revoked';outcome='cancelled';}
+  if(chat&&projectMemory){
+    try{await projectMemory.recordAction({root:chat.root,tool:event.name,status:outcome,mode:chat.mode});}
+    catch{chat.panel.webview.postMessage({type:'notice',message:'The tool outcome could not be saved to action history. Existing history was preserved.'});}
+  }
+  // Optional history persistence must not extend an approval past Stop or revocation.
+  if(outcome==='approved'&&!active()){
+    result='denied: session stopped or permission revoked';
+    try{await projectMemory?.recordAction({root:chat.root,tool:event.name,status:'cancelled',mode:chat.mode});}catch{}
+  }
+  if(host) send({op:'tool_result',id:event.id,session:event.session,result});
+}
 async function handleTool(event) {
   const chat=chats.get(event.session), args=event.arguments || {};
+  const active=()=>chat&&chats.get(event.session)===chat&&chat.busy&&!chat.closed&&vscode.workspace.isTrusted;
   if(event.name==='desktop_control') {
-    if(!chat || !chat.busy || !['edit','autopilot'].includes(chat.mode)) return replyTool(event,'Denied: use an active Edit or Autopilot agent');
-    return replyTool(event,await require('./app-access.cjs').execute(args,()=>chats.has(event.session)&&chat.busy));
+    if(!active() || !['edit','autopilot'].includes(chat.mode)) return replyTool(event,'Denied: use an active Edit or Autopilot agent','denied');
+    return replyTool(event,await require('./app-access.cjs').execute(args,active));
   }
-  if(!chat || !chat.busy || !chat.root || chat.mode==='chat') return replyTool(event,'Denied: no active workspace permission');
+  if(!active() || !chat.root || chat.mode==='chat') return replyTool(event,'Denied: no active workspace permission','denied');
   if(event.name==='mcp_request') {
-    if(!['edit','autopilot'].includes(chat.mode)||!chat.connectors.length)return replyTool(event,'denied');
-    const detail=JSON.stringify(args,null,2);if(detail.length>8000)return replyTool(event,'denied: arguments too large to review');
+    if(!['edit','autopilot'].includes(chat.mode)||!chat.connectors.length)return replyTool(event,'denied','denied');
+    const detail=JSON.stringify(args,null,2);if(detail.length>8000)return replyTool(event,'denied: arguments too large to review','denied');
     const choice=await vscode.window.showWarningMessage(`${chat.title}: allow MCP tool?\n${detail}`,{modal:true},'Allow this tool call');
-    return replyTool(event,choice==='Allow this tool call'&&chat.busy?'approved':'denied');
+    const approved=choice==='Allow this tool call'&&active();
+    return replyTool(event,approved?'approved':'denied',approved?'approved':'denied');
   }
   const approved=await vscode.window.showInformationMessage(`${chat.title}: ${event.name} — ${String(args.path).slice(0,200)}`, 'Allow once', 'Deny');
-  if(approved!=='Allow once' || !chat.busy || !chats.has(event.session)) return replyTool(event,'Denied by user');
+  if(approved!=='Allow once' || !active()) return replyTool(event,'Denied by user','denied');
   let result;
-  if(event.name==='list_files') result=await tools.listing(chat.root,args.path);
+  if(event.name==='list_files') {result=await tools.listing(chat.root,args.path);if(!active())return replyTool(event,'Cancelled before returning file listing','cancelled');}
   else if(event.name==='read_file') {
     const current=await tools.read(chat.root,args.path);
+    if(!active())return replyTool(event,'Cancelled before returning file content','cancelled');
     chat.receipts.set(current.file,current.hash); result=current.text;
   } else if(event.name==='propose_edit') {
     if(!['edit','autopilot'].includes(chat.mode) || (chat.mode==='edit' && chat.writes>0)) throw Error('Write limit');
     const current=await tools.read(chat.root,args.path);
+    if(!active())return replyTool(event,'Cancelled before preparing edit','cancelled');
     if(chat.receipts.get(current.file)!==current.hash) throw Error('Read the current file before editing');
     const document=await vscode.workspace.openTextDocument(vscode.Uri.file(current.file));
+    if(!active())return replyTool(event,'Cancelled before preparing edit','cancelled');
     if(document.isDirty || document.getText()!==current.text) throw Error('Unsaved or changed document');
     const version=document.version, next=tools.replacement(current.text,args.old,args.new);
     const key=crypto.randomUUID(), before=vscode.Uri.parse(`meshlit-diff:/${key}/before`), after=vscode.Uri.parse(`meshlit-diff:/${key}/after`);
@@ -93,8 +112,9 @@ async function handleTool(event) {
     try {
       await vscode.commands.executeCommand('vscode.diff',before,after,`Meshlit proposed edit: ${args.path}`);
       const decision=await vscode.window.showInformationMessage(`${chat.title}: apply the reviewed edit to ${args.path}?`, 'Apply edit', 'Reject');
-      if(decision!=='Apply edit' || !chat.busy) return replyTool(event,'Edit rejected');
+      if(decision!=='Apply edit' || !active()) return replyTool(event,'Edit rejected','denied');
       const fresh=await tools.read(chat.root,args.path);
+      if(!active())return replyTool(event,'Cancelled before applying edit','cancelled');
       if(fresh.hash!==current.hash || document.isDirty || document.version!==version) throw Error('File changed during review');
       const edit=new vscode.WorkspaceEdit();
       edit.replace(document.uri,new vscode.Range(document.positionAt(0),document.positionAt(document.getText().length)),next);
@@ -103,7 +123,7 @@ async function handleTool(event) {
       result='Applied to the editor as an UNSAVED change. The human must save it. Do not claim it is saved.';
     } finally { snapshots.delete(before.toString()); snapshots.delete(after.toString()); }
   } else throw Error('Unsupported tool');
-  replyTool(event,result);
+  return replyTool(event,result);
 }
 async function openChat(context,coding,profileId,options={}) {
   if(!vscode.workspace.isTrusted) throw Error('Trust the workspace first');
@@ -116,7 +136,7 @@ async function openChat(context,coding,profileId,options={}) {
     root=folder.uri.fsPath;
     if(!options.mode)mode=await chooseMode();
     if(!mode) return;
-    if(['edit','autopilot'].includes(mode))selectedConnectors=await connections.chooseMcp(context);
+    if(['edit','autopilot'].includes(mode))selectedConnectors=options.connectors||await connections.chooseMcp(context);
   }
   const initialRoute=options.route||(profileId?await connections.chooseConnection(context,profileId):{kind:'local',label:'Bundled local model'});
   if(!initialRoute)return;
@@ -124,7 +144,8 @@ async function openChat(context,coding,profileId,options={}) {
   const column=[...chats.values()].find(c=>c.panel.viewColumn)?.panel.viewColumn || vscode.ViewColumn.Beside;
   const panel=vscode.window.createWebviewPanel('meshlit.chat',title,column,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});
   context.subscriptions.push(panel);
-  const chat={panel,mode,root,title,busy:false,writes:0,receipts:new Map(),route:initialRoute,connectors:selectedConnectors,started:false,closed:false}; chats.set(id,chat); changed.fire();
+  const memoryRoot=root||vscode.workspace.workspaceFolders?.find(f=>f.uri.scheme==='file')?.uri.fsPath;
+  const chat={panel,mode,root,memoryRoot,title,busy:false,writes:0,receipts:new Map(),route:initialRoute,connectors:selectedConnectors,started:false,closed:false}; chats.set(id,chat); changed.fire();
   const update=()=>panel.webview.postMessage({type:'configuration',mode:chat.mode,label:chat.route.label||'Bundled local model',endpoint:chat.route.endpoint||'On this device',started:chat.started,local:chat.route.kind==='local'});
   panel.webview.html=require('./chat-view.cjs').render(title,mode);
   panel.webview.onDidReceiveMessage(async message => {
@@ -135,17 +156,26 @@ async function openChat(context,coding,profileId,options={}) {
       if(message.op==='newChat'){await openChat(context,false);return;}
       if(message.op==='approvals'){status('Workspace reads and tool calls require approval. Edits open a diff for review and remain unsaved. Autopilot keeps these controls; Full access is not implemented.');return;}
       if(message.op==='actions'){
-        const action=await vscode.window.showQuickPick([{label:'Connect a model or gateway',command:'meshlit.addModelSource'},{label:'Models and provider dashboards',command:'meshlit.models'},{label:'MCP connectors',command:'meshlit.connectors'},{label:'Open workspace folder',command:'workbench.action.files.openFolder'},{label:'Unlock usage ledger',command:'meshlit.unlockUsage'}],{title:'Chat tools and settings'});
-        if(action)await vscode.commands.executeCommand(action.command);return;
+        const action=await vscode.window.showQuickPick([{label:'Choose a tool-enabled mode',description:'Plan reads; Edit and Autopilot can use reviewed tools',op:'mode'},{label:'Select MCP tools for this chat',description:'Requires Edit or Autopilot and a local workspace',op:'tools'},{label:'Project memory and context',command:'meshlit.memory'},{label:'Meshlit settings',command:'meshlit.settings'},{label:'Connect a model or gateway',command:'meshlit.addModelSource'},{label:'Models and provider dashboards',command:'meshlit.models'},{label:'Manage MCP connectors',command:'meshlit.connectors'},{label:'Open workspace folder',command:'workbench.action.files.openFolder'},{label:'Unlock usage ledger',command:'meshlit.unlockUsage'}],{title:'Chat tools and settings'});
+        if(!action)return;
+        if(action.op)message={op:action.op};else{await vscode.commands.executeCommand(action.command);return;}
       }
       if(message.op==='gateways'){await vscode.commands.executeCommand('meshlit.models');return;}
       if(message.op==='setup'){await vscode.commands.executeCommand('meshlit.addModelSource');return;}
       if(chat.closed){panel.webview.postMessage({type:'error',message:'Session closed. Open a new chat.'});return;}
-      if(['connection','mode'].includes(message.op)) {
+      if(['connection','mode','tools'].includes(message.op)) {
         if(chat.configuring)return;
         if(chat.busy){status('This chat is running. Open New chat to use another model or mode alongside it.');return;}
         chat.configuring=true;
         try {
+          if(message.op==='tools'){
+            if(!['edit','autopilot'].includes(chat.mode)){status('Choose Edit / Build or Autopilot from the mode button first. Chat has no tools; Plan is read-only.');return;}
+            const connectors=await connections.chooseMcp(context,{editing:true});
+            if(connectors===undefined)return;
+            if(chat.closed||!chats.has(id))return;
+            if(chat.started){await openChat(context,false,undefined,{mode:chat.mode,route:chat.route,connectors});return;}
+            chat.connectors=connectors;update();status(`${connectors.length} MCP connectors selected for this chat. Each tool call still requires review.`);return;
+          }
           const selected=message.op==='mode'?await chooseMode():await connections.chooseConnection(context);
           if(!selected || chat.closed || !chats.has(id))return;
           // SDK tools and provider history are fixed when a session starts.
@@ -161,6 +191,7 @@ async function openChat(context,coding,profileId,options={}) {
             const connectors=['edit','autopilot'].includes(selected)?await connections.chooseMcp(context):[];
             if(chat.closed || !chats.has(id))return;
             chat.mode=selected;chat.root=selected==='chat'?undefined:folder.uri.fsPath;chat.connectors=connectors;
+            chat.memoryRoot=chat.root||vscode.workspace.workspaceFolders?.find(f=>f.uri.scheme==='file')?.uri.fsPath;
           } else chat.route=selected;
           update();changed.fire();if(chat.route.kind==='local')loadLocal();
         } finally {chat.configuring=false;}
@@ -172,9 +203,16 @@ async function openChat(context,coding,profileId,options={}) {
         if(!hostReady || !unlocked) { readiness();panel.webview.postMessage({type:'error',message:!hostReady?'The model host is still starting. Wait for it to become ready.':'Unlock the Meshlit usage ledger with its existing passphrase, then send again. This is not your Mac login or provider password.'}); return; }
         if(chat.route.kind==='local'&&localModel.state!=='ready'){loadLocal();panel.webview.postMessage({type:'error',message:'The bundled local model is not ready yet. Wait for Local model ready, then send again.'});return;}
         if(typeof message.prompt!=='string' || !message.prompt.trim() || message.prompt.length>16000) return;
-        chat.busy=true; chat.writes=0;chat.started=true;
+        chat.busy=true; chat.writes=0;
         changed.fire();
-        update();send({op:'send',session:id,prompt:message.prompt,mode:chat.mode,workspace:chat.root,route:chat.route,connectors:chat.connectors});
+        update();
+        let recalled='';
+        try{recalled=await projectMemory?.contextFor({root:chat.memoryRoot,query:message.prompt,remote:chat.route.kind!=='local',maxCharacters:Math.min(3000,Math.max(0,16000-message.prompt.length-2))})||'';}
+        catch{chat.busy=false;changed.fire();panel.webview.postMessage({type:'error',message:'Project memory could not be read. No model request was sent. Open Project memory to check protected storage and project access.'});return;}
+        if(chat.closed||!chat.busy||!chats.has(id)||!hostReady||!unlocked||!vscode.workspace.isTrusted){chat.busy=false;changed.fire();return;}
+        chat.started=true;update();
+        if(recalled)panel.webview.postMessage({type:'notice',message:`Including ${recalled.length} characters of ${path.basename(chat.memoryRoot)} project memory with this request. Token count is unavailable until reported by the model.`});
+        send({op:'send',session:id,prompt:recalled?recalled+'\n\n'+message.prompt:message.prompt,mode:chat.mode,workspace:chat.root,route:chat.route,connectors:chat.connectors});
       }
     } catch { chat.busy=false;changed.fire();panel.webview.postMessage({type:'error',message:['connection','setup'].includes(message.op)?'Model setup did not finish. Check the API address and saved-key access; cancel any unwanted Keychain prompt and try again.':'Action could not complete. Check the selected workspace and runtime, then try again.'}); }
   });
@@ -187,6 +225,10 @@ async function chooseMode() {
 function activate(context) {
   usagePage=require('./usage.cjs').create(context,message=>{boot(context);send(message);});
   navigation.register(context);
+  require('./settings.cjs').register(context);
+  require('./companions.cjs').register(context);
+  projectMemory=require('./memory.cjs').register(context);
+  require('./voice.cjs').register(context);
   require('./deepseek-harness.cjs').register(context);
   require('./protocols.cjs').register(context);
   require('./app-access.cjs').register(context);
@@ -202,6 +244,7 @@ function activate(context) {
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('meshlit-diff',{provideTextDocumentContent:uri=>snapshots.get(uri.toString())||''}));
   context.subscriptions.push(vscode.commands.registerCommand('meshlit.chat',profileId=>openChat(context,false,profileId)),
     vscode.commands.registerCommand('meshlit.revokeConnection',profileId=>{for(const [id,chat] of chats){if(chat.route.id===profileId)chat.panel.dispose();}}),
+    vscode.commands.registerCommand('meshlit.revokeMcp',name=>{for(const chat of chats.values()){if(chat.connectors.some(c=>c.name===name))chat.panel.dispose();}}),
     vscode.commands.registerCommand('meshlit.agent',()=>openChat(context,true)),
     vscode.commands.registerCommand('meshlit.addConnection',()=>connections.addConnection(context)),
     vscode.commands.registerCommand('meshlit.addModelSource',async()=>{

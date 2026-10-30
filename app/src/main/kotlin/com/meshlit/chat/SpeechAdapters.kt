@@ -52,22 +52,29 @@ internal fun readVoiceWav(bytes:ByteArray):PcmAudio {
 }
 /** Bounded microphone turn with a local energy/silence end detector. No audio is saved. */
 @android.annotation.SuppressLint("MissingPermission")
-internal suspend fun captureVoiceTurn(onLevel:(Double,Boolean)->Unit = { _,_ -> }):ByteArray=withContext(Dispatchers.IO) {
+internal suspend fun captureVoiceTurn(tuning:VoiceTuning=VoiceTuning(),onLevel:(Double,Boolean)->Unit = { _,_ -> },
+    shouldFinish:()->Boolean={false},onThreshold:(Double)->Unit={}):ByteArray=withContext(Dispatchers.IO) {
     val min=AudioRecord.getMinBufferSize(16000,android.media.AudioFormat.CHANNEL_IN_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT)
     require(min>0)
     val recorder=AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,16000,android.media.AudioFormat.CHANNEL_IN_MONO,android.media.AudioFormat.ENCODING_PCM_16BIT,maxOf(min,8192))
     try {
         check(recorder.state==AudioRecord.STATE_INITIALIZED);recorder.startRecording();check(recorder.recordingState==AudioRecord.RECORDSTATE_RECORDING){"Microphone could not start"}
-        val result=ByteArrayOutputStream();val buffer=ByteArray(2048);val detector=VoiceEndpointDetector()
+        val result=ByteArrayOutputStream();val buffer=ByteArray(2048);val detector=VoiceEndpointDetector(tuning)
+        var manual=false
         withTimeoutOrNull(30_000){while(!detector.complete){currentCoroutineContext().ensureActive()
+            if(android.os.Build.VERSION.SDK_INT>=29) check(recorder.activeRecordingConfiguration?.isClientSilenced!=true) {
+                "Android is silencing this microphone. Close other recording apps, check microphone privacy access, then retry."
+            }
+            if(shouldFinish()) {manual=true;break}
             val n=recorder.read(buffer,0,minOf(buffer.size,detector.remaining),AudioRecord.READ_NON_BLOCKING);check(n>=0) { "Microphone read failed" }
             if(n==0){delay(20);continue};require(n%2==0);result.write(buffer,0,n)
             val level=voiceEnergy(buffer,n)
             detector.accept(n,level)
             onLevel(level,detector.hasSpeech)
+            onThreshold(detector.threshold)
         };true}
         currentCoroutineContext().ensureActive()
-        if(!detector.hasSpeech) throw NoVoiceDetected()
+        if(!detector.hasSpeech && !(manual && detector.canFinishManually)) throw NoVoiceDetected(voiceNoSpeechMessage(detector.peakLevel))
         result.toByteArray()
     }finally{runCatching{recorder.stop()};recorder.release()}
 }
@@ -101,6 +108,11 @@ internal suspend fun playVoice(audio:PcmAudio,onLevel:(Double)->Unit = {})=withC
 internal class ProviderSpeechAdapter(context:Context,private val providers:OnlineProviders) {
     private val gate=OperationsControl.get(context).gate
     private val client=OnlineMediaClient()
+    private val natural=NaturalSpeechClient(authorize={p,key->
+        check(providers.profiles.value.any{it==p}){"Speech connection was changed or revoked"}
+        check(providers.resolveToken(p)==key){"Speech credential changed before dispatch"}
+        check(providers.profiles.value.any{it==p}){"Speech connection was changed or revoked"}
+    })
     private val cache=File(context.cacheDir,"voice-turns").apply{mkdirs();listFiles().orEmpty().filter{System.currentTimeMillis()-it.lastModified()>86_400_000}.forEach{it.delete()}}
     private fun profile(id:String)=providers.profiles.value.singleOrNull{it.id==id && it.enabled && it.protocol in setOf(OnlineProtocol.OPENAI,OnlineProtocol.OPENAI_COMPATIBLE)} ?: error("Enable an OpenAI-format speech provider first")
     suspend fun preflight(id:String,sttModel:String?,ttsModel:String?,voice:String) {
@@ -111,6 +123,13 @@ internal class ProviderSpeechAdapter(context:Context,private val providers:Onlin
         require(!p.requiresApiKey || key.isNotBlank()) { "Save the speech provider credential before starting" }
     }
     private suspend fun <T> request(id:String,work:suspend(OnlineProfile,String)->T)=gate.run(ManagedFeature.MEDIA){gate.run(ManagedFeature.CLOUD){val p=profile(id);work(p,providers.resolveToken(p))}}
+    suspend fun naturalEngines(id:String)=request(id){p,key->natural.engines(p,key)}
+    suspend fun elevenVoices(id:String)=request(id){p,key->natural.elevenVoices(p,key)}
+    suspend fun naturalSpeech(options:VoiceOptions,text:String)=request(options.providerId){p,key->
+        check(options.network){"Allow network audio before using a speech connection"}
+        val audio=natural.synthesize(p,key,options.output==SpeechOutput.ELEVENLABS,options.naturalEngine,options.naturalVoice,text,speed=options.tuning.speechRate,requireFreeTier=options.naturalFreeOnly)
+        PcmAudio(audio.bytes,audio.rate).also{it.validate()}
+    }
     suspend fun transcribe(id:String,model:String,pcm:ByteArray)=request(id){p,key->client.transcribe(p,key,model,voiceWav(pcm))}
     suspend fun synthesize(id:String,model:String,voice:String,text:String)=request(id){p,key->
         val file=File(cache,"${java.util.UUID.randomUUID()}.wav")

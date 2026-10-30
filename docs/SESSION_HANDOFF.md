@@ -4,6 +4,9 @@ Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+Latest handoff: [2026-10-31 source checkpoint](CHECKPOINT_2026-10-31.md), including [smaller-model/mobile repair instructions](SMALL_MODEL_MAINTENANCE_GUIDE.md). It supersedes older stop/build priorities below; unqualified gates remain explicit.
+
+
 ## Current handoff — 2026-10-24
 
 **Application work remains paused for HyperL-first delivery.** Use [the saved checkpoint](PAUSED_CHECKPOINT_2026-10-24.md) for implemented work, validation gaps, ordered next gates and build/run links. Current checkout: `/path/to/workspace/meshlit-v2-dev`; branch: `feature/peering-ui-2026-10-12`; the review branch targets `dev`. The owner authorizes this source/documentation push, not a new Meshlit build or release. Keep standalone HyperL changes in its own repository.

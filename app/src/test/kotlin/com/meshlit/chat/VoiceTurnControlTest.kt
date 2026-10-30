@@ -17,11 +17,73 @@ class VoiceTurnControlTest {
         val silence=VoiceEndpointDetector()
         silence.accept(960000,0.0);assertTrue(silence.complete);assertFalse(silence.hasSpeech)
     }
+    @Test fun tunedThresholdAndSilenceChangeRealEndpointDetection() {
+        val detector=VoiceEndpointDetector(VoiceTuning(threshold=0.03,silenceMs=1200))
+        detector.accept(3200,0.02);assertFalse(detector.hasSpeech)
+        detector.accept(3200,0.04);assertTrue(detector.hasSpeech)
+        detector.accept(22400,0.0);assertFalse(detector.complete)
+        detector.accept(16000,0.0);assertTrue(detector.complete)
+        val bounded=VoiceEndpointDetector(VoiceTuning(silenceMs=2000))
+        bounded.accept(960000,0.04);assertTrue(bounded.complete)
+    }
+    @Test fun tuningRejectsUnsafeImportedValuesAndKeepsLegacyDefaults() {
+        assertThrows(IllegalArgumentException::class.java){VoiceTuning(threshold=Double.NaN)}
+        assertThrows(IllegalArgumentException::class.java){VoiceTuning(silenceMs=Int.MAX_VALUE)}
+        assertThrows(IllegalArgumentException::class.java){VoiceTuning(speechRate=Float.POSITIVE_INFINITY)}
+        assertThrows(IllegalArgumentException::class.java){VoiceTuning(pitch=0f)}
+        assertEquals(VoiceTuning(),kotlinx.serialization.json.Json.decodeFromString<VoiceTuning>("{}"))
+        val tuning=VoiceTuning(threshold=0.02,silenceMs=1500,speechRate=1.2f,pitch=0.9f)
+        val encoded=kotlinx.serialization.json.Json.encodeToString(VoiceTuning.serializer(),tuning)
+        assertEquals(tuning,kotlinx.serialization.json.Json.decodeFromString<VoiceTuning>(encoded))
+        assertFalse(VoiceTuning().automaticThreshold)
+    }
+    @Test fun optionalQuietInputCalibrationRejectsSteadyNoiseAndRecognizesQuietSpeech() {
+        val quiet=VoiceEndpointDetector(VoiceTuning(automaticThreshold=true))
+        quiet.accept(16000,0.0002)
+        assertEquals(0.001,quiet.threshold,0.00001)
+        assertFalse(quiet.hasSpeech)
+        quiet.accept(3200,0.004)
+        assertTrue(quiet.hasSpeech)
+        val noise=VoiceEndpointDetector(VoiceTuning(automaticThreshold=true))
+        repeat(12){noise.accept(32000,0.004)}
+        assertFalse(noise.hasSpeech)
+        assertTrue(noise.complete)
+        assertEquals(0.008,noise.threshold,0.00001)
+        val fixed=VoiceEndpointDetector()
+        fixed.accept(16000,0.0002);fixed.accept(3200,0.004)
+        assertFalse(fixed.hasSpeech)
+    }
+    @Test fun manualBoundaryRequiresActualNonSilentSamplesAndSilenceIsBounded() {
+        val silence=VoiceEndpointDetector()
+        silence.accept(384000,0.0)
+        assertTrue(silence.complete);assertFalse(silence.hasSpeech);assertFalse(silence.canFinishManually)
+        val quiet=VoiceEndpointDetector()
+        quiet.accept(16000,0.002)
+        assertFalse(quiet.hasSpeech);assertTrue(quiet.canFinishManually)
+        assertTrue(voiceNoSpeechMessage(silence.peakLevel).contains("silence"))
+        assertTrue(voiceNoSpeechMessage(quiet.peakLevel).contains("threshold"))
+        assertEquals(0f,voiceMeterLevel(0.0))
+        assertTrue(voiceMeterLevel(0.002)>0.2f)
+        assertTrue(voiceMeterLevel(0.02)>voiceMeterLevel(0.002))
+        assertEquals(1f,voiceMeterLevel(1.0))
+    }
     @Test fun androidSilenceRetriesButPermissionAndNetworkErrorsRemainFatal() {
         assertTrue(androidRecognitionFailure(android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT) is NoVoiceDetected)
         assertTrue(androidRecognitionFailure(android.speech.SpeechRecognizer.ERROR_NO_MATCH) is NoVoiceDetected)
         assertFalse(androidRecognitionFailure(android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) is NoVoiceDetected)
         assertFalse(androidRecognitionFailure(android.speech.SpeechRecognizer.ERROR_NETWORK) is NoVoiceDetected)
+    }
+    @Test fun failedNativeCleanupBlocksFurtherSessionsEvenWhenTurnWasCancelled()=runTest {
+        val guard=VoiceCleanupGuard();guard.requireReady()
+        guard.cleanup{yield()};guard.requireReady()
+        assertThrows(IllegalStateException::class.java){runBlocking{guard.cleanup{throw IllegalStateException("unload failed")}}}
+        assertThrows(IllegalStateException::class.java){guard.requireReady()}
+        val stopped=VoiceCleanupGuard()
+        val session=launch{try{awaitCancellation()}finally{withContext(NonCancellable){stopped.cleanup{withContext(kotlinx.coroutines.Dispatchers.Default){}}}}}
+        runCurrent();session.cancelAndJoin();stopped.requireReady()
+        val cancelled=VoiceCleanupGuard()
+        try{cancelled.cleanup{throw CancellationException("cleanup interrupted")};fail()}catch(_:CancellationException){}
+        assertThrows(IllegalStateException::class.java){cancelled.requireReady()}
     }
     @Test fun speechAdmissionRejectsPressureAndInvalidSizes() {
         requireSpeechMemory(100L*1024*1024,600L*1024*1024,false)

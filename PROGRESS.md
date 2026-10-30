@@ -4,6 +4,77 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Saved desktop/Android integration checkpoint — 2026-10-31
+
+Source checkpoint saved at the owner's low-credit request: desktop companion
+integrations, encrypted project notes/context preview, grouped boxed settings,
+Android live-voice diagnostics/UI, persistence and tool-selection fixes, agent
+memory consent, engine/HyperL consistency and hook cancellation/revocation.
+Final checks: 538 Android unit tests; 78 desktop passed/1 physical SSH skipped;
+71 workbench tests. Both final Android source variants compile; V2 test APK assembles.
+Full current-source APK/lint, portable desktop installation and actual human live
+voice remain open. Upstream advisories are unresolved; no security clearance claimed.
+[Checkpoint and next gates](docs/CHECKPOINT_2026-10-31.md) ·
+[Plan](docs/DESKTOP_EVOLUTION_PLAN.md) · [Manual](docs/USER_MANUAL.md) ·
+[Smaller-model repair guide, including mobile](docs/SMALL_MODEL_MAINTENANCE_GUIDE.md).
+
+
+## Natural and free voice options — 2026-10-31
+
+Added Android adapters for OpenLive Kokoro/Pocket and ElevenLabs, actual voice
+discovery, saved selection, previews and local speech speed. Kokoro/Pocket run
+on the approved host; native Android execution of those engines is not claimed.
+ElevenLabs free-tier-only defaults on, checks the reported account tier/allowance
+before synthesis and blocks paid/unknown/exhausted accounts. It is not a provider
+billing cap; there is no automatic paid fallback. Credential/profile validity is
+rechecked at every HTTP dispatch. Studio has real local speech previews and Stop.
+Both host engines generated finite real speech and Studio previews. 802 core/app
+tests passed (298 core; 252 per app flavor). ElevenLabs live account verification
+requires the owner's key; none was requested in chat or used. Samsung SM-A207F/API30 playback qualification passed for both engines over the
+owner USB tunnel. Both APK variants assembled; full app lints passed with zero
+errors (399 warnings/19 hints each). The final V2 ARM64 debug APK was installed
+without clearing app data. All 37 Studio tests and the pinned development-launcher
+smoke check pass. Test services and the temporary USB reverse mapping were stopped.
+[Evidence](docs/desktop/evidence/natural-voices-20261031.json). See [setup and model terms](docs/NATURAL_VOICES.md).
+
+
+## Voice and vision tuning — 2026-10-30
+
+Studio now has an optional OpenLive runtime/tuning dashboard with owned loopback
+process start/stop, source selection, provider discovery and real model/vision
+settings read/save. Local compatible servers and upstream provider configuration
+are supported through OpenLive. Polling preserves failures; startup checks the
+agent health contract; settings reads are bounded and qualification uses isolated
+data. All 36 Studio extension tests pass. The real pinned companion installed on
+Intel macOS with Node 24.18.0 and passed eight runtime checks, including settings
+persistence after restart and shutdown of both services. See
+[setup and remaining gates](docs/VOICE_AND_VISION.md) and
+[runtime evidence](docs/desktop/evidence/openlive-20261030.json).
+
+Android has persisted native voice tuning: PCM threshold/pause and Android TTS
+speed/pitch. Defaults retain previous behavior, imported values are validated,
+and capture stays capped at 30 seconds. The offline guide is synchronized. Review
+fixed native cleanup failure reporting/admission, independent voice preview,
+cancellation handling, SDK float-PCM playback and standalone playback Stop ownership.
+Cleanup remains non-cancellable. All 797 changed-core/app tests passed (293
+core-inference; 252 per app flavor), including Stop/replacement races and invalid
+synthesis input admission before opening Android audio. Both debug APK variants
+and the device-test APK assembled. Both full app lints passed with zero errors
+(399 warnings and 19 hints each); changed core lint passed.
+
+Both final V2 Samsung SM-A207F/API30 instrumented tests passed: real Whisper
+recognition, Piper synthesis and AudioTrack playback, a real local LLM response
+with both speech models loaded, and two microphone capture/cancel/reopen cycles
+(100 PCM callbacks). No live speech crossed the detector threshold in the
+microphone check; it proves capture lifecycle, not human recognition quality.
+Microphone PCM was not saved or sent online. A real 2.875-second Piper sample
+was exported separately. Both final ARM64 debug APK signatures, source-marker
+presence and SHA-256 values are in the
+[Android voice evidence](docs/desktop/evidence/voice-android-20261030.json).
+Physical OpenLive audio/vision, live human conversation, acoustic barge-in,
+OpenLive embedding on Android, unified usage and optional Pipecat/HF adapters
+remain open. No hosted generation or camera capture was performed.
+
 ## AFK qualification, managed gateways and IDE usage — 2026-10-30
 
 Implemented separate managed OmniRoute/FreeLLMAPI lifecycle controls in the Code

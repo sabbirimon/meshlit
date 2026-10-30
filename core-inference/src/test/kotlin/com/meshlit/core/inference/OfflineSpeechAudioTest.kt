@@ -14,6 +14,14 @@ class OfflineSpeechAudioTest {
         assertArrayEquals(shortArrayOf(-32768,-16384,0,16384,32767,32767,-32768),ShortArray(bytes.size/2){buffer.short})
         assertEquals(0,bytes[6].toInt());assertEquals(64,bytes[7].toInt())
     }
+    @Test fun sdkReportedFormatControlsConversionAndUnknownFormatsAreRejected() {
+        val floatAudio=floats(-1f,0.5f)
+        val pcm=speechOutputPcm16(floatAudio,ai.runanywhere.proto.v1.AudioFormat.AUDIO_FORMAT_PCM,22050)
+        assertArrayEquals(shortArrayOf(-32768,16384),ShortArray(2){ByteBuffer.wrap(pcm).order(ByteOrder.LITTLE_ENDIAN).getShort(it*2)})
+        assertArrayEquals(pcm,speechOutputPcm16(pcm,ai.runanywhere.proto.v1.AudioFormat.AUDIO_FORMAT_PCM_S16LE,22050))
+        assertThrows(IllegalStateException::class.java){speechOutputPcm16(pcm,ai.runanywhere.proto.v1.AudioFormat.AUDIO_FORMAT_UNSPECIFIED,22050)}
+        rejected{speechOutputPcm16(byteArrayOf(1,2,3),ai.runanywhere.proto.v1.AudioFormat.AUDIO_FORMAT_PCM_S16LE,22050)}
+    }
     @Test fun nonFiniteNativeOutputIsRejected() {
         for(value in listOf(Float.NaN,Float.POSITIVE_INFINITY,Float.NEGATIVE_INFINITY)) rejected{speechFloatPcm16(floats(0f,value),22050)}
     }

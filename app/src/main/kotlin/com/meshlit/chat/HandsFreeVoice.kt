@@ -20,11 +20,11 @@ enum class VoiceStyle(val label:String,val pitch:Float,val speed:Float) {
     NATURAL("Natural",1f,1f),DEEP("Lower voice",0.8f,0.95f),BRIGHT("Higher voice",1.2f,1f),ROBOTIC("Robotic style",0.85f,0.8f),YOUTHFUL("Youthful style",1.35f,1.05f)
 }
 @Serializable enum class SpeechInput(val label:String) { OFFLINE_MODEL("Offline speech model"),ANDROID("Android recognizer"),PROVIDER("Online speech model") }
-@Serializable enum class SpeechOutput(val label:String) { ANDROID("Installed Android voice"),OFFLINE_MODEL("Offline voice model"),PROVIDER("Online voice model") }
+@Serializable enum class SpeechOutput(val label:String) { ANDROID("Installed Android voice"),OFFLINE_MODEL("Offline voice model"),PROVIDER("Online voice model"), OPENLIVE("Kokoro / Pocket · free local host"), ELEVENLABS("ElevenLabs · free-tier / paid") }
 @Serializable
 data class VoiceOptions(val input:SpeechInput=SpeechInput.OFFLINE_MODEL,val output:SpeechOutput=SpeechOutput.ANDROID,
-    val sttPack:String="",val ttsPack:String="",val providerId:String="",val sttModel:String="",val ttsModel:String="",val providerVoice:String="coral",val mode:VoiceMode=VoiceMode.LIVE,val captions:Boolean=true,val network:Boolean=false,val androidVoice:String?=null,val style:VoiceStyle=VoiceStyle.NATURAL)
-data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false,val testTranscript:String?=null,val inputLevel:Float=0f,val speechDetected:Boolean=false,val muted:Boolean=false,val elapsedSeconds:Int=0,val completedTurns:Int=0,val lastHeard:String?=null,val lastReply:String?=null,val outputLevel:Float?=null,val caption:String?=null)
+    val sttPack:String="",val ttsPack:String="",val providerId:String="",val sttModel:String="",val ttsModel:String="",val providerVoice:String="coral",val mode:VoiceMode=VoiceMode.LIVE,val captions:Boolean=true,val network:Boolean=false,val androidVoice:String?=null,val style:VoiceStyle=VoiceStyle.NATURAL,val tuning:VoiceTuning=VoiceTuning(),val naturalEngine:String="kokoro-en-v0_19-int8",val naturalVoice:String="",val naturalFreeOnly:Boolean=true)
+data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false,val testTranscript:String?=null,val inputLevel:Float=0f,val speechDetected:Boolean=false,val muted:Boolean=false,val elapsedSeconds:Int=0,val completedTurns:Int=0,val lastHeard:String?=null,val lastReply:String?=null,val outputLevel:Float?=null,val caption:String?=null,val inputThreshold:Float=0f,val micNotice:String?=null)
 internal fun androidRecognitionFailure(code:Int):Exception = when(code) {
     SpeechRecognizer.ERROR_SPEECH_TIMEOUT,SpeechRecognizer.ERROR_NO_MATCH -> NoVoiceDetected()
     else -> IllegalStateException("Android recognition failed (code $code)")
@@ -48,6 +48,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
     private var spoken:CompletableDeferred<Unit>?=null
     private var utterance:String?=null
     private var capturing=false
+    private val finishCapture=java.util.concurrent.atomic.AtomicBoolean(false)
     private val turns=VoiceTurnControl()
     private val audioManager=context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
     private var focusRequest:android.media.AudioFocusRequest?=null
@@ -91,7 +92,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             else eligible.firstOrNull{it.locale.language==Locale.getDefault().language} ?: eligible.firstOrNull()
         checkNotNull(voice){"Install an offline Android TTS voice or explicitly allow a network voice"}
         check(engine.setVoice(voice)==TextToSpeech.SUCCESS){"Voice data is unavailable"}
-        check(engine.setPitch(options.style.pitch)==TextToSpeech.SUCCESS && engine.setSpeechRate(options.style.speed)==TextToSpeech.SUCCESS)
+        check(engine.setPitch((options.style.pitch*options.tuning.pitch).coerceIn(0.5f,2f))==TextToSpeech.SUCCESS && engine.setSpeechRate((options.style.speed*options.tuning.speechRate).coerceIn(0.5f,2f))==TextToSpeech.SUCCESS)
         return engine
     }
     private suspend fun prepare(input:Boolean,output:Boolean=true) {
@@ -105,10 +106,11 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             (context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).getMemoryInfo(info)
             requireSpeechMemory(packs.sumOf{pack->pack.files.sumOf{it.bytes}},info.availMem,info.lowMemory)
         }
-        if((input && options.input==SpeechInput.PROVIDER) || (output && options.output==SpeechOutput.PROVIDER)) {
+        if((input && options.input==SpeechInput.PROVIDER) || (output && options.output in setOf(SpeechOutput.PROVIDER,SpeechOutput.OPENLIVE,SpeechOutput.ELEVENLABS))) {
             check(options.network) { "Allow network audio explicitly before using an online speech model" }
             check(providers.profiles.value.any{it.id==options.providerId && it.enabled}) { "Select an enabled speech provider" }
             online.preflight(options.providerId,options.sttModel.takeIf{input && options.input==SpeechInput.PROVIDER},options.ttsModel.takeIf{output && options.output==SpeechOutput.PROVIDER},options.providerVoice)
+            if(output && options.output in setOf(SpeechOutput.OPENLIVE,SpeechOutput.ELEVENLABS)) check(options.naturalVoice.isNotBlank()){ "Load and select a natural voice first" }
         }
         if(input && options.input==SpeechInput.OFFLINE_MODEL) withContext(Dispatchers.IO){offline.load(options.sttPack,SpeechKind.WHISPER_STT)}
         if(output && options.output==SpeechOutput.OFFLINE_MODEL) withContext(Dispatchers.IO){offline.load(options.ttsPack,SpeechKind.PIPER_TTS)}
@@ -127,6 +129,8 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         _state.value=state.value.copy(testTranscript=text.take(12000),phase="Recognition test complete")
     }
     fun start()=launchSession(true) {
+        withTimeout(30_000){chat.ready.await()}
+        chat.voiceRouteProblem()?.let{error(it)}
         check(!chat.state.value.running) { "Wait for the current reply" }
         if(chat.state.value.current==null) chat.newChat()
         val selected=checkNotNull(chat.state.value.selectedId){"Chat is still starting"}
@@ -134,12 +138,12 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         var completed=0
         withTimeout(300_000) {
             while(voiceTurnAllowed(completed,SystemClock.elapsedRealtime(),deadline)) {
-                if(turns.muted.value) _state.update{it.copy(phase="Microphone muted",inputLevel=0f,speechDetected=false)}
+                if(turns.muted.value) _state.update{it.copy(phase=if(it.micNotice!=null) "Microphone paused" else "Microphone muted",inputLevel=0f,speechDetected=false)}
                 turns.awaitUnmuted()
                 check(chat.state.value.selectedId==selected) { "Conversation changed; start a new voice session" }
                 try {
                     turns.run {
-                        _state.update{it.copy(phase="Listening",inputLevel=0f,speechDetected=false,outputLevel=null)}
+                        _state.update{it.copy(phase="Listening",inputLevel=0f,speechDetected=false,outputLevel=null,micNotice=null,error=null)}
                         val text=withTimeout(90_000){recognize()}
                         currentCoroutineContext().ensureActive();check(text.isNotBlank() && text.length<=12000)
                         _state.update{it.copy(phase="Thinking",lastHeard=text,inputLevel=0f,speechDetected=false)}
@@ -169,8 +173,10 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
                     // The canceled turn has released microphone/playback before another begins.
                 } catch(silence:NoVoiceDetected) {
                     if(options.mode==VoiceMode.SINGLE_TURN) throw silence
-                    _state.update{it.copy(phase="Listening",inputLevel=0f,speechDetected=false)}
-                    delay(250)
+                    // A quiet capture must not silently loop for five minutes with no explanation.
+                    // Release the microphone and wait for an explicit retry instead.
+                    turns.setMuted(true)
+                    _state.update{it.copy(phase="Microphone paused",muted=true,inputLevel=0f,speechDetected=false,micNotice=silence.message)}
                 }
             }
         }
@@ -185,15 +191,23 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         turns.setMuted(value,interruptCapture=capturing)
         _state.update{it.copy(muted=value,inputLevel=if(value) 0f else it.inputLevel)}
     }
+    fun sendVoice() {
+        if(!capturing || !state.value.busy) return
+        if(options.input==SpeechInput.ANDROID) recognizer?.stopListening() else finishCapture.set(true)
+    }
     private fun onMicLevel(level:Double,detected:Boolean) {
-        _state.update { it.copy(inputLevel=(level*8).toFloat().coerceIn(0f,1f),speechDetected=detected) }
+        _state.update { it.copy(inputLevel=voiceMeterLevel(level),speechDetected=detected) }
     }
     private suspend fun recognize():String {
+        check(!audioManager.isMicrophoneMute){"Android microphone is muted. Turn microphone access on and retry."}
+        finishCapture.set(false)
         capturing=true
         if(options.input==SpeechInput.ANDROID) {
             return try { androidTranscript() } finally {capturing=false}
         }
-        val audio=try {withContext(Dispatchers.IO){captureVoiceTurn(::onMicLevel)}} finally {capturing=false}
+        val audio=try {withContext(Dispatchers.IO){captureVoiceTurn(options.tuning,::onMicLevel,finishCapture::get) {threshold->
+            _state.update{it.copy(inputThreshold=voiceMeterLevel(threshold))}
+        }}} finally {capturing=false}
         _state.update{it.copy(phase="Transcribing",inputLevel=0f,speechDetected=false)}
         return when(options.input) {
             SpeechInput.OFFLINE_MODEL->withContext(Dispatchers.IO){offline.transcribe(audio)}
@@ -205,16 +219,20 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         check(Looper.myLooper()==Looper.getMainLooper());check(!state.value.busy)
         val started=++epoch;turns.setMuted(false)
         _state.value=state.value.copy(active=conversation,busy=true,phase="Preparing speech adapters",error=null,testTranscript=null,
-            muted=false,elapsedSeconds=0,completedTurns=0,lastHeard=null,lastReply=null,caption=null,inputLevel=0f,outputLevel=null,speechDetected=false)
+            muted=false,elapsedSeconds=0,completedTurns=0,lastHeard=null,lastReply=null,caption=null,inputLevel=0f,outputLevel=null,speechDetected=false,micNotice=null,
+            inputThreshold=voiceMeterLevel(options.tuning.threshold))
         session=scope.launch {
             val began=SystemClock.elapsedRealtime()
             val ticker=launch {while(isActive){delay(1000);_state.update{it.copy(elapsedSeconds=((SystemClock.elapsedRealtime()-began)/1000).toInt())}}}
             try {
                 acquireAudioFocus()
-                gate.run(ManagedFeature.MEDIA) { speechLock.withLock {try{
+                gate.run(ManagedFeature.MEDIA) { speechLock.withLock {speechCleanup.requireReady();try{
                     if(options.network) gate.run(ManagedFeature.CLOUD){withTimeout(180_000){prepare(needsInput,needsOutput)};work()}
                     else {withTimeout(180_000){prepare(needsInput,needsOutput)};work()}
-                }finally{offline.close()}} }
+                }finally{
+                    try{withContext(NonCancellable){speechCleanup.cleanup{offline.close()}}}
+                    catch(e:Exception){_state.update{it.copy(error="Native speech cleanup failed. Restart Meshlit before using voice again.")};throw e}
+                }} }
             }catch(e:CancellationException){if(started==epoch && e is TimeoutCancellationException) _state.value=state.value.copy(error="Voice session reached its time limit")}
             catch(e:Exception){if(started==epoch) _state.value=state.value.copy(error=e.message ?: "Voice adapter failed")}
             finally {
@@ -235,6 +253,11 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
                 }
                 SpeechOutput.PROVIDER->{
                     val audio=online.synthesize(options.providerId,options.ttsModel,options.providerVoice,segment)
+                    _state.update{it.copy(phase="Speaking",caption=segment)}
+                    playVoice(audio,::onPlaybackLevel)
+                }
+                SpeechOutput.OPENLIVE,SpeechOutput.ELEVENLABS->{
+                    val audio=online.naturalSpeech(options,segment)
                     _state.update{it.copy(phase="Speaking",caption=segment)}
                     playVoice(audio,::onPlaybackLevel)
                 }
@@ -259,7 +282,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             override fun onError(error:Int){if(started==epoch && recognized===done) done.completeExceptionally(androidRecognitionFailure(error))}
             override fun onReadyForSpeech(params:Bundle?)=Unit
             override fun onBeginningOfSpeech()=Unit
-            override fun onRmsChanged(value:Float){if(started==epoch && recognized===done) onMicLevel((value.coerceAtLeast(0f)/40f).toDouble(),value>2f)}
+            override fun onRmsChanged(value:Float){if(started==epoch && recognized===done) _state.update{it.copy(inputLevel=((value+2f)/14f).coerceIn(0f,1f),speechDetected=value>2f)}}
             override fun onBufferReceived(buffer:ByteArray?)=Unit
             override fun onEndOfSpeech(){if(started==epoch && recognized===done){capturing=false;_state.update{it.copy(phase="Transcribing",inputLevel=0f,speechDetected=false)}}}
             override fun onPartialResults(results:Bundle?)=Unit
@@ -269,7 +292,8 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE,Locale.getDefault().toLanguageTag());putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE,!options.network);putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,1)
         })
-        try{return done.await()}finally{recognized=null;recognizer?.cancel();recognizer?.destroy();recognizer=null}
+        try{return done.await().trim().takeIf{it.isNotEmpty()} ?: throw NoVoiceDetected()}
+        finally{recognized=null;recognizer?.cancel();recognizer?.destroy();recognizer=null}
     }
     private fun releaseAndroid(){recognized?.cancel();recognized=null;spoken?.cancel();spoken=null;utterance=null;recognizer?.cancel();recognizer?.destroy();recognizer=null;tts?.stop()}
     fun stop(){epoch++;session?.cancel();chat.stopIfMatching(ownedGeneration);ownedGeneration=null;releaseAndroid();_state.value=state.value.copy(active=false,phase=if(session==null) "Stopped" else "Stopping")
@@ -277,6 +301,6 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         val pending=session;scope.launch{pending?.join();if(session===pending){session=null;_state.value=state.value.copy(active=false,busy=false,phase="Stopped",inputLevel=0f,outputLevel=null,speechDetected=false)}}
     }
     fun close(){stop();scope.launch{session?.join();tts?.shutdown();tts=null;scope.cancel()}}
-    companion object { private val speechLock=Mutex() }
+    companion object { private val speechLock=Mutex();private val speechCleanup=VoiceCleanupGuard() }
 }
 internal fun voiceTurnAllowed(turns:Int,now:Long,deadline:Long)=turns<10 && now<deadline

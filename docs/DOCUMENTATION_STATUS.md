@@ -20,7 +20,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-145 active, 19 historical, 8 protected, 1 template, 6 third-party; 180 Markdown documents including this index.
+156 active, 19 historical, 8 protected, 1 template, 6 third-party; 191 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -68,6 +68,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [companions/pipeline/README.md](../companions/pipeline/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/studio-runtime/README.md](../companions/studio-runtime/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/training/README.md](../companions/training/README.md) | optional host/schema/reference; not a bundled qualified service |
+| [companions/voice/README.md](../companions/voice/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/vscode/README.md](../companions/vscode/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [configuration/README.md](../configuration/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [core-federation/src/main/kotlin/com/meshlit/core/federation/README.md](../core-federation/src/main/kotlin/com/meshlit/core/federation/README.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -76,14 +77,18 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/AI_REPAIR_AND_EVOLUTION.md](AI_REPAIR_AND_EVOLUTION.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/ANDROID_DESKTOP_PARITY.md](ANDROID_DESKTOP_PARITY.md) | desktop/server; individual acceptance gates apply |
 | [docs/ANDROID_SECURITY_TOOL_INTEGRATIONS.md](ANDROID_SECURITY_TOOL_INTEGRATIONS.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/ANDROID_SETTINGS_AUDIT.md](ANDROID_SETTINGS_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/AUDIT_TELEMETRY.md](AUDIT_TELEMETRY.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/BLUE_TEAM_AND_PACKET_ANALYSIS.md](BLUE_TEAM_AND_PACKET_ANALYSIS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/BUILT_IN_AGENT_DESIGN.md](BUILT_IN_AGENT_DESIGN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CHAT_PRESENTATION.md](CHAT_PRESENTATION.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/CHECKPOINT_2026-10-31.md](CHECKPOINT_2026-10-31.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CLIENT_HUB.md](CLIENT_HUB.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/COLIBRI.md](COLIBRI.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CONTINUATION_2026_10_08.md](CONTINUATION_2026_10_08.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/DESKTOP_BUILD_LOG.md](DESKTOP_BUILD_LOG.md) | desktop/server; individual acceptance gates apply |
+| [docs/DESKTOP_COMPANIONS.md](DESKTOP_COMPANIONS.md) | desktop/server; individual acceptance gates apply |
+| [docs/DESKTOP_EVOLUTION_PLAN.md](DESKTOP_EVOLUTION_PLAN.md) | desktop/server; individual acceptance gates apply |
 | [docs/DESKTOP_FEATURE_TRACKER.md](DESKTOP_FEATURE_TRACKER.md) | desktop/server; individual acceptance gates apply |
 | [docs/DESKTOP_STUDIO_PLAN.md](DESKTOP_STUDIO_PLAN.md) | desktop/server; individual acceptance gates apply |
 | [docs/DEVICE_COMPATIBILITY.md](DEVICE_COMPATIBILITY.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -96,6 +101,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/MATH_RESEARCH_2026-10-26.md](MATH_RESEARCH_2026-10-26.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MEMORY_AND_VOICE.md](MEMORY_AND_VOICE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/MULTIPLATFORM_NEXT.md](MULTIPLATFORM_NEXT.md) | platform preview; NEXT device/build acceptance remains open |
+| [docs/NATURAL_VOICES.md](NATURAL_VOICES.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md](NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/OLD_ANDROID_GAP_AUDIT_2026-10-23.md](OLD_ANDROID_GAP_AUDIT_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md](OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -112,6 +118,8 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/SEARCH_AND_CLUSTER_OUTPUT.md](SEARCH_AND_CLUSTER_OUTPUT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SECURITY_LAB_AND_HARDWARE_ACCESS.md](SECURITY_LAB_AND_HARDWARE_ACCESS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SESSION_HANDOFF.md](SESSION_HANDOFF.md) | cross-platform tracking; feature and device gates remain separate |
+| [docs/SETTINGS_MANAGEMENT_REVIEW.md](SETTINGS_MANAGEMENT_REVIEW.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/SMALL_MODEL_MAINTENANCE_GUIDE.md](SMALL_MODEL_MAINTENANCE_GUIDE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SSH_NODE.md](SSH_NODE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/STITCH_GLASS_UI.md](STITCH_GLASS_UI.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/STUDIO_MOBILE_LTS_PLAN.md](STUDIO_MOBILE_LTS_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -119,8 +127,11 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/UI_AUDIT.md](UI_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/UI_REFERENCE_REDESIGN.md](UI_REFERENCE_REDESIGN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/UI_WORKSPACE_REDESIGN.md](UI_WORKSPACE_REDESIGN.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/UPSTREAM_SECURITY_REVIEW.md](UPSTREAM_SECURITY_REVIEW.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/USAGE_AND_MODEL_BUDGETS.md](USAGE_AND_MODEL_BUDGETS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/USER_GUIDE.md](USER_GUIDE.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/USER_MANUAL.md](USER_MANUAL.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/VOICE_AND_VISION.md](VOICE_AND_VISION.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/PRODUCTION_CHANNELS.md](architecture/PRODUCTION_CHANNELS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/README.md](architecture/README.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/architecture/current-state.md](architecture/current-state.md) | Android/shared reference; desktop ports have separate acceptance |

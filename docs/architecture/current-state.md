@@ -4,6 +4,19 @@ Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRE
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current checkpoint — 2026-10-31
+
+The current Android bundled starter is pinned Qwen2.5 0.5B Instruct Q4_K_M
+(491,400,032 bytes), not the SmolLM2 described in the dated baseline below.
+The structured feature map inventories 40 modules. The newer Code OSS Studio
+adds protected project notes, reviewed tool controls and optional source companions;
+the earlier Compose Studio still owns several engine/device dashboards. See the
+[current checkpoint](../CHECKPOINT_2026-10-31.md) and
+[settings authority review](../SETTINGS_MANAGEMENT_REVIEW.md) for current boundaries.
+The following dated sections retain historical context; they do not override
+newer source and build evidence.
+
+
 Updated 2026-10-07. Source commit `baa8bcd`, baseline
 `ff0cd771c12f3daa63cb8fe45e1476245ab7b01b`. The upstream architecture text is
 preserved at `../history/current-state-upstream-baseline.md`; its phase, module,

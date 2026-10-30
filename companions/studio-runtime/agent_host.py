@@ -3,6 +3,7 @@ import asyncio
 import contextlib
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import sys
@@ -18,17 +19,39 @@ from google.antigravity.types import BudgetConfig, McpStdioServer, McpStreamable
 from google.antigravity.hooks.policy import allow, deny, ask_user
 
 
+def connector_environment(config):
+    """Only the explicit endpoint-bound OpenMausBot session environment is allowed."""
+    auth, env = config.get('auth'), config.get('env', {})
+    if not isinstance(env, dict): raise ValueError('Invalid MCP environment')
+    if auth is None:
+        if env: raise ValueError('MCP environment requires an approved credential binding')
+        return {}
+    if not isinstance(auth, dict) or set(auth) != {'kind', 'port'} or auth.get('kind') != 'openmausbot-session':
+        raise ValueError('Unsupported MCP credential binding')
+    port = auth.get('port')
+    if type(port) is not int or not 1024 <= port <= 65535 or config.get('type') != 'stdio' or config.get('args') != ['mcp']:
+        raise ValueError('Invalid OpenMausBot endpoint binding')
+    origin = f'http://127.0.0.1:{port}'
+    if not isinstance(env, dict) or set(env) != {'OMB_PORT', 'OPENMAUSBOT_URL', 'OPENMAUSBOT_TOKEN'} or env.get('OMB_PORT') != str(port) or env.get('OPENMAUSBOT_URL') != origin:
+        raise ValueError('Invalid OpenMausBot environment')
+    token = env.get('OPENMAUSBOT_TOKEN')
+    if not isinstance(token, str) or not re.fullmatch(r'omb_sess_[A-Za-z0-9_-]{16,512}', token):
+        raise ValueError('Invalid OpenMausBot session credential')
+    return {'OMB_PORT': str(port), 'OPENMAUSBOT_URL': origin, 'OPENMAUSBOT_TOKEN': token}
+
+
 def connectors(configs):
     if not isinstance(configs, list) or len(configs) > 4: raise ValueError('At most four MCP servers')
     result = []
     for config in configs:
+        environment = connector_environment(config)
         common = dict(name=config['name'], timeout_seconds=15, force_all_tools_eager=True)
         if config['type'] == 'stdio':
             command = config['command']
             args = config.get('args', [])
             if not Path(command).is_absolute() or not Path(command).is_file(): raise ValueError('MCP requires an installed absolute executable')
             if not isinstance(args, list) or len(args) > 32 or any(not isinstance(a,str) or len(a)>2048 for a in args): raise ValueError('Invalid MCP arguments')
-            result.append(McpStdioServer(command=command, args=args, env={}, **common))
+            result.append(McpStdioServer(command=command, args=args, env=environment, **common))
         elif config['type'] == 'http':
             url = urlsplit(config['url'])
             if not url.hostname or url.username or url.password or url.query or url.fragment: raise ValueError('Use a clean MCP URL without credentials')
@@ -131,7 +154,12 @@ class Host:
         async def approve_mcp(call):
             result = await self.tool(session, 'mcp_request', dict(tool=call.name, arguments=call.args))
             return result == 'approved'
-        servers = connectors(mcp) if mode in ('edit','autopilot') else []
+        try:
+            servers = connectors(mcp) if mode in ('edit','autopilot') else []
+        except (ValueError, TypeError, KeyError):
+            self.sessions[session]['closed'] = True
+            emit(dict(type='error', session=session, message='MCP connector configuration is invalid. Check the executable, transport and paired credential binding.'))
+            return
         with tempfile.TemporaryDirectory(prefix='meshlit-agent-') as scratch:
             os.chmod(scratch, 0o700)
             config = LocalOpenAIAgentConfig(
@@ -287,7 +315,8 @@ class Host:
 
 
 async def main():
-    config = json.loads(Path(sys.argv[1]).read_text())
+    from runtime_config import load_runtime
+    config = load_runtime(Path(sys.argv[1]))
     backend_process = await asyncio.create_subprocess_exec(*config['backend'], stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, limit=3_000_000)
     backend = Backend(backend_process)

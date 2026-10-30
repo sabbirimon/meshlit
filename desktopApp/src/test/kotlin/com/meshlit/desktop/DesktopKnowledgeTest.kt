@@ -5,6 +5,29 @@ import kotlin.test.*
 import org.junit.Test
 
 class DesktopKnowledgeTest {
+    @Test fun agentRecallRequiresAdditionalGrantAndHonorsEachNewLookup() {
+        val folder = Files.createTempDirectory("meshlit-knowledge-agent-test")
+        try {
+            val store = DesktopKnowledge(folder)
+            store.unlock("agent recall test password".toCharArray())
+            val corpus = store.lockedCorpus()
+            corpus.importText("decision", "local:decision", "The cobalt telescope uses an amber detector")
+            corpus.setPolicy(com.meshlit.workspace.KnowledgePolicy(localChat = true, remoteChat = true))
+            assertContains(store.context("telescope", false), "cobalt")
+            assertEquals("", store.context("telescope", false, agent = true))
+            assertEquals("", store.context("telescope", true, agent = true))
+            corpus.setPolicy(corpus.snapshot().policy.copy(agents = true))
+            assertContains(store.context("telescope", false, agent = true), "cobalt")
+            corpus.setPolicy(corpus.snapshot().policy.copy(remoteChat = false))
+            assertEquals("", store.context("telescope", true, agent = true))
+            assertContains(store.context("telescope", false, agent = true), "cobalt")
+            corpus.setPolicy(corpus.snapshot().policy.copy(agents = false))
+            assertEquals("", store.context("telescope", false, agent = true))
+            assertContains(store.context("telescope " + "x".repeat(20_000), false), "cobalt")
+            store.lock()
+            assertEquals("", store.context("telescope", false, agent = true))
+        } finally { folder.toFile().deleteRecursively() }
+    }
     @Test fun encryptedPersistenceLockAndWrongPassword() {
         val folder = Files.createTempDirectory("meshlit-knowledge-test")
         try {

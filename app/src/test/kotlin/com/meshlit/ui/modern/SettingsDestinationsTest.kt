@@ -23,14 +23,33 @@ class SettingsDestinationsTest {
     @Test fun basicAndAdvancedTabsShowDistinctCompleteMenus(){
         val basic=SettingsDestinations.search("",false).map{it.id}.toSet()
         val advanced=SettingsDestinations.search("",true).map{it.id}.toSet()
-        assertTrue(basic.size in 1..6)
+        assertTrue(basic.size in 1..11)
         assertTrue("appearance" in basic)
-        assertFalse("providers" in basic)
+        assertTrue("providers" in basic)
+        assertTrue("personalization" in basic)
+        assertTrue("voice-settings" in basic)
         assertFalse("agents" in basic)
         assertTrue(advanced.size>10)
         assertTrue(basic.intersect(advanced).isEmpty())
         assertEquals(SettingsDestinations.all.map{it.id}.toSet(),basic+advanced)
         assertTrue("rewards" in advanced)
         assertTrue("hyperl" in advanced)
+    }
+    @Test fun everyVisibleDestinationHasExactlyOneCategoryAndRemainsReachable(){
+        val visible=SettingsDestinations.all
+        assertEquals(visible.size,visible.map{it.id}.distinct().size)
+        for(entry in visible) {
+            assertEquals("Category for ${entry.id}",1,SettingsGroup.entries.count{entry.id in it.destinations})
+            assertTrue(com.meshlit.BuildProfile.routeAllowed(entry.id))
+        }
+        val grouped=SettingsDestinations.groups(true).flatMap {group->SettingsDestinations.search("",true).filter{it.group==group}}
+        assertEquals(SettingsDestinations.search("",true).map{it.id}.toSet(),grouped.map{it.id}.toSet())
+        assertEquals(grouped.size,grouped.map{it.id}.distinct().size)
+    }
+    @Test fun naturalVoiceAndMemorySearchReachWorkingControlsFromEitherTab(){
+        for(advanced in listOf(false,true)) {
+            assertEquals(listOf("voice-settings"),SettingsDestinations.search("Kokoro preview",advanced).map{it.id})
+            assertEquals(listOf("personalization"),SettingsDestinations.search("memory personality",advanced).map{it.id})
+        }
     }
 }

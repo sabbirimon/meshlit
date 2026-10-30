@@ -1,0 +1,134 @@
+{
+  "status": "passed",
+  "models": [
+    {
+      "engine": "kokoro-en-v0_19-int8",
+      "voice": "af",
+      "sampleRate": 24000,
+      "pcmBytes": 166598,
+      "synthesisMs": 24062.523688,
+      "androidPlaybackCompleted": true,
+      "execution": "OpenLive host CPU over owner USB tunnel",
+      "license": "Apache-2.0"
+    },
+    {
+      "engine": "pocket-int8",
+      "voice": "bria",
+      "sampleRate": 24000,
+      "pcmBytes": 138240,
+      "synthesisMs": 7398.990935,
+      "androidPlaybackCompleted": true,
+      "execution": "OpenLive host CPU over owner USB tunnel",
+      "license": "CC-BY-4.0; the ONNX export is for non-commercial use (archive README)"
+    }
+  ],
+  "microphoneTested": false,
+  "cloudProviderTested": false,
+  "androidNativeSynthesis": false,
+  "hostEngineExecution": {
+    "pocket-int8": {
+      "provider": "cpu",
+      "numThreads": 2,
+      "providers": [
+        "cpu",
+        "coreml"
+      ],
+      "override": "auto",
+      "results": [
+        {
+          "provider": "cpu",
+          "loadMs": 3019,
+          "warmMs": 6229,
+          "firstMs": 2248,
+          "rtf": 1.01
+        },
+        {
+          "provider": "coreml",
+          "error": "benchmark timed out after 73.70529457399999 s"
+        }
+      ],
+      "measuredAt": "2026-10-30T20:07:00.586Z",
+      "bench": "done"
+    },
+    "kokoro-en-v0_19-int8": {
+      "provider": "cpu",
+      "numThreads": 2,
+      "providers": [
+        "cpu",
+        "coreml"
+      ],
+      "override": "auto",
+      "results": [
+        {
+          "provider": "cpu",
+          "error": "benchmark timed out after 120 s"
+        },
+        {
+          "provider": "coreml",
+          "error": "skipped: CPU did not finish, so nothing to beat"
+        }
+      ],
+      "measuredAt": "2026-10-30T20:05:20.002Z",
+      "bench": "done"
+    }
+  },
+  "device": "Samsung SM-A207F / API30",
+  "date": "2026-10-31",
+  "elevenLabsLiveTested": false,
+  "limits": [
+    "Kokoro and Pocket synthesis ran on the owner host CPU, not natively on Android.",
+    "ElevenLabs requires an owner key and has not been live-tested.",
+    "Host acceleration benchmarks include timeouts; no GPU or realtime latency qualification is claimed.",
+    "Only fixed synthetic text was used; no microphone audio or LLM prompts were sent in this test."
+  ],
+  "androidUnitTests": {
+    "core": {
+      "tests": 298,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "v1": {
+      "tests": 252,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "v2": {
+      "tests": 252,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "appLint": {
+    "meshlitV1": {
+      "Warning": 399,
+      "Hint": 19
+    },
+    "meshlitV2": {
+      "Warning": 399,
+      "Hint": 19
+    }
+  },
+  "artifacts": [
+    {
+      "file": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-arm64-v8a-debug.apk",
+      "bytes": 561895668,
+      "sha256": "bb03cc829a9f8b70694529006cad7dc412cca5d31fe44e7c0cb96f7d05f66ddd",
+      "signatureVerified": true,
+      "containsNaturalSpeechAdapter": true
+    },
+    {
+      "file": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+      "bytes": 561895660,
+      "sha256": "8e0895cdf090fdbbee967827cb231ebab4d62dc057001b154901aa6d5345e2e9",
+      "signatureVerified": true,
+      "containsNaturalSpeechAdapter": true
+    }
+  ],
+  "studioTestsPassed": 37,
+  "developmentLauncherSmokePassed": true,
+  "fullLintPassed": true,
+  "freeAccountLiveVerified": false
+}

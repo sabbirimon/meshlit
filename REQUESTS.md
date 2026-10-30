@@ -4,6 +4,21 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Saved desktop/Android integration checkpoint — 2026-10-31
+
+Source checkpoint saved at the owner's low-credit request: desktop companion
+integrations, encrypted project notes/context preview, grouped boxed settings,
+Android live-voice diagnostics/UI, persistence and tool-selection fixes, agent
+memory consent, engine/HyperL consistency and hook cancellation/revocation.
+Final checks: 538 Android unit tests; 78 desktop passed/1 physical SSH skipped;
+71 workbench tests. Both final Android source variants compile; V2 test APK assembles.
+Full current-source APK/lint, portable desktop installation and actual human live
+voice remain open. Upstream advisories are unresolved; no security clearance claimed.
+[Checkpoint and next gates](docs/CHECKPOINT_2026-10-31.md) ·
+[Plan](docs/DESKTOP_EVOLUTION_PLAN.md) · [Manual](docs/USER_MANUAL.md) ·
+[Smaller-model repair guide, including mobile](docs/SMALL_MODEL_MAINTENANCE_GUIDE.md).
+
+
 ## AFK qualification, managed gateways and IDE usage — 2026-10-30
 
 Implemented separate managed OmniRoute/FreeLLMAPI lifecycle controls in the Code
@@ -397,3 +412,11 @@ Android + Intel macOS + Windows x64 + Linux amd64 prerelease packages are built 
 ## Four-platform prerelease delivered — 2026-10-26
 
 The authorized [beta.5 prerelease](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5) is public with thirteen verified final assets. [Relay reconstruction](https://github.com/sabbirimon/meshlit/actions/runs/40273491384) preserved the exact tested APK/DMG bytes and removed its temporary parts. Android and Intel Mac targeted evidence is recorded; Windows/Linux installers have CI evidence, not physical installation qualification. Publisher signing and broader platform parity remain open. No paid API calls, main merge or store submission were performed. This supersedes the draft-transfer status above.
+
+## Natural voices — 2026-10-31
+
+Kokoro/Pocket host adapters and ElevenLabs free-tier/paid speech are implemented
+in source. Real voice catalogs and previews replace guessed voice lists. Local
+host samples, 802 core/app tests, 37 Studio tests and Samsung playback of both
+engines passed. Both debug APKs and app lints passed with zero errors. Native phone Kokoro/Pocket and live ElevenLabs account checks
+remain separate gates. See [voice setup](docs/NATURAL_VOICES.md).

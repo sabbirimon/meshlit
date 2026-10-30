@@ -91,3 +91,5 @@ Sources: [SDK product](https://antigravity.google/product/antigravity-sdk/),
 ## Managed gateway and usage continuation
 
 See the [current implementation and setup](../../docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md#managed-gateways-and-durable-ide-usage--2026-10-30). The original qualification limits above describe earlier checkpoints. Gateway lifecycle now uses reviewed local development inputs; portable gateway redistribution remains pending. Usage is a ledger-backed page with persistent budget controls. Real local two-session, budget-reopen and gateway-auth evidence is recorded separately from native UI qualification.
+
+Voice and vision: see [OpenLive setup and tuning](../../docs/VOICE_AND_VISION.md).

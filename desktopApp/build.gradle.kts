@@ -35,6 +35,7 @@ compose.desktop {
         providers.gradleProperty("meshlit.devResources").orNull?.let {
             require(project.file(it).isDirectory) { "Developer resources directory is missing" }
             jvmArgs("-Dmeshlit.dev.resources=" + project.file(it).absolutePath)
+            jvmArgs("-Djava.library.path=" + project.file(it).resolve("local").absolutePath)
         }
         providers.gradleProperty("meshlit.packagingJdk").orNull?.let { javaHome = it }
         nativeDistributions {
@@ -96,6 +97,7 @@ tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("processResources") 
 
 val studioBuildMetadata = layout.buildDirectory.dir("generated/studioIdentity")
 val generateStudioIdentity by tasks.registering {
+    notCompatibleWithConfigurationCache("Reads live Git identity for each desktop distribution")
     outputs.dir(studioBuildMetadata)
     outputs.upToDateWhen { false } // Every compiled distribution has a distinct build time.
     doLast {

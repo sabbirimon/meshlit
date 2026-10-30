@@ -11,7 +11,8 @@ import java.util.concurrent.*
 internal fun runIdeBackend() {
     val vault = DesktopUsage()
     val engine = LocalEngine()
-    var session: LocalSession? = null
+    val enginePreferences = EnginePreferences()
+    val localSession = IdeEngineSession(enginePreferences::load, engine::isRunning) { engine.start(options = it) }
     val worker = Executors.newSingleThreadExecutor()
     val deadlines = Executors.newSingleThreadScheduledExecutor()
     val jobs = ConcurrentHashMap<String, FutureTask<Unit>>()
@@ -48,10 +49,10 @@ internal fun runIdeBackend() {
                             buildJsonObject { put("ready", true) }
                         }
                         "load_local" -> {
-                            if (session == null || !engine.isRunning()) session = engine.start()
+                            val session = localSession.load()
                             buildJsonObject {
                                 put("ready", true); put("label", DesktopStarter.label)
-                                put("context", session!!.context)
+                                put("context", session.context)
                             }
                         }
                         "usage" -> ideUsage(vault.journal())
@@ -68,7 +69,8 @@ internal fun runIdeBackend() {
                             require(messages.size in 1..64)
                             val route = request["route"] as? JsonObject
                             val local = route == null || route["kind"]?.jsonPrimitive?.content == "local"
-                            val active = if (local) session?.takeIf { engine.isRunning() } ?: engine.start().also { session = it } else null
+                            val active = if (local) localSession.load() else null
+                            val maxOutput = ideOutputBudget(active)
                             val endpoint = active?.endpoint ?: HostEndpoint.parse(route!!.getValue("endpoint").jsonPrimitive.content)
                             val token = active?.token ?: route?.get("token")?.jsonPrimitive?.content.orEmpty()
                             require(token.length <= 8192 && token.none(Char::isISOControl))
@@ -84,11 +86,11 @@ internal fun runIdeBackend() {
                                 put("model", JsonPrimitive(model))
                                 put("stream", JsonPrimitive(false)); remove("stream_options")
                                 remove("max_completion_tokens")
-                                put("max_tokens", JsonPrimitive(1024))
+                                put("max_tokens", JsonPrimitive(maxOutput))
                             })
                             attempt = ledger.begin(UsageLedger.route(if(local) "local:studio-ide" else endpoint.base.toString(), model),
                                 model, price,
-                                outbound.toString().length.toLong() * 4 + 1024, 1024)
+                                outbound.toString().length.toLong() * 4 + 1024, maxOutput.toLong())
                             val call = http.sendAsync(HttpRequest.newBuilder(endpoint.route("chat/completions"))
                                 .timeout(Duration.ofSeconds(120)).apply { if(token.isNotBlank()) header("Authorization", "Bearer $token") }
                                 .header("Content-Type", "application/json")

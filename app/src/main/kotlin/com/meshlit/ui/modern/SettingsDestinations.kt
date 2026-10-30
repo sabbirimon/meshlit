@@ -2,7 +2,26 @@ package com.meshlit.ui.modern
 
 /** One catalog drives navigation and search. No row is allowed a no-op action. */
 data class SettingsDestination(val id:String,val title:String,val description:String,val advanced:Boolean=false,
-    val keywords:String="")
+    val keywords:String="") {
+    val group:SettingsGroup get()=SettingsGroup.entries.single { id in it.destinations }
+}
+
+/** Purpose-based navigation, independent of permission and runtime availability. */
+enum class SettingsGroup(val title:String,val description:String,val destinations:Set<String>) {
+    MODELS("Models, voice and media", "Models, speech, online providers and numerical tools", setOf(
+        "models","voice-settings","media","providers","huggingface","router","behavior","training","acceleration","hyperl","colibri","rag","usage")),
+    AGENTS("Agents, memory and tasks", "Remember preferences, review jobs and connect approved tools", setOf(
+        "personalization","tasks","agents","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
+    CONNECTIONS("Devices and connections", "Pair devices, manage transports and inspect real capabilities", setOf(
+        "devices","network","vpn","sharding","radar","host-map","external-services","web-bridge","device-dashboard","meshchat","remotecommands","p2p","gibberlink","external","ssh","peers")),
+    PRIVACY("Privacy and access", "Permissions, network rules, identity and data policy", setOf(
+        "securityprivacy","guardrails","permissions","firewall","identity-recovery","crypto","legal","search")),
+    TOOLS("System and developer tools", "Files, diagnostics, optional runtimes and host services", setOf(
+        "files","ide","device","resources","power","monitor","operations","recovery","runtime","commands","packages","securitylab","termux","crawler","cloud","audit","logs","rewards")),
+    PREFERENCES("App preferences and help", "Appearance, shortcuts, saved configuration and guidance", setOf(
+        "dashboards","appearance","notifications","menu-layout","configuration","help","about"))
+}
+
 object SettingsDestinations {
     val all=listOf(
         SettingsDestination("dashboards","Dashboards","Models, routing, usage and private connections",keywords="workspace overview dashboard"),
@@ -33,6 +52,7 @@ object SettingsDestinations {
         SettingsDestination("p2p","P2P chat and commands","Direct phone-to-phone WebRTC with signed pairing and optional TURN",keywords="peer Internet no VPN STUN TURN WebRTC ICE phone long distance chat"),
         SettingsDestination("colibri","Colibri host","Optional disk-streaming engine host: Off, On or Auto",keywords="MoE NVMe tokens inference external host disk streaming Colibri"),
         SettingsDestination("models","Models and downloads","Import files, manage downloads and load local models",keywords="hugging face token storage GGUF RAM"),
+        SettingsDestination("voice-settings","Voice and speech","Choose voices, tune the microphone and test playback",keywords="natural human voice hands free conversation Kokoro Pocket Piper Whisper ElevenLabs TTS STT recognition preview audio"),
         SettingsDestination("media","Camera, vision and audio","Real image input, microphone and existing SDK media paths",keywords="CCTV webcam phone camera microphone WAV speech VLM STT TTS"),
         SettingsDestination("configuration","Configuration profiles","Export, review and apply portable device settings",keywords="import backup default custom declarative ansible terraform pulumi IaC"),
         SettingsDestination("personalization","Memory and personality","Local recall, profile and bounded self recovery",keywords="learning memories repair adaptation"),
@@ -78,7 +98,9 @@ object SettingsDestinations {
         SettingsDestination("legal","Terms and privacy","Offline policies, accepted version and data controls",keywords="agreement consent privacy terms data delete IMON"),
         SettingsDestination("about","About and availability","Build information and feature implementation status",keywords="licenses version help")
     ).filter { com.meshlit.BuildProfile.routeAllowed(it.id) }.filterNot { com.meshlit.BuildConfig.PLAY_REVIEW && it.id in setOf("automation", "termux") }
-    private fun isAdvanced(entry:SettingsDestination)=entry.id !in com.meshlit.workspace.DashboardDirectory.androidBasic
+    private val everydayIds=com.meshlit.workspace.DashboardDirectory.androidBasic+setOf("models","voice-settings","media","providers","personalization")
+    private fun isAdvanced(entry:SettingsDestination)=entry.id !in everydayIds
+    fun groups(advanced:Boolean)=SettingsGroup.entries.filter { group -> search("",advanced).any { it.group==group } }
     fun search(query:String,advanced:Boolean):List<SettingsDestination> {
         val words=query.trim().split(Regex("\\s+")).filter(String::isNotBlank)
         return all.filter { entry ->

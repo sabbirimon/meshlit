@@ -45,11 +45,7 @@ class OfflineSpeechRuntime {
         require(result.sample_rate in 8000..48000 && bytes.size in 2..16*1024*1024) {
             "Unsupported offline synthesis output: ${result.audio_format}, ${result.sample_rate} Hz, ${bytes.size} bytes"
         }
-        val pcm=when(result.audio_format) {
-            AudioFormat.AUDIO_FORMAT_PCM->speechFloatPcm16(bytes,result.sample_rate)
-            AudioFormat.AUDIO_FORMAT_PCM_S16LE->bytes.also{require(it.size%2==0 && it.size.toLong()<=result.sample_rate*2L*180)}
-            else->error("Unsupported offline synthesis format: ${result.audio_format}")
-        }
+        val pcm=speechOutputPcm16(bytes,result.audio_format,result.sample_rate)
         OfflineSpeechAudio(pcm,result.sample_rate)
     }
     suspend fun close() {
@@ -76,4 +72,14 @@ internal fun speechFloatPcm16(bytes:ByteArray,rate:Int):ByteArray {
         output.putShort((value.coerceIn(-1f,1f)*32768f).roundToInt().coerceIn(-32768,32767).toShort())
     }
     return output.array()
+}
+
+/** Never reinterpret float/compressed output as signed PCM16. */
+internal fun speechOutputPcm16(bytes:ByteArray,format:AudioFormat,rate:Int):ByteArray {
+    require(rate in 8000..48000 && bytes.size in 2..16*1024*1024)
+    return when(format) {
+        AudioFormat.AUDIO_FORMAT_PCM -> speechFloatPcm16(bytes,rate)
+        AudioFormat.AUDIO_FORMAT_PCM_S16LE -> bytes.also{require(it.size%2==0 && it.size.toLong()<=rate*2L*180)}
+        else -> error("Unsupported offline synthesis format: $format")
+    }
 }

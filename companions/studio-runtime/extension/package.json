@@ -91,6 +91,34 @@
       {
         "command": "meshlit.gateway.Hugging Face",
         "title": "Meshlit: Hugging Face Dashboard"
+      },
+      {
+        "command": "meshlit.voice",
+        "title": "Meshlit: Voice and Vision Tuning"
+      },
+      {
+        "command": "meshlit.settings",
+        "title": "Meshlit: Settings"
+      },
+      {
+        "command": "meshlit.manual",
+        "title": "Meshlit: User Manual"
+      },
+      {
+        "command": "meshlit.memory",
+        "title": "Meshlit: Project Memory"
+      },
+      {
+        "command": "meshlit.contextPreview",
+        "title": "Meshlit: Preview Project Context"
+      },
+      {
+        "command": "meshlit.actionHistory",
+        "title": "Meshlit: Reviewed Action History"
+      },
+      {
+        "command": "meshlit.companions",
+        "title": "Meshlit: Memory and Computer Companions"
       }
     ],
     "menus": {

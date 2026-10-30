@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-10",
+  "updated": "2026-10-31",
   "operations": [
     "SETTINGS_READ",
     "SETTINGS_PATCH",
@@ -78,7 +78,7 @@
     },
     {
       "id": "settings",
-      "title": "Search, Basic/Advanced, persisted appearance",
+      "title": "Grouped searchable settings, clear sections and persisted controls",
       "status": "implemented",
       "sources": [
         "app/src/main/kotlin/com/meshlit/ui/modern/ModernSettingsScreen.kt",
@@ -86,13 +86,15 @@
         "app/src/main/kotlin/com/meshlit/ui/modern/StatusHeroCard.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/BootLoadingGate.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/WorkspaceDashboards.kt",
-        "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/DashboardDirectory.kt"
+        "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/DashboardDirectory.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/SettingsFeatureSection.kt",
+        "companions/studio-runtime/extension/settings.cjs"
       ],
       "authority": [
         "SETTINGS"
       ],
       "limitations": [
-        "Dashboard navigation and latest-route observations only; durable usage, paid-budget admission and Tailscale control remain pending."
+        "Source and contract coverage is separate from full runtime/device verification. See the settings audit; unavailable providers and hardware remain explicit."
       ]
     },
     {
@@ -1191,6 +1193,55 @@
       "docs": [
         "docs/architecture/deepseek-harness.md",
         "companions/deepseek-harness/README.md"
+      ]
+    },
+    {
+      "id": "studio-project-memory",
+      "title": "Encrypted project notes, context preview and reviewed-action metadata",
+      "status": "implemented in source; contract-tested; installed application qualification pending",
+      "sources": [
+        "companions/studio-runtime/extension/memory.cjs",
+        "companions/studio-runtime/extension/memory-store.cjs"
+      ],
+      "docs": [
+        "docs/USER_MANUAL.md"
+      ],
+      "limitations": [
+        "Manual bounded lexical notes; no automatic capture or sync. Recall/history default off."
+      ]
+    },
+    {
+      "id": "studio-agent-companions",
+      "title": "Pinned claude-mem, OpenMausBot and OpenBot companion integration",
+      "status": "optional source and connection adapters; upstream runtime/security gates separate",
+      "sources": [
+        "companions/agents/prepare.py",
+        "companions/studio-runtime/extension/companions.cjs",
+        "companions/studio-runtime/extension/companion-client.cjs"
+      ],
+      "docs": [
+        "docs/DESKTOP_COMPANIONS.md",
+        "docs/UPSTREAM_SECURITY_REVIEW.md"
+      ],
+      "limitations": [
+        "Not native embedding of every upstream feature. Optional services stay inactive by default; unresolved advisories remain."
+      ]
+    },
+    {
+      "id": "voice-conversation-tuning",
+      "title": "Live voice diagnostics, explicit retry and natural speech providers",
+      "status": "implemented in source; prior playback evidence; current live-human acceptance pending",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/chat/HandsFreeVoice.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/HandsFreeVoiceDialog.kt",
+        "companions/studio-runtime/extension/voice.cjs"
+      ],
+      "docs": [
+        "docs/NATURAL_VOICES.md",
+        "docs/VOICE_AND_VISION.md"
+      ],
+      "limitations": [
+        "Kokoro/Pocket run on host. No claim of current real human conversation or provider account qualification."
       ]
     }
   ],

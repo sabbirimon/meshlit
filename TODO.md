@@ -4,6 +4,21 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Saved desktop/Android integration checkpoint — 2026-10-31
+
+Source checkpoint saved at the owner's low-credit request: desktop companion
+integrations, encrypted project notes/context preview, grouped boxed settings,
+Android live-voice diagnostics/UI, persistence and tool-selection fixes, agent
+memory consent, engine/HyperL consistency and hook cancellation/revocation.
+Final checks: 538 Android unit tests; 78 desktop passed/1 physical SSH skipped;
+71 workbench tests. Both final Android source variants compile; V2 test APK assembles.
+Full current-source APK/lint, portable desktop installation and actual human live
+voice remain open. Upstream advisories are unresolved; no security clearance claimed.
+[Checkpoint and next gates](docs/CHECKPOINT_2026-10-31.md) ·
+[Plan](docs/DESKTOP_EVOLUTION_PLAN.md) · [Manual](docs/USER_MANUAL.md) ·
+[Smaller-model repair guide, including mobile](docs/SMALL_MODEL_MAINTENANCE_GUIDE.md).
+
+
 ## AFK qualification, managed gateways and IDE usage — 2026-10-30
 
 Implemented separate managed OmniRoute/FreeLLMAPI lifecycle controls in the Code
@@ -483,3 +498,11 @@ Delivery recovery: finish verified temporary-part transfer and GitHub reconstruc
 - [ ] Complete physical Windows/Linux installation, production signing/notarization, broader device acceptance and live provider/VPN qualification. These remain separate from successful prerelease delivery.
 
 This supersedes the pending upload/publication delivery gate above.
+
+## Natural voices — 2026-10-31
+
+Kokoro/Pocket host adapters and ElevenLabs free-tier/paid speech are implemented
+in source. Real voice catalogs and previews replace guessed voice lists. Local
+host samples, 802 core/app tests, 37 Studio tests and Samsung playback of both
+engines passed. Both debug APKs and app lints passed with zero errors. Native phone Kokoro/Pocket and live ElevenLabs account checks
+remain separate gates. See [voice setup](docs/NATURAL_VOICES.md).

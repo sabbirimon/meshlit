@@ -79,13 +79,25 @@ async function addMcp(context) {
  await context.globalState.update('meshlit.mcp',[...previous,config]);
  vscode.window.showInformationMessage('Connector saved, disabled by default. Select it when starting an Edit or Autopilot agent.');
 }
-async function chooseMcp(context) {
+async function chooseMcp(context, {editing=false, selected=[]}={}) {
  const servers=context.globalState.get('meshlit.mcp',[]);if(!servers.length)return [];
- const selected=await vscode.window.showQuickPick(servers.map(s=>({label:s.name,description:s.url||s.command,server:s})),{canPickMany:true,title:'Optional MCP connectors — leave empty for none'});
- if(!selected?.length)return [];
- if(selected.length>4)throw Error('At most four MCP connectors per agent');
- const answer=await vscode.window.showWarningMessage('Start these trusted MCP servers? Local servers run with your user permissions; remote servers receive approved tool arguments.\n'+selected.map(s=>JSON.stringify(s.server)).join('\n'),{modal:true},'Start selected servers');
- return answer==='Start selected servers'?selected.map(s=>s.server):[];
+ const auth=require('./mcp-auth.cjs');
+ const names=new Set(selected.map(item=>typeof item==='string'?item:item.name));
+ const choices=await vscode.window.showQuickPick(servers.map(s=>({label:s.name,description:s.url||s.command,server:s,picked:names.has(s.name)})),{canPickMany:true,title:'Optional MCP connectors — leave empty for none'});
+ if(choices===undefined)return editing?undefined:[];
+ if(!choices.length)return [];
+ if(choices.length>4)throw Error('At most four MCP connectors per agent');
+ const configs=choices.map(choice=>auth.configuredConnector(choice.server));
+ const answer=await vscode.window.showWarningMessage('Start these trusted MCP servers? Local servers run with your user permissions; remote servers receive approved tool arguments.\n'+configs.map(auth.connectorPreview).join('\n'),{modal:true},'Start selected servers');
+ if(answer!=='Start selected servers')return editing?undefined:[];
+ const unchanged=()=>{const current=context.globalState.get('meshlit.mcp',[]);for(const config of configs){
+  const savedConfig=current.find(item=>item.name===config.name);
+  if(!savedConfig||JSON.stringify(auth.configuredConnector(savedConfig))!==JSON.stringify(config))throw Error('MCP configuration changed during approval; choose it again');
+ }};
+ unchanged();
+ const resolved=await Promise.all(configs.map(config=>auth.resolveConnector(context,config)));
+ unchanged();
+ return resolved;
 }
 async function checkSavedConnection(context) {
  const profiles=saved(context);

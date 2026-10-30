@@ -4,6 +4,58 @@ Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Saved desktop/Android integration checkpoint — 2026-10-31
+
+Source checkpoint saved at the owner's low-credit request: desktop companion
+integrations, encrypted project notes/context preview, grouped boxed settings,
+Android live-voice diagnostics/UI, persistence and tool-selection fixes, agent
+memory consent, engine/HyperL consistency and hook cancellation/revocation.
+Final checks: 538 Android unit tests; 78 desktop passed/1 physical SSH skipped;
+71 workbench tests. Both final Android source variants compile; V2 test APK assembles.
+Full current-source APK/lint, portable desktop installation and actual human live
+voice remain open. Upstream advisories are unresolved; no security clearance claimed.
+[Checkpoint and next gates](docs/CHECKPOINT_2026-10-31.md) ·
+[Plan](docs/DESKTOP_EVOLUTION_PLAN.md) · [Manual](docs/USER_MANUAL.md) ·
+[Smaller-model repair guide, including mobile](docs/SMALL_MODEL_MAINTENANCE_GUIDE.md).
+
+
+## Natural and free voice options — 2026-10-31
+
+Added Android adapters for OpenLive Kokoro/Pocket and ElevenLabs, actual voice
+discovery, saved selection, previews and local speech speed. Kokoro/Pocket run
+on the approved host; native Android execution of those engines is not claimed.
+ElevenLabs free-tier-only defaults on, checks the reported account tier/allowance
+before synthesis and blocks paid/unknown/exhausted accounts. It is not a provider
+billing cap; there is no automatic paid fallback. Credential/profile validity is
+rechecked at every HTTP dispatch. Studio has real local speech previews and Stop.
+Both host engines generated finite real speech and Studio previews. 802 core/app
+tests passed (298 core; 252 per app flavor). ElevenLabs live account verification
+requires the owner's key; none was requested in chat or used. Samsung SM-A207F/API30 playback qualification passed for both engines over the
+owner USB tunnel. Both APK variants assembled; full app lints passed with zero
+errors (399 warnings/19 hints each). The final V2 ARM64 debug APK was installed
+without clearing app data. All 37 Studio tests and the pinned development-launcher
+smoke check pass. Test services and the temporary USB reverse mapping were stopped.
+[Evidence](docs/desktop/evidence/natural-voices-20261031.json). See [setup and model terms](docs/NATURAL_VOICES.md).
+
+
+## Voice and vision tuning — 2026-10-30
+
+Studio now has an optional OpenLive runtime/tuning dashboard with owned loopback
+process start/stop, source selection and real model/vision settings read/save.
+Local compatible servers and upstream provider configuration are supported through
+OpenLive. Speech tuning uses the upstream engine settings. See
+[setup, validation and remaining gates](docs/VOICE_AND_VISION.md). Physical
+audio/vision, Android embedding, unified usage and optional Pipecat/HF adapters
+remain open; this is a source increment, not a qualified installer release. Android
+now also saves real PCM endpoint and Android TTS playback tuning. Both variant
+test suites passed (252 tests each), plus 293 core-inference tests. Both APKs
+assembled and both app lints passed with zero errors. Samsung offline speech and
+local inference and microphone capture/cancel/reopen tests passed. Live human
+conversation, acoustic barge-in, provider speech and camera/vision qualification
+remain separate acceptance gates. The voice
+review hardened cleanup, cancellation and PCM playback semantics.
+
+
 ## G1 contract hardening and math assessment — 2026-10-26
 
 Durable ledger replay now rejects invalid domains, duplicate currency policies, inconsistent terminal costs and illegal event shapes. Any uncertain write disables the current authority until reopen. Android profile/key edits use one checked encrypted transaction; a failed commit blocks further credentials in that instance, and current profile/local-key bindings are rechecked before dispatch. Independent integer accounting and write-then-fail regressions pass; full regression, both debug assemblies and both lints passed. Samsung device follow-up is in progress. Studio durable credentials, all-adapter revocation, cross-device authority and live account/device qualification remain open. No automatic routing or provider billing-cap promise was added.

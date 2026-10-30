@@ -81,7 +81,7 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     fun groupPeers():List<PipelinePeer> = peers().filter{it.group==activeGroup()}
     fun setActiveGroup(name:String):List<PipelinePeer> {
         val selected=name.trim();require(validGroupName(selected)) { "Group name must be 1–32 letters, numbers, spaces, underscores or hyphens" }
-        credentials.put("active-group",selected)
+        credentials.putCommitted("active-group",selected)
         return groupPeers()
     }
     private fun validGroupName(name:String)=name.length in 1..32 && name.all{it.isLetterOrDigit() || it in " _-"}

@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-31",
+  "kind": "source checkpoint, not release",
+  "branch": "checkpoint/desktop-agents-settings-20261031",
+  "nodeTests": {
+    "passed": 71,
+    "failed": 0
+  },
+  "jvmTests": {
+    "desktopApp/test": {
+      "tests": 79,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "app/testMeshlitV1DebugUnitTest": {
+      "tests": 269,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app/testMeshlitV2DebugUnitTest": {
+      "tests": 269,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "finalAndroidRevocationCompilation": {
+    "v1": "passed",
+    "v2": "passed",
+    "note": "Two final cleanup edits compiled after the full unit batch"
+  },
+  "instrumentationApk": "assembled, not executed on phone this increment",
+  "fullLint": "not passed; superseded batch failed at V2 unit-test lint and was stopped",
+  "portableApp": "not delivered; compiler cache failure and followup helper did not complete successfully",
+  "physicalLiveConversation": "not qualified",
+  "upstreamEvidence": "companion-integration-20261031.json",
+  "documentationChecks": "passed",
+  "remaining": "See docs/CHECKPOINT_2026-10-31.md"
+}

@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -36,6 +37,10 @@ import kotlinx.coroutines.*
     val context=LocalContext.current
     val prefs=remember{context.getSharedPreferences("settings-navigation",0)}
     var advanced by rememberSaveable{mutableStateOf(prefs.getBoolean("advanced",false))}
+    var selectedGroup by rememberSaveable{mutableStateOf<String?>(null)}
+    val group=SettingsGroup.entries.firstOrNull{it.name==selectedGroup}
+    val listState=rememberLazyListState()
+    LaunchedEffect(destination,advanced,selectedGroup,query){listState.scrollToItem(0)}
     val repository=koinInject<SettingsRepository>()
     var history by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
     fun navigate(next:String) {
@@ -53,7 +58,7 @@ import kotlinx.coroutines.*
         destination=previous?.ifEmpty { null }
     }
     val back:()->Unit={back()}
-    BackHandler(destination!=null){back()}
+    BackHandler(destination!=null || group!=null){if(destination!=null) back() else selectedGroup=null}
     if(destination in setOf("dashboards", "usage", "vpn")) { WorkspaceDashboards(destination!!, back, ::navigate); return }
     if(destination=="menu-layout"){MenuLayoutScreen(back);return}
     if(destination=="sharding"){ShardingSettingsScreen(back);return}
@@ -90,6 +95,13 @@ import kotlinx.coroutines.*
     if(destination=="search"){SearchAccessScreen(back);return}
     if(destination=="legal"){com.meshlit.legal.LegalDocumentsScreen(back);return}
     if(destination=="personalization"){PersonalizationScreen(back);return}
+    if(destination=="voice-settings"){
+        val chat=koinInject<com.meshlit.chat.ChatController>()
+        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+            HandsFreeVoiceDialog(chat,maxHeight=maxHeight,onClose=back)
+        }
+        return
+    }
     if(destination=="behavior"){LocalBehaviorScreen(back,{navigate("models")});return}
     if(destination=="help"){HelpTutorialScreen(back);return}
     if(destination=="cloud"){CloudManagementScreen(back,{navigate("huggingface")});return}
@@ -137,7 +149,7 @@ import kotlinx.coroutines.*
             "appearance" -> AppearanceSettings(Modifier.padding(padding))
             "device" -> Box(Modifier.padding(padding)){com.meshlit.ui.screens.settings.DeviceScreen(back)}
             "monitor" -> Box(Modifier.padding(padding)){ModernMonitorScreen()}
-            else -> LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax).testTag("settings-list"),contentPadding=PaddingValues(12.dp),
+            else -> LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax).testTag("settings-list"),state=listState,contentPadding=PaddingValues(12.dp),
                 verticalArrangement=Arrangement.spacedBy(T.medium)) {
                 when(destination){
                     "runtime" -> item{com.meshlit.ui.screens.cloud.RuntimeDashboardCard()}
@@ -160,31 +172,61 @@ import kotlinx.coroutines.*
                         item {OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().testTag("settings-search"),singleLine=true,placeholder={Text("Search settings")},
                             leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear search")}},shape=RoundedCornerShape(28.dp))}
                         item {Row(horizontalArrangement=Arrangement.spacedBy(T.small)){
-                            FilterChip(!advanced,{advanced=false;prefs.edit().putBoolean("advanced",false).apply()},label={Text("Basic")})
-                            FilterChip(advanced,{advanced=true;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced")})
+                            FilterChip(!advanced,{advanced=false;selectedGroup=null;prefs.edit().putBoolean("advanced",false).apply()},label={Text("Basic")})
+                            FilterChip(advanced,{advanced=true;selectedGroup=null;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced")})
                         }}
-                        if(query.isBlank()) item {
+                        if(query.isBlank() && group==null) item {
                             OutlinedButton(onClick={navigate("dashboards")},modifier=Modifier.fillMaxWidth().testTag("open-dashboards")) {
                                 Icon(Icons.Outlined.Dashboard,null);Spacer(Modifier.width(T.small));Text("Open dashboards")
                             }
-                            Text(if(advanced) "Technical controls and integrations" else "Everyday preferences. Find model and connection tools in Dashboards.",
+                            Text(if(advanced) "Technical controls and integrations" else "Everyday preferences. Models, voice, memory and app settings.",
                                 style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        val results=SettingsDestinations.search(query,advanced)
-                        if(results.isEmpty()) item{Text("No matching settings. Search covers Basic and Advanced.")}
-                        items(results,key={it.id}){entry -> Card(shape=RoundedCornerShape(20.dp),onClick={navigate(entry.id)},modifier=Modifier.fillMaxWidth(),
-                            colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow)){
-                            Row(Modifier.padding(horizontal=12.dp,vertical=10.dp),horizontalArrangement=Arrangement.spacedBy(T.medium),verticalAlignment=Alignment.CenterVertically){
-                                SettingsIconTile(entry.id)
-                                Column(Modifier.weight(1f)){Text(entry.title,style=MaterialTheme.typography.titleMedium);Text(entry.description,
-                                    style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-                                Icon(Icons.Default.ChevronRight,null)
+                        if(query.isBlank() && advanced && group==null) {
+                            items(SettingsDestinations.groups(true),key={"group:${it.name}"}) {category ->
+                                Surface(onClick={selectedGroup=category.name},modifier=Modifier.fillMaxWidth().testTag("settings-group-${category.name}"),
+                                    shape=RoundedCornerShape(12.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) {
+                                    ListItem(headlineContent={Text(category.title,color=MaterialTheme.colorScheme.primary)},supportingContent={Text(category.description)},
+                                        trailingContent={Icon(Icons.Default.ChevronRight,null)},
+                                        colors=ListItemDefaults.colors(containerColor=Color.Transparent))
+                                }
                             }
-                        }}
+                        } else {
+                            if(query.isBlank() && group!=null) item {
+                                TextButton(onClick={selectedGroup=null},modifier=Modifier.testTag("settings-all-categories")) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack,null);Spacer(Modifier.width(T.small));Text("All categories")
+                                }
+                                Text(group.title,style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.primary)
+                                Text(group.description,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            // A search always spans both tabs and all categories, even within a category.
+                            val results=SettingsDestinations.search(query,advanced).filter{query.isNotBlank() || group==null || it.group==group}
+                            if(query.isNotBlank() && results.isNotEmpty()) item {Text("${results.size} results across all settings",style=MaterialTheme.typography.labelLarge)}
+                            if(results.isEmpty()) item{Text("No matching settings. Search covers Basic and Advanced.")}
+                            SettingsGroup.entries.forEach {category ->
+                                val entries=results.filter{it.group==category}
+                                if(entries.isNotEmpty()) {
+                                    if(group==null || query.isNotBlank()) item(key="heading:${category.name}") {
+                                        HorizontalDivider(Modifier.padding(top=T.medium),color=MaterialTheme.colorScheme.outlineVariant)
+                                        Text(category.title,Modifier.padding(top=T.small),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)
+                                    }
+                                    items(entries,key={it.id}) {entry -> SettingsDestinationRow(entry){navigate(entry.id)}}
+                                }
+                            }
+                            if(query.isBlank() && group==null && !advanced) item {SettingsQuickAccess(::navigate)}
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable private fun SettingsDestinationRow(entry:SettingsDestination,onSelect:()->Unit) {
+    Surface(onClick=onSelect,modifier=Modifier.fillMaxWidth().testTag("settings-entry-${entry.id}"),
+        shape=RoundedCornerShape(12.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) {
+        ListItem(headlineContent={Text(entry.title)},supportingContent={Text(entry.description)},
+            trailingContent={Icon(Icons.Default.ChevronRight,null)},colors=ListItemDefaults.colors(containerColor=Color.Transparent))
     }
 }
 

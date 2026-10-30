@@ -7,20 +7,66 @@ import kotlinx.serialization.Serializable
 
 @Serializable enum class VoiceMode(val label:String) { LIVE("Live conversation"), SINGLE_TURN("One turn") }
 internal class VoiceTurnInterrupted:CancellationException("Voice turn interrupted")
-internal class NoVoiceDetected:IllegalStateException("No speech heard. Check microphone access and speak near the phone.")
+internal class NoVoiceDetected(message:String="No speech heard. Check microphone access and speak near the phone."):IllegalStateException(message)
 
-/** PCM16 mono at 16 kHz: accept 100 ms of speech and end after 700 ms silence. */
-internal class VoiceEndpointDetector {
+/** Saved local PCM capture and Android playback tuning. Values are validated on import too. */
+@Serializable
+data class VoiceTuning(
+    val threshold:Double=0.008,
+    val silenceMs:Int=700,
+    val speechRate:Float=1f,
+    val pitch:Float=1f,
+    val automaticThreshold:Boolean=false,
+) {
+    init {
+        require(threshold.isFinite() && threshold in 0.001..0.1)
+        require(silenceMs in 300..2000)
+        require(speechRate.isFinite() && speechRate in 0.5f..2f)
+        require(pitch.isFinite() && pitch in 0.5f..2f)
+    }
+}
+
+/** PCM16 mono at 16 kHz: accept 100 ms of speech; always cap capture at 30 seconds. */
+internal class VoiceEndpointDetector(private val tuning:VoiceTuning=VoiceTuning()) {
     var bytes:Int=0; private set
     private var speechBytes=0
     private var silenceBytes=0
+    private var audibleBytes=0
+    private var quietestLevel=Double.POSITIVE_INFINITY
+    var peakLevel:Double=0.0; private set
+    /** Optional calibration can only lower the chosen threshold, with a fixed noise floor. */
+    val threshold get()=if(tuning.automaticThreshold && bytes>=16000 && quietestLevel.isFinite())
+        minOf(tuning.threshold,maxOf(0.001,quietestLevel*3)) else tuning.threshold
     val hasSpeech get()=speechBytes>=3200
-    val complete get()=(hasSpeech && silenceBytes>=22400) || bytes>=960000
+    val canFinishManually get()=bytes>=16000 && audibleBytes>=3200
+    val complete get()=(hasSpeech && silenceBytes>=tuning.silenceMs*32) || (!hasSpeech && bytes>=384000) || bytes>=960000
     val remaining get()=960000-bytes
     fun accept(count:Int,level:Double) {
         require(count in 2..remaining && count%2==0 && level.isFinite() && level>=0)
         bytes+=count
-        if(level>0.008){speechBytes+=count;silenceBytes=0}else silenceBytes+=count
+        peakLevel=maxOf(peakLevel,level)
+        quietestLevel=minOf(quietestLevel,level)
+        if(level>0.0005) audibleBytes+=count
+        if(level>threshold){speechBytes+=count;silenceBytes=0}else silenceBytes+=count
+    }
+}
+
+/** dBFS displays quiet real input clearly; it is not a speech-confidence score. */
+internal fun voiceMeterLevel(rms:Double):Float {
+    require(rms.isFinite() && rms>=0)
+    if(rms==0.0) return 0f
+    return ((20*kotlin.math.log10(rms)+72)/60).toFloat().coerceIn(0f,1f)
+}
+internal fun voiceNoSpeechMessage(peak:Double)=if(peak<=0.0005)
+    "The microphone delivered silence or very low audio. Check Android microphone access, disconnect other recording apps or a headset, then tap Retry microphone."
+else "Audio reached the microphone, but did not pass the speech threshold. Tap Retry microphone and speak closer, use Send voice when finished, or lower the threshold in Voice settings."
+
+/** A failed native unload leaves residency uncertain until the app process restarts. */
+internal class VoiceCleanupGuard {
+    private var failed=false
+    fun requireReady(){check(!failed){"Native speech cleanup failed. Restart Meshlit before starting another voice session."}}
+    suspend fun cleanup(action:suspend()->Unit) {
+        try{action()}catch(e:Exception){failed=true;throw e}
     }
 }
 

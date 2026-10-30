@@ -238,7 +238,6 @@ fun main(args: Array<String>) {
                 val session = if (selectedLocal) checkNotNull(selectedSession) else null
                 val targetHost = session?.endpoint ?: HostEndpoint.parse(selectedEndpoint, selectedProtocol)
                 val generationClient = HostClient(targetHost, session?.token ?: selectedCredential?.let { credentials.resolve(it, targetHost) } ?: selectedToken); active = generationClient; client = generationClient
-                val references = withContext(Dispatchers.IO) { knowledge.context(context.last().content, remote = !selectedLocal) }
                 suspend fun round(turns: List<ChatTurn>, agentSystem: String?, showReply: Boolean): Pair<String, GenerationUsage> {
                     val reply = ReplyBuffer()
                     val updates = MutableStateFlow("")
@@ -249,6 +248,10 @@ fun main(args: Array<String>) {
                     }
                     val result = try {
                         withContext(Dispatchers.IO) {
+                            currentCoroutineContext().ensureActive()
+                            // Recheck sharing and the independent agent permission for every model round.
+                            val references = knowledge.context(context.last().content, remote = !selectedLocal,
+                                agent = selectedMode != StudioMode.CHAT)
                             // Agent protocol replaces the ordinary no-tools persona; retrieved context stays untrusted.
                             val groundedSystem = ((agentSystem ?: system.orEmpty()) + references).takeIf { it.isNotBlank() }
                             require(groundedSystem == null || groundedSystem.length <= 8192) { "System context is too large" }

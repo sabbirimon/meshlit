@@ -79,10 +79,21 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         appScope.launch { runCatching { save() } }
     }
     fun setOptions(options:ChatOptions) {
+        check(ready.isCompleted){"Chat history is still loading. Try saving again in a moment."}
         options.validate();com.meshlit.BuildProfile.requireChat(options);check(!_state.value.running);colibri.clearAgentModes()
         if(_state.value.current==null) newChat()
         _state.update{old->old.copy(conversations=old.conversations.map{if(it.id==old.selectedId) it.copy(options=options) else it})}
         appScope.launch{runCatching{save()}.onFailure{error->_state.update{it.copy(error="Cannot save chat options: ${error.javaClass.simpleName}")}}}
+    }
+    /** Check the actual reply route before asking someone to record a voice turn. */
+    fun voiceRouteProblem():String? {
+        if(!ready.isCompleted) return "Chats are still loading. Try again in a moment."
+        if(state.value.running) return "Wait for the current chat reply before starting voice."
+        val selected=state.value.current?.options ?: ChatOptions()
+        if(selected.onlineProfileId!=null) return if(providers.profiles.value.any{it.id==selected.onlineProfileId && it.enabled}) null
+            else "The chat provider is missing or disabled. Choose a reply model in Conversation settings."
+        if(selected.routeId!=null || selected.colibriMode!="OFF" && !selected.usesLocalTools) return null
+        return if(coordinator.loadedModel()==null) "Load a local chat model in Models before starting voice. Speech packs recognize and speak; they do not generate a reply." else null
     }
     fun send(text:String,photo:PhotoChatRequest?=null,voiceConversation:Boolean=false):String? {
         if(!ready.isCompleted || _state.value.running || text.isBlank()) return null
