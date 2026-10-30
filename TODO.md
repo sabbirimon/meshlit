@@ -4,6 +4,13 @@ Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Agent and provider continuation — 2026-10-31
+
+- Finish current-source tests/lint, Samsung update and real free-provider reply.
+- Qualify web-source cards with actual tools, then replace English keyword gating with explicit agent mode.
+- Preserve open voice/resource/desktop gates. [Resume guide](docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md).
+
+
 ## Next open-resource gates — 2026-10-31
 
 - Finish changed core/app/Studio checks and keep build/lint evidence separate from hardware proof.

@@ -8,13 +8,19 @@ import com.meshlit.core.mcp.*
 import com.meshlit.core.observability.LogSource
 import com.meshlit.observability.LogBuffer
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** Chat grants expose a small tool list; each existing tool retains its own
  * saved delegation, OS permission and operation checks. No generic shell tool. */
 class LocalChatTools(private val inference:InferenceCoordinator,private val gate:OperationGate,private val registry:()->McpToolRegistry,private val search:()->com.meshlit.search.AppSearchService,private val logs:LogBuffer) {
-    suspend fun run(prompt:String,options:ChatOptions,status:(String)->Unit):LocalToolAnswer=gate.run(ManagedFeature.AUTOMATION,true) {
+    suspend fun run(prompt:String,options:ChatOptions,status:(String)->Unit,
+        onToolEvent:(String,McpToolResult?)->Unit={_,_->}):LocalToolAnswer=gate.run(ManagedFeature.AUTOMATION,true) {
         options.validate();com.meshlit.BuildProfile.requireChat(options)
         val model=inference.loadedModel() ?: error("Load a local model before enabling tools")
+        check(inference.engineTag in setOf("runanywhere","onnx-ort","llama-native-local")) {
+            "Chat tool planning requires an on-device model. Switch from the cluster or remote runtime before using chat tools."
+        }
         val names=buildSet {
             if(options.nodeTools) addAll(listOf("cyber_skills_list","cyber_skill_read","vm_status","vm_start","vm_wait","vm_stop","vm_exec","ssh_nodes","ssh_node_request","colibri_mode"))
             if(options.cryptoTools) add("crypto_local")
@@ -26,18 +32,27 @@ class LocalChatTools(private val inference:InferenceCoordinator,private val gate
             if(options.localSearchTools) add("app_search")
             if(options.phoneTools) addAll(listOf("android_control_status","android_control","android_package_status","android_package_request"))
         }
-        val tools=registry().list().filter{it.name in names && it.origin==McpToolSpec.Origin.BuiltIn}
+        val selectedRegistry=registry()
+        val tools=selectedRegistry.list().filter{it.name in names && it.origin==McpToolSpec.Origin.BuiltIn}
+        val selectedTools=tools.associateBy{it.name}
         check(tools.isNotEmpty()){"No selected built-in tools are available"}
         logs.info(LogSource.AGENT,"LocalAgent","Task started",mapOf("tool_count" to tools.size,"phone_tools" to options.phoneTools))
         try { LocalToolLoop(complete={planningPrompt->
             gate.run(ManagedFeature.INFERENCE,true) {
-                val result=inference.infer(InferenceRequest(planningPrompt,maxTokens=minOf(options.maxTokens,1024),temperature=0f,
+                val chatMl=usesChatMlPrompt(inference.engineTag,model.modelName)
+                val result=inference.infer(InferenceRequest(localToolPlanningPrompt(inference.engineTag,model.modelName,planningPrompt),maxTokens=minOf(options.maxTokens,1024),temperature=0f,
+                    stopSequences=if(chatMl) listOf("<|im_end|>") else emptyList(),
                     expectedModelPath=model.modelPath,onDeviceOnly=true,publishEvents=false,onToken={}))
                 when(result){is MeshlitResult.Success->result.value.finalText;is MeshlitResult.Failure->error("Local tool planning failed: ${result.error.tag}")}
             }
         },invoke={request->
             logs.info(LogSource.AGENT,"LocalAgent","Tool requested",mapOf("tool" to request.name))
-            val result=if(request.name=="crawl_url") search().access.web(true){registry().invoke(request)} else registry().invoke(request)
+            onToolEvent(request.name,null)
+            gate.requireAllowed(ManagedFeature.AUTOMATION,true)
+            val selected=selectedTools.getValue(request.name)
+            val result=if(request.name=="crawl_url") search().access.web(true){selectedRegistry.invoke(request,selected)} else selectedRegistry.invoke(request,selected)
+            currentCoroutineContext().ensureActive();gate.requireAllowed(ManagedFeature.AUTOMATION,true)
+            onToolEvent(request.name,result)
             logs.info(LogSource.AGENT,"LocalAgent","Tool finished",mapOf("tool" to request.name,"success" to (result !is McpToolResult.Error)))
             result
         },checkAllowed={gate.requireAllowed(ManagedFeature.AUTOMATION,true)},maxCalls=if(options.phoneTools) 8 else 3).run(prompt,tools,status).also{

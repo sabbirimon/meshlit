@@ -107,6 +107,8 @@ import kotlinx.serialization.json.Json
             .onFailure { agentStoreError="Could not save agents; previous profiles remain" }
     }
     val backend=koinInject<AgentBackend>();val jobs by backend.controller.jobs.collectAsStateWithLifecycle()
+    val operationPolicy by koinInject<com.meshlit.operations.OperationsControl>().gate.policy.collectAsStateWithLifecycle()
+    val agentsAvailable=!operationPolicy.agentsPaused && !operationPolicy.emergencyStopped
     val registry=koinInject<com.meshlit.core.mcp.McpToolRegistry>();val scope=rememberCoroutineScope()
     val library=koinInject<com.meshlit.models.ModelLibrary>();val models by library.models.collectAsStateWithLifecycle()
     val inference=koinInject<com.meshlit.core.inference.InferenceCoordinator>();val inferenceState by inference.state.collectAsStateWithLifecycle()
@@ -115,6 +117,7 @@ import kotlinx.serialization.json.Json
     val prompts=remember { mutableStateListOf("","") }
     var selectedModel by remember { mutableStateOf("") }
     var modelMenu by remember { mutableStateOf(false) }
+    var presetModelMenu by remember { mutableStateOf(false) }
     var parallelError by remember { mutableStateOf<String?>(null) }
     var maxTokens by remember { mutableIntStateOf(256) }
     val choices=models.filter{it.installed && it.path==inference.loadedModel()?.modelPath}.map{it.id to "Loaded local · ${it.name}"}+
@@ -130,6 +133,21 @@ import kotlinx.serialization.json.Json
             OutlinedButton(onClick={onOpen("mcp-catalog")}){Text("MCP connections and tools")}}
         item{OutlinedButton(onClick={onOpen("openclaw")}){Text("Phone autonomy and background node")}
             Button(onClick={onOpen("operations")},colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("Emergency stop all")}}
+        item { AgentAccessPanel(onOpen,onChanged={revision++}) }
+        item { SettingsFeatureSection("Task presets") {
+            Text("General assistant, Researcher, Writer, Planner, Phone assistant and Code reviewer. Choose a model below, then add the missing presets. They start off; existing profiles and edits are preserved.")
+            Box { OutlinedButton(onClick={presetModelMenu=true}) { Text(selectedLabel) }
+                DropdownMenu(expanded=presetModelMenu,onDismissRequest={presetModelMenu=false}) {
+                    choices.forEach{(id,label)->DropdownMenuItem(text={Text(label)},onClick={selectedModel=id;presetModelMenu=false})}
+                }
+            }
+            OutlinedButton(enabled=initialProfiles.isSuccess && choices.any{it.first==selectedModel},onClick={
+                try {saveAgents(com.meshlit.agent.AgentTaskPresets.installMissing(savedAgents,selectedModel))}
+                catch(e:Exception){agentStoreError=e.message ?: "Could not add task presets"}
+            }) { Text("Add task presets") }
+            if(selectedModel.isBlank()) Text("Choose a model first. Load a model in Models if the list is empty.")
+            Text("Presets are named instructions, not background workers or permission grants. Enable a profile below, or choose a task preset directly in Chat → Tools.")
+        } }
         item { Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Create an agent",style=MaterialTheme.typography.titleMedium)
             Text("A saved agent is a named task template. It starts disabled and has no tools, device access or network grant. Choose a loaded local model or a separately agent-approved online profile; enable MODELS delegation to run it.",style=MaterialTheme.typography.bodySmall)
@@ -153,7 +171,7 @@ import kotlinx.serialization.json.Json
             Row { Text("Enabled",Modifier.weight(1f));Switch(profile.enabled,{saveAgents(savedAgents.map { if(it.id==profile.id) it.copy(enabled=!it.enabled) else it })}) }
             OutlinedTextField(agentTasks[profile.id].orEmpty(),{agentTasks[profile.id]=it.take(4000)},Modifier.fillMaxWidth(),label={Text("Task for ${profile.name}")},maxLines=3)
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                Button(enabled=profile.enabled && backend.delegated(AgentBackend.Scope.MODELS) && choices.any{it.first==profile.modelId} && agentTasks[profile.id].orEmpty().isNotBlank(),onClick={scope.launch {
+                Button(enabled=agentsAvailable && profile.enabled && backend.delegated(AgentBackend.Scope.MODELS) && choices.any{it.first==profile.modelId} && agentTasks[profile.id].orEmpty().isNotBlank(),onClick={scope.launch {
                     parallelError=null
                     try { backend.controller.submit(com.meshlit.core.mcp.control.AgentCommand(
                         requestId="profile-${profile.id.take(8)}-${java.util.UUID.randomUUID()}",operation=com.meshlit.core.mcp.control.AgentOperation.MODEL_GENERATE,
@@ -164,7 +182,7 @@ import kotlinx.serialization.json.Json
                 TextButton(onClick={saveAgents(savedAgents.filterNot{it.id==profile.id});agentTasks.remove(profile.id)}) { Text("Delete agent") }
             }
         } } }
-        items(AgentBackend.Scope.entries){permission->Row{Text(permission.name,Modifier.weight(1f));Switch(backend.delegated(permission),{backend.setDelegated(permission,it);revision++})}}
+        items(AgentBackend.Scope.entries.filter{it!=AgentBackend.Scope.MODELS}){permission->Row{Text(permission.name,Modifier.weight(1f));Switch(backend.delegated(permission),{backend.setDelegated(permission,it);revision++})}}
         item { Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Parallel agent jobs",style=MaterialTheme.typography.titleMedium)
             Text("Run 2–4 independent prompts as separate typed jobs. At most two execute at once; others wait. One loaded phone model serializes its own inference, while separately approved online profiles may run concurrently. Each job can be cancelled independently.",style=MaterialTheme.typography.bodySmall)
@@ -176,7 +194,7 @@ import kotlinx.serialization.json.Json
                 TextButton(enabled=prompts.size<4,onClick={prompts.add("")}) { Text("Add agent") }
                 TextButton(enabled=prompts.size>2,onClick={prompts.removeAt(prompts.lastIndex)}) { Text("Remove last") }
             }
-            Button(enabled=backend.delegated(AgentBackend.Scope.MODELS) && selectedModel.isNotBlank() && prompts.count{it.isNotBlank()}>=2,
+            Button(enabled=agentsAvailable && backend.delegated(AgentBackend.Scope.MODELS) && choices.any{it.first==selectedModel} && prompts.count{it.isNotBlank()}>=2,
                 onClick={scope.launch {
                     parallelError=null
                     try {

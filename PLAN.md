@@ -4,6 +4,11 @@ Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Agent and provider continuation — 2026-10-31
+
+Complete the current agent/provider regression and device checks before expanding the harness. Next gates: capable-model evaluation, explicit agent mode, hosted tool-call adapters and verified action outcomes. [Checkpoint and repair guide](docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md).
+
+
 ## Open resource network direction — 2026-10-31
 
 The owner wants everyone to participate: individuals and organizations, including

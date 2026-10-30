@@ -4,7 +4,7 @@ package com.meshlit.chat
 enum class ChatToolGroup(val label:String,val count:Int,val restrictedInReview:Boolean=false) {
     MEMORY("Personal memory tools",1,true), LOCAL_SEARCH("Local search tools",1),
     WEB("Web search and page tools",3), PHONE("Phone tools",4,true),
-    NODE("Node tools and security references",8,true), CRYPTO("Local cryptography tools",1),
+    NODE("Node tools and security references",10,true), CRYPTO("Local cryptography tools",1),
     AUDIO("GibberLink audio tools",2), REMOTE("Multi-node command tools",3),
     PEER("P2P chat and command tools",4);
 

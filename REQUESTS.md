@@ -4,6 +4,11 @@ Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Agent and provider continuation — 2026-10-31
+
+Owner requests Codex-like observable agents, app-wide versus per-chat controls, task roles, source links, Android OmniRoute dashboard parity, free provider setup, APK installation and an urgent checkpoint. These are distinct acceptance gates; see [current record](docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md).
+
+
 ## Final owner additions before checkpoint — 2026-10-31
 
 Corruption detection and bounded verified data recovery; adaptive sync modes based

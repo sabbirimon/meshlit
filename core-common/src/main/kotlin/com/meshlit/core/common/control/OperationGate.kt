@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable enum class ManagedFeature { INFERENCE, MODEL_TRANSFERS, CLUSTER, GATEWAY, CLOUD, SSH, BROWSER, CYBER, VM, TRAINING, MEDIA, RECOVERY, AUTOMATION, FILES, CRAWLER, HYPERL }
 @Serializable data class OperationPolicy(val emergencyStopped: Boolean = false,
-    val disabled: Set<ManagedFeature> = emptySet(), val agentDisabled: Set<ManagedFeature> = emptySet())
+    val disabled: Set<ManagedFeature> = emptySet(), val agentDisabled: Set<ManagedFeature> = emptySet(),
+    val agentsPaused: Boolean = false)
 /** Admission and cancellation are independent of model output. Only the trusted human
  * configuration path may resume or enlarge permissions. A stop remains latched across restart. */
 class OperationGate(initial: OperationPolicy = OperationPolicy(),
@@ -21,6 +22,7 @@ class OperationGate(initial: OperationPolicy = OperationPolicy(),
     @Synchronized fun requireAllowed(feature: ManagedFeature, agent: Boolean = false) {
         check(feature in buildFeatures) { "Unavailable in this build channel: ${feature.name}" }
         val p = mutable.value
+        check(!agent || !p.agentsPaused) { "Agents are paused on this device. Enable them in main Settings." }
         check(!p.emergencyStopped && feature !in p.disabled && (!agent || feature !in p.agentDisabled)) { "Operation stopped or disabled: ${feature.name}" }
     }
     @Synchronized fun setFeature(feature: ManagedFeature, enabled: Boolean, agentOnly: Boolean = false) {
@@ -39,6 +41,15 @@ class OperationGate(initial: OperationPolicy = OperationPolicy(),
         mutable.value = next
         active.keys.toList().forEach { it.cancel(CancellationException("Emergency stop")) }
         persist(next)
+    }
+    /** Human-only master pause. Resuming never grants a feature, clears emergency stop or replays jobs. */
+    @Synchronized fun setAgentsEnabled(enabled:Boolean) {
+        val next=mutable.value.copy(agentsPaused=!enabled)
+        if(!enabled) {
+            mutable.value=next
+            active.filterValues{it.second}.keys.toList().forEach{it.cancel(CancellationException("Agents paused"))}
+        }
+        persist(next);mutable.value=next
     }
     @Synchronized fun resumeHuman() { val next = mutable.value.copy(emergencyStopped = false); persist(next); mutable.value = next }
     suspend fun <T> run(feature: ManagedFeature, agent: Boolean = false, work: suspend () -> T): T = coroutineScope {

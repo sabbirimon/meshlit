@@ -22,7 +22,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-158 active, 19 historical, 8 protected, 1 template, 6 third-party; 193 Markdown documents including this index.
+159 active, 19 historical, 8 protected, 1 template, 6 third-party; 194 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -74,6 +74,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [companions/vscode/README.md](../companions/vscode/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [configuration/README.md](../configuration/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [core-federation/src/main/kotlin/com/meshlit/core/federation/README.md](../core-federation/src/main/kotlin/com/meshlit/core/federation/README.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md](AGENT_CHAT_CHECKPOINT_2026-10-31.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/AGENT_FEATURE_PORT_AUDIT.md](AGENT_FEATURE_PORT_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/AGENT_GATEWAY_AND_SECURITY_LAB.md](AGENT_GATEWAY_AND_SECURITY_LAB.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/AI_REPAIR_AND_EVOLUTION.md](AI_REPAIR_AND_EVOLUTION.md) | Android/shared reference; desktop ports have separate acceptance |

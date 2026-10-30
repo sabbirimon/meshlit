@@ -295,3 +295,28 @@ protection**, Save, and separately grant that client's MCP scope plus
 cannot grant itself permission or edit authentication/integrity policy. Revoke the
 human delegation or client key to stop future changes. Other local/provider
 policies remain independent. Never paste credentials into an LLM to set this up.
+
+
+## Android agent controls and provider dashboard
+
+Main Settings → Agent management controls this installation. Agents on this device
+pauses managed agent jobs; resuming preserves individual grants and never replays
+a task. Internet needs the existing search key and grants; phone access also needs
+Android Accessibility and approved apps. Choose a real loaded/approved model before
+adding task profiles. Profiles start disabled.
+
+Chat → Conversation settings → Task presets / Permissions and tools applies only
+to that chat after Save. Cancel keeps the old settings. Researcher requests web
+and local search; it cannot grant app-wide access. Node tools take all ten slots.
+The current tool planner needs an on-device model; ordinary hosted/cluster chat
+does not establish tool-planning support. Search activity shows only real tool
+execution; source cards identify search results versus pages actually retrieved.
+
+Settings → Online providers → OmniRoute workspace opens the separately installed
+host dashboard. Save its real HTTPS or phone-loopback address, sign in there and
+manage providers/keys on that host. Separately enter the API base/key in a profile,
+refresh and filter its returned models, select one and Save. Keys remain encrypted
+and are not injected into the dashboard. Free-model availability and quotas come
+from the provider; a key alone does not make all models free.
+
+[Repair locations, limits and latest validation](AGENT_CHAT_CHECKPOINT_2026-10-31.md).

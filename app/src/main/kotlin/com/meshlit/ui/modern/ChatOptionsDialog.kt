@@ -17,6 +17,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
 @Composable fun ChatOptionsDialog(state:ChatState,controller:ChatController,onSearchSettings:()->Unit,onShardingSettings:()->Unit,onClose:()->Unit) {
@@ -24,6 +27,17 @@ import kotlinx.coroutines.launch
     val router=koinInject<com.meshlit.routing.ModelRoutes>();val routes by router.routes.collectAsStateWithLifecycle()
     val colibri=koinInject<com.meshlit.colibri.ColibriBackend>()
     val colibriConfig by colibri.config.collectAsStateWithLifecycle()
+    val searchService=koinInject<com.meshlit.search.AppSearchService>()
+    val searchAccess by searchService.access.state.collectAsStateWithLifecycle()
+    val operationGate=koinInject<com.meshlit.operations.OperationsControl>().gate
+    val operationPolicy by operationGate.policy.collectAsStateWithLifecycle()
+    var hasWebKey by remember {mutableStateOf<Boolean?>(null)}
+    var webKeyReadFailed by remember {mutableStateOf(false)}
+    LaunchedEffect(searchService,searchAccess) {
+        try {hasWebKey=withContext(Dispatchers.IO){searchService.hasWebKey()};webKeyReadFailed=false}
+        catch(e:CancellationException){throw e}
+        catch(_:Exception){hasWebKey=null;webKeyReadFailed=true}
+    }
     var options by remember{mutableStateOf(state.current?.options ?: ChatOptions())}
     var budget by remember{mutableStateOf(options.maxTokens.toString())}
     val maxOutput=if(options.routeId==null) 2048 else 1024
@@ -49,9 +63,23 @@ import kotlinx.coroutines.launch
     Spacer(Modifier.height(12.dp))
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).testTag("chat-settings"),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("Access shown in Chat reflects this conversation's saved route and tool switches. A switch only permits a request: each tool also needs its separate app, agent and device grant. Online provider selection sends chat text to that endpoint when you press Send.",style=MaterialTheme.typography.bodySmall)
+        SettingsFeatureSection("Task for this chat") {
+            Text("Choose a starting task. This replaces only this chat's draft instructions and tool groups. Save applies it; Cancel keeps the current chat unchanged. App-wide permissions and agent profiles are never enabled here.",style=MaterialTheme.typography.bodySmall)
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                com.meshlit.agent.AgentTaskPresets.presets.forEach { preset ->
+                    val reason=ChatTaskPreset.unavailableReason(preset,options,com.meshlit.BuildProfile.coreCandidate,com.meshlit.BuildConfig.PLAY_REVIEW)
+                    val selected=options.systemPrompt==preset.instruction && ChatToolGroup.entries.filter { it.selected(options) }.toSet()==preset.suggestedTools
+                    FilterChip(selected,onClick={options=ChatTaskPreset.apply(preset,options,com.meshlit.BuildProfile.coreCandidate,com.meshlit.BuildConfig.PLAY_REVIEW);error=null},
+                        enabled=reason==null,label={Text(preset.name)},modifier=Modifier.testTag("chat-task-${preset.key}"))
+                }
+            }
+            com.meshlit.agent.AgentTaskPresets.presets.mapNotNull {
+                ChatTaskPreset.unavailableReason(it,options,com.meshlit.BuildProfile.coreCandidate,com.meshlit.BuildConfig.PLAY_REVIEW)
+            }.distinct().forEach {Text(it,style=MaterialTheme.typography.bodySmall)}
+        }
         if(savedAgents.any{it.enabled && !it.modelId.startsWith("cloud:")}) {
             Text("Local agent profiles",style=MaterialTheme.typography.titleMedium)
-            Text("Apply a saved agent's instructions to this conversation. Its tools stay off until you enable them below; the profile does not grant device access.",style=MaterialTheme.typography.bodySmall)
+            Text("Apply a saved agent's instructions and local route to this conversation. Existing chat tool selections are kept; the profile does not grant app-wide or device access.",style=MaterialTheme.typography.bodySmall)
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 savedAgents.filter{it.enabled && !it.modelId.startsWith("cloud:")}.forEach{profile->
                     val available=installedModels.any{it.id==profile.modelId && it.path==coordinator.loadedModel()?.modelPath}
@@ -113,6 +141,11 @@ import kotlinx.coroutines.launch
         Text("Configure API profiles in Settings → Online providers. Online sends this conversation to the selected endpoint and may incur charges. Replies are buffered; local replies stream.")
         }
         SettingsFeatureSection("Permissions and tools") {
+        Text("This conversation only. Main Settings controls device-wide permission; Save here does not change another chat.",style=MaterialTheme.typography.bodySmall)
+        if(operationPolicy.agentsPaused || operationPolicy.emergencyStopped) {
+            Text(if(operationPolicy.emergencyStopped) "App-wide emergency stop is active. Resume in Settings → Operations."
+                else "Agents are paused for this device. Enable Agents on this device in main Settings → Agent management.",color=MaterialTheme.colorScheme.error)
+        }
         if(com.meshlit.BuildProfile.coreCandidate) {
             Text("Tools are unavailable in the Core candidate build. This build supports local chat, models and files; use the Experimental app for agent tools.",modifier=Modifier.testTag("chat-tools-build-reason"))
         } else if(!options.supportsLocalToolSelection) {
@@ -125,10 +158,13 @@ import kotlinx.coroutines.launch
             Text("Requires saved agent management in Memory and personality. Agents can manage switches and facts; recall is applied only to on-device chat.")
             ChatToolSwitch(ChatToolGroup.LOCAL_SEARCH,options){options=it}
             Text("The on-device model can search saved app content only after your separate local-content agent grant. No Internet is needed.")
-            ChatToolSwitch(ChatToolGroup.WEB,options){options=it}
+            ChatToolSwitch(ChatToolGroup.WEB,options,label="This chat: web access"){options=it}
+            Text("App-wide search: ${if(searchAccess.webEnabled) "on" else "off"} · agent search: ${if(searchAccess.agentWeb) "allowed" else "not allowed"} · ${if(searchAccess.agentWebPaused) "paused" else "not paused"}. Brave key: ${when {webKeyReadFailed->"could not read status";hasWebKey==true->"stored";hasWebKey==false->"missing";else->"checking"}}.",
+                style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("chat-web-global-status"))
+            Text("This switch changes only the current chat after Save. It cannot turn on app-wide Internet or agent access.",style=MaterialTheme.typography.bodySmall)
             Text("The local model can request web_search using your configured Brave API key, Internet switch and agent grant. Queries go to Brave. crawl_url also requires the HTTPS Crawl4AI companion and approved domains; URLs and fetched content go to that host. Neither service is silently enabled.")
-            TextButton(onClick=onSearchSettings){Text("Manage search access and articles")}
-            ChatToolSwitch(ChatToolGroup.PHONE,options){options=it}
+            TextButton(onClick=onSearchSettings){Text("App-wide search setup")}
+            ChatToolSwitch(ChatToolGroup.PHONE,options,label="This chat: phone-agent access"){options=it}
             Text("Runs with the loaded on-device model and needs no external host. Requires saved autonomy, app scope and Android Accessibility in Settings → Phone agent and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant.")
             ChatToolSwitch(ChatToolGroup.NODE,options){options=it}
             Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. The combined chat tool list is limited to ten. VM/QEMU and remote nodes must actually be available.")
@@ -193,14 +229,14 @@ import kotlinx.coroutines.launch
     }}
 }
 
-@Composable private fun ChatToolSwitch(group:ChatToolGroup,options:ChatOptions,onChange:(ChatOptions)->Unit) {
+@Composable private fun ChatToolSwitch(group:ChatToolGroup,options:ChatOptions,label:String=group.label,onChange:(ChatOptions)->Unit) {
     val reason=group.unavailableReason(options,com.meshlit.BuildConfig.PLAY_REVIEW)
     val tag=if(group==ChatToolGroup.LOCAL_SEARCH) "chat-local-search-tools" else "chat-tool-${group.name.lowercase()}"
     Column {
         Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
-            Text("${group.label} · ${group.count}",Modifier.weight(1f))
+            Text("$label · ${group.count} tools",Modifier.weight(1f))
             Switch(group.selected(options),{onChange(group.update(options,it,com.meshlit.BuildConfig.PLAY_REVIEW))},
-                enabled=reason==null,modifier=Modifier.testTag(tag).semantics{contentDescription=group.label})
+                enabled=reason==null,modifier=Modifier.testTag(tag).semantics{contentDescription=label})
         }
         reason?.let{Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
     }

@@ -14,6 +14,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class McpToolRegistryTest {
+    @Test fun selectedDescriptorCannotBeReplacedByAnotherHandlerBeforeDispatch() = runBlocking {
+        val reg=McpToolRegistry();var calls=0
+        val selected=McpToolSpec("selected","Built in"){calls++;McpToolResult.Text("original")}
+        reg.register(selected)
+        assertTrue(reg.invoke(McpToolRequest("selected"),selected) is McpToolResult.Text)
+        for(origin in McpToolSpec.Origin.entries) {
+            reg.register(McpToolSpec("selected","Replacement",origin=origin){calls++;McpToolResult.Text("replacement")})
+            val result=reg.invoke(McpToolRequest("selected"),selected)
+            assertEquals(McpToolResult.ErrorCode.PERMISSION_DENIED,(result as McpToolResult.Error).code)
+        }
+        assertEquals(1,calls)
+    }
 
     @Test
     fun register_and_invoke_dispatches_to_handler() = runBlocking {

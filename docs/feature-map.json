@@ -482,10 +482,15 @@
       "status": "implemented",
       "sources": [
         "app/src/main/kotlin/com/meshlit/providers/OnlineProviders.kt",
-        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/OnlineModelClient.kt"
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/models/OnlineModelClient.kt",
+        "app/src/main/kotlin/com/meshlit/providers/GatewayDashboardEndpoint.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/GatewayDashboardScreen.kt"
       ],
       "authority": [
         "MODELS"
+      ],
+      "limitations": [
+        "Android OmniRoute dashboard requires an owner-installed reachable host. Model discovery is not proof of account entitlement or free usage."
       ]
     },
     {
@@ -551,9 +556,15 @@
       "status": "implemented",
       "sources": [
         "app/src/main/kotlin/com/meshlit/ui/modern/PowerDevicesScreens.kt",
-        "app/src/main/kotlin/com/meshlit/control/EnvironmentTools.kt"
+        "app/src/main/kotlin/com/meshlit/control/EnvironmentTools.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/AgentAccessPanel.kt",
+        "app/src/main/kotlin/com/meshlit/agent/AgentTaskPresets.kt",
+        "core-common/src/main/kotlin/com/meshlit/core/common/control/OperationGate.kt"
       ],
-      "authority": []
+      "authority": [],
+      "limitations": [
+        "Saved task profiles are instructions, not independent autonomous teams. The current chat tool planner is on-device only; hosted native tool calls and model capability qualification remain open."
+      ]
     },
     {
       "id": "configuration-transfer",

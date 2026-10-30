@@ -29,6 +29,21 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
         val saved = _profiles.value.firstOrNull { it.id == profile.id }
         return if(saved?.endpoint == profile.endpoint && saved.protocol == profile.protocol) token(profile.id) else ""
     }
+    fun hasStoredKey(profile:OnlineProfile)=tokenFor(profile).isNotBlank()
+    @Synchronized fun dashboardAddress():String {
+        check(!storageFailed) { "Provider storage is unavailable" }
+        return store.get("dashboard-omniroute").orEmpty()
+    }
+    @Synchronized fun saveDashboardAddress(value:String) {
+        val url=GatewayDashboardEndpoint.parse(value).url
+        commit(mapOf("dashboard-omniroute" to url))
+    }
+    @Synchronized fun removeStoredKey(id:String) {
+        require(_profiles.value.any { it.id==id }) { "Save this profile first" }
+        val updated=_profiles.value.map { if(it.id==id) it.copy(enabled=false) else it }
+        commit(mapOf("profiles" to json.encodeToString(updated),"key-$id" to null))
+        _profiles.value=updated
+    }
     suspend fun resolveToken(profile:OnlineProfile,agent:Boolean=false):String {
         require(!agent || profile.agentAllowed) { "Online provider is not delegated" }
         if(!profile.requiresApiKey) return ""

@@ -4,6 +4,11 @@ Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Agent and provider continuation — 2026-10-31
+
+Source checkpoint: managed-agent access, task presets, tool-count/template/parser fixes, real source/activity UI and Android OmniRoute dashboard/model discovery. Final tests/build/lint and Samsung/API qualification are tracked in [the agent checkpoint](docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md).
+
+
 ## Open resource network checkpoint — 2026-10-31
 
 Source improvements cover model/shard admission, native launch limits/freshness,

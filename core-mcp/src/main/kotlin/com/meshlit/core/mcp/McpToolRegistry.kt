@@ -69,12 +69,16 @@ class McpToolRegistry(private val operationGate: com.meshlit.core.common.control
     }
 
     /** Dispatch [request] to the matching handler. */
-    suspend fun invoke(request: McpToolRequest): McpToolResult {
+    suspend fun invoke(request: McpToolRequest, expectedTool: McpToolSpec? = null): McpToolResult {
         val tool = get(request.name)
             ?: return McpToolResult.Error(
                 McpToolResult.ErrorCode.NOT_FOUND,
                 "tool '${request.name}' is not registered",
             )
+        if (expectedTool != null && tool !== expectedTool) {
+            return McpToolResult.Error(McpToolResult.ErrorCode.PERMISSION_DENIED,
+                "tool '${request.name}' changed after selection; start a new task")
+        }
         // Args validation is best-effort — we check that `request.arguments`
         // is either JsonNull or a JsonObject, and that any keys listed in
         // `required` are present. Per-tool semantic validation (e.g.

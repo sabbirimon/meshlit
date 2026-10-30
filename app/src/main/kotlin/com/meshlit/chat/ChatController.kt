@@ -15,7 +15,7 @@ import java.util.UUID
 
 @Serializable data class ChatOptions(val onlineProfileId:String?=null,val systemPrompt:String="",val maxTokens:Int=1024,val temperature:Float=0.4f,val historyMessages:Int=10,val routeId:String?=null,val routeScenario:String="general",val webTools:Boolean=false,val phoneTools:Boolean=false,val memoryTools:Boolean=false,val showTokenStats:Boolean=true,val localSearchTools:Boolean=false,val outputBudgetMode:OutputBudgetMode=OutputBudgetMode.MANUAL,val outputTargetSeconds:Int=30,val nodeTools:Boolean=false,val colibriMode:String="OFF",val colibriAgentAllowed:Boolean=false,val cryptoTools:Boolean=false,val gibberlinkTools:Boolean=false,val remoteTools:Boolean=false,val peerTools:Boolean=false,val companionStyle:CompanionStyle=CompanionStyle.WARM,val companionWarmth:Int=1,val matureTopics:Boolean=false) {
     val usesLocalTools get()=webTools || phoneTools || memoryTools || localSearchTools || nodeTools || cryptoTools || gibberlinkTools || remoteTools || peerTools
-    val toolCount get()=(if(nodeTools)8 else 0)+(if(remoteTools)3 else 0)+(if(peerTools)4 else 0)+(if(gibberlinkTools)2 else 0)+(if(cryptoTools)1 else 0)+(if(memoryTools)1 else 0)+(if(localSearchTools)1 else 0)+(if(webTools)3 else 0)+(if(phoneTools)4 else 0)
+    val toolCount get()=(if(nodeTools)10 else 0)+(if(remoteTools)3 else 0)+(if(peerTools)4 else 0)+(if(gibberlinkTools)2 else 0)+(if(cryptoTools)1 else 0)+(if(memoryTools)1 else 0)+(if(localSearchTools)1 else 0)+(if(webTools)3 else 0)+(if(phoneTools)4 else 0)
     fun validate(){require(companionWarmth in 0..2);require(toolCount<=10){"Select at most ten chat tools; deselect another group"};require(colibriMode in com.meshlit.workspace.ColibriMode.entries.map{it.name});require(outputTargetSeconds in 5..120);require(!usesLocalTools || (onlineProfileId==null && routeId==null)){"Chat tools currently require an on-device model"};require(routeId==null || routeId=="__auto__" || routeId.matches(Regex("[A-Za-z0-9_-]{1,64}")));require(routeScenario.matches(Regex("[a-z0-9_-]{1,40}")));require(routeId==null || (onlineProfileId==null && maxTokens<=1024));require(systemPrompt.length<=4000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f && historyMessages in 0..20)}
 }
 /** A grant makes tools available; it does not turn every greeting into a tool-planning run. */
@@ -28,11 +28,11 @@ internal fun shouldPlanToolCall(message:String,options:ChatOptions):Boolean {
 }
 data class PhotoChatRequest(val uri:android.net.Uri,val profile:com.meshlit.core.inference.models.OnlineProfile)
 
-@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null,val knowledgeSources:List<String> = emptyList())
+@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null,val knowledgeSources:List<String> = emptyList(),val webSources:List<ChatWebSource> = emptyList())
 @Serializable data class ChatConversation(val id:String=UUID.randomUUID().toString(),val title:String="New chat",
     val messages:List<ChatMessage> = emptyList(),val updatedAt:Long=System.currentTimeMillis(),val options:ChatOptions=ChatOptions(),val usageNote:String?=null)
 data class ChatState(val conversations:List<ChatConversation> = emptyList(),val selectedId:String?=null,
-    val running:Boolean=false,val error:String?=null,val generationStartedMs:Long?=null,val activeOutputLimit:Int?=null,val operationLabel:String="Generating") {
+    val running:Boolean=false,val error:String?=null,val generationStartedMs:Long?=null,val activeOutputLimit:Int?=null,val operationLabel:String="Generating",val activeTool:String?=null) {
     val current get()=conversations.firstOrNull { it.id==selectedId }
 }
 
@@ -184,8 +184,20 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 }
                 if(shouldPlanToolCall(user.text,options)) {
                     fun publish(value:String){_state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(text=value) else it}) else c})}}
-                    val answer=localTools.run(prompt,options){publish(it)}
-                    publish(answer.text+if(answer.sources.isEmpty()) "" else "\n\nSources:\n"+answer.sources.joinToString("\n"){"- $it"})
+                    val answer=localTools.run(prompt,options,status={ label ->
+                        _state.update { it.copy(operationLabel=label) }
+                    },onToolEvent={ tool,result ->
+                        val sources=result?.let { chatSourcesFromTool(tool,it) }.orEmpty()
+                        _state.update { old -> old.copy(activeTool=if(result==null) tool else null,
+                            operationLabel=if(result==null) chatToolActivity(tool) ?: "Using $tool" else "Preparing reply",
+                            conversations=if(sources.isEmpty()) old.conversations else old.conversations.map { c ->
+                                if(c.id==selected) c.copy(messages=c.messages.map { m ->
+                                    if(m.id==assistant.id) m.copy(webSources=mergeChatSources(m.webSources,sources)) else m
+                                }) else c
+                            }) }
+                        if(sources.isNotEmpty()) appScope.launch { runCatching { save() } }
+                    })
+                    publish(answer.text)
                     _state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(usageNote="On-device tool loop · ${answer.calls} tool calls · native token totals not aggregated") else c})}
                     recordUsage(chatTokenUsage("Tool loop · counts not aggregated",options.maxTokens,null,null,null,android.os.SystemClock.elapsedRealtime()-started,null,null))
                 } else {
@@ -248,7 +260,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                 withContext(NonCancellable) { runCatching { save() } }
                 generationId=null
                 context.stopService(android.content.Intent(context,ChatInferenceService::class.java))
-                _state.update { it.copy(running=false,generationStartedMs=null,activeOutputLimit=null,operationLabel="Generating") }
+                _state.update { it.copy(running=false,generationStartedMs=null,activeOutputLimit=null,operationLabel="Generating",activeTool=null) }
             }
         }
         return assistant.id

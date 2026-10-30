@@ -4,6 +4,11 @@ Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Agent and provider continuation — 2026-10-31
+
+Fixed source defects: Node count eight versus actual ten; planner missing model templates; strict wrapper incompatibility; tool replacement race; missing source/activity UI. On-device-only and English keyword planning remain limitations. [Evidence and next steps](docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md).
+
+
 ## Resource and pairing review — 2026-10-31
 
 Source fixes: cumulative storage/RAM admission and exact shard byte coverage;

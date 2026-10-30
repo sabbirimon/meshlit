@@ -15,7 +15,7 @@ class ChatToolSelectionTest {
         }
     }
     @Test fun fullSelectionCanBeReducedButCannotSilentlyExceedTheLimit() {
-        val full=ChatOptions(nodeTools=true,memoryTools=true,localSearchTools=true)
+        val full=ChatOptions(nodeTools=true)
         assertEquals(10,full.toolCount)
         assertNotNull(ChatToolGroup.PHONE.unavailableReason(full,false))
         assertThrows(IllegalArgumentException::class.java){ChatToolGroup.PHONE.update(full,true)}

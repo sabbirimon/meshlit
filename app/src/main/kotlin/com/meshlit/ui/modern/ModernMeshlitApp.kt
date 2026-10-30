@@ -273,7 +273,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
             val document=key(message.id){rememberReply(message.text)}
             rows+=ReplyTimelineRow("${message.id}:header",message,kind="header")
             document.blocks.forEachIndexed{index,block->rows+=ReplyTimelineRow("${message.id}:$index",message,block,"block")}
-            if(message.text.isNotEmpty()) rows+=ReplyTimelineRow("${message.id}:actions",message,kind="actions")
+            if(message.text.isNotEmpty() || message.webSources.isNotEmpty()) rows+=ReplyTimelineRow("${message.id}:actions",message,kind="actions")
         }
     }
     val matches=rows.indices.filter{index->val row=rows[index];searchQuery.isNotBlank() && row.kind in setOf("user","block") && (if(row.block!=null) replyBlockText(row.block) else row.message.text).contains(searchQuery,true)}
@@ -341,17 +341,22 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         }
                         "header" -> Row(Modifier.fillMaxWidth().padding(top=T.small),verticalAlignment=Alignment.CenterVertically) {
                             Text(message.source ?: "Meshlit",style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false))
-                            if(message.text.isEmpty() && state.running && message.id==controller.generationId) {Spacer(Modifier.width(T.medium));LinearProgressIndicator(Modifier.width(60.dp))}
+                            if(state.running && message.id==controller.generationId && chatToolActivity(state.activeTool)!=null) ChatToolActivityIndicator(checkNotNull(state.activeTool))
+                            else if(message.text.isEmpty() && state.running && message.id==controller.generationId) {
+                                Spacer(Modifier.width(T.medium));LinearProgressIndicator(Modifier.width(60.dp))
+                                Text(state.operationLabel,Modifier.padding(start=8.dp).weight(1f),style=MaterialTheme.typography.labelSmall,maxLines=2)
+                            }
                             else if(message.text.isEmpty()) message.status?.let{Text(it,Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)}
                         }
                         "block" -> ReplyContent(checkNotNull(row.block),if(searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key) Modifier.background(colors.secondaryContainer.copy(alpha=0.45f)).testTag("chat-search-current-match") else Modifier)
                         "actions" -> Column {
+                            ChatWebSources(message.id,message.webSources)
                             if (message.knowledgeSources.isNotEmpty()) {
                                 var showSources by remember(message.id) { mutableStateOf(false) }
                                 TextButton(onClick = { showSources = !showSources }) { Text("${message.knowledgeSources.size} reference excerpts provided") }
                                 if (showSources) message.knowledgeSources.forEach { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 4.dp)) }
                             }
-                            MessageActions(message.text,message.usage)
+                            if(message.text.isNotEmpty()) MessageActions(message.text,message.usage)
                         }
                     }
                 }

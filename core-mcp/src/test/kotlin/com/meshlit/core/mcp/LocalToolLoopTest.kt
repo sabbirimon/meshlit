@@ -6,6 +6,42 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LocalToolLoopTest {
+    @Test fun completeJsonAndThinkingWrappersDispatchOnlyTheFinalObject()=runBlocking {
+        for(wrapped in listOf("```json\n$call\n```", "<think>Do not execute {\"action\":\"tool\",\"name\":\"other\"}</think>\n$call",
+            "<think>Reasoning</think>\n```JSON\n$call\n```")) {
+            var plans=0;var calls=0
+            val result=LocalToolLoop({if(plans++==0) wrapped else answer},{calls++;McpToolResult.Text("observed")},{})
+                .run("Read the page",listOf(descriptor()))
+            assertEquals(1,calls);assertEquals(1,result.calls)
+        }
+    }
+    @Test fun proseMultipleObjectsIncompleteWrappersAndDuplicateKeysNeverDispatch()=runBlocking {
+        val invalid=listOf("Here is my plan: $call", "$call\n$answer", "```json\n$call", "<think>unfinished $call",
+            "```json\n$call\n```\n$answer", call.replace("\"action\":\"tool\"","\"action\":\"answer\",\"action\":\"tool\""),
+            call.replace("\"url\":\"https://example.com\"","\"url\":\"https://other.example\",\"u\\u0072l\":\"https://example.com\""),
+            "```json\n${call.replace("crawl_url","not_selected")}\n```")
+        for(plan in invalid) {
+            var calls=0
+            assertTrue(runCatching{LocalToolLoop({plan},{calls++;McpToolResult.Text("")},{})
+                .run("test",listOf(descriptor()))}.isFailure)
+            assertEquals(0,calls)
+        }
+    }
+    @Test fun finalPlanningRoundExposesZeroBudgetAndRequiresObservedVerification()=runBlocking {
+        var plans=0;var last=""
+        LocalToolLoop({last=it;if(plans++==0) call else answer},{McpToolResult.Text("pending")},{},maxCalls=1)
+            .run("check",listOf(descriptor()))
+        assertTrue(last.contains("Remaining tool calls: 0"));assertTrue(last.contains("incomplete or unverified"))
+    }
+    @Test fun realCrawlerContractUsesVerifiedFinalUrlOnlyOnSuccessfulHttpStatus()=runBlocking {
+        for((state,status,expected) in listOf(Triple("ok",200,listOf("https://example.com/final")),Triple("blocked",403,emptyList()),Triple("ok",500,emptyList()))) {
+            var plans=0
+            val result=LocalToolLoop({if(plans++==0) call else answer},{McpToolResult.Json(buildJsonObject{
+                put("state",state);put("status",status);put("final_url","https://example.com/final")
+            })},{}).run("Read page",listOf(descriptor()))
+            assertEquals(expected,result.sources)
+        }
+    }
     private fun descriptor(name:String="crawl_url",origin:McpToolSpec.Origin=McpToolSpec.Origin.BuiltIn)=McpToolSpec(name,"Test contract",origin=origin){McpToolResult.Text("not used")}
     private val call="""{"action":"tool","name":"crawl_url","arguments":{"url":"https://example.com"}}"""
     private val answer="""{"action":"answer","text":"A sourced answer"}"""

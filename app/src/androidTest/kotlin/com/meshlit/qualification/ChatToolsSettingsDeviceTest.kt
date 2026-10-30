@@ -27,6 +27,11 @@ class ChatToolsSettingsDeviceTest {
         if(compose.onAllNodesWithTag("boot-open-app").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithTag("boot-open-app").performClick()
         if(compose.onAllNodesWithText("Later").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("Later").performClick()
         val controller=GlobalContext.get().get<ChatController>()
+        val search=GlobalContext.get().get<com.meshlit.search.AppSearchService>()
+        val operations=GlobalContext.get().get<com.meshlit.operations.OperationsControl>()
+        val originalPolicy=operations.gate.policy.value
+        compose.waitUntil(30_000){search.ready.isCompleted}
+        val originalSearchAccess=search.access.state.value
         val pipeline=GlobalContext.get().get<com.meshlit.pipeline.PipelineHost>()
         check(!pipeline.status.value.coordinator && !pipeline.status.value.starting){"Stop the cluster before settings qualification"}
         val originalGroup=pipeline.activeGroup()
@@ -60,20 +65,34 @@ class ChatToolsSettingsDeviceTest {
             assertEquals("default",pipeline.activeGroup())
             open()
             tool("chat-tool-node").assertIsEnabled().performClick()
-            tool("chat-local-search-tools").assertIsEnabled().performClick()
-            tool("chat-tool-memory").assertIsEnabled().performClick()
+            tool("chat-local-search-tools").assertIsNotEnabled()
+            tool("chat-tool-memory").assertIsNotEnabled()
             tool("chat-tool-phone").assertIsNotEnabled()
             compose.onNodeWithText("Save").assertIsEnabled().performClick()
-            val saved=baseline.copy(nodeTools=true,localSearchTools=true,memoryTools=true)
+            val saved=baseline.copy(nodeTools=true)
             compose.waitUntil(10_000){stored()==saved}
             open()
             tool("chat-tool-node").assertIsOn().performClick()
             tool("chat-tool-phone").assertIsEnabled().performClick()
             compose.onNodeWithText("Cancel").performClick()
             assertEquals(saved,controller.state.value.current!!.options)
+            val researcher=com.meshlit.agent.AgentTaskPresets.presets.first{it.key=="research"}
+            open()
+            tool("chat-task-${researcher.key}").performClick()
+            compose.onNodeWithText("Cancel").performClick()
+            assertEquals("Task preset must remain a draft until Save",saved,controller.state.value.current!!.options)
+            open()
+            tool("chat-task-${researcher.key}").performClick()
+            compose.onNodeWithText("Save").performClick()
+            val research=com.meshlit.chat.ChatTaskPreset.apply(researcher,saved)
+            compose.waitUntil(10_000){stored()==research}
+            assertTrue(research.webTools && research.localSearchTools)
+            assertFalse(research.nodeTools || research.phoneTools)
+            assertEquals("Chat settings must not grant app-wide search",originalSearchAccess,search.access.state.value)
+            assertEquals("Chat settings must not change app-wide agent control",originalPolicy,operations.gate.policy.value)
             val evidence=File(context.filesDir,"qualification/chat-tools-settings.txt")
             check(evidence.parentFile!!.mkdirs() || evidence.parentFile!!.isDirectory)
-            evidence.writeText("worker-group-cancel-preserved\nworker-group-save-applied\nlocal-tool-selection\nten-tool-limit-explained\nsave-persisted\nreopen-selected\nrevocation-frees-capacity\ncancel-keeps-saved-selection\nno-tool-dispatch\n")
+            evidence.writeText("worker-group-cancel-preserved\nworker-group-save-applied\nlocal-tool-selection\nnode-counts-ten\nten-tool-limit-explained\nsave-persisted\nreopen-selected\nrevocation-frees-capacity\ncancel-keeps-saved-selection\ntask-preset-cancel-preserved\ntask-preset-save-persisted\napp-wide-search-unchanged\napp-wide-agent-control-unchanged\nno-tool-dispatch\n")
         } finally {
             pipeline.setActiveGroup(originalGroup)
             controller.setOptions(original.options)
