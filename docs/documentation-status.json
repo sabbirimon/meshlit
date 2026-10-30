@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "e5e75778f822a59337e8a33305fd40f7b92dedc1ea851d3e8a3db9a201dd3da3"
+      "contentSha256WithoutTrackingBlock": "79d193c0d43843581eea1aa6ffab61644d678fe44ec0a6cb0629e6f70f4ccbbf"
     },
     {
       "path": "README.md",
@@ -688,7 +688,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Open resource network: source checkpoint and continuation",
-      "contentSha256WithoutTrackingBlock": "f437d9fcb78cf694ea8ec4da546543713f7a44432d1e205ecbca1f580be7a1d5"
+      "contentSha256WithoutTrackingBlock": "3799fe22fdc7d7bd3d64252837d437c6bfe92680b4a4a30fd0e67936a5424b9a"
     },
     {
       "path": "docs/REWARD_METERING_AND_SETTLEMENT.md",

@@ -43,15 +43,20 @@ are distinct. Automatic failover is not claimed from planner or journal tests.
 
 Final source tests passed: **1,192 tests** —323 core-inference,150 core-MCP,
 17 core-trust,55 core-federation,12 desktop-engine,278 Android per flavor and
-79 Studio. No failures/errors/skips in these suites. Both Android debug variants
-assembled before the final optional guardrail controls; final assemblies are
-running at this save point. The replica rejoin test now checks cooldown with an
+79 Studio. No failures/errors/skips in these suites. Both final Android debug variants assembled successfully, including optional
+guardrail controls (2m47s final batch). Source checkpoint: `6521847`. The replica rejoin test now checks cooldown with an
 injected clock, then proves real socket catch-up. An earlier missing import was
 fixed before the successful core run. [Machine-readable evidence](desktop/evidence/resource-network-20261031.json).
 
 Full lint, portable desktop packaging, installed-device voice/health behavior,
 physical pairing and LAN/WAN oversized-model execution were not qualified here.
-No app installed, release published, paid account used or public listener started.
+The owner subsequently requested installation of the new V2 APK on the Samsung;
+`adb install -r` succeeded on Samsung SM-A207F; package `com.meshlit.v2.debug`,
+ARM64, version45 / `2.0.0-v2build45` and device update time
+`2026-10-31 04:02:15` verified. No data-clear option was used. The APK retains the
+existing build45 version label; its exact new SHA-256 is in the JSON above.
+Installation is not a live voice, thermal or cluster execution test. No release published, paid
+account used or public listener started.
 Prior upstream advisories remain unresolved; no malware/zero-day-free claim.
 
 ## Where to resume

@@ -13,7 +13,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 | Local core engine | Host/payload verified; Experimental | Clean-machine, lifecycle/stress, wider quality and hardware |
 | Shared sharding | Admission/storage/active Android launch fixes contract-tested; desktop controller pending | Live paired-worker controller and independent-device oversized-model/peer-loss proof |
 | Desktop management | Partial source and scoped host qualification | Remaining real category controllers and operational acceptance |
-| Android reliability | 278 current-source unit tests per flavor passed; final assemblies running | Full lint and physical voice/cluster/health qualification |
+| Android reliability | 278 tests per flavor and both final debug APK assemblies passed | Full lint and physical voice/cluster/health qualification |
 | Governed agents and fleet | Android reference; desktop authority/audit port pending | Common permission/controller/audit bridge before autonomous MCP/A2A/hooks |
 | Platform and distribution | Intel Experimental release published; recovered payloads/hash verification pass | Clean-target signing/privacy and independent OS/device gates; CI remains separately observed |
 | Android/desktop peering, identity, wallet and UI | Implementation resumed; identity/replay fixes and resource controls in source | Current tests, physical paired devices and secure remote-link qualification |

@@ -13,8 +13,9 @@ new-load health caps and optional delegated prompt protection. The full inclusiv
 local/WAN/multicarrier/commerce direction and remaining failover/settlement gates
 are saved in [the plan](docs/OPEN_RESOURCE_NETWORK.md). Current checks, exact limits
 and continuation commands are in [the checkpoint](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md).
-1,192 source/contract/socket tests passed. Final APK assembly status is in the
-checkpoint evidence. No universal device support, antivirus, paid marketplace
+1,192 source/contract/socket tests and both final Android debug assemblies passed.
+The new V2 ARM64 APK installed on Samsung SM-A207F with data preserved; package
+version and update time verified. Exact hash and scope are in the checkpoint evidence. No universal device support, antivirus, paid marketplace
 or automatic distributed model recovery is claimed.
 
 

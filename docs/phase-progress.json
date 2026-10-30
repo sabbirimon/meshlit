@@ -25,7 +25,7 @@
     },
     {
       "name": "Android reliability",
-      "state": "278 current-source unit tests per flavor passed; final assemblies running",
+      "state": "278 tests per flavor and both final debug APK assemblies passed",
       "nextGate": "Full lint and physical voice/cluster/health qualification"
     },
     {
@@ -81,11 +81,12 @@
   "currentSourceCheckpoint": {
     "date": "2026-10-31",
     "baselineSourceCommit": "5a2e97c",
-    "state": "source checkpoint;1192 local tests passed; final APK assembly running",
+    "state": "source checkpoint6521847;1192 local tests and both final Android assemblies passed",
     "branch": "checkpoint/desktop-agents-settings-20261031",
     "document": "docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md",
     "physicalWanShardingQualified": false,
-    "settlementImplemented": false
+    "settlementImplemented": false,
+    "sourceCommit": "6521847"
   },
   "currentPlanningCheckpoint": {
     "date": "2026-10-26",
@@ -155,7 +156,9 @@
     "plan": "docs/OPEN_RESOURCE_NETWORK.md",
     "commercialSettlement": false,
     "physicalWanShardingQualified": false,
-    "evidence": "docs/desktop/evidence/resource-network-20261031.json"
+    "evidence": "docs/desktop/evidence/resource-network-20261031.json",
+    "sourceCommit": "6521847",
+    "androidInstall": "Samsung SM-A207F V2 ARM64 installed with data preserved; runtime qualification remains open"
   },
   "historicalPausedSourceCheckpoint": {
     "date": "2026-10-24",

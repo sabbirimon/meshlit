@@ -53,7 +53,7 @@
     }
   },
   "totalTests": 1192,
-  "androidAssembly": "final build running; earlier pre-guardrail variants passed",
+  "androidAssembly": "Both final V1/V2 debug variants BUILD SUCCESSFUL in2m47s",
   "fullLint": "not rerun for this increment",
   "physicalDeviceTesting": false,
   "paidServicesUsed": false,
@@ -65,5 +65,26 @@
     "actual physical carrier adapters",
     "antivirus and external buyer settlement",
     "full lint and portable desktop packaging"
-  ]
+  ],
+  "sourceCheckpoint": "6521847",
+  "androidApk": {
+    "path": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+    "bytes": 561932979,
+    "sha256": "d4c77607fa1648ac885b200738b920694c13e11b2b77bf8c8b2d53a31d7eb50b",
+    "package": "com.meshlit.v2.debug",
+    "versionCode": 45,
+    "versionName": "2.0.0-v2build45",
+    "deviceInstall": {
+      "result": "adb install -r Success",
+      "device": "Samsung SM-A207F",
+      "installedPackage": "com.meshlit.v2.debug",
+      "installedVersionCode": 45,
+      "installedVersionName": "2.0.0-v2build45",
+      "installedAbi": "arm64-v8a",
+      "deviceReportedLastUpdateTime": "2026-10-31 04:02:15",
+      "dataClearRequested": false,
+      "runtimeBehaviorQualified": false
+    }
+  },
+  "sourcePushed": true
 }
