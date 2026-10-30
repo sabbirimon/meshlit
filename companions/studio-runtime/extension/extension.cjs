@@ -226,6 +226,7 @@ function activate(context) {
   usagePage=require('./usage.cjs').create(context,message=>{boot(context);send(message);});
   navigation.register(context);
   require('./settings.cjs').register(context);
+  require('./resource-sharing.cjs').register(context);
   require('./companions.cjs').register(context);
   projectMemory=require('./memory.cjs').register(context);
   require('./voice.cjs').register(context);

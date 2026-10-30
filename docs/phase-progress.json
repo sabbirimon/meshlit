@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-12",
+  "updated": "2026-10-31",
   "applicationSourceCommit": "12bd20a",
   "sourceEvidenceCheckpoint": "630cba2",
   "review": "https://github.com/sabbirimon/meshlit-v2/pull/2",
@@ -15,7 +15,7 @@
     },
     {
       "name": "Shared sharding",
-      "state": "Contract-tested planner; desktop executor pending",
+      "state": "Admission/storage/active Android launch fixes contract-tested; desktop controller pending",
       "nextGate": "Live paired-worker controller and independent-device oversized-model/peer-loss proof"
     },
     {
@@ -25,8 +25,8 @@
     },
     {
       "name": "Android reliability",
-      "state": "Build44 evidence retained; build45 source saved, final build/lint/device qualification incomplete",
-      "nextGate": "Owner resumes work, then changed contracts, both flavors/lints and Samsung voice/RAG/native checks"
+      "state": "278 current-source unit tests per flavor passed; final assemblies running",
+      "nextGate": "Full lint and physical voice/cluster/health qualification"
     },
     {
       "name": "Governed agents and fleet",
@@ -40,10 +40,20 @@
     },
     {
       "name": "Android/desktop peering, identity, wallet and UI",
-      "state": "Partial source saved for PR #4; application work paused for HyperL-first delivery",
-      "nextGate": "Desktop and Android compile/integration review, strict lint and qualified peer/recovery tests",
+      "state": "Implementation resumed; identity/replay fixes and resource controls in source",
+      "nextGate": "Current tests, physical paired devices and secure remote-link qualification",
       "plan": "docs/PEERING_UI_BUILD_PLAN.md",
-      "handoff": "docs/PAUSED_CHECKPOINT_2026-10-24.md"
+      "handoff": "docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md"
+    },
+    {
+      "name": "Open resource participation",
+      "state": "Scoped resource API, durable quotas and Studio inspector tested; no settlement",
+      "nextGate": "External client interoperability, measured capacity/leases, buyer adapter and verified settlement"
+    },
+    {
+      "name": "Local/WAN topology and smart communication",
+      "state": "Replica alternative-path routing and read fallback contract/socket-tested",
+      "nextGate": "Physical link proof, NAT/relay, WAN placement, automatic takeover and carrier adapters"
     }
   ],
   "releaseUrl": "https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-macos-intel-build40.1",
@@ -69,12 +79,13 @@
     ]
   },
   "currentSourceCheckpoint": {
-    "date": "2026-10-24",
-    "state": "saved-source; application qualification paused for HyperL-first delivery",
-    "branch": "feature/peering-ui-2026-10-12",
-    "review": "https://github.com/sabbirimon/meshlit-v2/pull/4",
-    "document": "docs/PAUSED_CHECKPOINT_2026-10-24.md",
-    "build45Qualified": false
+    "date": "2026-10-31",
+    "baselineSourceCommit": "5a2e97c",
+    "state": "source checkpoint;1192 local tests passed; final APK assembly running",
+    "branch": "checkpoint/desktop-agents-settings-20261031",
+    "document": "docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md",
+    "physicalWanShardingQualified": false,
+    "settlementImplemented": false
   },
   "currentPlanningCheckpoint": {
     "date": "2026-10-26",
@@ -134,5 +145,24 @@
     "guide": "docs/MATH_RESEARCH_2026-10-26.md",
     "evidence": "docs/desktop/evidence/g1-hardening-validation.json",
     "G1Complete": false
+  },
+  "currentResourceCheckpoint": {
+    "date": "2026-10-31",
+    "baselineSourceCommit": "5a2e97c",
+    "branch": "checkpoint/desktop-agents-settings-20261031",
+    "state": "1192 local tests passed; hardware/failover/commercial gates open",
+    "document": "docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md",
+    "plan": "docs/OPEN_RESOURCE_NETWORK.md",
+    "commercialSettlement": false,
+    "physicalWanShardingQualified": false,
+    "evidence": "docs/desktop/evidence/resource-network-20261031.json"
+  },
+  "historicalPausedSourceCheckpoint": {
+    "date": "2026-10-24",
+    "state": "saved-source; application qualification paused for HyperL-first delivery",
+    "branch": "feature/peering-ui-2026-10-12",
+    "review": "https://github.com/sabbirimon/meshlit-v2/pull/4",
+    "document": "docs/PAUSED_CHECKPOINT_2026-10-24.md",
+    "build45Qualified": false
   }
 }

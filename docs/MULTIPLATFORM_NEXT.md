@@ -1,6 +1,6 @@
 # Meshlit desktop and native HarmonyOS NEXT preview
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: platform preview; NEXT device/build acceptance remains open. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 

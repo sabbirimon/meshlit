@@ -1,8 +1,14 @@
 # Meshlit full app guide and configuration tutorial
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+Current resource sharing, sync modes and health controls are described in the
+[detailed manual](USER_MANUAL.md#share-resources-with-external-clients) and
+[open-resource architecture](OPEN_RESOURCE_NETWORK.md). Automatic coordinator
+takeover, commercial settlement and universal WAN sharding remain open.
+
 
 See the [current detailed user manual](USER_MANUAL.md) for the desktop workbench, project memory, companion setup, settings navigation and troubleshooting. The feature guide below retains the wider Android/Studio reference.
 

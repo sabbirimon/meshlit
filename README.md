@@ -6,7 +6,7 @@
 
 # Meshlit — Many devices. One mind.
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -66,6 +66,18 @@ explains the value of reuse and longer product life. Meshlit has not measured a
 net environmental saving. Power use, battery health, repair, workload efficiency
 and device lifetime all matter. Hardware testers can help measure those factors
 alongside performance, so this goal has evidence behind it.
+
+### An open resource network
+
+Meshlit's direction includes **everyone** contributing or eventually selling
+useful spare resources, from a phone owner to a large operator. Compatible
+external clients should not need the Meshlit app. Local and internet-connected
+devices/clusters, multiple pairing carriers, bounded routing and owner-controlled
+limits belong to this plan. Current source adds stronger admission/pairing and
+external-client controls; a live marketplace, payouts, universal WAN sharding
+and new physical transports are not yet delivered. See the
+[resource-network plan](docs/OPEN_RESOURCE_NETWORK.md) and
+[current progress](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md).
 
 ### Where this could lead
 
@@ -200,7 +212,7 @@ python3 scripts/prepare-bundled-model.py
   --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process
 ```
 
-The preparation script downloads the **real revision-pinned 105,454,432-byte GGUF**
+The preparation script downloads the **real revision-pinned 491,400,032-byte GGUF**
 and verifies size/hash. Model weights, APKs, credentials and build outputs are
 excluded from Git. Review [model provenance](app/src/main/assets/models/README.md).
 Fresh builds need network access for declared dependencies and the pinned asset.

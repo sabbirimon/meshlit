@@ -65,7 +65,6 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     private var workerTunnel:RpcTunnel?=null
     private val bridges=mutableListOf<RpcTunnel>()
     private var keyFile:File?=null
-    private var negotiatedPeers:List<PipelinePeer> = emptyList()
     val publicPort=50551
     private fun executable(name:String):File=File(context.applicationInfo.nativeLibraryDir,"libmeshlit_pipeline_$name.so").also {
         require(it.isFile && it.canExecute()) {"Pipeline native runtime is unavailable for this ABI; build and install it first"}
@@ -220,33 +219,44 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     }
     /** Query only explicitly paired workers. Local model ownership limits current
      * activation to this coordinator; the election contract also supports remote owners. */
-    suspend fun negotiate(path:String,contextSize:Int=2048,keyCacheType:String="f16")=withContext(Dispatchers.IO) {
+    suspend fun negotiate(path:String,contextSize:Int=2048,keyCacheType:String="f16") =
+        negotiateAdmission(path,contextSize,keyCacheType).workers
+    private suspend fun negotiateAdmission(path:String,contextSize:Int,keyCacheType:String)=withContext(Dispatchers.IO) {
         val file=File(path);ModelFiles.validateGguf(file)
         val metadata=GgufMetadata.read(file)
         ModelRuntimeOptions(LocalModelBackend.NATIVE_LOCAL,contextSize,keyCacheType).validate(metadata.maxContext)
         val kv=metadata.kvBytes(contextSize,keyCacheType) ?: error("KV memory cannot be estimated for this architecture; cluster admission is unavailable")
         val hash=ModelFiles.sha256(file)
-        require(groupPeers().size<=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit){"Lowered worker capacity; edit the paired workers first"}
-        val peerOffers=groupPeers().map { peer -> peer to wireJson.decodeFromString<NodeOffer>(
+        val approvedGroup=groupPeers()
+        require(approvedGroup.size<=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit){"Lowered worker capacity; edit the paired workers first"}
+        val observedAtElapsedMs=android.os.SystemClock.elapsedRealtime()
+        val peerOffers=approvedGroup.map { peer -> peer to wireJson.decodeFromString<NodeOffer>(
             RpcTunnel.queryCapabilities(peer.host,peer.port,peer.fingerprint,peer.token)).copy(observedAtMs=System.currentTimeMillis()) }
         val local=offer().copy(coordinatorAllowed=true,coordinatorModelSha256=hash,workerAllowed=false)
         val plan=ClusterNegotiation.plan(peerOffers.map{it.second}+local,hash,file.length(),kvBytes=kv,blocks=metadata.blocks)
-        negotiatedPeers=plan.workers.mapIndexed { index,node -> peerOffers.first{it.second.nodeId==node.nodeId}.first.copy(weight=plan.weights[index]) }
+        val negotiatedPeers=plan.workers.mapIndexed { index,node -> peerOffers.first{it.second.nodeId==node.nodeId}.first.copy(weight=plan.weights[index]) }
         _status.update{it.copy(coordinatorId=plan.coordinatorId,memoryBudgetBytes=plan.memoryBudgetBytes,estimatedKvBytes=plan.estimatedKvBytes,estimatedWorkerBytes=plan.estimatedWorkerBytes,error=null)}
         log("Negotiated ${plan.workers.size} workers; capacity estimate ${plan.memoryBudgetBytes} bytes")
-        negotiatedPeers
+        PipelineLaunchAdmission(negotiatedPeers,approvedGroup,observedAtElapsedMs)
     }
     suspend fun startPipeline(path:String,contextSize:Int=2048,keyCacheType:String="f16") {
         com.meshlit.operations.OperationsControl.get(context).gate.requireAllowed(com.meshlit.core.common.control.ManagedFeature.CLUSTER)
-        val paired=negotiate(path,contextSize,keyCacheType)
-        require(paired.size>=2){"Pair at least two approved workers"}
-        startNative(path,ModelRuntimeOptions(LocalModelBackend.NATIVE_LOCAL,contextSize,keyCacheType),paired)
+        val admission=negotiateAdmission(path,contextSize,keyCacheType)
+        startNative(path,ModelRuntimeOptions(LocalModelBackend.NATIVE_LOCAL,contextSize,keyCacheType),admission)
     }
     suspend fun startLocal(path:String,options:ModelRuntimeOptions) {
         require(options.backend==LocalModelBackend.NATIVE_LOCAL)
-        startNative(path,options,emptyList())
+        startNative(path,options)
     }
-    private suspend fun startNative(path:String,options:ModelRuntimeOptions,paired:List<PipelinePeer>) {
+    private suspend fun startNative(path:String,options:ModelRuntimeOptions,admission:PipelineLaunchAdmission?=null) {
+        val paired=admission?.workers.orEmpty()
+        fun requireCurrentAdmission() {
+            if(admission!=null) {
+                com.meshlit.operations.OperationsControl.get(context).gate.requireAllowed(com.meshlit.core.common.control.ManagedFeature.CLUSTER)
+                admission.requireCurrent(android.os.SystemClock.elapsedRealtime(),groupPeers(),
+                    com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit)
+            }
+        }
         options.validate(GgufMetadata.read(File(path)).maxContext)
         val contextSize=options.contextSize
         ModelFiles.validateGguf(File(path))
@@ -254,10 +264,11 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
         try {
             val result=inference.loadExternalEngine(path,contextSize) {
                 lock.withLock { withContext(Dispatchers.IO) {
+                    requireCurrentAdmission()
                     stopServerInternal();service()
                     try {
                         paired.forEach { bridges+=RpcTunnel.client(it.host,it.port,it.fingerprint,it.token,::log) }
-                        val endpoints=bridges.joinToString(","){"127.0.0.1:${it.port}"}
+                        val endpoints=bridges.map{"127.0.0.1:${it.port}"}
                         val httpPort=port();val token=randomToken()
                         keyFile=File(context.filesDir,"pipeline-api-key").apply{writeText(token);setReadable(false,false);setReadable(true,true)}
                         com.meshlit.power.PowerRepository(context).loadBlockReason()?.let{error(it)}
@@ -265,9 +276,8 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
                             "--host","127.0.0.1","--port","$httpPort","--api-key-file",keyFile!!.absolutePath,
                             "--cache-type-k",options.keyCacheType,"--cache-type-v","f16",
                             "--no-webui","--no-warmup","--fit","off","--slots","--slot-save-path",slotDirectory.absolutePath+"/")
-                        if(paired.isEmpty()) args+=listOf("--device","none","-ngl","0")
-                        else args+=listOf("--rpc",endpoints,"--device",paired.indices.joinToString(","){"RPC$it"},
-                            "--split-mode","layer","--tensor-split",paired.joinToString(","){"${it.weight}"},"-ngl","99")
+                        args+=nativePlacementArgs(endpoints,paired.map{it.weight})
+                        requireCurrentAdmission()
                         server=launch("server",args)
                         nativeSession=NativeSession(httpPort,token,path,options,paired.isEmpty())
                         val client=OkHttpClient.Builder().callTimeout(2,java.util.concurrent.TimeUnit.SECONDS).build()

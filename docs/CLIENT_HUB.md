@@ -1,6 +1,6 @@
 # Meshlit as an authenticated model and agent hub
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -114,3 +114,15 @@ certificate enrollment/revocation, client session/audit views, user/admin roles,
 quotas backed by actual usage, key rotation UX, safe web companion, multi-client
 load/revocation/expiry tests and independent review precede production exposure.
 Real multi-phone model execution and failover remain separate acceptance gates.
+
+## Current resource controls — 2026-10-31
+
+GET `/v1/resources` requires MODELS scope and describes only the client's allowed
+configured text models when CHAT is also granted. No prices, verified capacity,
+payments or raw-resource rental are invented. Each client now has a persisted
+lifetime request allowance (default1000, range1–1,000,000), consumed before admitted
+requests including reads/failed operations. Existing saved keys migrate to1000
+with zero newly observed requests; prior usage is not reconstructed. Storage
+failure blocks admission. Owner-token requests bypass per-client allowances.
+MCP `gateway_route_execute` also enforces the client's model alias and output cap.
+See [manual](USER_MANUAL.md#share-resources-with-external-clients).

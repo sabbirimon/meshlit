@@ -189,6 +189,13 @@ class RunAnywhereInferenceEngine(
 
     override suspend fun loadModel(request: ModelLoadRequest): MeshlitResult<ModelInfo> =
         withContext(dispatcher) {
+            // SDK catalog ids and local files have the same whole-model-only
+            // contract. Do not accept a slice and later advertise a full SDK
+            // load as a successfully hosted pipeline stage.
+            if (request.layerStart != 0 || request.layerEnd != Int.MAX_VALUE || request.manifest != null) {
+                return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid(
+                    "runanywhere.pipeline_unsupported: use the native RPC layer backend"))
+            }
             if (!initialized) {
                 return@withContext MeshlitResult.Failure(
                     com.meshlit.core.common.MeshlitError.Native(
@@ -228,10 +235,6 @@ class RunAnywhereInferenceEngine(
                 // the SDK's canonical id (`smollm2-360m-instruct-q8_0`,
                 // etc.) directly, so the two code paths land on the same
                 // catalog row.
-                if (request.layerStart != 0 || request.layerEnd != Int.MAX_VALUE || request.manifest != null) {
-                    return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid(
-                        "runanywhere.pipeline_unsupported: use the native RPC layer backend"))
-                }
                 val prepared = try {
                     ModelFiles.validateGguf(file)
                     ("local-" + ModelFiles.sha256(file)) to file

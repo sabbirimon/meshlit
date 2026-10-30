@@ -28,8 +28,8 @@ fun interface RouterRef {
 /**
  * Capability hints parsed from the `X-Meshlit-Hints` request header.
  * The header format is `key=value,key=value`, e.g.
- * `role=brain,gpu=true`. Missing or malformed headers fall back to
- * the defaults.
+ * `role=brain,gpu=true,forwards=1`. A missing header uses defaults;
+ * malformed or duplicate forwarding budgets are rejected.
  *
  * Lives next to the router interface (not in `:app`) because both
  * sides — the server that parses the header and the `:app` client
@@ -38,16 +38,26 @@ fun interface RouterRef {
 data class RequestHints(
     val role: String = "brain",
     val needsGpu: Boolean = false,
+    /** Remaining peer delegations. Legacy callers get one; each forward consumes one. */
+    val remainingForwards: Int = 1,
 ) {
+    init { require(remainingForwards in 0..MAX_FORWARDS) { "Invalid forwarding budget" } }
+
+    fun afterForward(): RequestHints {
+        require(remainingForwards > 0) { "Forwarding budget exhausted" }
+        return copy(remainingForwards = remainingForwards - 1)
+    }
     /**
      * Serialize to the wire header value.
      */
     fun toHeaderValue(): String = buildString {
         append("role=").append(role)
         if (needsGpu) append(",gpu=true")
+        append(",forwards=").append(remainingForwards)
     }
 
     companion object {
+        const val MAX_FORWARDS = 3
         /**
          * Parse `role=brain,gpu=true` into a [RequestHints]. Returns
          * the default when [raw] is null or blank.
@@ -56,17 +66,24 @@ data class RequestHints(
             if (raw.isNullOrBlank()) return RequestHints()
             var role: String? = null
             var needsGpu = false
+            var forwards: Int? = null
             raw.split(',').forEach { kv ->
                 val (k, v) = kv.substringBefore('=').trim() to kv.substringAfter('=', "").trim()
                 when (k.lowercase()) {
                     "role" -> role = v.ifBlank { role }
                     "gpu" -> needsGpu = v.equals("true", ignoreCase = true) ||
                         v == "1" || v.equals("yes", ignoreCase = true)
+                    "forwards" -> {
+                        require(forwards == null) { "Duplicate forwarding budget" }
+                        forwards = v.toIntOrNull()?.takeIf { it in 0..MAX_FORWARDS }
+                            ?: throw IllegalArgumentException("Invalid forwarding budget")
+                    }
                 }
             }
             return RequestHints(
                 role = role ?: "brain",
                 needsGpu = needsGpu,
+                remainingForwards = forwards ?: 1,
             )
         }
     }

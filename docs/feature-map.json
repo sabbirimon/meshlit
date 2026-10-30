@@ -1243,6 +1243,54 @@
       "limitations": [
         "Kokoro/Pocket run on host. No claim of current real human conversation or provider account qualification."
       ]
+    },
+    {
+      "id": "external-resource-participation",
+      "title": "Scoped resource catalog, durable request allowance and Studio inspector",
+      "status": "implemented",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/gateway/GatewayResources.kt",
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/gateway/GatewayClients.kt",
+        "companions/studio-runtime/extension/resource-sharing.cjs"
+      ],
+      "authority": [],
+      "limits": "Configured models only; no measured capacity, payments, provider partnership or public listener"
+    },
+    {
+      "id": "adaptive-replica-paths",
+      "title": "Approved replica path selection and bounded read fallback",
+      "status": "implemented",
+      "sources": [
+        "core-federation/src/main/kotlin/com/meshlit/core/federation/recovery/ReplicaHttpTransport.kt",
+        "app/src/main/kotlin/com/meshlit/recovery/ReplicaHost.kt"
+      ],
+      "authority": [
+        "RECOVERY"
+      ],
+      "limits": "Same member paths; no uncertain write replay or automatic model takeover"
+    },
+    {
+      "id": "verified-shard-recovery",
+      "title": "Exact transfer integrity and verified partial model recovery",
+      "status": "implemented",
+      "sources": [
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/cluster/ShardAssembler.kt",
+        "core-inference/src/main/kotlin/com/meshlit/core/inference/cluster/ShardTransport.kt"
+      ],
+      "authority": [],
+      "limits": "Trusted model/shard hashes required; no arbitrary RAM repair or distributed KV restoration"
+    },
+    {
+      "id": "optional-gateway-prompt-protection",
+      "title": "Optional gateway prompt heuristic with separately delegated agent toggle",
+      "status": "implemented",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/gateway/GatewayPolicy.kt",
+        "app/src/main/kotlin/com/meshlit/gateway/GatewayHost.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/GatewayScreen.kt"
+      ],
+      "authority": [],
+      "limits": "Local heuristic only, not antivirus or universal injection prevention; mandatory security gates stay on"
     }
   ],
   "modules": [

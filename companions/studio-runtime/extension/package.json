@@ -81,6 +81,10 @@
         "title": "Meshlit: APIs and Protocols"
       },
       {
+        "command": "meshlit.resourceSharing",
+        "title": "Meshlit: Resource Sharing"
+      },
+      {
         "command": "meshlit.appAccess",
         "title": "Meshlit: Agent App Access"
       },

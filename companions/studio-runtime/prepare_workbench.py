@@ -185,6 +185,7 @@ def main():
         extension=app_resources/'extensions/meshlit-workbench'
         shutil.copytree(here/'extension',extension,ignore=shutil.ignore_patterns('*.test.cjs'))
         shutil.copy2(repo/'docs/USER_MANUAL.md',extension/'USER_MANUAL.md')
+        shutil.copy2(repo/'docs/OPEN_RESOURCE_NETWORK.md',extension/'OPEN_RESOURCE_NETWORK.md')
         build_app_access(extension,args.sign_identity)
         # Snapshot our jar; reused dependency jars/resources stay read-only. This is a dev build.
         shutil.copy2(jar,extension/'meshlit-backend.jar')

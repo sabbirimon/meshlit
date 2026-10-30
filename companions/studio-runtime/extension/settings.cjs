@@ -16,6 +16,7 @@ const groups=[
   ['stop','Stop app access','Revoke ongoing Meshlit app access. Completed external actions are not undone.','meshlit.stopAppAccess','cancel revoke']
  ]},
  {id:'services',title:'Services and integrations',description:'Connect optional companions; their setup and accounts remain explicit.',items:[
+  ['resources','Resource sharing','Inspect an authorized host’s advertised models over HTTPS. Capacity and prices remain unverified.','meshlit.resourceSharing','LAN WAN internet remote users teams organizations hosting resources'],
   ['companions','Memory and computer companions','Configure claude-mem, OpenMausBot and OpenBot; check availability and open their full interfaces.','meshlit.companions','bots AG-UI computers'],
   ['protocols','APIs and protocols','Inspect existing protocol connections and their supported operations.','meshlit.protocols','endpoint gateway'],
   ['omni','OmniRoute','Manage an owner-installed model gateway.','meshlit.gateway.OmniRoute','router'],

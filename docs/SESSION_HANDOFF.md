@@ -1,8 +1,19 @@
 # Meshlit current session handoff
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Latest continuation — open resource network, 2026-10-31
+
+The owner resumed implementation and expanded the goal to everyone sharing or
+selling verified resources across local/WAN devices and clusters. Continue from
+[resource progress](RESOURCE_NETWORK_PROGRESS_2026-10-31.md) and
+[the full architecture](OPEN_RESOURCE_NETWORK.md), not the older paused sections.
+The earlier agent/voice checkpoint remains a valid dated record. Preserve its
+open build, device and upstream-security gates. No commercial service or public
+listener was launched. Low-credit checkpoint pushes remain authorized.
+
 
 Latest handoff: [2026-10-31 source checkpoint](CHECKPOINT_2026-10-31.md), including [smaller-model/mobile repair instructions](SMALL_MODEL_MAINTENANCE_GUIDE.md). It supersedes older stop/build priorities below; unqualified gates remain explicit.
 

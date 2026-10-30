@@ -1,8 +1,18 @@
 # Current architecture and evidence boundaries
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Open resource network continuation — 2026-10-31
+
+See [architecture and topology matrix](../OPEN_RESOURCE_NETWORK.md) for the
+current inclusive product direction, independent pairing/data paths, smart sync
+routing, load balancing and fallback semantics. Current repairs and verification
+are in [resource progress](../RESOURCE_NETWORK_PROGRESS_2026-10-31.md). Existing
+storage sharding, native model-layer execution and whole-request routing must not
+be conflated. Commercial settlement and cross-owner WAN orchestration are open.
+
 
 ## Current checkpoint — 2026-10-31
 

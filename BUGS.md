@@ -1,8 +1,23 @@
 # Current regressions, limitations and verification
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Resource and pairing review — 2026-10-31
+
+Source fixes: cumulative storage/RAM admission and exact shard byte coverage;
+unsupported SDK slice requests; native >99-layer offload cap; stale/shared launch
+admission; first-peer bias and unbounded forwarding; signed-proof replay window
+and sessions surviving identity replacement; MCP route aliases bypassing client
+model/output limits. Checks and remaining gaps are recorded in
+[the resource increment](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md).
+
+Open: no cross-owner resource reservations or qualified WAN layer scheduler,
+no automatic NAT traversal for native RPC, no generic secure public exposure of
+legacy loopback-trusted inference, no payment settlement, and no physical proof
+for all requested pairing carriers. Existing voice/packaging/security gates remain.
+
 
 ## Bundled-model duplicate load and IDE host failure states — 2026-10-30
 

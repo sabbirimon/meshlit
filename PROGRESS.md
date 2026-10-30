@@ -1,8 +1,22 @@
 # Meshlit progress and evidence
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Open resource network checkpoint — 2026-10-31
+
+Source improvements cover model/shard admission, native launch limits/freshness,
+pairing/replay, fair bounded dispatch, external-client limits/catalog, Studio
+inspection, replica path routing/read fallback, integrity/refetch/resume,
+new-load health caps and optional delegated prompt protection. The full inclusive
+local/WAN/multicarrier/commerce direction and remaining failover/settlement gates
+are saved in [the plan](docs/OPEN_RESOURCE_NETWORK.md). Current checks, exact limits
+and continuation commands are in [the checkpoint](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md).
+1,192 source/contract/socket tests passed. Final APK assembly status is in the
+checkpoint evidence. No universal device support, antivirus, paid marketplace
+or automatic distributed model recovery is claimed.
+
 
 ## Saved desktop/Android integration checkpoint — 2026-10-31
 

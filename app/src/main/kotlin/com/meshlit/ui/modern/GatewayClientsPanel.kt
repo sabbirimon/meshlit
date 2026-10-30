@@ -23,12 +23,12 @@ import java.util.Date
     var hours by remember{mutableStateOf("1")}
     var limit by remember{mutableStateOf("512")}
     var rpm by remember{mutableStateOf("30")}
+    var allowance by remember{mutableStateOf("1000")}
     var scopes by remember{mutableStateOf(setOf(GatewayScope.MODELS,GatewayScope.CHAT))}
     var issued by remember{mutableStateOf<IssuedGatewayKey?>(null)}
     var error by remember{mutableStateOf<String?>(null)}
     val clipboard=LocalClipboardManager.current
-    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        Text("Client access",style=MaterialTheme.typography.titleLarge)
+    SettingsFeatureSection("Client access and resource limits") {
         Text("Issue a separate API key for each desktop, phone or web backend. Permissions, model IDs, expiry and limits are enforced. Client edits stop the gateway and cancel its pending jobs; restart after changing access.")
         OutlinedTextField(name,{if(it.length<=80) name=it},Modifier.fillMaxWidth(),label={Text("Client name")})
         OutlinedTextField(models,{models=it},Modifier.fillMaxWidth(),label={Text("Allowed model IDs, comma separated")})
@@ -42,15 +42,18 @@ import java.util.Date
         OutlinedTextField(hours,{hours=it},label={Text("Expires after hours (1–720)")})
         OutlinedTextField(limit,{limit=it},label={Text("Maximum output tokens (16–1024)")})
         OutlinedTextField(rpm,{rpm=it},label={Text("Requests per minute (1–120)")})
+        OutlinedTextField(allowance,{allowance=it},label={Text("Total request allowance (1–1,000,000)")})
+        Text("Each admitted API request consumes one allowance, including catalog reads and requests that later fail. The count survives restart. This bounds access; it is not a billable token count or payment balance. Issue a new key when exhausted.")
         Button(enabled=!com.meshlit.BuildConfig.PLAY_REVIEW && name.isNotBlank() && scopes.isNotEmpty(),onClick={
             try {
                 fun entries(value:String)=value.split(',').map{it.trim()}.filter{it.isNotBlank()}.toSet()
-                issued=host.issueClient(name,entries(models),scopes,if(GatewayScope.MCP in scopes) entries(tools) else emptySet(),hours.toInt(),limit.toInt(),rpm.toInt());error=null
+                issued=host.issueClient(name,entries(models),scopes,if(GatewayScope.MCP in scopes) entries(tools) else emptySet(),hours.toInt(),limit.toInt(),rpm.toInt(),allowance.toLong());error=null
             } catch(_:Exception){error="Could not issue key. Check IDs, expiry, limits and the 64-client limit."}
         }){Text("Issue client key and stop")}
         clients.forEach{client->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(12.dp)) {
             Text(client.name,style=MaterialTheme.typography.titleMedium)
             Text("${if(client.revoked) "Revoked" else if(client.expiresAtMs<=System.currentTimeMillis()) "Expired" else "Enabled"} · ${client.scopes.joinToString()} · ${client.requestsPerMinute}/minute · 1 active request")
+            Text("Request allowance: ${client.usedRequests} / ${client.maxRequests} used${if(client.usedRequests>=client.maxRequests) " · exhausted" else ""}")
             Text("Expires ${DateFormat.getDateTimeInstance().format(Date(client.expiresAtMs))}")
             Text("Models: ${client.modelIds.joinToString().ifBlank{"none"}}")
             FlowRow {TextButton(enabled=!client.revoked,onClick={host.revokeClient(client.id)}){Text("Revoke and stop")}

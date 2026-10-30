@@ -1,8 +1,22 @@
 # Meshlit current implementation and acceptance queue
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Next open-resource gates — 2026-10-31
+
+- Finish changed core/app/Studio checks and keep build/lint evidence separate from hardware proof.
+- Qualify actual oversized-model layer placement on physical devices, then an approved WAN setup.
+- Add authenticated measured capacity reservations and cross-owner fenced leases before admitting customer work.
+- Qualify sync path changes, cancellation, identity changes and uncertain-write reconciliation on real links.
+- Integrate carrier adapters into one reviewed pairing flow; never turn sound/QR reception into automatic trust.
+- Implement one real external buyer contract and buyer-confirmed metering before prices, payouts or a sell control.
+- Keep previous portable packaging, full lint, live human voice and upstream advisory gates open.
+
+[Detailed architecture and fallback policy](docs/OPEN_RESOURCE_NETWORK.md) ·
+[Current increment](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md).
+
 
 ## Saved desktop/Android integration checkpoint — 2026-10-31
 

@@ -1,8 +1,33 @@
 # Current user requests and implementation tracking
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Final owner additions before checkpoint — 2026-10-31
+
+Corruption detection and bounded verified data recovery; adaptive sync modes based
+on scenario/observed health; adaptive compute within each worker's limits; desktop
+or mobile coordinator takeover with fencing/compatible committed state; graceful
+degradation on remaining eligible nodes; optional prompt/malware protections and
+explicitly delegated agent/LLM control. User requested save-all at low credit.
+Prompt heuristic, new-load health caps and sync routing have source implementations;
+automatic distributed takeover, continuous migration and antivirus remain open.
+
+## Owner additions — open participation and interconnected resources (2026-10-31)
+
+- Everyone can contribute or eventually sell spare compute/resources; no company-size gate.
+- External clients/providers must be able to integrate without using Meshlit's UI.
+- Carefully improve large-model sharding, engine admission, load balancing and pairing.
+- Cover one/many local devices, LAN clusters, remote WAN devices and multiple/mixed clusters.
+- Consider USB-C, Wi-Fi, Ethernet/LAN/fiber, Bluetooth, radio, sound, light/QR and other carriers.
+- Add smart communication/data-sync routing and bounded, permission-preserving fallback.
+- Update overall progress, guides and handoff; keep credit use bounded and save/push progress.
+
+See [implementation plan](docs/OPEN_RESOURCE_NETWORK.md) and
+[current evidence](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md). Commercial income,
+provider partnerships and new physical transports are not promised or activated.
+
 
 ## Saved desktop/Android integration checkpoint — 2026-10-31
 

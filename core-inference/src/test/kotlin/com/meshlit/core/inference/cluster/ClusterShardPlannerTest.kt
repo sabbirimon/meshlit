@@ -8,6 +8,63 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ClusterShardPlannerTest {
+    private val mib = 1024L * 1024
+
+    @Test fun uneven_byte_ranges_cover_every_source_byte_exactly_once() {
+        val size = 5 * mib + 2
+        val plan = ClusterShardPlanner(2 * mib).plan("uneven", size, 3,
+            cap("self", freeDiskMb = 2), listOf(cap("a", freeDiskMb = 2), cap("b", freeDiskMb = 2)))
+        val ranges = (plan as ClusterShardPlanner.Plan.MultiShard).assignments
+        assertEquals(0L, ranges.first().byteOffset)
+        ranges.zipWithNext().forEach { (a, b) -> assertEquals(a.byteOffset + a.byteLength, b.byteOffset) }
+        assertEquals(size, ranges.last().let { it.byteOffset + it.byteLength })
+        assertEquals(size, ranges.sumOf { it.byteLength })
+    }
+
+    @Test fun placement_decrements_disk_and_reassigns_oversubscribed_sticky_shards() {
+        val plan = ClusterShardPlanner(mib).plan("m", 6 * mib, 6,
+            cap("self", freeDiskMb = 4),
+            listOf(cap("small", freeDiskMb = 2, hosted = (0..5).map { "m/shard-00$it" }.toSet())))
+        val assigned = (plan as ClusterShardPlanner.Plan.MultiShard).assignments.groupBy { it.peerId }
+        assertEquals(4 * mib, assigned.getValue("self").sumOf { it.byteLength })
+        assertEquals(2 * mib, assigned.getValue("small").sumOf { it.byteLength })
+    }
+
+    @Test fun sufficient_total_disk_does_not_admit_an_unplaceable_shard() {
+        val plan = ClusterShardPlanner(2 * mib).plan("m", 3 * mib, 2,
+            cap("self", freeDiskMb = 1), listOf(cap("a", freeDiskMb = 1), cap("b", freeDiskMb = 1)))
+        assertTrue(plan is ClusterShardPlanner.Plan.FallbackToWholeModel)
+    }
+
+    @Test fun huge_valid_capacities_and_shard_counts_do_not_overflow() {
+        val maxMb = Long.MAX_VALUE / mib
+        val plan = ClusterShardPlanner(1).plan("m", Long.MAX_VALUE, 3,
+            cap("self", freeDiskMb = maxMb), listOf(cap("a", freeDiskMb = maxMb)))
+        val ranges = (plan as ClusterShardPlanner.Plan.MultiShard).assignments
+        assertEquals(3, ranges.size)
+        assertEquals(Long.MAX_VALUE, ranges.sumOf { it.byteLength })
+        assertEquals(Long.MAX_VALUE, ranges.last().let { it.byteOffset + it.byteLength })
+        assertTrue(ranges.groupBy { it.peerId }.values.all { parts -> parts.sumOf { it.byteLength } <= maxMb * mib })
+    }
+
+    @Test fun invalid_capacity_and_model_bounds_are_not_admitted() {
+        val planner = ClusterShardPlanner()
+        assertTrue(planner.plan("m", 3 * mib, 2, cap("self", freeDiskMb = Long.MAX_VALUE),
+            listOf(cap("a", freeDiskMb = 1))) is ClusterShardPlanner.Plan.FallbackToWholeModel)
+        for ((size, layers) in listOf(0L to 1, -1L to 1, mib to Int.MAX_VALUE)) {
+            assertTrue(planner.plan("m", size, layers, cap("self"), emptyList()) is ClusterShardPlanner.Plan.FallbackToWholeModel)
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun zero_shard_size_is_rejected() { ClusterShardPlanner(0) }
+
+    @Test fun equal_capacity_roster_order_does_not_change_assignment() {
+        val planner = ClusterShardPlanner(mib)
+        val peers = listOf(cap("a", freeDiskMb = 2), cap("b", freeDiskMb = 2))
+        val self = cap("self", freeDiskMb = 0)
+        assertEquals(planner.plan("m", 3 * mib, 3, self, peers), planner.plan("m", 3 * mib, 3, self, peers.reversed()))
+    }
 
     private fun cap(
         id: String,

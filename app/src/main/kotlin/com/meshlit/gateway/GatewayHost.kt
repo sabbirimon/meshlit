@@ -24,15 +24,21 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
     val settings=_settings.asStateFlow()
     private val _clients=MutableStateFlow(store.get("clients")?.let{runCatching{json.decodeFromString<List<GatewayClient>>(it).also{list->require(list.size<=64);require(list.map{client->client.id}.distinct().size==list.size);list.forEach{client->client.validate()}}}.getOrNull()} ?: emptyList())
     val clients=_clients.asStateFlow()
-    private val access=GatewayClientAccess(records={clients.value})
-    @Synchronized fun issueClient(name:String,modelIds:Set<String>,scopes:Set<GatewayScope>,tools:Set<String> = emptySet(),hours:Int=1,maxTokens:Int=512,rpm:Int=30):IssuedGatewayKey {
+    private val clientLock=Any()
+    private val access=GatewayClientAccess(records={clients.value},commit={expected,updated->
+        synchronized(clientLock) {
+            if(_clients.value.firstOrNull{it.id==expected.id}!=expected) false
+            else {saveClients(_clients.value.map{if(it.id==updated.id) updated else it});true}
+        }
+    })
+    @Synchronized fun issueClient(name:String,modelIds:Set<String>,scopes:Set<GatewayScope>,tools:Set<String> = emptySet(),hours:Int=1,maxTokens:Int=512,rpm:Int=30,maxRequests:Long=1000):IssuedGatewayKey {
         require(_clients.value.size<64){"Remove an expired client before adding another"}
         require(hours in 1..720)
-        val issued=GatewayClientAccess.issue(name,modelIds,scopes,tools,hours*3_600_000L,maxTokens,rpm)
-        stop();saveClients(_clients.value+issued.client);return issued
+        val issued=GatewayClientAccess.issue(name,modelIds,scopes,tools,hours*3_600_000L,maxTokens,rpm,maxRequests=maxRequests)
+        stop();synchronized(clientLock){saveClients(_clients.value+issued.client)};return issued
     }
-    @Synchronized fun revokeClient(id:String){stop();saveClients(_clients.value.map{if(it.id==id) it.copy(revoked=true) else it})}
-    @Synchronized fun removeClient(id:String){stop();saveClients(_clients.value.filterNot{it.id==id})}
+    @Synchronized fun revokeClient(id:String){stop();synchronized(clientLock){saveClients(_clients.value.map{if(it.id==id) it.copy(revoked=true) else it})}}
+    @Synchronized fun removeClient(id:String){stop();synchronized(clientLock){saveClients(_clients.value.filterNot{it.id==id})}}
     private fun saveClients(value:List<GatewayClient>){store.putCommitted("clients",json.encodeToString(value));_clients.value=value}
     private val _running=MutableStateFlow(false);val running=_running.asStateFlow()
     private var server:EmbeddedGateway?=null
@@ -42,6 +48,12 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
     fun token():String=store.get("token") ?: (UUID.randomUUID().toString()+UUID.randomUUID()).also {store.putCommitted("token",it)}
     @Synchronized fun save(value:GatewaySettings) {require(value.port in 1024..65535);require(value.modelId.length<=160);value.policy.validate();stop();store.putCommitted("settings",json.encodeToString(value));_settings.value=value}
     @Synchronized fun rotate() {stop();store.putCommitted("token",UUID.randomUUID().toString()+UUID.randomUUID())}
+    @Synchronized private fun setAgentPromptProtection(enabled:Boolean):JsonObject {
+        check(running.value) {"Gateway stopped"}
+        val next=settings.value.copy(policy=settings.value.policy.agentPromptProtection(enabled))
+        store.putCommitted("settings",json.encodeToString(next));_settings.value=next
+        return buildJsonObject {put("blockPromptInjection",next.policy.blockPromptInjection)}
+    }
     @Synchronized fun start() {
         operations.requireAllowed(com.meshlit.core.common.control.ManagedFeature.GATEWAY)
         check(!com.meshlit.BuildConfig.PLAY_REVIEW) {"Inbound gateway is not enabled in Play Review"}
@@ -53,6 +65,10 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
     private fun tools()=buildJsonArray {
         fun tool(name:String,description:String,schema:JsonObject)=add(buildJsonObject {put("name",name);put("description",description);put("inputSchema",schema)})
         tool("meshlit_command_submit","Submit a durable command; saved agent permissions remain required",AgentCommandSchema.describe())
+        tool("gateway_prompt_protection_set","Change only optional prompt-pattern protection; separate owner delegation and this exact client tool grant are required",buildJsonObject {
+            put("type","object");put("additionalProperties",false);put("required",buildJsonArray{add("enabled")})
+            put("properties",buildJsonObject{put("enabled",buildJsonObject{put("type","boolean")})})
+        })
         val idSchema=buildJsonObject {put("type","object");put("required",buildJsonArray {add("id")});put("properties",buildJsonObject {put("id",buildJsonObject {put("type","string");put("maxLength",80)})})}
         tool("meshlit_job_status","Read a job submitted by this gateway",idSchema)
         tool("meshlit_job_cancel","Cancel a job submitted by this gateway",idSchema)
@@ -73,8 +89,12 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
         }
         if(name.startsWith("remote_")) return remoteRoutes.invoke(name,args)
         val result=when(name) {
-            "gateway_routes_list"->json.encodeToJsonElement(routing.routes.value.filter{it.enabled && it.agentAllowed})
-            "gateway_route_execute"->routing.execute(args["routeId"]!!.jsonPrimitive.content,args["arguments"]!!.jsonObject,true)
+            "gateway_prompt_protection_set"->{require(args.keys==setOf("enabled"));setAgentPromptProtection(args["enabled"]!!.jsonPrimitive.boolean)}
+            "gateway_routes_list"->{val principal=currentGatewayClient();json.encodeToJsonElement(routing.routes.value.filter{it.enabled && it.agentAllowed && (it.protocol!=RouteProtocol.LLM || principal.allowsModel("route:${it.id}"))})}
+            "gateway_route_execute"->{
+                val route=routing.routes.value.single{it.id==args["routeId"]!!.jsonPrimitive.content}
+                routing.execute(route.id,currentGatewayClient().authorizeRouteArguments(route,args["arguments"]!!.jsonObject),true)
+            }
             "lab_package_action"->packages.run(args["action"]!!.jsonPrimitive.content,"pip","repo",args["package"]?.jsonPrimitive?.content.orEmpty(),"",agent=true)
             "security_assessments_list"->buildJsonObject {put("assessments",buildJsonArray {lab.assessments.value.filter {it.agentAllowed && it.expiresAtMs>System.currentTimeMillis()}.forEach {assessment->add(buildJsonObject {put("id",assessment.id);put("sha256",assessment.sha256);put("tools",buildJsonArray {assessment.tools.forEach {add(it)}})})}})}
             "security_assessment_run"->lab.run(args["id"]!!.jsonPrimitive.content,args["tool"]!!.jsonPrimitive.content,agent=true)
@@ -115,7 +135,7 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
     private fun safeJob(job:AgentJob)=buildJsonObject {put("id",job.command.requestId);put("phase",job.phase.name);job.result?.let {settings.value.policy.check(it.toString(),true);put("result",it)};job.errorCode?.let {put("errorCode",it)}}
     private suspend fun models():JsonArray {
         val value=backend.executeHuman(AgentCommand(UUID.randomUUID().toString(),AgentOperation.MODELS_LIST))
-        return buildJsonArray {(value.jsonObject["models"] as? JsonArray).orEmpty().filter {it.jsonObject["installed"]?.jsonPrimitive?.booleanOrNull==true || it.jsonObject["enabled"]?.jsonPrimitive?.booleanOrNull==true}.forEach {add(buildJsonObject {put("id",it.jsonObject["modelId"]!!);put("object","model");put("owned_by","meshlit")})}
+        return buildJsonArray {(value.jsonObject["models"] as? JsonArray).orEmpty().filter {it.jsonObject["modelId"]?.jsonPrimitive?.content==settings.value.modelId && (it.jsonObject["installed"]?.jsonPrimitive?.booleanOrNull==true || it.jsonObject["enabled"]?.jsonPrimitive?.booleanOrNull==true)}.forEach {add(buildJsonObject {put("id",it.jsonObject["modelId"]!!);put("object","model");put("owned_by","meshlit")})}
             routing.routes.value.filter{it.enabled && it.agentAllowed && it.protocol==RouteProtocol.LLM}.forEach{route->add(buildJsonObject{put("id","route:${route.id}");put("object","model");put("owned_by","meshlit-routes")})}
         }
     }

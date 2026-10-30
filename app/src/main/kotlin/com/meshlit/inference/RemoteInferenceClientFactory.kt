@@ -28,7 +28,8 @@ class RemoteInferenceClientFactory(private val tokenProvider: (String) -> String
         .readTimeout(SOCKET_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(SOCKET_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .callTimeout(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-        .retryOnConnectionFailure(true)
+        // A failed POST may already be executing remotely. Never replay inference implicitly.
+        .retryOnConnectionFailure(false)
         .followRedirects(false)
         .followSslRedirects(false)
         .build()

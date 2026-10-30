@@ -15,7 +15,7 @@ class GatewayClientsTest {
         assertNotEquals(a.key,b.key);assertNotEquals(a.key,a.client.keyHash)
         assertFalse(a.toString().contains(a.key))
         var records=listOf(a.client,b.client)
-        val access=GatewayClientAccess({records},{now})
+        val access=GatewayClientAccess({records},{now},commit={before,after-> if(before !in records) false else {records=records.map{if(it.id==before.id) after else it};true}})
         assertEquals(a.client.id,access.authenticate(a.key)!!.id)
         assertNull(access.authenticate("wrong".repeat(16)))
         records=records.map{if(it.id==a.client.id) it.copy(revoked=true) else it}
@@ -26,7 +26,8 @@ class GatewayClientsTest {
         var now=1_000_000L
         val issued=GatewayClientAccess.issue("A",setOf("m"),requestsPerMinute=2,now=now)
         val second=GatewayClientAccess.issue("B",setOf("m"),now=now)
-        val access=GatewayClientAccess({listOf(issued.client,second.client)},{now})
+        var records=listOf(issued.client,second.client)
+        val access=GatewayClientAccess({records},{now},commit={before,after->records=records.map{if(it.id==before.id) after else it};true})
         val a=access.authenticate(issued.key)!!;val b=access.authenticate(second.key)!!
         assertTrue(access.acquire(a));assertFalse(access.acquire(a));assertTrue(access.acquire(b));access.release(b)
         access.release(a);assertTrue(access.acquire(a));access.release(a);assertFalse(access.acquire(a))
@@ -41,7 +42,7 @@ class GatewayClientsTest {
     @Test fun actualHttpEnforcesScopeModelsLimitsAndClientContext() {
         val issued=GatewayClientAccess.issue("Desktop",setOf("allowed"),maxOutputTokens=32)
         var records=listOf(issued.client)
-        val access=GatewayClientAccess(records={records})
+        val access=GatewayClientAccess(records={records},commit={before,after->records=records.map{if(it.id==before.id) after else it};true})
         var calls=0;var contextId=""
         val port=ServerSocket(0).use{it.localPort}
         val server=EmbeddedGateway(port,"a".repeat(64),{GatewayPolicy()},{buildJsonArray{}},{_,_->buildJsonObject{}},
@@ -58,6 +59,10 @@ class GatewayClientsTest {
         }
         try {
             val listed=request("/v1/models");assertEquals(200,listed.first);assertTrue(listed.second.contains("allowed"));assertFalse(listed.second.contains("denied"))
+            val offer=request("/v1/resources");assertEquals(200,offer.first)
+            assertTrue(offer.second.contains("text_inference"));assertFalse(offer.second.contains("denied"))
+            assertFalse(offer.second.contains(issued.client.keyHash));assertFalse(offer.second.contains(issued.key))
+            assertEquals(false,Json.parseToJsonElement(offer.second).jsonObject["commercial"]!!.jsonObject["payments"]!!.jsonPrimitive.boolean)
             assertEquals(403,request("/mcp","{}").first)
             assertEquals(400,request("/v1/chat/completions","""{"model":"denied"}""").first)
             assertEquals(400,request("/v1/chat/completions","""{"model":"allowed","max_tokens":33}""").first)

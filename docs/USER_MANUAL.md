@@ -1,6 +1,6 @@
 # Meshlit user manual
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -217,3 +217,81 @@ passphrases and private conversation contents. Keep source tests, installed-app
 tests and physical-device results distinct.
 
 Developer repair handoff: [where to look, why, how to fix and verify—including Android](SMALL_MODEL_MAINTENANCE_GUIDE.md).
+
+## Share resources with external clients
+
+Everyone can participate: individual owners, teams and organizations use the same
+explicit grants. Selling resources and payments are planned, not enabled.
+
+**Android host:** load a real model, open Settings → Agent Gateway, select its exact
+model ID, and Save. In Client access, issue a named key with MODELS/CHAT scopes,
+allowed model IDs, expiry, output cap, requests/minute and a total request allowance.
+Copy the key once into the client's secret storage, then Start and keep this screen
+open. A model catalog entry is not proof of generation or spare capacity.
+
+Every admitted request uses one allowance, including catalog reads and requests
+that later fail. Counts persist before dispatch and survive restart. Failed storage
+blocks admission. Revoking/changing access stops the gateway and pending jobs.
+The owner token bypasses client quotas: never share it as a customer key.
+
+The external API uses Bearer authentication: GET `/v1/resources` describes scoped
+configured resources; GET `/v1/models` lists eligible models; POST
+`/v1/chat/completions` accepts buffered text with `stream:false`. Neither Meshlit's
+UI nor a Meshlit account is required by a compatible client. LAN/WAN access needs
+an owner-configured authenticated encrypted tunnel or reviewed TLS gateway. Do not
+expose the legacy loopback-trusted inference listener directly to the internet.
+
+**Studio client:** Settings → Services and integrations → Resource sharing. Use
+Configure host and key to save the exact HTTPS address (or literal loopback HTTP
+for a local tunnel) and a scoped client key. Check resources performs one bounded
+catalog request. Stop cancels the check; Clear forgets local access. Revoke on the
+owner host to revoke the key itself. The inspector does not start hosting, reserve
+capacity, generate a response or establish a provider partnership.
+
+## Sync modes, health and recovery
+
+Settings → Checkpoints and recovery → Replicated recovery journal remains advanced
+manual setup for three or five independent members. Each endpoint retains
+`member`, `url`, `token`, `certificatePin`, and may add `alternatives` (at most two
+objects with URL/token/pin) plus `selection`: `ADAPTIVE` or `PRIORITY`. All paths
+for one member must reach that same enrolled identity; alternatives are not extra
+quorum votes. Remote URLs require pinned HTTPS, or use literal loopback private
+tunnels. Keep credentials out of screenshots, issue reports and model prompts.
+
+ADAPTIVE uses observed latency/failure cooldown; PRIORITY uses configured order.
+Only status reads try another approved path. Mutations with uncertain delivery
+are not automatically repeated. Review the journal before retrying the same
+request ID. The path panel shows actual session requests, successes/failures,
+cancellations, latency and cooldown snapshots; these are not earnings or compute
+units. Stop/save closes transports and clears these observations.
+
+Android recomputes native thread caps for new loads from actual device health and
+keeps the owner's lower cap. Low battery, power saver, thermal or memory pressure
+reduce admission; severe conditions block new heavy loads. Cooling/recharging can
+restore allowed capacity at the next load. Running engines are not automatically
+reconfigured or migrated. Missing readings remain unknown.
+
+Corrupt model transfers must pass length and SHA checks before publication. Resume
+can reuse ranges only with independently supplied shard hashes, after rehashing.
+Missing integrity metadata blocks that legacy cluster-download path. Ordinary
+verified Models downloads remain separate. Native local checkpoints require an
+identical model/runtime/options and valid authenticated data; an invalid snapshot
+is rejected. Automatic cross-device resume/master takeover, arbitrary RAM repair
+and portable distributed KV restoration remain unimplemented/unqualified.
+
+For coordinator/worker limits, topology, pairing carriers, fallback and commercial
+milestones, read [Open resource network](OPEN_RESOURCE_NETWORK.md).
+
+## Optional prompt protection and agent delegation
+
+Android Agent Gateway → Optional prompt-injection protection: turn the heuristic
+on/off and Save. It runs locally on bounded gateway input/output, including Minimal
+content mode. It may block legitimate quoted instructions or miss attacks; it is
+not antivirus or a universal propagation-prevention system.
+
+To allow an agent to toggle it, enable **Allow approved agents to change this
+protection**, Save, and separately grant that client's MCP scope plus
+`gateway_prompt_protection_set`. Its sole argument is boolean `enabled`. The agent
+cannot grant itself permission or edit authentication/integrity policy. Revoke the
+human delegation or client key to stop future changes. Other local/provider
+policies remain independent. Never paste credentials into an LLM to set this up.

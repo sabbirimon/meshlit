@@ -1,8 +1,18 @@
 # Sequential implementation and acceptance ledger
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Current resource-network milestone — 2026-10-31
+
+Owner-authorized work continues; old paused/plan-only wording below is historical.
+The current sequence is correctness and consent → bounded external clients →
+measured LAN/WAN execution → durable reservations/receipts → one buyer integration
+→ settlement. All individuals and organization sizes are in scope.
+[Topology, media, routing and fallback plan](docs/OPEN_RESOURCE_NETWORK.md) ·
+[Named validation gates](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md).
+
 
 Updated 2026-10-10. The table below preserves the earlier implementation sequence.
 The proposed next priority is the [S0–S6 stabilization plan](docs/desktop/STABILIZATION_PLAN.md),

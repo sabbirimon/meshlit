@@ -111,6 +111,19 @@ class InferenceHttpServerTest {
     }
 
     @Test
+    fun `infer rejects invalid forwarding hints before dispatch`() {
+        val req = Request.Builder()
+            .url("http://127.0.0.1:$port/v1/infer")
+            .header("X-Meshlit-Hints", "forwards=999")
+            .post("""{"prompt":"hello","maxTokens":16}""".toRequestBody("application/json".toMediaType()))
+            .build()
+        httpClient.newCall(req).execute().use { resp ->
+            assertEquals(400, resp.code)
+            assertTrue(resp.body!!.string().contains("invalid-routing-hints"))
+        }
+    }
+
+    @Test
     fun `unknown path returns 404`() {
         val req = Request.Builder()
             .url("http://127.0.0.1:$port/v1/this-does-not-exist")

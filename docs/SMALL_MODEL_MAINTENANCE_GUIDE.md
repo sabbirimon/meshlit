@@ -1,6 +1,6 @@
 # Fix and verify Meshlit with a smaller coding model
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -138,3 +138,23 @@ controller. Use the Android row/checklist in this guide, preserve both flavors a
 owner data, add a failure-contract regression, compile/test both flavors, and name
 which physical test remains. Do not modify unrelated native engine or peer trust
 code, invent Android support for a desktop service, or report unrun device checks.”
+
+## Latest resource-network continuation (2026-10-31)
+
+Read `RESOURCE_NETWORK_PROGRESS_2026-10-31.md` first, then
+`OPEN_RESOURCE_NETWORK.md`. Do one small change at a time. Important source paths:
+
+| Symptom/task | Inspect first | Verify |
+| --- | --- | --- |
+| Oversized/stale native launch | `app/.../pipeline/PipelineHost.kt`, `PipelineLaunchPolicy.kt`, `core-inference/.../pipeline/LayerPlacement.kt` | `PipelineLaunchPolicyTest`, actual named-device placement separately |
+| Corrupt or repeated model download | `core-inference/.../cluster/ShardAssembler.kt`, `ShardTransport.kt`, `ClusterStorageIncubator.kt` | `ShardAssemblerTest`; never remove mandatory hash checks to make a download pass |
+| Peer dispatch loop/unfairness | `app/.../inference/MiniRouter.kt`, `ForwardingProxy.kt`, `core-inference/.../net/RouterRef.kt` | `HealthyPeerSelectorTest`, `ForwardingBudgetTest`, `RequestHintsTest` |
+| Replay or restored-identity access | `core-trust/.../PairingAuthority.kt` | `PairingAuthorityIdentityTest` |
+| Client quota/model scope bypass | `core-mcp/.../gateway/GatewayClients.kt`, `GatewayResources.kt`, `app/.../gateway/GatewayHost.kt` | `GatewayClientsTest`, `GatewayResourceAdmissionTest` |
+| Sync route/uncertain write | `core-federation/.../recovery/ReplicaHttpTransport.kt`, `app/.../recovery/ReplicaHost.kt` | `ReplicaPathRoutingTest`, `ReplicaWireFaultTest`; reads may retry, writes require reconciliation |
+| Health CPU cap | `DeviceRuntimePolicy.kt`, `app/.../models/DeviceRuntimeProbe.kt`, `AccelerationPreferences.kt` | `DeviceRuntimePolicyTest`; preserve owner's cap and unknown sensors |
+| Studio resource inspector | `companions/studio-runtime/extension/resource-sharing*.cjs` | `node --test companions/studio-runtime/extension/resource-sharing*.test.cjs` |
+
+Ellipses above abbreviate package directories; locate exact files with `rg --files`.
+Do not claim money, live failover, hardware ECC, radio adapters or native WAN
+performance from these unit tests. Do not expose private keys or identity backups.

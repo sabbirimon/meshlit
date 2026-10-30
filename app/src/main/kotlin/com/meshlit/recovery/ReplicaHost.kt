@@ -28,7 +28,11 @@ class ReplicaHost(context: Context) {
     private val store = EncryptedCredentialStore(context, "recovery-replica-v1")
     private val json = Json { ignoreUnknownKeys = false }
     private val _running = MutableStateFlow(false); val running = _running.asStateFlow()
+    private val _paths = MutableStateFlow<List<ReplicaPathStatus>>(emptyList()); val paths = _paths.asStateFlow()
     private var server: NanoHTTPD? = null
+    private var outgoing: ReplicaHttpTransport? = null
+    private var outgoingEndpoints: List<ReplicaEndpoint>? = null
+    private var transportEpoch = 0L
     private val lock = kotlinx.coroutines.sync.Mutex()
     private val inbound = java.util.concurrent.Semaphore(2)
     @Serializable private data class Identity(val publicKey: String, val privateKey: String)
@@ -82,17 +86,36 @@ class ReplicaHost(context: Context) {
         }
         try { next.start(5000, false); server = next; _running.value = true } catch (e: Exception) { next.stop(); throw e }
     }
-    @Synchronized fun stop() { server?.stop(); server = null; _running.value = false }
+    @Synchronized fun stop() {
+        server?.stop(); server = null; _running.value = false
+        transportEpoch++
+        outgoing?.close(); outgoing = null; outgoingEndpoints = null
+        _paths.value = emptyList()
+    }
+    /** Bounded metadata only: no endpoint URLs, bearer tokens or journal contents. */
+    @Synchronized fun pathStatus(): List<ReplicaPathStatus> = outgoing?.pathStatus().orEmpty()
+    @Synchronized private fun transport(config: ReplicaConfiguration): ReplicaHttpTransport {
+        if (outgoing == null || outgoingEndpoints != config.endpoints) {
+            outgoing?.close()
+            val expected = ++transportEpoch
+            outgoing = ReplicaHttpTransport(config.endpoints, onStatus = { value ->
+                synchronized(this@ReplicaHost) { if (transportEpoch == expected) _paths.value = value }
+            })
+            outgoingEndpoints = config.endpoints
+            _paths.value = requireNotNull(outgoing).pathStatus()
+        }
+        return requireNotNull(outgoing)
+    }
     @Synchronized fun rotateToken() { stop(); store.putCommitted("token", UUID.randomUUID().toString() + UUID.randomUUID()) }
     suspend fun read(): List<JournalCommit> = lock.withLockCompat {
-        val config = configuration(); ReplicaJournal(config.group, ReplicaHttpTransport(config.endpoints)).read()
+        val config = configuration(); ReplicaJournal(config.group, transport(config)).read()
     }
     suspend fun append(entry: JournalEntry): JournalCommit = lock.withLockCompat {
-        val config = configuration(); ReplicaJournal(config.group, ReplicaHttpTransport(config.endpoints)).append(entry)
+        val config = configuration(); ReplicaJournal(config.group, transport(config)).append(entry)
     }
     /** Explicit human snapshot, never automatic upload/replay. Omit prompts, results, paths and credentials. */
     suspend fun publishJobMetadata(job: AgentJob): JournalCommit = lock.withLockCompat {
-        val config = configuration(); val journal = ReplicaJournal(config.group, ReplicaHttpTransport(config.endpoints))
+        val config = configuration(); val journal = ReplicaJournal(config.group, transport(config))
         fun id(value: String) = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).toByteString().hex()
         val task = id("agent-job:" + job.command.requestId)
         val prior = journal.read().lastOrNull { it.value.entry.taskId == task }?.value?.entry

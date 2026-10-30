@@ -1,8 +1,22 @@
 # Meshlit implementation and qualification plan
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Open resource network direction — 2026-10-31
+
+The owner wants everyone to participate: individuals and organizations, including
+clients that do not use Meshlit. Scope includes resource contribution and eventual
+sales; single/local/multi-device, LAN/WAN and inter-cluster execution; USB-C,
+Wi-Fi, Ethernet/fiber, Bluetooth/radio, sound/light/QR and other suitable pairing
+carriers; smart sync/communication routing, load balancing and safe fallback.
+[Architecture, sequence and boundaries](docs/OPEN_RESOURCE_NETWORK.md).
+Current increment repairs admission, pairing and routing, and adds bounded
+external-client resource discovery. Marketplace settlement, cross-owner leases,
+new physical carrier adapters and universal WAN sharding remain planned.
+[Progress and remaining gates](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md).
+
 
 ## Saved desktop/Android integration checkpoint — 2026-10-31
 

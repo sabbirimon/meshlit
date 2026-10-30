@@ -1,8 +1,15 @@
 # Meshlit structured feature and architecture map
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+Current resource-network increment: model/shard admission, secure pairing,
+fair bounded forwarding, scoped external resource discovery and smart replica
+path routing. Source, runtime proof, commercial settlement and physical-link
+support remain distinct. See [progress](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md)
+and [architecture](docs/OPEN_RESOURCE_NETWORK.md).
+
 
 Current increment: grouped settings, project memory, optional agent companions and voice diagnostics are tracked in [the structured map](docs/feature-map.json) and [the 2026-10-31 checkpoint](docs/CHECKPOINT_2026-10-31.md). Runtime, hardware and security acceptance remain separate.
 

@@ -6,7 +6,7 @@ tools: Read, Edit
 
 # /journal — Append a session summary to PROGRESS.md
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-10-31: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
 Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 

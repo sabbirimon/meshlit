@@ -15,6 +15,7 @@ import kotlinx.serialization.json.Json
 
 @Composable fun ReplicaRecoveryPanel() {
     val host = koinInject<ReplicaHost>(); val running by host.running.collectAsState()
+    val paths by host.paths.collectAsState()
     val backend = koinInject<com.meshlit.control.AgentBackend>()
     val scope = rememberCoroutineScope(); val clipboard = LocalClipboardManager.current
     var config by remember { mutableStateOf(host.saved()) }; var entry by remember { mutableStateOf("") }
@@ -31,6 +32,7 @@ import kotlinx.serialization.json.Json
         Text("Replicated recovery journal", style = MaterialTheme.typography.titleMedium)
         Text("Advanced manual setup: 3 or 5 independently approved replicas. Encrypted local storage, signed majority commits and fenced task ownership. Keep this screen open for the loopback listener; use pinned TLS or explicit private SSH tunnels between nodes.")
         Text("This records bounded replay state and hash references. Automatic task/model restart, portable KV transfer, membership changes and hardware fault proof are pending. Completed external actions are never replayed automatically.")
+        Text("Each replica endpoint may have up to two independently approved alternatives. selection is ADAPTIVE (observed latency and cooldown) or PRIORITY (configured order). Alternatives reach the same member, not additional quorum voters. Only status reads fail over; uncertain writes are never blindly repeated.")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { run { clipboard.setText(AnnotatedString(host.publicIdentity())); "Public identity copied" } }) { Text("Copy public key") }
             TextButton(onClick = { clipboard.setText(AnnotatedString(host.token())); result = "Secret copied to clipboard; use only for the approved replica endpoint" }) { Text("Copy token") }
@@ -56,6 +58,15 @@ import kotlinx.serialization.json.Json
         TextButton(enabled = !busy, onClick = { host.rotateToken(); result = "Token rotated; update peer endpoint credentials" }) { Text("Revoke / rotate token") }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         Text(result)
+        SettingsFeatureSection("Sync paths and observed health") {
+            if(paths.isEmpty()) Text("No path observations in this session. Read quorum to check the configured paths.")
+            paths.forEach { path ->
+                Text("${path.member} · path ${path.pathIndex+1}${if(path.lastSelected) " · last selected" else ""}",style=MaterialTheme.typography.bodyMedium)
+                Text("${path.successfulRequests} succeeded · ${path.failedRequests} failed · ${path.cancelledRequests} cancelled · ${path.attempts} attempts")
+                Text("Latency: ${path.latencyMs?.let{"$it ms"} ?: "unknown"} · ${if(path.identityRejected) "identity rejected; review configuration" else if(path.cooldownRemainingMs>0) "cooldown at last observation: ${path.cooldownRemainingMs} ms" else "no recorded cooldown"}")
+            }
+            Text("Actual session HTTP observations include status checks. They are not compute, byte totals, earnings or guaranteed availability. Stop clears observations and cancels transport calls.")
+        }
         Text("Publish local agent job metadata explicitly. This copies operation/phase/request ID only; prompts, replies, paths, credentials and automatic replay are excluded. Existing remote ownership must match this installation.")
         OutlinedButton(enabled = !busy, onClick = { run {
             backend.controller.ready.await()

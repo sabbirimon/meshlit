@@ -1,6 +1,6 @@
 # Markdown documentation status and workstream tracking
 
-Reconciled 2026-10-12. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
+Reconciled 2026-10-31. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
 
 [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Milestone gates](../BUILD_MILESTONES.md) · [Desktop feature tracker](DESKTOP_FEATURE_TRACKER.md) · [Release evidence](RELEASE_EVIDENCE.md)
 
@@ -11,16 +11,18 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 | Workstream | Current qualification | Next gate |
 | --- | --- | --- |
 | Local core engine | Host/payload verified; Experimental | Clean-machine, lifecycle/stress, wider quality and hardware |
-| Shared sharding | Contract-tested planner; desktop executor pending | Live paired-worker controller and independent-device oversized-model/peer-loss proof |
+| Shared sharding | Admission/storage/active Android launch fixes contract-tested; desktop controller pending | Live paired-worker controller and independent-device oversized-model/peer-loss proof |
 | Desktop management | Partial source and scoped host qualification | Remaining real category controllers and operational acceptance |
-| Android reliability | Build44 evidence retained; build45 source saved, final build/lint/device qualification incomplete | Owner resumes work, then changed contracts, both flavors/lints and Samsung voice/RAG/native checks |
+| Android reliability | 278 current-source unit tests per flavor passed; final assemblies running | Full lint and physical voice/cluster/health qualification |
 | Governed agents and fleet | Android reference; desktop authority/audit port pending | Common permission/controller/audit bridge before autonomous MCP/A2A/hooks |
 | Platform and distribution | Intel Experimental release published; recovered payloads/hash verification pass | Clean-target signing/privacy and independent OS/device gates; CI remains separately observed |
-| Android/desktop peering, identity, wallet and UI | Partial source saved for PR #4; application work paused for HyperL-first delivery | Desktop and Android compile/integration review, strict lint and qualified peer/recovery tests |
+| Android/desktop peering, identity, wallet and UI | Implementation resumed; identity/replay fixes and resource controls in source | Current tests, physical paired devices and secure remote-link qualification |
+| Open resource participation | Scoped resource API, durable quotas and Studio inspector tested; no settlement | External client interoperability, measured capacity/leases, buyer adapter and verified settlement |
+| Local/WAN topology and smart communication | Replica alternative-path routing and read fallback contract/socket-tested | Physical link proof, NAT/relay, WAN placement, automatic takeover and carrier adapters |
 
 ## Coverage and maintenance
 
-156 active, 19 historical, 8 protected, 1 template, 6 third-party; 191 Markdown documents including this index.
+158 active, 19 historical, 8 protected, 1 template, 6 third-party; 193 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -105,6 +107,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md](NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/OLD_ANDROID_GAP_AUDIT_2026-10-23.md](OLD_ANDROID_GAP_AUDIT_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/OLD_ANDROID_STUDIO_REQUEST_AUDIT.md](OLD_ANDROID_STUDIO_REQUEST_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/OPEN_RESOURCE_NETWORK.md](OPEN_RESOURCE_NETWORK.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/P2P_AND_CRYPTO.md](P2P_AND_CRYPTO.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PAUSED_CHECKPOINT_2026-10-24.md](PAUSED_CHECKPOINT_2026-10-24.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/PEERING_UI_BUILD_PLAN.md](PEERING_UI_BUILD_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -114,6 +117,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/PLAY_DISTRIBUTION.md](PLAY_DISTRIBUTION.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/REDESIGN_PLAN_2026-10-23.md](REDESIGN_PLAN_2026-10-23.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) | cross-platform tracking; feature and device gates remain separate |
+| [docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md](RESOURCE_NETWORK_PROGRESS_2026-10-31.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/REWARD_METERING_AND_SETTLEMENT.md](REWARD_METERING_AND_SETTLEMENT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SEARCH_AND_CLUSTER_OUTPUT.md](SEARCH_AND_CLUSTER_OUTPUT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SECURITY_LAB_AND_HARDWARE_ACCESS.md](SECURITY_LAB_AND_HARDWARE_ACCESS.md) | Android/shared reference; desktop ports have separate acceptance |

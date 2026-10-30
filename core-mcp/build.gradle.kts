@@ -12,6 +12,7 @@ android {
 dependencies {
     implementation(project(":core-common"))
     implementation(project(":core-trust"))
+    implementation(project(":core-guardrails"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.core.ktx)

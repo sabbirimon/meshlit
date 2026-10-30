@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-31",
+  "baselineSourceCommit": "5a2e97c",
+  "scope": "source and local contract/socket tests; no physical-device or commercial qualification",
+  "tests": {
+    "core-inference:testDebugUnitTest": {
+      "tests": 323,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-mcp:testDebugUnitTest": {
+      "tests": 150,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-trust:testDebugUnitTest": {
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-federation:testDebugUnitTest": {
+      "tests": 55,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktop-engine:test": {
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV1DebugUnitTest": {
+      "tests": 278,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV2DebugUnitTest": {
+      "tests": 278,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "studio-node": {
+      "tests": 79,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "totalTests": 1192,
+  "androidAssembly": "final build running; earlier pre-guardrail variants passed",
+  "fullLint": "not rerun for this increment",
+  "physicalDeviceTesting": false,
+  "paidServicesUsed": false,
+  "publicListenerStarted": false,
+  "openGates": [
+    "desktop native distributed coordinator",
+    "physical oversized LAN/WAN model sharding",
+    "fenced automatic coordinator takeover and distributed resume",
+    "actual physical carrier adapters",
+    "antivirus and external buyer settlement",
+    "full lint and portable desktop packaging"
+  ]
+}
