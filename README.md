@@ -12,6 +12,13 @@ Scope: cross-platform tracking; feature and device gates remain separate. Phase 
 
 **Current prerelease (2026-10-26):** [v2.0.0-beta.5](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5) provides Android, Intel macOS, Windows x64 and Linux amd64 installers. All thirteen release assets passed size/SHA-256 verification. [Validation and platform limits](docs/desktop/evidence/prerelease45-validation.json): Windows/Linux physical installation and production publisher signing remain unqualified.
 
+**Development checkpoint (2026-11-03):** Android Chat and Code OSS Studio include
+model-specific reasoning effort and scoped action approvals. See the
+[setup and platform limits](docs/CHAT_EFFORT_AND_APPROVALS_2026-11-03.md),
+[illustrated guide](docs/visual-guide.html), and
+[Samsung verification](docs/desktop/evidence/android-chat-effort-approval-20261103.json).
+Local runners stay Auto-only; live hosted reasoning remains unqualified.
+
 
 **Local AI, GGUF models, owner-controlled agents and experimental device compute.**
 Meshlit has an Android app, an experimental Intel Mac Studio preview and optional

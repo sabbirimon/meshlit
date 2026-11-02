@@ -4,7 +4,7 @@
   "device": "Samsung Galaxy A20s SM-A207F, Android 11/API 30",
   "installed": true,
   "package": "com.meshlit.v2.debug",
-  "apkSha256": "e8518caf92dbea226d63d82c361fafa2b0c37d41178f8b2a1e68b3a0e3faf100",
+  "apkSha256": "ca169d60fa545d2c9bf80890c08fd4dcae234f446e19651bcf7c7bbfc9d328d2",
   "effort": [
     "auto",
     "low",
@@ -31,7 +31,7 @@
   "tests": {
     "initialChangedAppSuitePassed": true,
     "isolatedHttpContractPassed": true,
-    "finalBuildStatus": "running; update after completion",
+    "finalBuildStatus": "PASS: both app unit suites, both APK builds, both Android lints, required changed core suites",
     "finalUnitSuites": {
       "app:testMeshlitV2DebugUnitTest": {
         "tests": 341,
@@ -79,7 +79,24 @@
       "failed": 0,
       "scope": "Mocked DuckDuckGo and real isolated loopback HTTP; no live availability claim"
     },
-    "liveSearchCompanionSmoke": "Two queries returned results; linux kernel query reported human verification, not an empty success."
+    "liveSearchCompanionSmoke": "Two queries returned results; linux kernel query reported human verification, not an empty success.",
+    "gradleElapsed": "19m 38s",
+    "lint": {
+      "meshlitV1Debug": {
+        "Warning": 415,
+        "Hint": 19
+      },
+      "meshlitV2Debug": {
+        "Warning": 415,
+        "Hint": 19
+      }
+    },
+    "sharedWorkspacePreviouslyVerified": {
+      "tests": 31,
+      "failures": 0,
+      "errors": 0
+    },
+    "finalGuideApkRefresh": "PASS in 35s; both flavor arm64 APK guides match current source exactly"
   },
   "screenshots": [
     {
@@ -111,5 +128,6 @@
     "External effort capability is exact-endpoint/model configuration, not provider acceptance proof.",
     "Native Gemini/Anthropic/Ollama thinking adapters are not implemented.",
     "Classic Compose desktop chat does not have the Studio composer controls."
-  ]
+  ],
+  "sourceCommit": "18c3c13"
 }

@@ -135,14 +135,14 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "9f09c4f5a090675ee9f6fa4fd248bcb725acf37fdd2956bd7b6a66501b3ce528"
+      "contentSha256WithoutTrackingBlock": "7d0442ab643cdce558a90c056ebb57a1e479704ce2da27c33ed9eae7b4a0e6e1"
     },
     {
       "path": "README.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 Many devices. One mind.",
-      "contentSha256WithoutTrackingBlock": "70b128fa306d32d8ef5b8cebb992b67f899017ab7efd09b1bdf6270121cde20a"
+      "contentSha256WithoutTrackingBlock": "c4928bbfb9ecd213043bee303bfd8405fe23a0815151e328e4c445fe8cea8475"
     },
     {
       "path": "REQUESTS.md",
@@ -443,7 +443,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Chat effort and workspace approvals \u2014 2026-11-03",
-      "contentSha256WithoutTrackingBlock": "ab1d838d579b01970b3b22fc554150b7653316187604c1723e0c070b014369bf"
+      "contentSha256WithoutTrackingBlock": "f6b9c24b3e325aad8febadc58d234a025e9822f448c5ee0004360f1be072f5b5"
     },
     {
       "path": "docs/CHAT_PRESENTATION.md",

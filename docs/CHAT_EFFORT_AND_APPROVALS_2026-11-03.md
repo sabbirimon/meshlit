@@ -121,3 +121,5 @@ approvals, mandatory edit Apply and new-chat policy changes. Captured fixtures
 are synthetic; they are not live provider acceptance, performance or native
 desktop visual evidence. Current build/test results are recorded separately in
 `desktop/evidence/desktop-chat-effort-approval-20261103.json`.
+
+Final Android validation: both app suites passed 341 tests, both APK builds and lints passed with zero lint errors. Physical Samsung checks verified the compact menus, disabled unsupported local levels, Ask default and the selected-tools confirmation/cancellation. A temporary empty QA conversation was removed through the UI; zero conversations remained. No live external-provider reasoning or actual tool dispatch through the new approval dialog is claimed.
