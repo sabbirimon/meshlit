@@ -138,14 +138,22 @@ import kotlinx.coroutines.launch
 
 /** Full-screen reading/search/outline uses the exact response, without a composer or model changes. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable internal fun ReplyReader(text:String,onClose:()->Unit) {
+@Composable internal fun ReplyReader(text:String,initialQuery:String="",onClose:()->Unit) {
     val doc=rememberReply(text);var original by remember{mutableStateOf(false)}
-    var query by remember{mutableStateOf("")};var outline by remember{mutableStateOf(false)}
+    var query by remember(text,initialQuery){mutableStateOf(initialQuery)};var outline by remember{mutableStateOf(false)}
     var match by remember(query){mutableIntStateOf(0)}
     val blocks=if(original) remember(text){text.chunkReplyText(2048).map{ReplyBlock.Code("original",it)}} else doc.blocks
-    val results=remember(blocks,query){if(query.isBlank()) emptyList() else blocks.indices.filter{replyBlockText(blocks[it]).contains(query,true)}}
+    var found by remember{mutableStateOf(com.meshlit.search.SectionMatches())}
+    LaunchedEffect(blocks,query) {
+        match=0
+        found=com.meshlit.search.SectionMatches()
+        if(query.isNotBlank())kotlinx.coroutines.delay(120)
+        found=withContext(Dispatchers.Default){com.meshlit.search.searchTextSections(blocks.map(::replyBlockText),query)}
+    }
+    val results=found.positions
     val headings=doc.blocks.mapIndexedNotNull{i,b->(b as? ReplyBlock.Prose)?.takeIf{it.heading>0}?.let{i to replyBlockText(b)}}
     val list=rememberLazyListState();val scope=rememberCoroutineScope()
+    LaunchedEffect(results,query){if(query.isNotBlank() && results.isNotEmpty())list.scrollToItem(results.first().section)}
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Scaffold(modifier=Modifier.fillMaxSize().testTag("reply-reader"),topBar={TopAppBar(title={Text("Response")},navigationIcon={
             IconButton(onClick=onClose){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Close response reader")}
@@ -156,10 +164,13 @@ import kotlinx.coroutines.launch
         })}){padding->Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically) {
                 OutlinedTextField(query,{query=it.take(160)},Modifier.weight(1f).testTag("reply-search"),singleLine=true,label={Text("Find in response")})
-                TextButton(enabled=results.isNotEmpty(),onClick={scope.launch{list.scrollToItem(results[match%results.size]);match++}}){Text(if(query.isBlank()) "Find" else "${results.size} blocks · Next")}
+                IconButton(enabled=results.isNotEmpty(),onClick={match=Math.floorMod(match-1,results.size);scope.launch{list.scrollToItem(results[match].section)}}){Icon(Icons.Default.KeyboardArrowUp,"Previous match")}
+                IconButton(enabled=results.isNotEmpty(),onClick={match=(match+1)%results.size;scope.launch{list.scrollToItem(results[match].section)}}){Icon(Icons.Default.KeyboardArrowDown,"Next match")}
             }
+            val current=results.getOrNull(match.coerceAtMost(results.lastIndex).coerceAtLeast(0))
+            Text(if(query.isBlank())"Full text · ${text.codePointCount(0,text.length)} characters" else "${if(current==null)0 else match+1} / ${found.total} matches · ${found.characters} displayed characters${current?.let{" · block ${it.section+1}, line ${it.occurrence.line}, column ${it.occurrence.column}"}.orEmpty()}${if(found.total>results.size)" · first ${results.size} navigable" else ""}",Modifier.padding(horizontal=16.dp,vertical=4.dp),style=MaterialTheme.typography.labelSmall)
             LazyColumn(state=list,modifier=Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-                itemsIndexed(blocks){_,block->ReplyContent(block)}
+                itemsIndexed(blocks){index,block->ReplyContent(block,if(current?.section==index)Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha=0.5f)) else Modifier)}
             }
         }}
     }

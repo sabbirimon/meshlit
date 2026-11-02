@@ -39,9 +39,13 @@ class DeviceCoreBenchmarkTest {
         context.getSystemService(ActivityManager::class.java).getMemoryInfo(memory)
         val process=Debug.MemoryInfo().also{Debug.getMemoryInfo(it)}
         val runtime=Runtime.getRuntime()
+        put("adaptiveCpuWorkers",com.meshlit.core.inference.AndroidCpuBudget.decision().threads)
         put("appProcessPssKiB",process.totalPss)
         put("javaUsedBytes",runtime.totalMemory()-runtime.freeMemory())
         put("nativeHeapAllocatedBytes",Debug.getNativeHeapAllocatedSize())
+        put("ownedNativeChildren",JsonArray(com.meshlit.resources.OwnedNativeProcesses.read().map{child->buildJsonObject{
+            put("pid",child.pid);put("startedTicks",child.startedTicks);put("cpuMs",child.cpuMs);put("rssBytes",child.rssBytes);put("threadCount",child.threadCount)
+        }}))
         put("deviceAvailableRamBytes",memory.availMem)
         put("lowMemory",memory.lowMemory)
         if(Build.VERSION.SDK_INT>=29) put("thermalStatus",context.getSystemService(PowerManager::class.java).currentThermalStatus)
@@ -70,6 +74,9 @@ class DeviceCoreBenchmarkTest {
     }
     @Test fun allRecipesAndBoundedAppUidCpuBenchmarks()=runBlocking {
         assertTrue("Owner must accept Terms and Privacy in the app before device tests",LegalAgreementStore(context).accepted())
+        val activity=androidx.test.core.app.ActivityScenario.launch(com.meshlit.MainActivity::class.java)
+        activity.onActivity{it.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
+        try {
         val controller=HyperLWorkbenchController(GlobalContext.get().get<OperationsControl>().gate)
         val expected=mapOf(
             "add" to floatArrayOf(3f,-1f,4f),"multiply" to floatArrayOf(-2f,6f,12f),
@@ -87,7 +94,7 @@ class DeviceCoreBenchmarkTest {
         }
         val samples=mutableListOf<JsonObject>()
         val program=HyperLCodec.json.encodeToString(HyperLLibrary.recipe("weighted_relu").program)
-        for(size in listOf(3,257,4096)) {
+        for(size in listOf(3,257,4096,8192)) {
             // Compact input stays inside the actual mobile editor's 65,536-character bound.
             val inputs="{\"x\":["+List(size){if(it%2==0) "-1" else "2"}.joinToString(",")+"],\"w\":["+List(size){"3"}.joinToString(",")+"]}"
             controller.execute(program,inputs,16L*1024*1024) // one unrecorded warmup for each size
@@ -102,6 +109,7 @@ class DeviceCoreBenchmarkTest {
         report("hyperl-cpu",buildJsonObject{put("metadata",metadata());put("backend","CPU_REFERENCE")
             put("verifiedRecipes",JsonArray(verified.map(::JsonPrimitive)));put("warmupsPerSize",1);put("samplesPerSize",5)
             put("samples",JsonArray(samples));put("phoneGpuExecuted",false)})
+        } finally {activity.close()}
     }
     @Test fun actualSdkAndOwnedNativeGenerationBenchmarks()=runBlocking {
         assertTrue("Owner must accept Terms and Privacy in the app before device tests",LegalAgreementStore(context).accepted())
@@ -116,11 +124,37 @@ class DeviceCoreBenchmarkTest {
         val original=inference.loadedModel()
         val originalEntry=original?.let{loaded->library.models.value.singleOrNull{it.installed && it.path==loaded.modelPath}}
         val loads=mutableListOf<JsonObject>();val samples=mutableListOf<JsonObject>();val cancellation=mutableListOf<JsonObject>()
+        val requestedEngine=InstrumentationRegistry.getArguments().getString("benchmarkEngine")
+        val cpuThreads=InstrumentationRegistry.getArguments().getString("cpuThreads")?.toInt()?.also{require(it in 1..Runtime.getRuntime().availableProcessors())}
+        val acceleration=com.meshlit.models.AccelerationPreferences(context)
+        val originalMode=acceleration.cpuMode();val originalThreads=acceleration.threadLimit()
+        val activity=androidx.test.core.app.ActivityScenario.launch(com.meshlit.MainActivity::class.java)
+        activity.onActivity{it.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
+        if(cpuThreads!=null){acceleration.setCpuMode(if(cpuThreads<=6) com.meshlit.core.inference.models.CpuMode.PERFORMANCE else com.meshlit.core.inference.models.CpuMode.OVERDRIVE);acceleration.setThreadLimit(cpuThreads)}
+        val engines=requestedEngine?.let { require(it in setOf("runanywhere","llama-native-local"));listOf(it) }
+            ?: listOf("runanywhere","llama-native-local")
+        var failure:Throwable?=null
+        var restoreFailure:Throwable?=null
+        fun evidence(status:String)=buildJsonObject {
+            put("metadata",metadata());put("status",status);put("modelSha256",model.sha256)
+            put("modelBytes",model.sizeBytes);put("maxGeneratedTokens",16);put("warmupsPerEngine",1);put("samplesPerEngine",5)
+            put("loads",JsonArray(loads));put("samples",JsonArray(samples));put("cancellation",JsonArray(cancellation))
+            put("pssScope","App process only; owned native child process is excluded")
+            put("gpuInferenceQualified",false);put("onDeviceOnly",true);put("chatEventsPublished",false)
+            failure?.let{put("failure",it.message)};restoreFailure?.let{put("restoreFailure",it.message)}
+        }
+        fun checkpoint(status:String) {
+            File(context.filesDir,"qualification/local-engines.json").apply{parentFile!!.mkdirs();writeText(evidence(status).toString())}
+        }
         try {
             withTimeout(600_000) {
-                for(engine in listOf("runanywhere","llama-native-local")) {
+                for(engine in engines) {
                     host.stopAll();inference.unloadModel()
+                    // Separate from measured loads. Compose/SDK teardown can leave
+                    // collectible buffers; never override the live memory gate.
+                    System.gc();delay(2_000)
                     val plan=library.devicePlan()
+                    checkpoint("running-before-$engine-load")
                     check(plan.allowHeavyWork){"New load blocked by actual device admission: ${plan.memoryBudget} available budget bytes"}
                     val before=snapshot();val loadStart=System.nanoTime()
                     if(engine=="runanywhere") {
@@ -134,17 +168,23 @@ class DeviceCoreBenchmarkTest {
                     assertEquals(engine,inference.engineTag)
                     println("MESHLIT_BENCHMARK_PHASE engine=$engine loaded=true")
                     loads+=buildJsonObject{put("engine",engine);put("loadWallMs",(System.nanoTime()-loadStart)/1_000_000.0)
-                        put("contextRequested",512);put("before",before);put("after",snapshot())}
+                        put("contextRequested",512);put("loadCpuPolicyHint",acceleration.effectiveThreads());put("before",before);put("after",snapshot())}
                     suspend fun generate(sample:Int):JsonObject {
                         val first=AtomicLong(0);val chunks=AtomicLong(0);val start=System.nanoTime();val memory=snapshot()
-                        val result=inference.infer(InferenceRequest("Say hello.",maxTokens=16,temperature=0f,seed=42,
+                        val cpu=ProcessCpuSampler()
+                        val sampler=launch(Dispatchers.IO){while(isActive){cpu.sample();delay(100)}}
+                        val result=try {
+                        inference.infer(InferenceRequest("Say hello.",maxTokens=16,cpuThreads=cpuThreads,temperature=0f,seed=42,
                             expectedModelPath=model.path,onDeviceOnly=true,publishEvents=false,onToken={text->if(text.isNotEmpty()){first.compareAndSet(0,System.nanoTime());chunks.incrementAndGet()}}))
+                        } finally {sampler.cancelAndJoin()}
                         val wall=(System.nanoTime()-start)/1_000_000.0
                         assertTrue("Real $engine inference failed: $result",result is MeshlitResult.Success)
                         val value=(result as MeshlitResult.Success).value
                         assertTrue("Real output is empty",value.finalText.isNotBlank())
                         assertTrue("Native usage outside generation bound",value.generatedTokens==null || value.generatedTokens!! in 1..16)
                         return buildJsonObject{put("engine",engine);put("sample",sample);put("requestWallMs",wall)
+                            put("cpu",cpu.result());put("requestedCpuThreads",cpuThreads?.let(::JsonPrimitive) ?: JsonNull)
+                            put("sdkThreadHint",com.meshlit.core.inference.AndroidCpuBudget.lastRequestedThreads?.let(::JsonPrimitive) ?: JsonNull)
                             put("firstTextCallbackMs",first.get().takeIf{it>0}?.let{(it-start)/1_000_000.0}?.let(::JsonPrimitive) ?: JsonNull)
                             put("textCallbackCount",chunks.get());put("generatedTokens",value.generatedTokens?.let(::JsonPrimitive) ?: JsonNull)
                             put("engineTokensPerSecond",value.tokensPerSecond?.let(::JsonPrimitive) ?: JsonNull)
@@ -152,7 +192,7 @@ class DeviceCoreBenchmarkTest {
                             put("outputCharacters",value.finalText.length);put("before",memory);put("after",snapshot())}
                     }
                     generate(-1) // one warmup excluded from recorded samples
-                    repeat(3){samples+=generate(it);println("MESHLIT_BENCHMARK_PHASE engine=$engine sample=$it completed=true")}
+                    repeat(5){samples+=generate(it);checkpoint("running-$engine");println("MESHLIT_BENCHMARK_PHASE engine=$engine sample=$it completed=true")}
                     // Cancellation after a real text callback, followed by a real recovery request.
                     val first=CompletableDeferred<Unit>()
                     val work=async {inference.infer(InferenceRequest("Write a detailed story about a small boat.",maxTokens=256,temperature=0f,
@@ -165,17 +205,16 @@ class DeviceCoreBenchmarkTest {
                         put("actualTextObserved",true);put("recoveryRequest",generate(3))}
                 }
             }
-        } finally {
-            withContext(NonCancellable){host.stopAll();inference.unloadModel()
+        } catch(error:Throwable) {failure=error;throw error} finally {
+            try {withContext(NonCancellable){host.stopAll();inference.unloadModel()
                 // Restore the owner's actual original library entry. A failed restore
                 // must fail instrumentation before a successful report is written.
-                if(originalEntry!=null) withTimeout(180_000){library.load(originalEntry.id)}
-            }
+                if(originalEntry!=null) withTimeout(180_000){System.gc();delay(2_000);library.load(originalEntry.id)}
+            }} catch(error:Throwable) {
+                restoreFailure=error
+                if(failure!=null) failure!!.addSuppressed(error) else throw error
+            } finally {acceleration.setCpuMode(originalMode);acceleration.setThreadLimit(originalThreads);activity.close();checkpoint(if(failure==null && restoreFailure==null) "passed" else "failed")}
         }
-        report("local-engines",buildJsonObject{put("metadata",metadata());put("modelSha256",model.sha256)
-            put("modelBytes",model.sizeBytes);put("maxGeneratedTokens",16);put("warmupsPerEngine",1);put("samplesPerEngine",3)
-            put("loads",JsonArray(loads));put("samples",JsonArray(samples));put("cancellation",JsonArray(cancellation))
-            put("pssScope","App process only; owned native child process is excluded")
-            put("gpuInferenceQualified",false);put("onDeviceOnly",true);put("chatEventsPublished",false)})
+        report("local-engines",evidence("passed"))
     }
 }

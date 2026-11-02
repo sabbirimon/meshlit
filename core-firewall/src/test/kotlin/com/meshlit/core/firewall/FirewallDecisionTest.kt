@@ -92,4 +92,11 @@ class FirewallDecisionTest {
         assertEquals(EndpointKind.WRITE, f.classifyEndpoint("/v1/infer"))
         assertEquals(EndpointKind.READ_ONLY, f.classifyEndpoint("/v1/manifest/llm"))
     }
+    @org.junit.Test fun defaultPolicyAdmitsOnlyLiteralLoopbackInAdditionToExistingLocalRules() {
+        for(ip in listOf("127.0.0.1","127.2.3.4","::1","0:0:0:0:0:0:0:1"))
+            org.junit.Assert.assertEquals(Decision.ALLOW,FirewallPolicy.Default.decide(ip,null,null))
+        for(ip in listOf("2001:db8::1","8.8.8.8","localhost","127.0.0.1.example.org"))
+            org.junit.Assert.assertEquals(Decision.DENY,FirewallPolicy.Default.decide(ip,null,null))
+    }
+
 }

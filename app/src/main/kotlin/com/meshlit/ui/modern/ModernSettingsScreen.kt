@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,7 +46,7 @@ import kotlinx.coroutines.*
     val repository=koinInject<SettingsRepository>()
     var history by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
     fun navigate(next:String) {
-        if(next==destination) return
+        if(next==destination || !com.meshlit.BuildProfile.routeAllowed(next)) return
         history=ArrayList(history).apply { add(destination.orEmpty()) }
         destination=next
     }
@@ -77,18 +79,13 @@ import kotlinx.coroutines.*
     if(destination=="mcp-catalog"){McpCatalogScreen(back,{navigate("gateway")});return}
     if(destination=="huggingface"){HuggingFaceDashboardScreen(back);return}
     if(destination=="rag"){
-        val scope=rememberCoroutineScope()
-        com.meshlit.ui.screens.settings.RagSettingsScreen(
-            initialRagMode=repository.ragModeFlowNow(),initialLoopMode=repository.loopModeFlowNow(),onBack=back,
-            onRagModeChange={mode->scope.launch{repository.setRagMode(mode)}},
-            onLoopModeChange={mode->scope.launch{repository.setLoopMode(mode)}})
+        com.meshlit.ui.screens.settings.RagSettingsScreen(onBack=back,onOpenConnected={navigate("connected-capabilities")})
         return
     }
     if(destination=="agent-registry"){AgentRegistryScreen(back,{navigate("agents")},{navigate("mcp-catalog")});return}
     if(destination=="agent-logs"){ModernLogsScreen(back,com.meshlit.core.observability.LogSource.AGENT,"Agent logs");return}
     if(destination=="guardrails"){GuardrailSettingsScreen(back,{navigate("behavior")},{navigate("gateway")});return}
     if(destination=="crypto"){CryptoScreen(back);return}
-    if(destination=="gibberlink"){GibberLinkScreen(back);return}
     if(destination=="remotecommands"){RemoteCommandsScreen(back);return}
     if(destination=="p2p"){PeerChatScreen(back);return}
     if(destination=="colibri"){ColibriScreen(back);return}
@@ -113,11 +110,12 @@ import kotlinx.coroutines.*
     if(destination=="operations"){OperationsScreen(back);return}
     if(destination=="gateway"){GatewayScreen(back);return}
     if(destination=="commands"){ManualCommandsScreen(back);return}
-    if(destination=="packages"){LabPackagesScreen(back);return}
-    if(destination=="securitylab"){SecurityLabScreen(back,{navigate("runtime")},{navigate("packages")});return}
     if(destination=="providers"){OnlineProvidersScreen(back);return}
     if(destination=="power"){PowerCostsScreen(back,{navigate("cloud")});return}
     if(destination=="external"){ExternalDevicesScreen(back);return}
+    if(destination=="connected-capabilities"){ConnectedServicesScreen(back,{navigate(it)});return}
+    if(destination=="agent-catalog"){AgencyAgentCatalogScreen(back);return}
+    if(destination=="agent-teams"){AgentTeamsScreen(back,{navigate(it)});return}
     if(destination=="agents"){AgentManagementScreen(back,{navigate(it)});return}
     if(destination=="acceleration"){AccelerationScreen(back);return}
     if(destination=="ssh"){SshConnectionsScreen(back);return}
@@ -135,14 +133,13 @@ import kotlinx.coroutines.*
     if(destination=="logs"){ModernLogsScreen(back);return}
     if(destination=="models"){ModernModelsScreen(back);return}
     if(destination=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
-    if(destination=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen(back);return}
     if(destination=="devices"){ModernNetworkScreen(back,{navigate("device-dashboard")},initialPage="app");return}
     if(destination=="network"){ModernNetworkScreen(back,{navigate("device-dashboard")},onDevices={navigate("devices")});return}
     if(destination=="peers"){com.meshlit.ui.screens.settings.ForwardingPeersScreen(back);return}
     if(destination=="automation"){com.meshlit.ui.screens.cloud.AndroidAutomationSettingsScreen(repository,back);return}
     if(destination=="hooks"){com.meshlit.ui.screens.settings.HooksScreen(back,{navigate("hook:$it")});return}
     if(destination?.startsWith("hook:")==true){com.meshlit.ui.screens.settings.HookEditorScreen(destination!!.removePrefix("hook:"),back);return}
-    Scaffold(topBar={TopAppBar(expandedHeight=48.dp,colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent),title={Text(SettingsDestinations.all.firstOrNull{it.id==destination}?.title ?: "Settings",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)},
+    Scaffold(topBar={TopAppBar(expandedHeight=48.dp,colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent),title={Text(SettingsDestinations.all.firstOrNull{it.id==destination}?.title ?: "Settings",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)},
         navigationIcon={if(destination!=null || onExit!=null) IconButton(onClick={if(destination!=null) back() else onExit?.invoke()}){
             Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")} else if(onMenu!=null) IconButton(onClick=onMenu){Icon(Icons.Default.Menu,"Menu")}})}){padding ->
         when(destination){
@@ -150,7 +147,7 @@ import kotlinx.coroutines.*
             "device" -> Box(Modifier.padding(padding)){com.meshlit.ui.screens.settings.DeviceScreen(back)}
             "monitor" -> Box(Modifier.padding(padding)){ModernMonitorScreen()}
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax).testTag("settings-list"),state=listState,contentPadding=PaddingValues(12.dp),
-                verticalArrangement=Arrangement.spacedBy(T.medium)) {
+                verticalArrangement=Arrangement.spacedBy(T.small)) {
                 when(destination){
                     "runtime" -> item{com.meshlit.ui.screens.cloud.RuntimeDashboardCard()}
                     "crawler" -> item{com.meshlit.ui.screens.cloud.CrawlerSettingsCard()}
@@ -172,21 +169,21 @@ import kotlinx.coroutines.*
                         item {OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().testTag("settings-search"),singleLine=true,placeholder={Text("Search settings")},
                             leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear search")}},shape=RoundedCornerShape(28.dp))}
                         item {Row(horizontalArrangement=Arrangement.spacedBy(T.small)){
-                            FilterChip(!advanced,{advanced=false;selectedGroup=null;prefs.edit().putBoolean("advanced",false).apply()},label={Text("Basic")})
-                            FilterChip(advanced,{advanced=true;selectedGroup=null;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced")})
+                            FilterChip(!advanced,{advanced=false;selectedGroup=null;prefs.edit().putBoolean("advanced",false).apply()},label={Text("General")})
+                            FilterChip(advanced,{advanced=true;selectedGroup=null;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced tools")})
                         }}
                         if(query.isBlank() && group==null) item {
                             OutlinedButton(onClick={navigate("dashboards")},modifier=Modifier.fillMaxWidth().testTag("open-dashboards")) {
-                                Icon(Icons.Outlined.Dashboard,null);Spacer(Modifier.width(T.small));Text("Open dashboards")
+                                Icon(Icons.Outlined.Dashboard,null);Spacer(Modifier.width(T.small));Text("Activity overview")
                             }
-                            Text(if(advanced) "Technical controls and integrations" else "Everyday preferences. Models, voice, memory and app settings.",
+                            Text(if(advanced) "Choose a topic. Detailed controls stay inside each section." else "Your everyday preferences",
                                 style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         if(query.isBlank() && advanced && group==null) {
                             items(SettingsDestinations.groups(true),key={"group:${it.name}"}) {category ->
                                 Surface(onClick={selectedGroup=category.name},modifier=Modifier.fillMaxWidth().testTag("settings-group-${category.name}"),
                                     shape=RoundedCornerShape(12.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) {
-                                    ListItem(headlineContent={Text(category.title,color=MaterialTheme.colorScheme.primary)},supportingContent={Text(category.description)},
+                                    ListItem(headlineContent={Text(category.title,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.Medium)},supportingContent={Text(category.description)},
                                         trailingContent={Icon(Icons.Default.ChevronRight,null)},
                                         colors=ListItemDefaults.colors(containerColor=Color.Transparent))
                                 }
@@ -208,9 +205,16 @@ import kotlinx.coroutines.*
                                 if(entries.isNotEmpty()) {
                                     if(group==null || query.isNotBlank()) item(key="heading:${category.name}") {
                                         HorizontalDivider(Modifier.padding(top=T.medium),color=MaterialTheme.colorScheme.outlineVariant)
-                                        Text(category.title,Modifier.padding(top=T.small),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)
+                                        Text(category.title,Modifier.padding(top=T.small),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)
                                     }
-                                    items(entries,key={it.id}) {entry -> SettingsDestinationRow(entry){navigate(entry.id)}}
+                                    items(entries,key={it.id}) {entry ->
+                                        if(query.isNotBlank()) {
+                                            val ordered=SettingsGroup.entries.flatMap{section->results.filter{it.group==section}}
+                                            val found=com.meshlit.search.textSearchMatches("${entry.title}\n${entry.description}\n${entry.keywords}",query,words=true,maxPositions=1)
+                                            Text("${ordered.indexOf(entry)+1} / ${results.size} · ${found.total} matches · ${found.location()}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                        }
+                                        SettingsDestinationRow(entry,expanded=query.isNotBlank()){navigate(entry.id)}
+                                    }
                                 }
                             }
                             if(query.isBlank() && group==null && !advanced) item {SettingsQuickAccess(::navigate)}
@@ -222,10 +226,14 @@ import kotlinx.coroutines.*
     }
 }
 
-@Composable private fun SettingsDestinationRow(entry:SettingsDestination,onSelect:()->Unit) {
+@Composable private fun SettingsDestinationRow(entry:SettingsDestination,expanded:Boolean=false,onSelect:()->Unit) {
     Surface(onClick=onSelect,modifier=Modifier.fillMaxWidth().testTag("settings-entry-${entry.id}"),
         shape=RoundedCornerShape(12.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) {
-        ListItem(headlineContent={Text(entry.title)},supportingContent={Text(entry.description)},
+        ListItem(headlineContent={Text(entry.title,color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.bodyLarge,maxLines=if(expanded)Int.MAX_VALUE else 2,overflow=TextOverflow.Ellipsis)},
+            supportingContent={Column {
+                Text(entry.description,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall,maxLines=if(expanded)Int.MAX_VALUE else 2,overflow=TextOverflow.Ellipsis)
+                if(expanded && entry.keywords.isNotBlank())Text("Keywords: ${entry.keywords}",style=MaterialTheme.typography.labelSmall)
+            }},
             trailingContent={Icon(Icons.Default.ChevronRight,null)},colors=ListItemDefaults.colors(containerColor=Color.Transparent))
     }
 }

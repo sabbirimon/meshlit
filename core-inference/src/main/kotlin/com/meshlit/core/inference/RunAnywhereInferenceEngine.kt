@@ -138,6 +138,7 @@ class RunAnywhereInferenceEngine(
      * early `initialized` check makes subsequent calls a no-op.
      */
     suspend fun initialize(context: Context) {
+        AndroidCpuBudget.initialize(context)
         if (initialized) return
         initMutex.withLock {
             if (initialized) return
@@ -367,6 +368,7 @@ class RunAnywhereInferenceEngine(
                         top_p = request.topP, top_k = request.topK,
                         repetition_penalty = request.repeatPenalty, stop_sequences = request.stopSequences,
                         seed = request.seed, streaming_enabled = true,
+                        n_threads = AndroidCpuBudget.generationThreads(request.cpuThreads),
                     ),
                 )
                 events.collect { event ->

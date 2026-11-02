@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-31",
+  "updated": "2026-11-03",
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 159,
+    "active": 168,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "4ffd7b7c2be7817abc08f986c5329f2e0ecabc431da419e62069d96fa6d032c4"
+      "contentSha256WithoutTrackingBlock": "9f09c4f5a090675ee9f6fa4fd248bcb725acf37fdd2956bd7b6a66501b3ce528"
     },
     {
       "path": "README.md",
@@ -163,7 +163,7 @@
       "class": "protected",
       "scope": "licence, attribution or versioned agreement",
       "title": "Third-party notices for current additions",
-      "contentSha256WithoutTrackingBlock": "e4786abb4f14ff4eb2d72606ac8bc486de0af1494042fcf7e82f2e41b1e8cc26"
+      "contentSha256WithoutTrackingBlock": "c3c27eb4f0ddb850f64477ee4cc073d3937ed131d5f46cd682e363e95755beac"
     },
     {
       "path": "TODO.md",
@@ -292,11 +292,18 @@
       "contentSha256WithoutTrackingBlock": "a2b646752f4d8ea1a9eee2a07cccf126089931110c8682b2c286d7f0d4b68ffd"
     },
     {
+      "path": "companions/search/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Meshlit Universal Search Provider Companion",
+      "contentSha256WithoutTrackingBlock": "10239ba608854c68443a915f2ee56fa3501b157cf349fa8c25e082e7fb0d32b6"
+    },
+    {
       "path": "companions/studio-runtime/README.md",
       "class": "active",
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Studio upstream runtime qualification",
-      "contentSha256WithoutTrackingBlock": "51236b007f0beda6233c2d6aaee4c61129a554924c0ac919c08f081d10c4f602"
+      "contentSha256WithoutTrackingBlock": "1800a7a9dc814187bd69f80c3d54dbf86f5538d9530376169e05be984415f5e9"
     },
     {
       "path": "companions/training/README.md",
@@ -345,7 +352,7 @@
       "class": "protected",
       "scope": "licence, attribution or versioned agreement",
       "title": "Android integration boundary",
-      "contentSha256WithoutTrackingBlock": "7429b8d86717dc9873410a0d2949d5c4c2825aeb2df9852da3d4482d9dc45969"
+      "contentSha256WithoutTrackingBlock": "b8aa035d3b0a2ad321a2dc3c67c23e8cce4b575eb5915ab42bf7d068a477d304"
     },
     {
       "path": "core-hyperl/src/main/assets/hyperl/LICENSE_HISTORY.md",
@@ -359,7 +366,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Agent and provider checkpoint \u2014 2026-10-31",
-      "contentSha256WithoutTrackingBlock": "50965419a287942225759d264e5d4b6fccb77d01aa061df11fc6bb7d565ee782"
+      "contentSha256WithoutTrackingBlock": "e1a719f645606d6f20d8837aa4693e834e6fcb6968727095e393520283a4631c"
     },
     {
       "path": "docs/AGENT_FEATURE_PORT_AUDIT.md",
@@ -390,6 +397,13 @@
       "contentSha256WithoutTrackingBlock": "4b738e592489d6bc72b3ce675863a21d11a32e0d5a848496d9af8d26eaa99334"
     },
     {
+      "path": "docs/ANDROID_MULTICORE_PLAN_2026-11-02.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Android multicore performance plan \u2014 2026-11-02",
+      "contentSha256WithoutTrackingBlock": "74dd93ab32a383d3fd4c8d59ab7d5e615fcf8a5d8db2def5e9d155c9e04acaf6"
+    },
+    {
       "path": "docs/ANDROID_SECURITY_TOOL_INTEGRATIONS.md",
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
@@ -401,7 +415,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Android settings, tools and voice audit",
-      "contentSha256WithoutTrackingBlock": "fba1f90753feede73bc030ea7e1d49679b85ad7a3e4810d3d39ad95edffc9fb8"
+      "contentSha256WithoutTrackingBlock": "f94df0dbecf3adcfe5dfedb808f414901e0e2c6da8a266909d8902ee703389ed"
     },
     {
       "path": "docs/AUDIT_TELEMETRY.md",
@@ -423,6 +437,13 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Built-in Meshlit agent",
       "contentSha256WithoutTrackingBlock": "d8c896ecc827f97ee33c776cb6564fceaaf09fe27f94f103819ee757ef258e83"
+    },
+    {
+      "path": "docs/CHAT_EFFORT_AND_APPROVALS_2026-11-03.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Chat effort and workspace approvals \u2014 2026-11-03",
+      "contentSha256WithoutTrackingBlock": "ab1d838d579b01970b3b22fc554150b7653316187604c1723e0c070b014369bf"
     },
     {
       "path": "docs/CHAT_PRESENTATION.md",
@@ -451,6 +472,13 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Colibri: optional host inference",
       "contentSha256WithoutTrackingBlock": "507bc48f8ba47bc21d67c0e14fc6f23258e5ea265498b6daee88e04f21387309"
+    },
+    {
+      "path": "docs/CONNECTED_CAPABILITIES_2026-11-02.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Connected capabilities \u2014 active source build",
+      "contentSha256WithoutTrackingBlock": "52581b349e0e59cef6677cf063fc67eaa91210a911da8b1f73ac1bb2c8c0721f"
     },
     {
       "path": "docs/CONTINUATION_2026_10_08.md",
@@ -537,6 +565,13 @@
       "contentSha256WithoutTrackingBlock": "20c2d525cdf6cbeefb8aaa379bbfc241633a811cfbb5868e4da89179d41d8cde"
     },
     {
+      "path": "docs/LOCAL_INFERENCE_HOSTS_2026-11-02.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Ollama and LM Studio model hosts",
+      "contentSha256WithoutTrackingBlock": "f2236aa0cd610977327e48de94efedc877dcb1d6ed670d657be17243aae1438a"
+    },
+    {
       "path": "docs/LOCAL_MODEL_TOOLS.md",
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
@@ -563,6 +598,20 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Memory, personality, recovery and speech adapters",
       "contentSha256WithoutTrackingBlock": "ead85b7b4b860663b7b2a44703624a4c6589e07e7579f122d66421cfbb61d9cc"
+    },
+    {
+      "path": "docs/MIXED_NATIVE_EXECUTION_2026-11-02.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Physical Mac GPU and Samsung layer execution",
+      "contentSha256WithoutTrackingBlock": "94b1db30002b37d87ade049a1117e3bf91a78936ed332c941dd0da86f1e0dad4"
+    },
+    {
+      "path": "docs/MULTIDEVICE_TEAM_BUILD_2026-11-02.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Adaptive resources, device results and agent teams \u2014 active build",
+      "contentSha256WithoutTrackingBlock": "fd5c50c419af404ace1e65c9cabbb1af3a3796ad9a9e62c16e7d5d4d686299fa"
     },
     {
       "path": "docs/MULTIPLATFORM_NEXT.md",
@@ -765,7 +814,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Optional Tailscale and VPN observations",
-      "contentSha256WithoutTrackingBlock": "33c236930c954797f9b6842868d70b6f368005b7494a77e708bb827c9cb27000"
+      "contentSha256WithoutTrackingBlock": "ba3c85d6f2e4221d03488085c758128243b878124570a662b9c8d103761ad1a2"
     },
     {
       "path": "docs/TERMS_OF_USE.md",
@@ -814,14 +863,21 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "858bef66ed4b23f43927d1f901852d5cb871613565f0e9f7cfcad6c0c9dd9fac"
+      "contentSha256WithoutTrackingBlock": "28a93e05db5d94249623c0b108b1d8b9606659247a3a3ab42d6c17ac74d5107f"
     },
     {
       "path": "docs/USER_MANUAL.md",
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit user manual",
-      "contentSha256WithoutTrackingBlock": "2ffdc71f3a0ff279ba7900130c5551573c434cb13c9d1d2cdc8dd1439d0ec726"
+      "contentSha256WithoutTrackingBlock": "f19d4a62b16eeb87e236119944e8af09435c3d0bcf302722d7fc6caa50f9951e"
+    },
+    {
+      "path": "docs/UX_REVIEW_2026-11-02.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Human-facing UX review \u2014 active increment",
+      "contentSha256WithoutTrackingBlock": "c106e8f3568373b8cce375e6bc71e05175996fc39bd2747da1211d03b4df4ff4"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",
@@ -838,11 +894,18 @@
       "contentSha256WithoutTrackingBlock": "f6e7f9f85bc70a9170e32f5779ab81932b9bc9e16f5b8bbe03df3d189e646bad"
     },
     {
+      "path": "docs/VERIFICATION_2026-11-02.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Verification and performance \u2014 2026-11-02",
+      "contentSha256WithoutTrackingBlock": "6c9a66364c97eebeadc734db0e2084dafa5db25ee01d568c78c3caccb0972910"
+    },
+    {
       "path": "docs/VOICE_AND_VISION.md",
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Voice and vision companion",
-      "contentSha256WithoutTrackingBlock": "a728b9e6b4c5c08e08121648e92b5418c84c1784b492d017e3a7ded7b6053324"
+      "contentSha256WithoutTrackingBlock": "078fc324acef76a87d33884944c7910a7b86d143b0fcc396568ca2db7e75ebbd"
     },
     {
       "path": "docs/architecture/EVALUATION_REVIEW_2026_10_09.md",

@@ -1,6 +1,6 @@
 # Voice and vision companion
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -130,3 +130,37 @@ and [Hugging Face speech-to-speech](https://github.com/huggingface/speech-to-spe
 were reviewed as alternatives; neither has an execution adapter yet.
 
 Natural and free voice expansion (2026-10-31): see [Kokoro/Pocket and ElevenLabs setup](NATURAL_VOICES.md) for current implementation and evidence.
+
+## Samsung live conversation — 2026-11-02
+
+On Samsung SM-A207F / Android 11, an explicitly cued real microphone turn
+recognized the owner's question and produced a local spoken answer. The owner
+confirmed hearing the correct answer to “What is two plus two?” and reported
+slow processing. Microphone audio was not saved and no hosted provider was used.
+An earlier capture without owner speech is excluded from human-voice acceptance.
+
+System log phase timestamps from the confirmed turn show 19.061 seconds preparing
+speech adapters, 13.191 seconds listening (including waiting for the owner),
+4.245 seconds transcribing, 23.710 seconds thinking, 2.043 seconds preparing
+speech output, and 2.326 seconds in speaking/final cleanup. From the end of
+capture to the start of playback was 29.998 seconds. The complete test was
+72.246 seconds including startup. The thinking phase includes chat preparation
+and model execution; it is not a token-only benchmark. Its detailed prefill and
+decode costs were not recorded. These are the before-change measurements; the after-change evidence follows below.
+
+The existing Live conversation mode retains speech adapters between turns within
+one session. Ending the session unloads them. The current implementation waits
+for the complete model reply before generating speech. These facts identify
+startup reuse and reply generation as optimization areas; they do not establish
+a faster second-turn benchmark. See the [live evidence](desktop/evidence/live-voice-conversation-20261102.json).
+
+The 2026-11-02 follow-up overlaps offline output preparation with microphone
+capture after recognition preparation. Memory admission includes both models;
+playback awaits output readiness. A structured child owns native initialization,
+and teardown waits for its result before unloading, including on Stop. The
+owner-confirmed after-turn reached listening after 10.557 s and playback 28.438 s
+after capture ended. Recognition took 2.522 s, thinking 24.100 s and synthesis
+preparation 1.816 s. The model response remains the dominant delay. Three additional
+startup/Stop cycles passed; stopping during native initialization took 7.7–8.6 s.
+See [after evidence](desktop/evidence/live-voice-conversation-after-20261102.json)
+and the [performance report](VERIFICATION_2026-11-02.md).

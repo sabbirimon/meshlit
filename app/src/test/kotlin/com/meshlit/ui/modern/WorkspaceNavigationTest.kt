@@ -8,8 +8,9 @@ class WorkspaceNavigationTest {
         val ids=WorkspaceDestinations.all.map{it.id}
         assertEquals(ids.size,ids.distinct().size)
         assertTrue(ids.containsAll(SettingsDestinations.all.map{it.id}))
-        assertTrue(ids.containsAll(listOf("monitor","network","ssh","securitylab","gateway","hyperl")))
+        assertTrue(ids.containsAll(listOf("monitor","network","ssh","gateway","hyperl")))
         assertFalse("legacy" in ids)
+        assertTrue(com.meshlit.BuildProfile.retiredRoutes.intersect(ids.toSet()).isEmpty())
         assertTrue(WorkspaceDestinations.search("SSH").any{it.id=="ssh"})
     }
     @Test fun sidebarAdaptsAndFocusModeDoesNotStealEditorSpace() {

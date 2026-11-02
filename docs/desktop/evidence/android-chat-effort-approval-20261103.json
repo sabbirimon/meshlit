@@ -1,0 +1,115 @@
+{
+  "format": "meshlit-android-chat-controls/1",
+  "date": "2026-11-03",
+  "device": "Samsung Galaxy A20s SM-A207F, Android 11/API 30",
+  "installed": true,
+  "package": "com.meshlit.v2.debug",
+  "apkSha256": "e8518caf92dbea226d63d82c361fafa2b0c37d41178f8b2a1e68b3a0e3faf100",
+  "effort": [
+    "auto",
+    "low",
+    "medium",
+    "high"
+  ],
+  "localEffort": "auto-only",
+  "approvalModes": [
+    "ask",
+    "auto-approved-reads",
+    "selected-approved-tools"
+  ],
+  "approvalPersistence": "session-only; restart restores ask",
+  "physical": {
+    "composerMenusVisible": true,
+    "unsupportedLocalHighDisabled": true,
+    "askDefaultVisible": true,
+    "selectedToolsConfirmationVisible": true,
+    "confirmationCancelled": true,
+    "remainingConversationsAfterEmptyQaCleanup": 0,
+    "liveToolDispatchWithNewApprovalUiVerified": false,
+    "liveExternalReasoningProviderVerified": false
+  },
+  "tests": {
+    "initialChangedAppSuitePassed": true,
+    "isolatedHttpContractPassed": true,
+    "finalBuildStatus": "running; update after completion",
+    "finalUnitSuites": {
+      "app:testMeshlitV2DebugUnitTest": {
+        "tests": 341,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "app:testMeshlitV1DebugUnitTest": {
+        "tests": 341,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "core-mcp:testDebugUnitTest": {
+        "tests": 194,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "core-inference:testDebugUnitTest": {
+        "tests": 334,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "core-sandbox:testDebugUnitTest": {
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "core-net:testDebugUnitTest": {
+        "tests": 46,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "crawler": {
+      "passed": 9,
+      "failed": 0
+    },
+    "searchCompanion": {
+      "passed": 7,
+      "failed": 0,
+      "scope": "Mocked DuckDuckGo and real isolated loopback HTTP; no live availability claim"
+    },
+    "liveSearchCompanionSmoke": "Two queries returned results; linux kernel query reported human verification, not an empty success."
+  },
+  "screenshots": [
+    {
+      "path": "docs/assets/screenshots/samsung-chat-effort-controls-20261103.png",
+      "sha256": "8e7c789bf511791a311758a2a62495a54d2b33df783a4ba28af08e4e5424f85e"
+    },
+    {
+      "path": "docs/assets/screenshots/samsung-chat-effort-menu-20261103.png",
+      "sha256": "76ea420b9e7a2dc3fe57a10919ef59d32c1440b2ce0b10cc0a4bfcb0d06dc93f"
+    },
+    {
+      "path": "docs/assets/screenshots/samsung-chat-approval-menu-20261103.png",
+      "sha256": "4aedeae1e2114bebe7e5a9206aee74bd1cba7a6d4b80e246680a1708d9c88864"
+    },
+    {
+      "path": "docs/assets/screenshots/samsung-chat-approval-confirm-20261103.png",
+      "sha256": "00ceb48a4db716c29b979078a4207dd098b62347375a028ee9aea818b20c9127"
+    },
+    {
+      "path": "docs/assets/screenshots/samsung-settings-search-20261103.png",
+      "sha256": "7d2120a84a480e34e83b16ec1dddeead780b74b1019bf01992ed01f63bec3e92"
+    },
+    {
+      "path": "docs/assets/screenshots/samsung-global-search-20261103.png",
+      "sha256": "a8f26d17d12359ffac2a8a323f81c8e71a61d11675fed6e3eadaf9efd0bfabf1"
+    }
+  ],
+  "limits": [
+    "External effort capability is exact-endpoint/model configuration, not provider acceptance proof.",
+    "Native Gemini/Anthropic/Ollama thinking adapters are not implemented.",
+    "Classic Compose desktop chat does not have the Studio composer controls."
+  ]
+}

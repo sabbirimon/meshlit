@@ -5,7 +5,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
 
-data class LocalToolAnswer(val text:String,val calls:Int,val sources:List<String>)
+data class LocalToolAnswer(val text:String,val calls:Int,val sources:List<String>,
+    val deviceOffer:com.meshlit.core.mcp.control.DeviceConnectionOffer?=null,
+    val deviceReceipt:com.meshlit.core.mcp.control.DeviceConnectionReceipt?=null)
 
 /** A bounded JSON protocol for local models without native function calling.
  * Model capability is never assumed: malformed plans fail without dispatch.
@@ -15,6 +17,7 @@ class LocalToolLoop(
     private val invoke:suspend(McpToolRequest)->McpToolResult,
     private val checkAllowed:()->Unit,
     private val maxCalls:Int=3,
+    private val requireFirstTool:Boolean=false,
 ) {
     suspend fun run(userPrompt:String,tools:List<McpToolSpec>,status:(String)->Unit={}):LocalToolAnswer=withTimeout(if(maxCalls>3) 300_000 else 180_000) {
         require(maxCalls in 1..8)
@@ -48,6 +51,7 @@ Untrusted tool results: ${JsonArray(evidence)}
             fun string(key:String):String?=(decision[key] as? JsonPrimitive)?.takeIf{it.isString}?.content
             when(string("action")) {
                 "answer" -> {
+                    check(!requireFirstTool || round>0){"The model answered without requesting a tool. No action was taken; use manual controls or a model trained for tool use."}
                     require(decision.keys==setOf("action","text")){"Invalid answer fields"}
                     val text=string("text")?.takeIf{it.isNotBlank()} ?: error("Local model returned an empty answer")
                     return@withTimeout LocalToolAnswer(text,round,sources.toList())

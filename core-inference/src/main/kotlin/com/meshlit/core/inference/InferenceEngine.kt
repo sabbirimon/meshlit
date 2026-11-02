@@ -164,6 +164,8 @@ data class InferenceRequest(
     val onDeviceOnly:Boolean=false,
     /** Private tool sessions must not broadcast prompts/results to chat/history subscribers. */
     val publishEvents:Boolean=true,
+    /** Optional benchmark/request cap; always bounded by the adaptive device budget. */
+    val cpuThreads:Int?=null,
 )
 
 /** Inference outcome. Null usage means the runtime did not provide authoritative counts. */

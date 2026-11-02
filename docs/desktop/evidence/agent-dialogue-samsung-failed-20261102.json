@@ -1,0 +1,55 @@
+{
+  "status": "failed-live-handoff-acceptance",
+  "scope": "samsung",
+  "actualRun": {
+    "id": "e0510123-7c11-4f73-ae78-a8941fbb8507",
+    "plan": {
+      "goal": "Qualification: calculate 2+2 using a handoff. Lead agent-1 must first delegate the arithmetic to agent-2. Agent-2 must reply with the answer. Lead must then reply with the received answer. Return only the reply/delegate JSON protocol.",
+      "mode": "SINGLE_DEVICE",
+      "members": [
+        {
+          "id": "agent-1",
+          "role": "planner",
+          "modelId": "url-824902c942c3cc73"
+        },
+        {
+          "id": "agent-2",
+          "role": "worker",
+          "modelId": "url-824902c942c3cc73"
+        },
+        {
+          "id": "agent-3",
+          "role": "worker",
+          "modelId": "url-824902c942c3cc73"
+        },
+        {
+          "id": "agent-4",
+          "role": "reviewer",
+          "modelId": "url-824902c942c3cc73"
+        }
+      ],
+      "control": "AGENT_DIALOGUE",
+      "maxRounds": 1
+    },
+    "phase": "FAILED",
+    "outputs": [
+      {
+        "memberId": "agent-1",
+        "sourceId": "local",
+        "text": "{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply\",\"text\":\"{'action':'reply','text':'{\"action\":\"reply",
+        "callIndex": 1
+      }
+    ],
+    "error": "A member failed. Check model readiness, role templates, manager JSON, source permission and durable jobs.",
+    "messages": [
+      {
+        "id": "09648a6a-8b72-4cc1-a48a-3b754c05a181",
+        "from": "human",
+        "to": "agent-1",
+        "kind": "TASK",
+        "body": "Qualification: calculate 2+2 using a handoff. Lead agent-1 must first delegate the arithmetic to agent-2. Agent-2 must reply with the answer. Lead must then reply with the received answer. Return only the reply/delegate JSON protocol."
+      }
+    ]
+  },
+  "reason": "No correlated peer task/reply was executed; runtime phase alone is not task acceptance."
+}

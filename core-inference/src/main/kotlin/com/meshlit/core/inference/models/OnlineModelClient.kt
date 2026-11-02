@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 @Serializable enum class OnlineProtocol { OPENAI, OPENAI_COMPATIBLE, ANTHROPIC, GEMINI }
 @Serializable data class OnlineProfile(val id:String,val name:String,val endpoint:String,val model:String="",
     val protocol:OnlineProtocol=OnlineProtocol.OPENAI_COMPATIBLE,val enabled:Boolean=false,val agentAllowed:Boolean=false,
-    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT, val sourceKind:ModelSourceKind=ModelSourceKind.CLOUD) {
+    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT, val sourceKind:ModelSourceKind=ModelSourceKind.CLOUD,val effortSupport:EffortSupport?=null) {
     fun validate() {
         require(gateway == OnlineGateway.DIRECT || protocol == OnlineProtocol.OPENAI_COMPATIBLE) { "Gateways use OpenAI-compatible protocol" }
         require(credentialEnvironmentId==null || credentialEnvironmentId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
@@ -69,16 +69,17 @@ class OnlineModelClient {
                 model["name"]?.jsonPrimitive?.content?.removePrefix("models/") else null
         } else data["data"]?.jsonArray.orEmpty().mapNotNull{it.jsonObject["id"]?.jsonPrimitive?.contentOrNull}
     }
-    fun validateGeneration(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,temperature:Float) {
+    fun validateGeneration(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,temperature:Float,effort:ReasoningEffort=ReasoningEffort.AUTO) {
         profile.validate();require(profile.enabled) { "Enable the selected online profile first" }
+        profile.validateEffort(effort)
         require(messages.isNotEmpty() && messages.size<=41 && messages.all{it.role in setOf("user","assistant")})
-        require(messages.sumOf{it.text.length}+system.length<=96000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f)
+        require(messages.sumOf{it.text.length}+system.length<=96000 && maxTokens in 1..(if(profile.supportedEfforts().isNotEmpty())16384 else 2048) && temperature.isFinite() && temperature in 0f..2f)
         require(!profile.requiresApiKey || token.isNotBlank() && token.length<=4096 && token.none{it.isWhitespace()}) { "Save an API key first" }
         if(profile.protocol==OnlineProtocol.GEMINI) require(profile.model.matches(Regex("[A-Za-z0-9_.-]+")))
     }
-    suspend fun generate(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f):OnlineReply {
-        validateGeneration(profile, token, messages, system, maxTokens, temperature)
-        val payload=buildJsonObject { when(profile.protocol) {
+    suspend fun generate(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,effort:ReasoningEffort=ReasoningEffort.AUTO):OnlineReply {
+        validateGeneration(profile, token, messages, system, maxTokens, temperature,effort)
+        val base=buildJsonObject { when(profile.protocol) {
             OnlineProtocol.GEMINI -> {
                 put("contents",buildJsonArray{messages.forEach{message->add(buildJsonObject{put("role",if(message.role=="assistant") "model" else "user");put("parts",buildJsonArray{add(buildJsonObject{put("text",message.text)})})})}})
                 if(system.isNotBlank()) put("systemInstruction",buildJsonObject{put("parts",buildJsonArray{add(buildJsonObject{put("text",system)})})})
@@ -95,6 +96,7 @@ class OnlineModelClient {
                 put("stream",false)
             }
         } }
+        val payload=if(profile.protocol in setOf(OnlineProtocol.OPENAI,OnlineProtocol.OPENAI_COMPATIBLE))reasoningPayload(base,profile,effort,maxTokens) else base
         val path=when(profile.protocol){OnlineProtocol.ANTHROPIC->"messages";OnlineProtocol.GEMINI->{require(profile.model.matches(Regex("[A-Za-z0-9_.-]+")));"models/${profile.model}:generateContent"};else->"chat/completions"}
         val data=fetch(request(profile,token,path).post(payload.toString().toRequestBody("application/json".toMediaType())).build())
         val text=when(profile.protocol) {

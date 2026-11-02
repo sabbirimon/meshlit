@@ -1,0 +1,85 @@
+{
+  "format": "meshlit-agent-chat-qualification/1",
+  "source": "dirty working tree based on d4361ab; not a release",
+  "artifacts": {
+    "v2Apk": {
+      "path": "/Users/code/Documents/Codex/meshlit-unified/app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+      "bytes": 569543697,
+      "sha256": "47b5773c8cd012acc5fb1c3b7b77dba71a7af16edd1f4857b24e2b45fd2aa95f"
+    },
+    "testApk": {
+      "path": "/Users/code/Documents/Codex/meshlit-unified/app/build/outputs/apk/androidTest/meshlitV2/debug/app-meshlitV2-debug-androidTest.apk",
+      "bytes": 1271392,
+      "sha256": "e468fbbed7b935201924d99fbb4682279208a9b6d923fd57a294125af82672ef"
+    },
+    "studioBackend": {
+      "path": "/Users/code/Documents/Codex/output/Meshlit Studio Hosts 2026-11-02/Meshlit Studio.app/Contents/Resources/app/extensions/meshlit-workbench/meshlit-backend.jar",
+      "bytes": 1661799,
+      "sha256": "09ce2012c589c0b1db0dbe1afda9fa2fd8f3503a413982a234278ad1e66ee26c"
+    }
+  },
+  "unitSuites": {
+    "coreMcp": {
+      "tests": 185,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktopDevice": {
+      "tests": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktop": {
+      "tests": 88,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "androidV1": {
+      "tests": 326,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "androidV2": {
+      "tests": 326,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "finalLints": {
+    "V1": {
+      "result": "passed",
+      "severities": {
+        "Warning": 411,
+        "Hint": 19
+      }
+    },
+    "V2": {
+      "result": "passed",
+      "severities": {
+        "Warning": 411,
+        "Hint": 19
+      }
+    }
+  },
+  "physicalProofs": [
+    "agent-dialogue-samsung-passed-20261102.json",
+    "agent-dialogue-studio-passed-20261102.json",
+    "chat-agents-samsung-20261102.json",
+    "chat-service-lifecycle-samsung-20261102.json",
+    "phone-control-final-20261102.json"
+  ],
+  "limits": [
+    "Model-driven reverse workflow not qualified; latest model self-delegation rejected.",
+    "Physical cross-device agent handoff not qualified.",
+    "Remote commands are off and no remote command execution was attempted.",
+    "Composer Send was tapped with observed ADB coordinates after its accessibility click failed; search-button and input-field clicks/type passed."
+  ],
+  "published": false,
+  "lintBuildDuration": "14m 46s",
+  "phoneLeaseReleasedAfterRestoration": true
+}

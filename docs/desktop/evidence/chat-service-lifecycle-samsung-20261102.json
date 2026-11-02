@@ -1,0 +1,11 @@
+{
+  "device": "Samsung SM-A207F",
+  "androidApi": 30,
+  "source": "ChatServiceLifecycleDeviceTest.immediateCompletionPromotesBeforeStopping",
+  "cycles": 3,
+  "delayedCrashGuardMs": 6500,
+  "result": "passed",
+  "elapsedSeconds": 8.82,
+  "activeGenerationAfterTest": false,
+  "generationNotificationAfterTest": false
+}

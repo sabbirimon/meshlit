@@ -14,6 +14,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 @Composable internal fun ResourcesScreen(onBack: () -> Unit) {
+    var deep by remember{mutableStateOf(false)}
+    if(deep){ResourceDeepDiveScreen{deep=false};return}
     val reader = koinInject<ResourceSnapshotReader>()
     var snapshot by remember { mutableStateOf(reader.read()) }
     LaunchedEffect(reader) { while (isActive) { snapshot = reader.read(); delay(3_000) } }
@@ -21,6 +23,7 @@ import kotlinx.coroutines.isActive
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("resources-list"), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { TextButton(onClick = onBack) { Text("Back to settings") }; Text("Resources and sensors", style = MaterialTheme.typography.headlineSmall) }
+        item { Button(onClick={deep=true}){Text("Live resource deep dive and CPU controls")} }
         item { Text("Live readings refresh every 3 seconds. Sensor inventory shows hardware available to Android, not proof that a sensor is recording.") }
         item { Card { Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("Compute and storage", style = MaterialTheme.typography.titleMedium)
@@ -38,7 +41,7 @@ import kotlinx.coroutines.isActive
             Text("Camera, microphone and other sensor session use is unavailable as a combined system-wide reading.")
         } } }
         item { Text("Available sensors (${snapshot.availableSensors.size})", style = MaterialTheme.typography.titleMedium) }
-        items(snapshot.availableSensors, key = { "${it.type}:${it.name}" }) { sensor ->
+        items(snapshot.availableSensors, key = { "${it.id}:${it.type}:${it.name}:${it.vendor}" }) { sensor ->
             ListItem(headlineContent = { Text(sensor.name) }, supportingContent = { Text("${sensor.vendor} · Android type ${sensor.type} · Active use unknown") })
         }
     }

@@ -35,10 +35,17 @@ class ModelRoutes(context:Context,private val library:ModelLibrary,private val i
         check(!_state.value.running){"Stop the active route before deleting"}
         val updated=_routes.value.filterNot{it.id==id};store.put("routes",json.encodeToString(updated));_routes.value=updated
     }
-    suspend fun execute(routeId:String?,scenario:String,prompt:String,maxTokens:Int=512,agent:Boolean=false,authorize:()->Unit={}):ModelRouteResult = lock.withLock {
+    suspend fun execute(routeId:String?,scenario:String,prompt:String,maxTokens:Int=512,agent:Boolean=false,effort:ReasoningEffort=ReasoningEffort.AUTO,authorize:()->Unit={}):ModelRouteResult = lock.withLock {
         authorize();library.ready.await()
         val route=ModelRouter.select(_routes.value,routeId,scenario,prompt)
         require(!agent || route.agentAllowed){"This route does not allow agent execution"}
+        if(effort!=ReasoningEffort.AUTO) {
+            require(route.steps.all{it.modelId.startsWith("cloud:")}){"Reasoning effort requires an API-only route; use Auto for local or mixed routes"}
+            route.steps.forEach { step ->
+                val profile=online.profiles.value.firstOrNull{it.id==step.modelId.removePrefix("cloud:")} ?: error("Route profile is missing")
+                profile.validateEffort(effort)
+            }
+        }
         _state.value=ModelRouteState(true,route.id)
         try {
             val result=ModelRouter.execute(route,prompt,maxTokens,preflight={step->
@@ -50,6 +57,7 @@ class ModelRoutes(context:Context,private val library:ModelLibrary,private val i
                     val p=online.profiles.value.firstOrNull{it.id==step.modelId.removePrefix("cloud:")}
                         ?: error("Missing online profile ${step.modelId}")
                     require(p.enabled && (!agent || p.agentAllowed)){"Online profile is disabled or not delegated"}
+                    p.validateEffort(effort)
                     require(!p.requiresApiKey || online.resolveToken(p,agent).isNotBlank()){"Online profile requires a saved API key"}
                 } else {
                     require(library.models.value.any{it.id==step.modelId && it.installed}){"Install local model ${step.modelId} first"}
@@ -57,7 +65,7 @@ class ModelRoutes(context:Context,private val library:ModelLibrary,private val i
                 }
             },run={step,input,limit->
                 if(step.modelId.startsWith("cloud:")) {
-                    val(p,r)=online.generate(step.modelId.removePrefix("cloud:"),listOf(OnlineMessage("user",input)),step.instructions,limit,agent=agent)
+                    val(p,r)=online.generate(step.modelId.removePrefix("cloud:"),listOf(OnlineMessage("user",input)),step.instructions,limit,agent=agent,effort=effort)
                     RouteStepReply(r.text,r.inputTokens,r.outputTokens,r.estimatedCost(p),p.currency)
                 } else {
                     library.load(step.modelId)

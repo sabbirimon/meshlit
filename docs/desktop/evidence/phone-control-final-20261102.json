@@ -1,0 +1,14 @@
+{
+  "device": "SM-A207F",
+  "phoneControl": {
+    "enabled": true,
+    "service_bound": true,
+    "all_apps": true,
+    "packages": []
+  },
+  "chatUiRequest": "check phone control status",
+  "chatUiAnswer": "Phone control: enabled. Android Accessibility: connected. App scope: all supported apps.",
+  "sendDriver": "Observed composer Send button tapped using ADB; text input and result read through MCP",
+  "modelRestored": "url-824902c942c3cc73",
+  "noFurtherInstallsPlanned": true
+}

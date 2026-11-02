@@ -14,9 +14,9 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 
 /** Optional TLS control plane, independent of native worker membership. */
-class WebBridgeHost(private val context:Context,private val backend:AgentBackend,private val tls:PipelineHost,private val scope:CoroutineScope){
+class WebBridgeHost(private val context:Context,private val backend:AgentBackend,private val tls:PipelineHost,private val scope:CoroutineScope,private val resources:()->JsonElement={error("Resource provider unavailable")},directoryStore:DeviceDirectoryStore?=null){
     private val credentials=EncryptedCredentialStore(context,"web-enrollment")
-    val directory=DeviceDirectory(object:DeviceDirectoryStore{
+    val directory=DeviceDirectory(directoryStore ?: object:DeviceDirectoryStore{
         override fun load()=credentials.get("directory")?.let{Json.decodeFromString<DeviceDirectorySnapshot>(it)} ?: DeviceDirectorySnapshot()
         override fun save(snapshot:DeviceDirectorySnapshot){credentials.put("directory",Json.encodeToString(snapshot))}
     }, deviceLimit={com.meshlit.operations.ClusterControls.get(context).state.value.deviceLimit})
@@ -35,11 +35,31 @@ class WebBridgeHost(private val context:Context,private val backend:AgentBackend
     }}}
     @Synchronized fun newInvitation():String{require(active.value);invitation=randomToken();invitationUntil=System.currentTimeMillis()+15*60_000;return invitation!!}
     fun fingerprint()=tls.fingerprint()
+    private val endpointPrefs=context.getSharedPreferences("web-bridge-endpoint",0)
+    fun publicEndpoint()=endpointPrefs.getString("public-url","").orEmpty()
+    fun setPublicEndpoint(value:String){if(value.isNotBlank())com.meshlit.core.mcp.control.WebDeviceEndpoint(value);check(endpointPrefs.edit().putString("public-url",value.trim()).commit());server?.allowedPublicOrigin=value.takeIf{it.isNotBlank()}?.trimEnd('/')}
+    fun browserAddress():String {val public=publicEndpoint();if(public.isNotBlank())return public.trimEnd('/')+"/";val address=ownAddress();val host=if(address.contains(':'))"[$address]" else address;return "https://$host:$port/"}
     fun ownAddress()=(context.applicationContext as com.meshlit.MeshlitApplication).localIpAddress
     suspend fun start()=withContext(Dispatchers.IO){synchronized(this@WebBridgeHost){
         com.meshlit.operations.OperationsControl.get(context).gate.requireAllowed(com.meshlit.core.common.control.ManagedFeature.AUTOMATION)
         if(server!=null) return@withContext
         val instance=ControlBridgeServer("0.0.0.0",port,context.assets.open("control/index.html").bufferedReader().use{it.readText()},::handle)
+        instance.allowedPublicOrigin=publicEndpoint().takeIf{it.isNotBlank()}?.trimEnd('/')
+        instance.ownerPublicNetworkAllowed={remote,token,invite,method,path->
+            val published=publicEndpoint().isNotBlank()
+            val approved=token?.let{directory.authenticate(it)}
+            val enrollment=method=="POST" && path=="/api/v1/enroll" && synchronized(this@WebBridgeHost){
+                val expected=invitation
+                expected!=null && System.currentTimeMillis()<=invitationUntil && invite!=null &&
+                    MessageDigest.isEqual(expected.toByteArray(),invite.toByteArray())
+            }
+            // The public page contains connection controls, never owner data. All
+            // API reads/actions still require an approved identity in handle().
+            val connectionPage=method=="GET" && path=="/"
+            published && (approved!=null || enrollment || connectionPage) &&
+                (context.applicationContext as com.meshlit.MeshlitApplication).meshlitFirewall
+                    .decide(remote,approved?.id,com.meshlit.core.trust.TrustTier.LOCAL_TRUSTED,port).allowed
+        }
         instance.networkAllowed={remote->(context.applicationContext as com.meshlit.MeshlitApplication).meshlitFirewall.decide(remote,null,null,port).allowed}
         try{instance.startSecure(tls.controlTlsContext());server=instance;_active.value=true
             generation=java.util.UUID.randomUUID().toString()
@@ -88,6 +108,8 @@ class WebBridgeHost(private val context:Context,private val backend:AgentBackend
         val device=token?.let{directory.authenticate(it)} ?: throw BridgeHttpFailure(ResponseStatus.UNAUTHORIZED,"device_not_approved")
         directory.heartbeat(device.id)
         when{
+            method=="POST" && path=="/api/v1/disconnect"->{revoke(device.id);buildJsonObject{put("state","REVOKED")}}
+            method=="GET" && path=="/api/v1/resources"->{authorize(device,AgentOperation.DEVICE_RUNTIME_STATUS);resources()}
             method=="GET" && path=="/api/v1/status"->buildJsonObject{put("deviceId",device.id);put("state",device.state.name)
                 put("access",Json.encodeToJsonElement(device.access));put("nativeComputeMembership",false);put("taskReplication",false)
                 put("expiresAtMs",device.expiresAtMs)

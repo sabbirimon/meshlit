@@ -9,6 +9,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SearchContractsTest {
+    @Test fun fullMessageTextPositionsAndTotalsSurviveTheVisibleResultLimit() {
+        val chats=List(3){c->ChatConversation(id="c$c",title="Travel",messages=List(100){m->ChatMessage(id="m$c-$m",role="assistant",text="telescope twice telescope")})}
+        val found=AppSearchIndex.search("telescope",chats,emptyList(),emptyList(),DeviceDirectorySnapshot())
+        assertEquals(200,found.size)
+        assertEquals(300,found.first().totalResults)
+        assertEquals(300,found.first().categoryTotals[SearchCategory.CHATS])
+        assertEquals("telescope twice telescope",found.last().fullText)
+        assertEquals("Message 100 · assistant",found.last().sourcePosition)
+        assertEquals(2,found.last().textMatches!!.total)
+    }
     @Test fun escapedArticleStorageCannotExceedTheNextLaunchReadLimit() {
         val article=SearchArticle("id","Article","\u0001".repeat(128*1024),1)
         val accepted=encodeSearchArticles(listOf(article))

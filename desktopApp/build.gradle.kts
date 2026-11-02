@@ -4,6 +4,7 @@ import java.nio.file.Files
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
     id("org.jetbrains.compose")
 }
@@ -15,6 +16,7 @@ dependencies {
     implementation(project(":desktop-hyperl"))
     implementation(project(":desktop-ssh"))
     implementation(project(":desktop-engine"))
+    implementation(project(":desktop-device"))
     implementation(compose.desktop.currentOs)
     implementation(compose.material)
     val browserOs = when { System.getProperty("os.name").startsWith("Mac") -> "mac"; System.getProperty("os.name").startsWith("Windows") -> "win"; else -> "linux" }

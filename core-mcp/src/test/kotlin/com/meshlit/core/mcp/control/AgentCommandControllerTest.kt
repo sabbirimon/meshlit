@@ -6,6 +6,12 @@ import org.junit.Assert.*
 import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AgentCommandControllerTest {
+    @Test fun instructionFormattingIsExplicitAndRawRemainsTheCompatibilityDefault() {
+        val command=AgentCommand("format",AgentOperation.MODEL_GENERATE,modelId="model",prompt="task")
+        assertEquals("RAW",command.promptFormat)
+        command.copy(promptFormat="INSTRUCT").validate()
+        assertThrows(IllegalArgumentException::class.java){command.copy(promptFormat="unknown").validate()}
+    }
     private class Memory(var rows:List<AgentJob> = emptyList()):AgentJobStore{
         override suspend fun load()=rows
         override suspend fun save(jobs:List<AgentJob>){rows=jobs.toList()}

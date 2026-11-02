@@ -438,25 +438,7 @@ fun LegacyMeshlitApp() {
                     )
                 }
 
-                // Cloud MCP — Settings → RAG / Loop mode.
-                composable("settings/rag") {
-                    val app = koinInject<MeshlitApplication>()
-                    val settingsRepository: com.meshlit.settings.SettingsRepository = koinInject()
-                    RagSettingsScreen(
-                        initialRagMode = settingsRepository.ragModeFlowNow(),
-                        initialLoopMode = settingsRepository.loopModeFlowNow(),
-                        onRagModeChange = { mode ->
-                            app.appScope.launch {
-                                settingsRepository.setRagMode(mode)
-                            }
-                        },
-                        onLoopModeChange = { mode ->
-                            app.appScope.launch {
-                                settingsRepository.setLoopMode(mode)
-                            }
-                        },
-                    )
-                }
+                composable("settings/rag") { RagSettingsScreen() }
 
                 // Phase Observability 1 — Help sub-routes. The Help
                 // tile and the About quick action land on the

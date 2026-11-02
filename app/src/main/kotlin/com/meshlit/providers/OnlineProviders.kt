@@ -74,14 +74,25 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
         require(_profiles.value.firstOrNull { it.id == profile.id } == profile) { "Provider changed or was revoked before dispatch" }
         if(profile.requiresApiKey && profile.credentialEnvironmentId == null) require(tokenFor(profile) == credential) { "Provider credential changed before dispatch" }
     }
-    suspend fun generate(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false):Pair<OnlineProfile,OnlineReply> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,agent) { generateManaged(id,messages,system,maxTokens,temperature,agent) }
-    private suspend fun generateManaged(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false):Pair<OnlineProfile,OnlineReply> {
+    /** Read-only contact check using the existing endpoint-bound credential and agent scope. */
+    suspend fun probeConnection(id:String,authorize:()->Unit):List<String> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,true) {
+        authorize()
+        val profile=_profiles.value.single{it.id==id}
+        require(profile.enabled && profile.agentAllowed){"Model profile agent access is not approved"}
+        profile.validate();val credential=resolveToken(profile,true)
+        authorize();requireCurrent(profile,credential)
+        val result=client.models(profile,credential)
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        authorize();requireCurrent(profile,credential);result
+    }
+    suspend fun generate(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort=ReasoningEffort.AUTO):Pair<OnlineProfile,OnlineReply> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,agent) { generateManaged(id,messages,system,maxTokens,temperature,agent,effort) }
+    private suspend fun generateManaged(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort=ReasoningEffort.AUTO):Pair<OnlineProfile,OnlineReply> {
         val profile=_profiles.value.firstOrNull{it.id==id} ?: error("Online profile no longer exists")
         require(!agent || profile.agentAllowed) { "This profile does not allow agent cloud requests" }
         profile.validate()
         require(profile.enabled)
         val credential = resolveToken(profile, agent)
-        client.validateGeneration(profile, credential, messages, system, maxTokens, temperature)
+        client.validateGeneration(profile, credential, messages, system, maxTokens, temperature,effort)
         val ledger = withContext(Dispatchers.IO) { UsageHistory.get(appContext) }
         val price = UsagePrice(profile.currency,
             profile.inputPricePerMillion?.let { UsageMoney.parse(java.math.BigDecimal.valueOf(it).setScale(9, java.math.RoundingMode.CEILING).stripTrailingZeros().toPlainString()) },
@@ -95,7 +106,7 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
             }
             requireCurrent(profile, credential)
             currentCoroutineContext().ensureActive()
-            val reply = client.generate(profile, credential, messages, system, maxTokens, temperature)
+            val reply = client.generate(profile, credential, messages, system, maxTokens, temperature,effort)
             withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", reply.inputTokens, reply.outputTokens) }
             return profile to reply
         } catch (e: Exception) {

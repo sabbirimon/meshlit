@@ -558,7 +558,7 @@ val coreModule = module {
     // -----------------------------------------------------------------
     // MCP (server-side, controllers)
     // -----------------------------------------------------------------
-    single { com.meshlit.control.WebBridgeHost(androidContext(),get(),get(),get()) }
+    single { com.meshlit.control.WebBridgeHost(androidContext(),get(),get(),get(),{kotlinx.serialization.json.Json.encodeToJsonElement(com.meshlit.resources.ResourceSnapshot.serializer(),get<com.meshlit.resources.ResourceSnapshotReader>().read())}) }
     single { com.meshlit.core.mcp.control.CodeWorkspace(java.io.File(androidContext().filesDir,"code-workspace")) }
     single { com.meshlit.core.mcp.control.TaskBoard(object:com.meshlit.core.mcp.control.TaskBoardStore {
         private val store=com.meshlit.core.trust.EncryptedCredentialStore(androidContext(),"task-board")
@@ -586,10 +586,10 @@ val coreModule = module {
     single { com.meshlit.operations.OperationTools(get(),get(),get(),get()) }
     single { com.meshlit.colibri.ColibriBackend(androidContext()) }
     single { com.meshlit.crypto.CryptoHost(androidContext()) }
-    single { com.meshlit.gibberlink.GibberLinkHost(androidContext()) }
     single { com.meshlit.remote.RemoteCommandHost(androidContext(),get(),get()) }
     single { com.meshlit.p2p.PeerChatHost(androidContext(),get(),get(),get(),get()) }
     single { com.meshlit.providers.OnlineProviders(androidContext(),get()) }
+    single { com.meshlit.devices.DeviceConnectionHost(androidContext(),get(),get()) }
     single { com.meshlit.cloud.CloudManagement(androidContext(),get()) }
     single { com.meshlit.configuration.ConfigurationTransfer(androidContext(),get(),get(),get()) }
     single { com.meshlit.media.MediaGeneration(androidContext(),get()) }
@@ -597,7 +597,12 @@ val coreModule = module {
     single { com.meshlit.chat.VoiceModels(androidContext()) }
     single { com.meshlit.chat.PersonalMemory(androidContext()) }
     single { com.meshlit.knowledge.KnowledgeLibrary(androidContext()) }
-    single { com.meshlit.chat.LocalChatTools(get(),com.meshlit.operations.OperationsControl.get(androidContext()).gate,{get()},{get()},get()) }
+    single { com.meshlit.chat.LocalChatTools(get(),com.meshlit.operations.OperationsControl.get(androidContext()).gate,{get()},{get()},get(),{
+        val inference=get<InferenceCoordinator>();val model=inference.loadedModel()
+        get<com.meshlit.models.ModelLibrary>().models.value.firstOrNull{it.installed && it.path==model?.modelPath}?.let {
+            com.meshlit.chat.localToolPlanningModelName(model?.modelName.orEmpty(),it.name,it.metadata?.architecture)
+        }
+    }) }
     single { com.meshlit.search.AppSearchService(androidContext(),get(),{get<com.meshlit.chat.ChatController>().state.value},{get<com.meshlit.models.ModelLibrary>().models.value},{get<com.meshlit.control.WebBridgeHost>().directory.read()},get<com.meshlit.operations.OperationsControl>().gate,{get<com.meshlit.settings.SettingsRepository>()},{get<com.meshlit.control.AgentBackend>().delegated(com.meshlit.control.AgentBackend.Scope.SETTINGS)},{get<com.meshlit.gateway.GatewayHost>().remoteRoutes}) }
     single { com.meshlit.chat.ChatController(androidContext(), get(), get(),get(),get(),get(),get(),get(),get(),get(),get()) }
     single { com.meshlit.models.ModelLibrary(androidContext(), get(), get(), get()) }
@@ -608,8 +613,8 @@ val coreModule = module {
         val crawler: com.meshlit.core.mcp.builtin.CrawlSettingsStore = get()
         McpToolRegistry(com.meshlit.operations.OperationsControl.get(androidContext()).gate).apply {
             registerAll(get<com.meshlit.crypto.CryptoHost>().specs())
-            registerAll(get<com.meshlit.gibberlink.GibberLinkHost>().specs())
             registerAll(get<com.meshlit.remote.RemoteCommandHost>().specs())
+            registerAll(get<com.meshlit.devices.DeviceConnectionHost>().specs())
             registerAll(get<com.meshlit.p2p.PeerChatHost>().specs())
             registerAll(get<com.meshlit.chat.PersonalMemory>().specs())
             registerAll(get<com.meshlit.knowledge.KnowledgeLibrary>().specs())

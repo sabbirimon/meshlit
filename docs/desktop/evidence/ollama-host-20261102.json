@@ -1,0 +1,62 @@
+{
+  "format": "meshlit-ollama-qualification/1",
+  "runtime": "/usr/local/bin/ollama",
+  "version": "ollama version is 0.40.13",
+  "device": "Intel Mac",
+  "existingOwnerServerUntouched": true,
+  "cloudDisabled": true,
+  "modelBytes": 491400032,
+  "modelSha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "catalog": {
+    "object": "list",
+    "data": [
+      {
+        "id": "meshlit-proof:latest",
+        "object": "model",
+        "created": 1793632945,
+        "owned_by": "library"
+      }
+    ]
+  },
+  "bufferedSeconds": 2.6097358819679357,
+  "buffered": {
+    "id": "chatcmpl-669",
+    "object": "chat.completion",
+    "created": 1793632947,
+    "model": "meshlit-proof",
+    "system_fingerprint": "fp_ollama",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "4"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 41,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens": 2,
+      "total_tokens": 43
+    }
+  },
+  "stream": {
+    "text": "Hello! It's nice to meet you. How can I assist you today?",
+    "usage": {
+      "prompt_tokens": 32,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens": 16,
+      "total_tokens": 48
+    },
+    "done": true,
+    "firstContentSeconds": 1.7294550899532624,
+    "seconds": 2.2612013839534484
+  },
+  "status": "passed"
+}

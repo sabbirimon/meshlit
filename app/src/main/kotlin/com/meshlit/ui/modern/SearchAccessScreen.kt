@@ -42,7 +42,7 @@ import kotlinx.coroutines.*
                 if(!com.meshlit.BuildProfile.coreCandidate) {
                 Text("Internet search",style=MaterialTheme.typography.titleLarge)
                 Row{Text("Internet search",Modifier.weight(1f));Switch(access.webEnabled,{value->action{service.access.saveHuman(service.access.state.value.copy(webEnabled=value))}},enabled=!busy,modifier=Modifier.testTag("search-web-access"))}
-                Text("Off by default. Queries go to api.search.brave.com when you tap Search web or an authorized agent invokes web_search. Your whole chat is not uploaded by this adapter. Results contain source URLs and snippets; opening a page or using the separate crawler may send data to that host.")
+                Text("Off by default. Queries go to api.search.brave.com when a Brave key is stored, or html.duckduckgo.com without a key, when you tap Search web or an authorized agent invokes web_search. Your whole chat is not uploaded by this adapter. Results contain source URLs and snippets; opening a page or using the separate crawler may send data to that host.")
                 Row{Text("Allow agents to use Internet search",Modifier.weight(1f));Switch(access.agentWeb,{value->action{service.access.saveHuman(service.access.state.value.copy(agentWeb=value))}},enabled=!busy && access.webEnabled,modifier=Modifier.testTag("search-agent-web"))}
                 Text("Requires your Internet switch, this agent grant and each chat's web tools grant. Agents can pause/resume their search through search_access only within these saved grants; they cannot grant access or change the API key.")
                 if(access.agentWebPaused) {Text("Agent Internet search is paused");TextButton(enabled=!busy,onClick={action{service.access.saveHuman(service.access.state.value.copy(agentWebPaused=false))}}){Text("Resume within current grants")}}
@@ -50,7 +50,7 @@ import kotlinx.coroutines.*
                 OutlinedTextField(key,{key=it.take(512)},Modifier.fillMaxWidth().testTag("search-api-key"),label={Text("Brave Search API key")},visualTransformation=PasswordVisualTransformation(),singleLine=true,supportingText={Text(if(hasKey) "A key is stored; leave blank to retain it" else "No key stored")})
                 Row{Button(enabled=!busy && key.isNotBlank(),onClick={action{service.saveKeyHuman(key);key="";message="Key stored in Android encrypted storage"}}){Text("Save API key")}
                     TextButton(enabled=!busy && hasKey,onClick={action{service.deleteKeyHuman();message="API key deleted"}}){Text("Delete key")}}
-                Text("A provider account/API key is required and may incur charges. No account is created or bundled. Keys are encrypted on this device, used only with the fixed Brave API origin and excluded from search results and exports.")
+                Text("DuckDuckGo works without an API key. Optional Brave search requires a provider account/API key and may incur charges. No account is created or bundled. Keys are encrypted on this device, used only with the fixed Brave API origin and excluded from search results and exports.")
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 } else Text("Core candidate uses offline human search. Internet and agent tools remain in Experimental.")
                 Text("Articles",style=MaterialTheme.typography.titleLarge)

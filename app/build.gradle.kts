@@ -313,6 +313,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    // Legacy feature modules still use Material 2; share the selected readable palette.
+    implementation("androidx.compose.material:material")
     // V2 UI — `currentWindowAdaptiveInfo` lives in `material3-adaptive`,
     // `WindowWidthSizeClass` lives in `androidx.window.core`. Both
     // are required by `MeshlitAppV2.kt` to branch the drawer between
@@ -398,6 +400,7 @@ dependencies {
     // without spinning up an emulator.
     testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.runanywhere.sdk)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -497,3 +500,5 @@ androidComponents.onVariants { variant ->
 androidComponents.beforeVariants(androidComponents.selector().withBuildType("productionCandidate")) { variant ->
     checkNotNull(variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]).enable = true
 }
+
+android.sourceSets.getByName("main").assets.srcDir(rootProject.file("shared-workspace/src/jvmMain/resources"))

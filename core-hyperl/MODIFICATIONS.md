@@ -19,3 +19,5 @@ OpenJDK, OpenCL/Metal runtime bridges, vendor SDKs or CUDA/HIP executors. Preser
 upstream NOTICE identifies that upstream distribution's components; it does not
 mean every component is included in Android. This module performs preprocessing
 and encrypted datasets, not LLM inference or distributed model execution.
+
+2026-11-02: Kotlin CPU elementwise steps use bounded coroutine workers for vectors of at least 8,192 elements. Ordered sums remain sequential; per-step barriers preserve graph dependencies. Pinned C99/JNI kernels remain unchanged. Android wrapper shares the adaptive heavy-work budget.

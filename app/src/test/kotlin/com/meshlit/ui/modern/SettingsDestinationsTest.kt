@@ -32,7 +32,8 @@ class SettingsDestinationsTest {
         assertTrue(advanced.size>10)
         assertTrue(basic.intersect(advanced).isEmpty())
         assertEquals(SettingsDestinations.all.map{it.id}.toSet(),basic+advanced)
-        assertTrue("rewards" in advanced)
+        assertFalse("rewards" in advanced)
+        assertTrue(com.meshlit.BuildProfile.retiredRoutes.intersect(basic+advanced).isEmpty())
         assertTrue("hyperl" in advanced)
     }
     @Test fun everyVisibleDestinationHasExactlyOneCategoryAndRemainsReachable(){

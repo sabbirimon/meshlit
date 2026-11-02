@@ -1,0 +1,24 @@
+{
+  "status": "passed-one-real-voice-turn",
+  "liveConversationTested": true,
+  "liveConversationPassed": true,
+  "completedTurns": 1,
+  "recognizedCharacters": 17,
+  "replyCharacters": 28,
+  "error": null,
+  "microphoneAudioSaved": false,
+  "providerTested": false,
+  "phaseDurationsMs": {
+    "Stopped": 475,
+    "Preparing speech adapters": 10557,
+    "Listening": 4542,
+    "Transcribing": 2522,
+    "Thinking": 24100,
+    "Preparing voice": 1816,
+    "Speaking": 2768
+  },
+  "ownerConfirmedCorrectAudibleAnswer": true,
+  "ownerConfirmedSpoke": true,
+  "testWallSeconds": 55.58,
+  "captureEndToPlaybackStartMs": 28438
+}

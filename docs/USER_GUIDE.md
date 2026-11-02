@@ -1,6 +1,6 @@
 # Meshlit full app guide and configuration tutorial
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -8,6 +8,13 @@ Current resource sharing, sync modes and health controls are described in the
 [detailed manual](USER_MANUAL.md#share-resources-with-external-clients) and
 [open-resource architecture](OPEN_RESOURCE_NETWORK.md). Automatic coordinator
 takeover, commercial settlement and universal WAN sharding remain open.
+
+**Illustrated walkthrough (2026-11-02):** open the [20-chapter visual guide](visual-guide.html)
+for numbered instructions, seven labeled screenshots, four vector graphics,
+expected results and troubleshooting. The offline Guide and tutorial source
+includes the same walkthrough before the extended feature reference. Its
+Tailscale chapter distinguishes the verified Samsung 4G tunnel from application
+pairing and distributed execution, which have separate acceptance gates.
 
 
 See the [current detailed user manual](USER_MANUAL.md) for the desktop workbench, project memory, companion setup, settings navigation and troubleshooting. The feature guide below retains the wider Android/Studio reference.
@@ -135,6 +142,22 @@ a native capability adapter reporting local LLM inference unavailable. This is
 not an Android APK. No DevEco/NDK/HAP/device test has passed here. Advanced Android
 services, agents, SSH/VM and federation are not automatically available in the new
 clients. See docs/MULTIPLATFORM_NEXT.md for setup and qualification gates.
+
+## Optional Ollama and LM Studio hosts — 2026-11-02
+
+Android Settings → Model connections now has **Connect Ollama host** and **Connect
+LM Studio host**. Enter the host's authenticated HTTPS API base, or a tunnel ending
+on this phone's loopback, refresh the model catalog and enable the chosen profile.
+The desktop's `127.0.0.1` address is not the phone's address. Inference runs on that
+host. Keep phone-local inference selected for offline use.
+
+Studio Models offers named **Ollama** and **LM Studio** sources using their existing
+OpenAI-compatible APIs. Defaults are `http://127.0.0.1:11434/v1` and
+`http://127.0.0.1:1234/v1`. Ollama does not enforce placeholder API keys on its normal
+local server; remote use needs an authenticated HTTPS proxy or tunnel. Current
+LM Studio hosting excludes Intel Macs; Ollama on Intel Mac is CPU only. Neither
+connection installs an Android engine or automatically combines RAM/GPU resources.
+See [platform decision and verification](LOCAL_INFERENCE_HOSTS_2026-11-02.md).
 
 ## First-run walkthrough
 
@@ -315,6 +338,8 @@ Task manager supports planning, task/subtask organization, priorities/tags/dates
 To stop one running job, open **Task manager → Operations** and tap **Stop** on its row. Use **Select active → Stop selected** for several. This requests local cancellation; it cannot reverse a completed provider charge or remote command. Active jobs have no safe pause/resume checkpoint, so the dashboard labels pause unavailable and Retry creates a new attempt. For an immediate instance-wide stop, tap **Whole-app emergency stop** to open Operations, then **Emergency stop all managed operations**. That also closes supported delegated sessions but is local to this device.
 
 Human and agent control are separate. Configure saved delegation per scope, then per-provider/host/device/environment controls where applicable. Credential/policy edits remain human-only. Root remains human-only; VM activation and Android autonomy require their own saved opt-ins.
+
+**Let agents talk to each other:** On Android, open **Agents → Agent teams** and choose **Agent conversation**. In Studio, open **Agent teams** and choose the same control. Choose the members and model sources, enter a task and start the team. The conversation shows who sent each task and which request each reply answers. Pause holds new calls after active calls finish; Stop cancels the run. Approve remote model sources separately before selecting them. These are model-analysis tasks; phone actions and other tools keep their own permissions. Check the actual messages and answer: small models can skip requested workflow steps or return incorrect results.
 
 **Create an agent:** Open **Agents** from the drawer, select a currently loaded local model or a saved agent-approved online profile, name the agent and add an optional instruction. New profiles start disabled. Enable a profile, enter a task and run it as a typed model-generation job; the same screen can launch several selected profiles in parallel. A profile is a job template, not an independent background daemon. Its model scope still needs the separate global delegation, and it contains no device, tool or credential grant. Disable or delete the profile to stop future launches; cancel an already running job in Task manager.
 

@@ -110,4 +110,13 @@ class LocalToolLoopTest {
         assertEquals(listOf("https://example.com/article"),result.sources)
     }
 
+    @Test fun explicitPhoneTaskCannotFinishWithoutAnActualToolAttempt()=runBlocking {
+        var calls=0
+        try {
+            LocalToolLoop({answer},{calls++;McpToolResult.Text("unused")},{},requireFirstTool=true)
+                .run("Open the browser app",listOf(descriptor()))
+            fail("A zero-call refusal must not be a completed phone action")
+        } catch(e:IllegalStateException) {assertTrue(e.message!!.contains("No action was taken"))}
+        assertEquals(0,calls)
+    }
 }

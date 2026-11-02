@@ -46,7 +46,7 @@ internal class ResourceReader {
                 "${power.name}: ${"%.0f".format(power.remainingCapacityPercent * 100)}% · ${if (power.isCharging) "charging" else "not charging"} · " +
                     (if (power.powerUsageRate > 0 && power.powerUsageRate.isFinite()) "%.2f W reported".format(power.powerUsageRate / 1000) else "power sensor unavailable")
             } }.getOrDefault(emptyList()),
-            runCatching { info.hardware.graphicsCards.map { "${it.name} · hardware-reported VRAM ${formatMemory(it.vRam)} · inference driver not qualified here" } }.getOrDefault(emptyList()))
+            runCatching { info.hardware.graphicsCards.map { "${it.name} · hardware-reported VRAM ${if(it.vRam>0)formatMemory(it.vRam) else "unavailable"} · inference driver not qualified here" } }.getOrDefault(emptyList()))
     }
 }
 internal fun formatMemory(bytes: Long) = if (bytes < 0) "unknown" else "%.2f GiB".format(bytes / 1073741824.0)

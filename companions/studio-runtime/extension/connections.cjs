@@ -12,12 +12,13 @@ function endpoint(text) {
 }
 const saved=c=>c.globalState.get('meshlit.connections',[]);
 async function addConnection(context, requestedService, sourceKind) {
- const service=requestedService||await vscode.window.showQuickPick(['OmniRoute','FreeLLMAPI','OpenRouter','Hugging Face','OpenAI','Local/distributed server','Other OpenAI-compatible'],{title:'Add model connection'});if(!service)return;
- const defaults={'OmniRoute':'http://127.0.0.1:20128/v1','FreeLLMAPI':'http://127.0.0.1:3001/v1','OpenRouter':'https://openrouter.ai/api/v1','Hugging Face':'https://router.huggingface.co/v1','OpenAI':'https://api.openai.com/v1'};
+ const service=requestedService||await vscode.window.showQuickPick(['Ollama','LM Studio','Strata','OmniRoute','FreeLLMAPI','OpenRouter','Hugging Face','OpenAI','Local/distributed server','Other OpenAI-compatible'],{title:'Add model connection'});if(!service)return;
+ const defaults={'Ollama':'http://127.0.0.1:11434/v1','LM Studio':'http://127.0.0.1:1234/v1','Strata':'http://127.0.0.1:8080/v1','OmniRoute':'http://127.0.0.1:20128/v1','FreeLLMAPI':'http://127.0.0.1:3001/v1','OpenRouter':'https://openrouter.ai/api/v1','Hugging Face':'https://router.huggingface.co/v1','OpenAI':'https://api.openai.com/v1'};
  if(service==='FreeLLMAPI'){
   const kind=await vscode.window.showQuickPick(['Desktop app','Server / Docker'],{title:'FreeLLMAPI installation'});if(!kind)return;
   if(kind==='Desktop app')defaults.FreeLLMAPI='http://127.0.0.1:31415/v1';
  }
+ if(service==='Ollama'||service==='LM Studio')await vscode.window.showInformationMessage(service==='Ollama'?'Ollama ignores API keys by default. Keep its server on loopback; use an authenticated tunnel or HTTPS proxy for remote access. Choose a local model for host inference; this server can also offer cloud models.':'Enable the LM Studio server on a supported host. Keep local HTTP on loopback; use authentication and HTTPS or an authenticated tunnel for remote access. Intel Macs are not currently supported by LM Studio.');
  const input=await vscode.window.showInputBox({title:service+' API endpoint',value:defaults[service]||'',prompt:'Your running OpenAI-compatible endpoint. No service is installed automatically.'});if(!input)return;
  const url=endpoint(input);
  const token=await vscode.window.showInputBox({title:service+' API key',password:true,prompt:'Stored in editor SecretStorage, bound to this connection. Leave empty only for an unauthenticated loopback service.'});if(token===undefined)return;
@@ -36,7 +37,7 @@ async function addConnection(context, requestedService, sourceKind) {
   const rates=await vscode.window.showInputBox({title:'Optional reviewed USD prices per million tokens',prompt:'input,output (for example 0.20,0.80). Leave blank for unknown. Estimates are not provider billing caps.'});
   if(rates){const parts=rates.split(',').map(Number);if(parts.length!==2||parts.some(x=>!Number.isFinite(x)||x<0||x>100000))throw Error('Invalid prices');pricing={inputRate:Math.round(parts[0]*1e9),outputRate:Math.round(parts[1]*1e9),checkedAt:Date.now()};}
  }
- const id=crypto.randomUUID(), profile={id,kind:'compatible',service,sourceKind:sourceKind||'cloud',endpoint:url,model,gateway,...pricing};
+ const id=crypto.randomUUID(), profile={id,kind:'compatible',service,sourceKind:sourceKind||(service==='Ollama'?'ollama':service==='LM Studio'?'lmstudio':'cloud'),endpoint:url,model,gateway,...pricing};
  await context.secrets.store('meshlit.model.'+id,token);
  await context.globalState.update('meshlit.connections',[...saved(context),profile]);
  await context.globalState.update('meshlit.catalog.'+id,models);
@@ -57,7 +58,7 @@ async function chooseConnection(context, preferredId) {
  }
  const allowed=await vscode.window.showWarningMessage(`Send this conversation and approved file content to ${profile.endpoint} using ${profile.model}? Charges may apply. Unknown/gateway prices stay unknown; existing budget rules may block the request.`,{modal:true},'Use connection');
  if(allowed!=='Use connection')return;
- return {...profile,token:await context.secrets.get('meshlit.model.'+profile.id)||'',label:require('./model-sources.cjs').label(profile)+' · '+profile.model};
+ return {...profile,effortSupport:context.globalState.get('meshlit.effortSupport.'+profile.id),token:await context.secrets.get('meshlit.model.'+profile.id)||'',label:require('./model-sources.cjs').label(profile)+' · '+profile.model};
 }
 async function addMcp(context) {
  const type=await vscode.window.showQuickPick(['stdio','http'],{title:'MCP transport: installed local server or Streamable HTTP'});if(!type)return;

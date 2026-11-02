@@ -23,4 +23,5 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation("com.squareup.okhttp3:okhttp-tls:${libs.versions.okhttp.get()}")
 }

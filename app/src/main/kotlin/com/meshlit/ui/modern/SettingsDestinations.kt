@@ -8,17 +8,17 @@ data class SettingsDestination(val id:String,val title:String,val description:St
 
 /** Purpose-based navigation, independent of permission and runtime availability. */
 enum class SettingsGroup(val title:String,val description:String,val destinations:Set<String>) {
-    MODELS("Models, voice and media", "Models, speech, online providers and numerical tools", setOf(
+    MODELS("Models & voice", "Models, speech, online providers and numerical tools", setOf(
         "models","voice-settings","media","providers","huggingface","router","behavior","training","acceleration","hyperl","colibri","rag","usage")),
-    AGENTS("Agents, memory and tasks", "Remember preferences, review jobs and connect approved tools", setOf(
-        "personalization","tasks","agents","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
+    AGENTS("Agents & memory", "Remember preferences, review jobs and connect approved tools", setOf(
+        "personalization","tasks","connected-capabilities","agent-catalog","agent-teams","agents","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
     CONNECTIONS("Devices and connections", "Pair devices, manage transports and inspect real capabilities", setOf(
         "devices","network","vpn","sharding","radar","host-map","external-services","web-bridge","device-dashboard","meshchat","remotecommands","p2p","gibberlink","external","ssh","peers")),
-    PRIVACY("Privacy and access", "Permissions, network rules, identity and data policy", setOf(
+    PRIVACY("Privacy & permissions", "Permissions, network rules, identity and data policy", setOf(
         "securityprivacy","guardrails","permissions","firewall","identity-recovery","crypto","legal","search")),
-    TOOLS("System and developer tools", "Files, diagnostics, optional runtimes and host services", setOf(
+    TOOLS("System & developer tools", "Files, diagnostics, optional runtimes and host services", setOf(
         "files","ide","device","resources","power","monitor","operations","recovery","runtime","commands","packages","securitylab","termux","crawler","cloud","audit","logs","rewards")),
-    PREFERENCES("App preferences and help", "Appearance, shortcuts, saved configuration and guidance", setOf(
+    PREFERENCES("App & help", "Appearance, shortcuts, saved configuration and guidance", setOf(
         "dashboards","appearance","notifications","menu-layout","configuration","help","about"))
 }
 
@@ -39,7 +39,8 @@ object SettingsDestinations {
         SettingsDestination("deepseek-harness","DeepSeek Harness","Connect to your host agent workspace",keywords="DeepSeek harness agents plugins remote IDE"),
         SettingsDestination("tools-automation","Tools and automation","MCP registry, Gateway routes, agent jobs and reviewed hooks",keywords="MCP A2A agents tool registry hooks scripts"),
         SettingsDestination("mcp-catalog","MCP connections","Browse common servers and enroll an approved HTTPS route",keywords="MCP filesystem fetch memory GitHub Playwright custom server tools"),
-        SettingsDestination("rag","RAG settings","Select local or remote retrieval mode; source connectors remain experimental",keywords="documents files search retrieval knowledge base vector embeddings local remote"),
+        SettingsDestination("connected-capabilities","Connected capabilities","Unified agent roles, memory and phone automation adapters",keywords="OpenViking Artemis Agency Agents context memory skills Google phone automation Strata"),
+        SettingsDestination("rag","Knowledge library","Import sources and choose what your model can recall",keywords="RAG documents files search retrieval knowledge base vector embeddings local remote"),
         SettingsDestination("huggingface","Hugging Face dashboard","Verify account access, discover GGUF files and configure hosted inference",keywords="HF Hub token login models free paid gated download inference credits"),
         SettingsDestination("agent-registry","Agent registry","Saved agents, model assignments and registered tools",keywords="agents profiles MCP inventory"),
         SettingsDestination("agent-logs","Agent logs","Agent and MCP diagnostics with export",keywords="agent MCP jobs audit history errors"),
@@ -70,6 +71,8 @@ object SettingsDestinations {
         SettingsDestination("power","Power and costs","Battery readings, download policies and electricity estimates",keywords="meter current energy charging expense thermal"),
         SettingsDestination("external","External devices and OTG","USB discovery, permissions and removable storage",keywords="gpu USB hardware peripherals drives NAS keyboard camera"),
         SettingsDestination("acceleration","Acceleration","Actual backend availability, CPU limits and platform roadmap",keywords="CUDA Vulkan OpenCL OpenGL Metal ROCm QNN CANN Intel NVIDIA AMD Huawei"),
+        SettingsDestination("agent-catalog","Agent role library","Search and adapt Agency Agents role templates",keywords="agency agent selection roles specialists"),
+        SettingsDestination("agent-teams","Agent teams","Planner, worker and reviewer teams across approved local and remote devices",keywords="multi agent teams local remote cluster"),
         SettingsDestination("agents","Agent management","Delegated permissions, real jobs and registered tools",keywords="autonomous scopes tasks MCP"),
         SettingsDestination("ssh","SSH nodes and connections","Key-authenticated inbound node commands and pinned outbound connections",keywords="server LAN internet VM sandbox agent SSH NAS terminal external inter device"),
         SettingsDestination("firewall","Network rules","Persisted Meshlit listener firewall and network status",keywords="ports security IP allow deny"),

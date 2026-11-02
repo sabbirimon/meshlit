@@ -14,7 +14,9 @@ internal fun encodeSearchArticles(records:List<SearchArticle>):ByteArray=Json.en
 }
 enum class SearchCategory(val label:String) { APP("App"), CHATS("Chats"), ARTICLES("Articles"), DEVICES("Devices"), WEB("Web") }
 data class AppSearchResult(val id:String,val title:String,val detail:String,val category:SearchCategory,
-    val destination:String?=null,val conversationId:String?=null,val messageId:String?=null,val articleId:String?=null)
+    val destination:String?=null,val conversationId:String?=null,val messageId:String?=null,val articleId:String?=null,
+    val fullText:String?=null,val sourcePosition:String?=null,val textMatches:TextMatches?=null,
+    val totalResults:Int=0,val categoryTotals:Map<SearchCategory,Int> = emptyMap())
 data class SearchOption(val title:String,val detail:String,val destination:String,val keywords:String="")
 
 /** Current connected screens only. Secret stores, arbitrary disk paths and remote settings are never scanned. */
@@ -51,13 +53,15 @@ object AppSearchIndex {
         models.take(200).filter{matches(query,"${it.name} ${it.source} ${it.phase} ${it.metadata?.quantization.orEmpty()}")}.forEach{out+=AppSearchResult("model:${it.id}",it.name,"Model library · ${it.phase} · ${it.source}",SearchCategory.APP,"models")}
         chats.take(40).forEach{chat->
             if(matches(query,chat.title)) out+=AppSearchResult("chat:${chat.id}",chat.title,"Conversation title",SearchCategory.CHATS,conversationId=chat.id)
-            chat.messages.takeLast(100).filter{matches(query,it.text)}.take(20).forEach{message->out+=AppSearchResult("message:${message.id}",chat.title,"${message.role}: ${snippet(message.text,query)}",SearchCategory.CHATS,conversationId=chat.id,messageId=message.id)}
+            chat.messages.withIndex().toList().takeLast(100).filter{matches(query,it.value.text)}.forEach{(index,message)->out+=AppSearchResult("message:${message.id}",chat.title,"${message.role}: ${snippet(message.text,query)}",SearchCategory.CHATS,conversationId=chat.id,messageId=message.id,fullText=message.text,sourcePosition="Message ${index+1} · ${message.role}")}
         }
-        articles.take(20).filter{matches(query,"${it.title}\n${it.text}")}.forEach{out+=AppSearchResult("article:${it.id}",it.title,snippet(it.text,query),SearchCategory.ARTICLES,articleId=it.id)}
+        articles.take(20).filter{matches(query,"${it.title}\n${it.text}")}.forEach{out+=AppSearchResult("article:${it.id}",it.title,snippet(it.text,query),SearchCategory.ARTICLES,articleId=it.id,fullText=it.text)}
         directory.devices.filter{it.state==EnrollmentState.APPROVED}.take(1000).forEach{device->
             val text="${device.name} ${device.kind} ${device.access.joinToString()} ${device.requestedRoles.joinToString()} settings"
             if(matches(query,text)) out+=AppSearchResult("device:${device.id}",device.name,"Saved access: ${device.access.joinToString()} · ${device.kind}. Live remote settings are not fetched.",SearchCategory.DEVICES,"network")
         }
-        return out.take(200)
+        val totals=out.groupingBy{it.category}.eachCount()
+        return out.take(200).map { row -> row.copy(totalResults=out.size,categoryTotals=totals,
+            textMatches=textSearchMatches(row.fullText ?: "${row.title}\n${row.detail}",query,words=true,maxPositions=8)) }
     }
 }

@@ -183,6 +183,7 @@ import java.io.File
         item { TextButton(onClick=onBack) { Text("Back to settings") };Text("Device management",style=MaterialTheme.typography.headlineSmall)
             Text("Review each relationship before you approve, revoke or stop it. Discovery, relay membership, endpoint trust, layer workers and peer chat have separate permissions.")
             error?.let{Text(it,color=MaterialTheme.colorScheme.error)};notice?.let{Text(it,color=MaterialTheme.colorScheme.primary)} }
+        item { DeviceConnectionAccessPanel(onOpen) }
         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Discovery · $discoveryMode",style=MaterialTheme.typography.titleMedium)
             Text("$currentDiscovered current network discoveries · ${if(scan.scanning) "scanning" else "paused"}. Advertisements are unverified.")

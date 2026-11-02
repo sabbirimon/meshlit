@@ -215,6 +215,28 @@ open class SettingsRepository(private val context: Context?, private val storeOv
         }
     }
 
+    /** Custom search endpoint URL */
+    val webSearchCustomEndpointFlow: Flow<String?> =
+        store.data.map { it[Keys.webSearchCustomEndpoint] }
+
+    suspend fun setWebSearchCustomEndpoint(endpoint: String?) {
+        store.edit { prefs ->
+            if (endpoint.isNullOrBlank()) prefs.remove(Keys.webSearchCustomEndpoint)
+            else prefs[Keys.webSearchCustomEndpoint] = endpoint.trim()
+        }
+    }
+
+    /** Custom search auth header name (default: Authorization) */
+    val webSearchCustomHeaderFlow: Flow<String?> =
+        store.data.map { it[Keys.webSearchCustomHeader] }
+
+    suspend fun setWebSearchCustomHeader(headerName: String?) {
+        store.edit { prefs ->
+            if (headerName.isNullOrBlank()) prefs.remove(Keys.webSearchCustomHeader)
+            else prefs[Keys.webSearchCustomHeader] = headerName.trim()
+        }
+    }
+
     // --- User-supplied LLM endpoint -------------------------------------
     //
     // The agent loop reads these flows on every prompt so the user
@@ -1030,6 +1052,8 @@ open class SettingsRepository(private val context: Context?, private val storeOv
         val loopMode = stringPreferencesKey("cloud.loop_mode")
         val webSearchVendor = stringPreferencesKey("cloud.web_search_vendor")
         val webSearchCx = stringPreferencesKey("cloud.web_search_cx")
+        val webSearchCustomEndpoint = stringPreferencesKey("cloud.web_search_custom_endpoint")
+        val webSearchCustomHeader = stringPreferencesKey("cloud.web_search_custom_header")
         val llmEndpoint = stringPreferencesKey("cloud.llm_endpoint")
         val llmModel = stringPreferencesKey("cloud.llm_model")
         val llmApiKeyProviderId = stringPreferencesKey("cloud.llm_api_key_provider_id")

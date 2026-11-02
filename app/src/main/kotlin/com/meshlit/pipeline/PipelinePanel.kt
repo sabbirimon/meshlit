@@ -31,6 +31,8 @@ import kotlinx.coroutines.*
     var fingerprint by remember{mutableStateOf("")};var token by remember{mutableStateOf("")}
     var localPairing by remember{mutableStateOf<String?>(null)};var error by remember{mutableStateOf<String?>(null)}
     var delegated by remember{mutableStateOf(host.agentControlAllowed())}
+    var internetWorker by remember{mutableStateOf(host.workerInternetAllowed())}
+    var confirmInternet by remember{mutableStateOf(false)}
     var selected by remember{mutableStateOf("")}
     LaunchedEffect(host){withContext(Dispatchers.IO){group=host.activeGroup();groups=host.groups();peers=host.groupPeers()};assessments=host.assessGroup()}
     fun action(block:suspend()->Unit){scope.launch{try{error=null;block()}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}}}
@@ -42,6 +44,11 @@ import kotlinx.coroutines.*
         Text("The coordinator keeps the complete GGUF on disk and uploads tensors to workers. This is layer offload; large-model and physical-phone verification are still required.",style=MaterialTheme.typography.bodySmall)
         if(!host.available()) Text("Native pipeline runtime is not packaged for this device ABI.")
         Text("Worker: ${if(status.worker) "Listening with TLS on ${host.publicPort}" else "Off"} · Coordinator: ${if(status.coordinator) "Active" else "Off"}")
+        Row {
+            Text("Allow authenticated VPN / Internet coordinators",Modifier.weight(1f))
+            Switch(internetWorker,{enabled->if(enabled) confirmInternet=true else action{host.setWorkerInternetAllowed(false);internetWorker=false}},enabled=!status.worker && !status.starting)
+        }
+        Text("Off keeps the private-LAN address policy. On authenticates the pairing token before applying paired trust; an allowed TCP 50551 rule is still required. Stop the worker before changing access. This does not grant other app or agent permissions.",style=MaterialTheme.typography.bodySmall)
         Row(horizontalArrangement=Arrangement.spacedBy(T.small)) {
             OutlinedButton(enabled=host.available() && !status.starting,onClick={action{if(status.worker) host.stopWorker() else host.startWorker()}}) {
                 Text(if(status.worker) "Stop worker" else "Start worker") }
@@ -104,6 +111,10 @@ import kotlinx.coroutines.*
         error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
     }},confirmButton={TextButton(onClick={action{val selected=newGroup.trim();peers=withContext(Dispatchers.IO){host.setActiveGroup(selected)};group=selected;groups=host.groups();assessments=emptyList();creatingGroup=false;newGroup=""}}){Text("Create")}},
         dismissButton={TextButton(onClick={creatingGroup=false;newGroup=""}){Text("Cancel")}})
+    if(confirmInternet) AlertDialog(onDismissRequest={confirmInternet=false},title={Text("Allow remote coordinators?")},
+        text={Text("Coordinators outside the private LAN, including VPN peers, may authenticate to this worker when TCP 50551 is allowed. Only share its private pairing QR with trusted coordinators: it authorizes the experimental native RPC runtime. Certificate pinning, token authentication and port rules remain required. Stop worker disconnects active clients. This grant stays on until you turn it off.")},
+        confirmButton={TextButton(onClick={action{host.setWorkerInternetAllowed(true);internetWorker=true;confirmInternet=false}}){Text("Allow authenticated coordinators")}},
+        dismissButton={TextButton(onClick={confirmInternet=false}){Text("Cancel")}})
     if(add) AlertDialog(onDismissRequest={add=false;token=""},title={Text("Approve worker")},text={Column {
         Text("Keep the worker running. Enter its address, full certificate hash and private token. Compare the short check code on both devices before approval.")
         OutlinedTextField(address,{address=it},label={Text("Host address (TLS port 50551)")})

@@ -1,0 +1,141 @@
+{
+  "date": "2026-11-02",
+  "sourceCommit": "d4361ab",
+  "workingTreeChangesIncluded": true,
+  "androidBuild": "passed: both debug variants, 309 unit tests per flavor, V2 instrumentation and both lints; final performance build 16m43s; visible test harness refresh 36s",
+  "studioBuild": "passed: JVM tests and distributable; portable candidate separately packaged and relocated",
+  "studioWorkbenchTests": {
+    "passed": 79,
+    "failed": 0
+  },
+  "studioPythonRuntimeTests": {
+    "passed": 21,
+    "failed": 0,
+    "includes": "SDK, connector, runtime, streaming and 3 native packaging tests"
+  },
+  "nativeAppAccessHelper": "compiled and codesign verification passed",
+  "searchRegressionTests": {
+    "passed": 3,
+    "scope": "Python custom GET/POST and verification-challenge reporting"
+  },
+  "liveSearch": "DuckDuckGo returned HTTP 202 verification challenge for linux kernel; not qualified",
+  "androidDevice": "Samsung SM-A207F / Android 11",
+  "newApkInstalled": true,
+  "portableStudioQualified": "runtime and signatures passed after physical relocation; GUI access denied; not notarized",
+  "liveVoiceQualified": true,
+  "logs": {
+    "android": "/tmp/meshlit-resume-20261102.log",
+    "studio": "/tmp/meshlit-studio-build-20261102-retry.log",
+    "node": "/tmp/meshlit-studio-node-20261102.log",
+    "python": "/tmp/meshlit-studio-python-20261102.log",
+    "allLibraries": "/tmp/meshlit-all-core-tests-20261102.log",
+    "relocation": "/tmp/meshlit-relocation-20261102.log",
+    "phoneExpanded": "/tmp/meshlit-phone-expanded-20261102.log",
+    "phoneFinal": "/tmp/meshlit-phone-final-20261102.log",
+    "phoneHyperlUi": "/tmp/meshlit-phone-hyperl-ui-20261102.log",
+    "androidFinal": "/tmp/meshlit-performance-final-build-20261102-retry.log",
+    "visibleVoiceHarness": "/tmp/meshlit-visible-voice-test-build-20261102.log",
+    "liveVoiceAfter": "/tmp/meshlit-phone-live-voice-after-20261102.log",
+    "pythonFinal": "/tmp/meshlit-studio-python-final-20261102-retry.log",
+    "studioFinalRelocation": "/tmp/meshlit-relocation-final-20261102.log"
+  },
+  "androidUnitTests": {
+    "androidLibraryPassed": 1031,
+    "androidLibrarySkipped": 4,
+    "appPassedPerFlavor": 309,
+    "appFlavorCount": 2,
+    "peerSecurityJvmPassed": 3,
+    "failures": 0,
+    "errors": 0,
+    "note": "Supersedes earlier overlapping 869-test subset; do not add that subset again."
+  },
+  "androidLint": {
+    "lint-results-meshlitV1Debug.xml": {
+      "Warning": 396,
+      "Hint": 19
+    },
+    "lint-results-meshlitV2Debug.xml": {
+      "Warning": 396,
+      "Hint": 19
+    }
+  },
+  "voiceLatencyImproved": {
+    "preparationBeforeMs": 19061,
+    "preparationAfterMs": 10557,
+    "captureEndToPlaybackBeforeMs": 29998,
+    "captureEndToPlaybackAfterMs": 28438,
+    "thinkingAfterMs": 24100
+  },
+  "studioJvmTests": {
+    "passed": 127,
+    "skipped": 1,
+    "failed": 0,
+    "skip": "Physical phone SSH fixture is not configured"
+  },
+  "additionalTests": {
+    "crawlerPassed": 9,
+    "nativePackagingPassed": 3,
+    "featureInventory": 98,
+    "settingsRoutes": 73,
+    "operationInventory": 38,
+    "moduleInventory": 40
+  },
+  "phoneChecks": {
+    "settingsNavigation": "passed",
+    "chatToolsSettings": "passed",
+    "offlineVoice": "passed",
+    "liveVoice": "before and after passed; owner confirmed asking the question and hearing the correct answer",
+    "searchSettings": "passed",
+    "chatPresentation": "passed",
+    "replyRenderer": "passed",
+    "vpnUsageContracts": "2 passed",
+    "hyperlNativeStorage": "passed",
+    "knowledgeLibrary": "passed",
+    "gibberLinkNativeCodec": "2 passed; no over-air claim",
+    "hyperlEditor": "passed after owner opt-in and scrolling correction; /tmp/meshlit-phone-benchmark-baseline-20261102.log",
+    "voiceStartupBenchmark": "3 real startup/Stop cycles passed; 9003, 3265, 3181 ms to Listening"
+  },
+  "remainingGates": [
+    "Desktop visual inspection: computer-control access denied",
+    "Physical Studio-to-phone SSH/pairing/reconnect: no approved SSH fixture configured",
+    "Live DuckDuckGo: upstream verification challenge",
+    "External providers, optional companions, additional phones, GPU, root/VM and peripheral workflows not fully exercised",
+    "Legacy audit-ui-wiring.sh reports six findings (three files with non-lifecycle collection, one counted twice, plus two obsolete Settings wrapper assertions)",
+    "Voice startup improved; model/chat generation still ~24 seconds in the confirmed turn",
+    "Samsung separate native-local engine absent from this APK; SDK benchmark passed"
+  ],
+  "studioFirstTextLatencyMs": {
+    "before": [
+      14037.03016397776,
+      6502.541138965171
+    ],
+    "after": [
+      2086.4157759933732,
+      410.74776998721063
+    ],
+    "scope": "two identical-prompt trials per version; variable generated answers; earlier visible text, not a throughput claim"
+  },
+  "phonePreferencesRestored": {
+    "startupLoading": true,
+    "usbAwake": true,
+    "chatOptions": true,
+    "hyperlOwnerOptInRetained": true
+  },
+  "artifacts": [
+    {
+      "path": "/Users/code/Documents/Codex/meshlit-unified/app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-arm64-v8a-debug.apk",
+      "bytes": 560182182,
+      "sha256": "ce6b268590dac9eab3e3930c93c5191e40c9f240a3681bb2389c09dee146d5ae"
+    },
+    {
+      "path": "/Users/code/Documents/Codex/meshlit-unified/app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+      "bytes": 560182082,
+      "sha256": "6df02f07f655c1f129adf2ca98e2a3287b251f3c291d242b8fe239578ed48566"
+    },
+    {
+      "path": "/Users/code/Documents/Codex/output/Meshlit Studio Verified 2026-11-02/Meshlit Studio.app/Contents/Resources/app/extensions/meshlit-workbench/meshlit-backend.jar",
+      "bytes": 1594776,
+      "sha256": "4a9e8f86f91ec377d474b74199154943f2856b6b4a24d8bfc7c2489c8290ff5b"
+    }
+  ]
+}

@@ -85,5 +85,6 @@ include(
     ":desktop-hyperl",
     ":desktop-ssh",
     ":desktop-engine",
+    ":desktop-device",
     ":app"
 )

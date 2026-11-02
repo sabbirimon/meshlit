@@ -84,7 +84,6 @@
         "app/src/main/kotlin/com/meshlit/ui/modern/ModernSettingsScreen.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/SettingsDestinations.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/StatusHeroCard.kt",
-        "app/src/main/kotlin/com/meshlit/ui/modern/BootLoadingGate.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/WorkspaceDashboards.kt",
         "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/DashboardDirectory.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/SettingsFeatureSection.kt",
@@ -1110,6 +1109,9 @@
       ],
       "authority": [
         "human saved grants; separate agent and per-chat selection"
+      ],
+      "limitations": [
+        "Acoustic modem UI and agent registration retired in the 2026-11-02 product simplification; historical source and data retained."
       ]
     },
     {
@@ -1302,6 +1304,58 @@
       ],
       "authority": [],
       "limits": "Local heuristic only, not antivirus or universal injection prevention; mandatory security gates stay on"
+    },
+    {
+      "id": "agent-teams",
+      "title": "Bounded user-directed and supervised autonomous agent teams",
+      "status": "source-implemented-qualification-open",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/AgentTeams.kt",
+        "app/src/main/kotlin/com/meshlit/teams/AgentTeams.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopTeams.kt",
+        "companions/studio-runtime/extension/agent-teams.cjs"
+      ],
+      "authority": [
+        "Owner-saved delegation and selected source grants"
+      ],
+      "limitations": [
+        "Current phone/Studio deployment and live service qualification remain open; see docs/CONNECTED_CAPABILITIES_2026-11-02.md."
+      ]
+    },
+    {
+      "id": "connected-context-automation",
+      "title": "Unified optional context and phone-automation adapters",
+      "status": "source-implemented-qualification-open",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/integrations/CompanionHttp.kt",
+        "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/context/ContextHub.kt",
+        "app/src/main/kotlin/com/meshlit/integrations/ConnectedServices.kt",
+        "companions/studio-runtime/extension/connected-services.cjs"
+      ],
+      "authority": [
+        "Owner-saved delegation and selected source grants"
+      ],
+      "limitations": [
+        "Current phone/Studio deployment and live service qualification remain open; see docs/CONNECTED_CAPABILITIES_2026-11-02.md."
+      ]
+    },
+    {
+      "id": "device-connection-assistance",
+      "title": "Owner-approved device connection choices and bounded contact checks",
+      "status": "source-implemented-qualification-open",
+      "sources": [
+        "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/DeviceConnectionCoordinator.kt",
+        "app/src/main/kotlin/com/meshlit/devices/DeviceConnectionHost.kt",
+        "app/src/main/kotlin/com/meshlit/ui/modern/DeviceConnectionPanel.kt",
+        "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopDeviceConnections.kt",
+        "companions/studio-runtime/extension/device-connections.cjs"
+      ],
+      "authority": [
+        "Default-off owner feature approval, exact source identity binding, existing transport grants"
+      ],
+      "limitations": [
+        "Android supports pinned SSH status, paired HTTPS status and model catalogs; Studio supports model catalogs. MCP, nearby unverified peers and address-only records remain setup-only. Physical new-workflow acceptance and seamless roaming recovery are unqualified. See docs/MULTIDEVICE_TEAM_BUILD_2026-11-02.md."
+      ]
     }
   ],
   "modules": [
@@ -1338,6 +1392,7 @@
     "core-trust",
     "core-tunnel",
     "core-users",
+    "desktop-device",
     "desktop-engine",
     "desktop-hyperl",
     "desktop-ssh",

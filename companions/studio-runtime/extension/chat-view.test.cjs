@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),vm=require(
 const {render}=require('./chat-view.cjs');
 function fixture(unlocked=true){
  const html=render('Chat <unsafe>','chat'),elements=new Map(),sent=[],listeners={};
- const element=()=>({value:'',textContent:'',children:[],handlers:{},className:'',disabled:false,append(x){this.children.push(x);},addEventListener(k,f){this.handlers[k]=f;}});
+ const element=()=>({value:'',textContent:'',children:[],handlers:{},dataset:{},className:'',disabled:false,append(x){x.parentElement=this;this.children.push(x);},setAttribute(k,v){this[k]=v;},focus(){},querySelectorAll(selector){return this.children.flatMap(child=>[...(selector==='[data-reply]'&&Object.hasOwn(child.dataset,'reply')?[child]:[]),...child.querySelectorAll(selector)]);},addEventListener(k,f){this.handlers[k]=f;}});
  const get=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
  const script=html.match(/<script nonce="[^"]+">([\s\S]*?)<\/script>/)[1];
  vm.runInNewContext(script,{acquireVsCodeApi:()=>({postMessage:m=>sent.push(m)}),document:{getElementById:get,createElement:element},window:{addEventListener:(k,f)=>listeners[k]=f}});

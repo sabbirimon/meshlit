@@ -28,34 +28,40 @@ private val tutorialSteps=listOf(
     TutorialStep("logs","Review failures and permission boundaries","Search/export logs, verify task outcomes, and enable only the agent/tool permissions you need. Never infer success from a running job, UI switch or planned capability.","logs")
 )
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun HelpTutorialScreen(back:()->Unit){
+@Composable fun HelpTutorialScreen(back:()->Unit,initialFull:Boolean=false){
     val context=LocalContext.current;val scope=rememberCoroutineScope();val prefs=remember{context.getSharedPreferences("tutorial-progress",0)}
     var read by remember{mutableStateOf(prefs.getStringSet("read",emptySet()).orEmpty().toSet())}
-    var full by remember{mutableStateOf(false)};var destination by remember{mutableStateOf<String?>(null)}
+    var full by remember{mutableStateOf(initialFull)};var destination by remember{mutableStateOf<String?>(null)}
     var query by remember{mutableStateOf("")};var web by remember{mutableStateOf<WebView?>(null)};var error by remember{mutableStateOf<String?>(null)}
     var html by remember{mutableStateOf<String?>(null)}
-    BackHandler{if(destination!=null) destination=null else if(full) full=false else back()}
+    fun navigateBack(){if(destination!=null) destination=null else if(full && !initialFull) full=false else back()}
+    BackHandler{navigateBack()}
     LaunchedEffect(full){if(full && html==null)try{html=withContext(Dispatchers.IO){context.assets.open("help/index.html").bufferedReader().use{it.readText()}}}catch(e:CancellationException){throw e}catch(_:Exception){error="Offline guide unavailable"}}
     DisposableEffect(web){val owned=web;onDispose{owned?.stopLoading();owned?.destroy()}}
     LaunchedEffect(full){if(!full)web=null}
     destination?.let{ModernSettingsScreen(initialDestination=it,onExit={destination=null});return}
-    Scaffold(topBar={TopAppBar(title={Text(if(full) "Full app guide" else "Guide and tutorial")},navigationIcon={IconButton(onClick={if(full) full=false else back()}){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding->
+    Scaffold(topBar={TopAppBar(title={Text(if(full) "Full device manual" else "Guide and tutorial")},navigationIcon={IconButton(onClick={navigateBack()}){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding->
         if(full){Column(Modifier.fillMaxSize().padding(padding)){
             OutlinedTextField(query,{query=it;web?.findAllAsync(it)},Modifier.fillMaxWidth().padding(T.small),singleLine=true,label={Text("Find in offline guide")})
             html?.let{content->AndroidView(modifier=Modifier.weight(1f).fillMaxWidth(),factory={WebView(it).apply{
                 settings.javaScriptEnabled=false;settings.allowFileAccess=false;settings.allowContentAccess=false;settings.domStorageEnabled=false;settings.blockNetworkLoads=true;setBackgroundColor(AndroidColor.WHITE)
                 webViewClient=object:WebViewClient(){override fun shouldOverrideUrlLoading(view:WebView,request:WebResourceRequest)=request.url.host!="guide.meshlit.invalid"
-                    override fun shouldInterceptRequest(view:WebView,request:WebResourceRequest)=WebResourceResponse("text/plain","UTF-8",ByteArrayInputStream(ByteArray(0)))
+                    override fun shouldInterceptRequest(view:WebView,request:WebResourceRequest):WebResourceResponse? {
+                        // The bundled guide embeds original PNGs. WebView also
+                        // intercepts data: requests; keep all network/files blocked.
+                        if(request.url.scheme=="data" && request.url.toString().startsWith("data:image/png;base64,")) return null
+                        return WebResourceResponse("text/plain","UTF-8",ByteArrayInputStream(ByteArray(0)))
+                    }
                 }
                 loadDataWithBaseURL("https://guide.meshlit.invalid/",content,"text/html","UTF-8",null);web=this
             }})} ?: LinearProgressIndicator(Modifier.fillMaxWidth())
             error?.let{Text(it)}
         }}else LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
             item{Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){Column(Modifier.padding(T.section)){
-                Text("Your private AI workspace",style=MaterialTheme.typography.headlineSmall)
-                Text("A phone first. An approved cluster when needed. Cloud and tools when you choose.")
+                Text("Device manual",style=MaterialTheme.typography.headlineSmall)
+                Text("20 illustrated chapters with offline screenshots, diagrams, configuration steps and troubleshooting for Android and Studio.")
                 Text("${read.size} of ${tutorialSteps.size} lessons marked as read. This tracks reading, not successful device/model execution.")
-                Button(onClick={full=true}){Text("Open illustrated full guide")}
+                Button(onClick={full=true}){Text("Open full illustrated manual")}
             }}}
             tutorialSteps.forEachIndexed{index,step->item{Card{Column(Modifier.padding(T.large),verticalArrangement=Arrangement.spacedBy(T.small)){
                 Text("${index+1}. ${step.title}",style=MaterialTheme.typography.titleMedium);Text(step.instruction)

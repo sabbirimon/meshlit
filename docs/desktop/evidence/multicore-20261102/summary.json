@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "device": "Samsung SM-A207F",
+  "reportedLogicalCores": 8,
+  "prompt": "Say hello.",
+  "requestedOutputTokenLimit": 16,
+  "actualGeneratedTokens": null,
+  "reasonForUnknownTokenCount": "SDK did not report actual token usage",
+  "rows": [
+    {
+      "workers": 1,
+      "observedHints": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "medianRequestMs": 7318.665831,
+      "minRequestMs": 7300.15682,
+      "maxRequestMs": 7337.012758,
+      "medianFirstTextMs": 4757.986092,
+      "medianCoreEquivalent": 1.2713393476752255,
+      "maxBatteryTemperatureC": 33.2,
+      "thermalStatuses": [
+        0
+      ],
+      "samples": 5,
+      "evidence": "samsung-sdk-1.json"
+    },
+    {
+      "workers": 2,
+      "observedHints": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "medianRequestMs": 3846.560415,
+      "minRequestMs": 3845.897238,
+      "maxRequestMs": 3859.425884,
+      "medianFirstTextMs": 2508.882447,
+      "medianCoreEquivalent": 1.780005418585749,
+      "maxBatteryTemperatureC": 33.3,
+      "thermalStatuses": [
+        0
+      ],
+      "samples": 5,
+      "evidence": "samsung-sdk-2.json"
+    },
+    {
+      "workers": 3,
+      "observedHints": [
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "medianRequestMs": 2731.594531,
+      "minRequestMs": 2714.040364,
+      "maxRequestMs": 2743.076249,
+      "medianFirstTextMs": 1779.23125,
+      "medianCoreEquivalent": 2.166990291262136,
+      "maxBatteryTemperatureC": 33.8,
+      "thermalStatuses": [
+        0
+      ],
+      "samples": 5,
+      "evidence": "samsung-sdk-foreground-3.json"
+    },
+    {
+      "workers": 4,
+      "observedHints": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "medianRequestMs": 2225.067082,
+      "minRequestMs": 2150.266197,
+      "maxRequestMs": 2515.838489,
+      "medianFirstTextMs": 1430.511771,
+      "medianCoreEquivalent": 2.3124115148655027,
+      "maxBatteryTemperatureC": 34.5,
+      "thermalStatuses": [
+        0
+      ],
+      "samples": 5,
+      "evidence": "samsung-sdk-foreground-4.json"
+    },
+    {
+      "workers": 6,
+      "observedHints": [
+        6,
+        6,
+        6,
+        6,
+        6
+      ],
+      "medianRequestMs": 1737.334687,
+      "minRequestMs": 1691.366666,
+      "maxRequestMs": 1754.266979,
+      "medianFirstTextMs": 1105.157447,
+      "medianCoreEquivalent": 2.6785714285714284,
+      "maxBatteryTemperatureC": 34.9,
+      "thermalStatuses": [
+        0
+      ],
+      "samples": 5,
+      "evidence": "samsung-sdk-foreground-6.json"
+    },
+    {
+      "workers": 8,
+      "observedHints": [
+        8,
+        8,
+        8,
+        8,
+        8
+      ],
+      "medianRequestMs": 2205.450155,
+      "minRequestMs": 2151.262708,
+      "maxRequestMs": 2262.149061,
+      "medianFirstTextMs": 1264.760885,
+      "medianCoreEquivalent": 2.9328287606433303,
+      "maxBatteryTemperatureC": 35.2,
+      "thermalStatuses": [
+        0
+      ],
+      "samples": 5,
+      "evidence": "samsung-sdk-foreground-8.json"
+    }
+  ],
+  "bestObservedWorkers": 6,
+  "limitations": [
+    "One short prompt, one model, warm requests, five samples per profile, plugged-in phone; not whole-app or voice latency.",
+    "CPU core-equivalent includes app UI/GC/profiler; active thread count is not simultaneous core occupancy.",
+    "Initial requested 3/4/6/8 profiles ran with a locked screen and were guard-limited to two workers; retained separately but excluded from this comparison.",
+    "Profiles 1/2 used the earlier CPU policy build; 3/4/6/8 used the foreground-aware policy revision reset. Inference options and SDK/model are otherwise the same."
+  ]
+}

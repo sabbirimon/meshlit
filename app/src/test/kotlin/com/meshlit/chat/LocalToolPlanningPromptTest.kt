@@ -4,6 +4,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LocalToolPlanningPromptTest {
+    @Test fun importedHashedFilenamesUseActualModelIdentityAndFastMode() {
+        val name=localToolPlanningModelName("url-824902c942c3cc73.gguf","My local model","qwen3")
+        val prompt=localToolPlanningPrompt("runanywhere",name,"Return JSON")
+        assertTrue(prompt.startsWith("<|im_start|>system\n"))
+        assertTrue(prompt.endsWith("<think>\n\n</think>\n\n"))
+        assertEquals("Qwen3 0.6B",localToolPlanningModelName("url-hash.gguf","Qwen3 0.6B",null))
+        assertEquals("url-hash.gguf",localToolPlanningModelName("url-hash.gguf",null,null))
+    }
     @Test fun knownInstructionModelsReceiveChatRolesAndAssistantPrefix() {
         for(engine in listOf("runanywhere","llama-native-local","llama-rpc-layer")) {
             val prompt=localToolPlanningPrompt(engine,"Qwen2.5 1.5B","Return JSON")

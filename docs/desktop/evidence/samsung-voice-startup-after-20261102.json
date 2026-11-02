@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "samples": [
+    {
+      "trial": 1,
+      "startToListeningMs": 9003,
+      "stopToIdleMs": 8564
+    },
+    {
+      "trial": 2,
+      "startToListeningMs": 3265,
+      "stopToIdleMs": 7821
+    },
+    {
+      "trial": 3,
+      "startToListeningMs": 3181,
+      "stopToIdleMs": 7733
+    }
+  ],
+  "microphoneAudioSaved": false,
+  "humanConversationTested": false,
+  "completedTurns": 0,
+  "scope": "Cold speech-adapter preparation and immediate Stop, not answer latency"
+}

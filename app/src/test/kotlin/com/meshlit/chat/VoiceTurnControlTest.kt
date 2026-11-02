@@ -7,6 +7,42 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoiceTurnControlTest {
+    @Test fun captureStartsBeforeOutputPreparationButPlaybackWaits()=runTest {
+        val started=CompletableDeferred<Unit>();val ready=CompletableDeferred<Unit>()
+        var listening=false;var speaking=false
+        val job=launch {
+            withSpeechOutputPreparation({started.complete(Unit);ready.await()}) { awaitOutput ->
+                listening=true;awaitOutput();speaking=true
+            }
+        }
+        runCurrent();started.await()
+        assertTrue(listening);assertFalse(speaking)
+        ready.complete(Unit);job.join();assertTrue(speaking)
+    }
+    @Test fun outputFailureStopsCaptureBeforeSessionCleanup()=runTest {
+        var captureReleased=false
+        val failOutput=CompletableDeferred<Unit>()
+        try {
+            withSpeechOutputPreparation({failOutput.await();error("Output failed")}) {
+                try {failOutput.complete(Unit);awaitCancellation()} finally {captureReleased=true}
+            }
+            fail("Output failure must propagate")
+        } catch(error:IllegalStateException) {assertEquals("Output failed",error.message)}
+        assertTrue(captureReleased)
+    }
+    @Test fun stopWaitsForNativeOutputPreparationToRelease()=runTest {
+        var nativeReleased=false;var sessionFinished=false
+        val started=CompletableDeferred<Unit>()
+        val job=launch {
+            try {withSpeechOutputPreparation({
+                started.complete(Unit)
+                try {awaitCancellation()} finally {withContext(NonCancellable){delay(100);nativeReleased=true}}
+            }) {awaitCancellation()}} finally {assertTrue(nativeReleased);sessionFinished=true}
+        }
+        runCurrent();started.await();job.cancel();runCurrent()
+        assertFalse(sessionFinished)
+        advanceUntilIdle();job.join();assertTrue(sessionFinished)
+    }
     @Test fun shortRepliesEndOnSilenceAndContinuousSpeechKeepsItsBoundedAudio() {
         val short=VoiceEndpointDetector()
         short.accept(3200,0.02);assertTrue(short.hasSpeech);assertFalse(short.complete)

@@ -1,0 +1,32 @@
+{
+  "format": "meshlit-physical-wan-native/1",
+  "phone": "Samsung SM-A207F Android11",
+  "computer": "Intel Mac Radeon Pro560X",
+  "transport": "Pinned authenticated TLS over Tailscale; Samsung LTE with Wi-Fi off",
+  "nativeDataUsesUsb": false,
+  "oversizedModelProof": false,
+  "fairBenchmark": false,
+  "physicalExecutionVerified": false,
+  "phase": "native coordinator cleanup",
+  "macInterface": "utun4",
+  "nativeAdbForwardPresent": false,
+  "phoneWorkerBefore": [
+    {
+      "pid": 29170,
+      "rssKiB": 2516,
+      "cpuTicks": 3
+    }
+  ],
+  "failure": {
+    "type": "JSONDecodeError",
+    "message": "Expecting value: line 1 column 1 (char 0)"
+  },
+  "elapsedSeconds": 16.398,
+  "cleanup": {
+    "ownedMacCoordinatorStopped": true,
+    "ownedRpcBridgeStopped": true,
+    "phoneWorkerStopAndPolicyRestore": "pending UI cleanup"
+  },
+  "credentialRejectionChecksConclusive": false,
+  "diagnostic": "Initial harness could not read valid capability response; native listener reported firewall denial. Negative probes are inconclusive until a valid request succeeds."
+}

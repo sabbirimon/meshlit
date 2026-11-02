@@ -9,6 +9,13 @@ import kotlinx.serialization.Serializable
 internal class VoiceTurnInterrupted:CancellationException("Voice turn interrupted")
 internal class NoVoiceDetected(message:String="No speech heard. Check microphone access and speak near the phone."):IllegalStateException(message)
 
+/** Capture may start while output loads, but playback and teardown await that child.
+ * Failure cancels the turn; native preparation never outlives session cleanup. */
+internal suspend fun <T> withSpeechOutputPreparation(prepare:suspend()->Unit,work:suspend(suspend()->Unit)->T):T=coroutineScope {
+    val output=async {prepare()}
+    work {output.await()}
+}
+
 /** Saved local PCM capture and Android playback tuning. Values are validated on import too. */
 @Serializable
 data class VoiceTuning(

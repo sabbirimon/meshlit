@@ -1,0 +1,8 @@
+{
+  "device": "SM-A207F",
+  "model": "url-824902c942c3cc73",
+  "baseline": "WRONG",
+  "constrained": "RIGHT",
+  "grammarHonoredAgainstPrompt": true,
+  "productionPathEnabled": false
+}

@@ -1,0 +1,25 @@
+{
+  "status": "passed-one-real-voice-turn",
+  "liveConversationTested": true,
+  "liveConversationPassed": true,
+  "completedTurns": 1,
+  "recognizedCharacters": 17,
+  "replyCharacters": 28,
+  "error": null,
+  "microphoneAudioSaved": false,
+  "providerTested": false,
+  "ownerConfirmedCorrectAudibleAnswer": true,
+  "ownerReportedSlow": true,
+  "testWallSeconds": 72.246,
+  "latencyImprovementMeasured": false,
+  "phaseDurationsMs": {
+    "preparingSpeechAdapters": 19061,
+    "listeningIncludingOwnerWait": 13191,
+    "transcribing": 4245,
+    "thinkingIncludingChatPreparation": 23710,
+    "preparingVoice": 2043,
+    "speakingAndFinalCleanup": 2326
+  },
+  "captureEndToPlaybackStartMs": 29998,
+  "timingSource": "Samsung System.out MESHLIT_LIVE_VOICE_PHASE, process 24486, 2026-11-02 14:07:17.408 through 14:08:21.984"
+}

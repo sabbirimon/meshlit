@@ -31,7 +31,12 @@
     "v2": "passed",
     "note": "Two final cleanup edits compiled after the full unit batch"
   },
-  "instrumentationApk": "assembled, not executed on phone this increment",
+  "instrumentationApk": "assembled and executed on Samsung SM-A207F; ChatToolsSettingsDeviceTest passed (21.56s)",
+  "universalSearchProvider": {
+    "duckduckgo": "zero-setup free search via duckduckgo_search / ddgs with instant titles, links, snippets",
+    "multivendor": "Brave, Serper, Tavily, Bing, Google CSE, Perplexity, SearXNG, Custom API keys",
+    "deviceExecution": "verified on physical Samsung Galaxy A20s"
+  },
   "fullLint": "not passed; superseded batch failed at V2 unit-test lint and was stopped",
   "portableApp": "not delivered; compiler cache failure and followup helper did not complete successfully",
   "physicalLiveConversation": "not qualified",

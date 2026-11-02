@@ -19,6 +19,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "meshlit.deviceConnections",
+        "title": "Meshlit: Device Connection Assistance"
+      },
+      {
         "command": "meshlit.chat",
         "title": "Meshlit: New Chat",
         "icon": "$(add)"
@@ -123,6 +127,18 @@
       {
         "command": "meshlit.companions",
         "title": "Meshlit: Memory and Computer Companions"
+      },
+      {
+        "command": "meshlit.agentTeams",
+        "title": "Meshlit: Agent teams and role library"
+      },
+      {
+        "command": "meshlit.connectedCapabilities",
+        "title": "Meshlit: Connected capabilities (OpenViking and Artemis)"
+      },
+      {
+        "command": "meshlit.systemMonitor",
+        "title": "Meshlit: System resources and CPU scheduling"
       }
     ],
     "menus": {

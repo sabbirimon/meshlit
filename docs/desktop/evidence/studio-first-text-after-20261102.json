@@ -1,0 +1,59 @@
+{
+  "loadLocalMs": 7624.872656015214,
+  "trials": [
+    {
+      "trial": 1,
+      "firstVisibleTextMs": 1853.696736972779,
+      "completionMs": 8821.01368898293,
+      "deltaEvents": 128,
+      "characters": 609
+    },
+    {
+      "trial": 2,
+      "firstVisibleTextMs": 540.0605969480239,
+      "completionMs": 9535.111303965095,
+      "deltaEvents": 157,
+      "characters": 793
+    }
+  ],
+  "usage": {
+    "id": "b87e10e9-1317-4d50-9cd2-70759c3a306e",
+    "requests": 2,
+    "inputTokens": 346,
+    "outputTokens": 287,
+    "unknownUsageRequests": 0,
+    "freeOnly": false,
+    "month": "2026-11",
+    "budgets": [],
+    "history": [
+      {
+        "model": "meshlit-local",
+        "startedAt": 1793608991889,
+        "status": "complete",
+        "local": true,
+        "gateway": false,
+        "currency": "USD",
+        "input": 173,
+        "output": 158,
+        "cost": "0",
+        "elapsedMs": 9177,
+        "unresolved": false
+      },
+      {
+        "model": "meshlit-local",
+        "startedAt": 1793608983183,
+        "status": "complete",
+        "local": true,
+        "gateway": false,
+        "currency": "USD",
+        "input": 173,
+        "output": 129,
+        "cost": "0",
+        "elapsedMs": 8308,
+        "unresolved": false
+      }
+    ]
+  },
+  "providerRequests": 0,
+  "ownerVaultAccessed": false
+}

@@ -1,6 +1,7 @@
 import asyncio
 from pathlib import Path
 import sys
+import shlex
 import tempfile
 import unittest
 import uuid
@@ -31,7 +32,9 @@ class McpRuntimeTest(unittest.IsolatedAsyncioTestCase):
             token='omb_sess_fixture_000000000000000000000000'
             if paired:
                 wrapper=Path(directory)/'openmausbot-fixture'
-                wrapper.write_text(f'#!{sys.executable}\nimport os,sys,runpy\nassert sys.argv[1:]==["mcp"]\nassert os.environ["OPENMAUSBOT_TOKEN"]=={token!r}\nassert os.environ["OMB_PORT"]=="8799"\nassert os.environ["OPENMAUSBOT_URL"]=="http://127.0.0.1:8799"\nsys.argv=["fixture",{str(marker)!r}]\nrunpy.run_path({str(Path(__file__).parent/"fixtures/mcp_server.py")!r},run_name="__main__")\n')
+                script=Path(directory)/'paired_fixture.py'
+                script.write_text(f'import os,sys,runpy\nassert sys.argv[1:]==["mcp"]\nassert os.environ["OPENMAUSBOT_TOKEN"]=={token!r}\nassert os.environ["OMB_PORT"]=="8799"\nassert os.environ["OPENMAUSBOT_URL"]=="http://127.0.0.1:8799"\nsys.argv=["fixture",{str(marker)!r}]\nrunpy.run_path({str(Path(__file__).parent/"fixtures/mcp_server.py")!r},run_name="__main__")\n')
+                wrapper.write_text('#!/bin/sh\nexec '+shlex.quote(sys.executable)+' '+shlex.quote(str(script))+' "$@"\n')
                 wrapper.chmod(0o700)
                 config={'name':'paired-fixture','type':'stdio','command':str(wrapper),'args':['mcp'],
                         'auth':{'kind':'openmausbot-session','port':8799},

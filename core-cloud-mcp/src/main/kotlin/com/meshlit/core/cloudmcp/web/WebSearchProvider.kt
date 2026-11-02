@@ -28,11 +28,15 @@ data class WebSearchResult(
  * in the Cloud Hub Tools row.
  */
 enum class WebSearchVendor(val displayName: String) {
+    DuckDuckGo("DuckDuckGo (Free / Zero-Setup)"),
     Bing("Bing Web Search"),
     Brave("Brave Search"),
     Serper("Serper.dev"),
     Tavily("Tavily"),
     GoogleCse("Google Programmable Search"),
+    Perplexity("Perplexity Search"),
+    SearXNG("SearXNG"),
+    Custom("Custom Search Provider"),
 }
 
 /**
@@ -40,10 +44,13 @@ enum class WebSearchVendor(val displayName: String) {
  * variant carries the bits it needs to make one
  * `search(query, k)` round-trip — an HTTP client, the
  * credentials, and any vendor-specific knobs (Google CSE
- * needs a `cx`; Bing needs an `endpoint` path).
+ * needs a `cx`; Bing needs an `endpoint` path; DuckDuckGo
+ * needs zero setup / no API key).
  *
  * Wire shapes:
  *
+ *  - **DuckDuckGo** — `POST https://html.duckduckgo.com/html/` with
+ *    zero setup and no API key required; parses instant titles, links and snippets.
  *  - **Bing** — `GET {endpoint}/v7.0/search?q=...&count=k` with
  *    `Ocp-Apim-Subscription-Key` header.
  *  - **Brave** — `GET https://api.search.brave.com/res/v1/web/search?q=...&count=k`
@@ -54,6 +61,11 @@ enum class WebSearchVendor(val displayName: String) {
  *    `Authorization: Bearer ...` and JSON body
  *    `{"query": "...", "max_results": k}`.
  *  - **GoogleCse** — `GET https://www.googleapis.com/customsearch/v1?q=...&key=...&cx=...&num=k`.
+ *  - **Perplexity** — `POST https://api.perplexity.ai/chat/completions` with
+ *    `Authorization: Bearer ...` and Sonar search model.
+ *  - **SearXNG** — `GET {endpoint}/search?q=...&format=json`.
+ *  - **Custom** — User-configured endpoint (GET or POST) with arbitrary API key,
+ *    custom auth header, and flexible JSON response parsing.
  *
  * The [search] contract is identical across vendors — the LLM
  * sees a single `web_search(query, k)` tool regardless of which
@@ -62,6 +74,16 @@ enum class WebSearchVendor(val displayName: String) {
 sealed class WebSearchProvider {
     abstract val providerId: String
     abstract val vendor: WebSearchVendor
+
+    /**
+     * DuckDuckGo search provider. Zero setup, no registration or API key required.
+     */
+    data class DuckDuckGo(
+        override val providerId: String = "duckduckgo",
+        val endpoint: String = "https://html.duckduckgo.com/html/",
+    ) : WebSearchProvider() {
+        override val vendor = WebSearchVendor.DuckDuckGo
+    }
 
     data class Bing(
         override val providerId: String,
@@ -102,5 +124,37 @@ sealed class WebSearchProvider {
         val endpoint: String = "https://www.googleapis.com",
     ) : WebSearchProvider() {
         override val vendor = WebSearchVendor.GoogleCse
+    }
+
+    data class Perplexity(
+        override val providerId: String,
+        val apiKey: String,
+        val endpoint: String = "https://api.perplexity.ai",
+    ) : WebSearchProvider() {
+        override val vendor = WebSearchVendor.Perplexity
+    }
+
+    data class SearXNG(
+        override val providerId: String,
+        val endpoint: String = "https://searx.be",
+        val apiKey: String? = null,
+    ) : WebSearchProvider() {
+        override val vendor = WebSearchVendor.SearXNG
+    }
+
+    /**
+     * Universal custom search provider allowing any API key, custom endpoint,
+     * custom headers, and request methods.
+     */
+    data class Custom(
+        override val providerId: String,
+        val endpoint: String,
+        val apiKey: String? = null,
+        val headerName: String = "Authorization",
+        val authPrefix: String = "Bearer ",
+        val queryParam: String = "q",
+        val isPost: Boolean = false,
+    ) : WebSearchProvider() {
+        override val vendor = WebSearchVendor.Custom
     }
 }

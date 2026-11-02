@@ -1,0 +1,269 @@
+{
+  "status": "passed",
+  "samples": [
+    {
+      "id": "dfcf2cea-47c4-41fd-8631-c4fbdff46a47",
+      "observedAtMs": 1793625306187,
+      "cpuPercent": null,
+      "ramTotalBytes": 17179869184,
+      "ramAvailableBytes": 5490225152,
+      "heapUsedBytes": 13718864,
+      "backendRssBytes": 101543936,
+      "modelRssBytes": null,
+      "processCount": 946,
+      "cores": 16,
+      "host": "Mac OS X \u00b7 x86_64",
+      "activeWork": null,
+      "queuedWork": 0,
+      "batteries": [
+        "InternalBattery-0: 100% \u00b7 not charging \u00b7 power sensor unavailable"
+      ],
+      "gpus": [
+        "Intel UHD Graphics 630 \u00b7 hardware-reported VRAM 1.50 GiB \u00b7 inference driver not qualified here",
+        "Radeon Pro 560X \u00b7 hardware-reported VRAM 4.00 GiB \u00b7 inference driver not qualified here"
+      ],
+      "processes": [
+        {
+          "pid": 47697,
+          "name": "java",
+          "rssBytes": 4567224320,
+          "cpuPercent": null
+        },
+        {
+          "pid": 44203,
+          "name": "java",
+          "rssBytes": 1309097984,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59489,
+          "name": "Codex (Renderer)",
+          "rssBytes": 576831488,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59940,
+          "name": "node",
+          "rssBytes": 305799168,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59521,
+          "name": "Codex (Renderer)",
+          "rssBytes": 265752576,
+          "cpuPercent": null
+        },
+        {
+          "pid": 68546,
+          "name": "Google Chrome",
+          "rssBytes": 224792576,
+          "cpuPercent": null
+        },
+        {
+          "pid": 84628,
+          "name": "WhatsApp",
+          "rssBytes": 149479424,
+          "cpuPercent": null
+        },
+        {
+          "pid": 17183,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 147820544,
+          "cpuPercent": null
+        },
+        {
+          "pid": 16890,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 133976064,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59440,
+          "name": "ChatGPT",
+          "rssBytes": 131719168,
+          "cpuPercent": null
+        },
+        {
+          "pid": 70081,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 115740672,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59487,
+          "name": "codex",
+          "rssBytes": 114069504,
+          "cpuPercent": null
+        }
+      ],
+      "policy": {
+        "enabled": false,
+        "mode": "BALANCED",
+        "threads": 4,
+        "headroom": 2,
+        "reason": "2 logical cores of scheduling headroom; Some host pressure signals unavailable",
+        "savedThreads": 4,
+        "cores": 16,
+        "ignoreBattery": false,
+        "ignoreMemory": false,
+        "thermalPressureAvailable": false,
+        "powerSaverAvailable": false,
+        "appliesOnReload": true,
+        "appliedThreadHint": null
+      },
+      "modelLoaded": false
+    },
+    {
+      "id": "fbfdff74-b249-4c24-9d63-65cd85d71d46",
+      "observedAtMs": 1793625308487,
+      "cpuPercent": 23.47290640394089,
+      "ramTotalBytes": 17179869184,
+      "ramAvailableBytes": 5391335424,
+      "heapUsedBytes": 26581584,
+      "backendRssBytes": 110469120,
+      "modelRssBytes": null,
+      "processCount": 945,
+      "cores": 16,
+      "host": "Mac OS X \u00b7 x86_64",
+      "activeWork": null,
+      "queuedWork": 0,
+      "batteries": [
+        "InternalBattery-0: 100% \u00b7 not charging \u00b7 power sensor unavailable"
+      ],
+      "gpus": [
+        "Intel UHD Graphics 630 \u00b7 hardware-reported VRAM 1.50 GiB \u00b7 inference driver not qualified here",
+        "Radeon Pro 560X \u00b7 hardware-reported VRAM 4.00 GiB \u00b7 inference driver not qualified here"
+      ],
+      "processes": [
+        {
+          "pid": 47697,
+          "name": "java",
+          "rssBytes": 4580937728,
+          "cpuPercent": 4.213056680161944
+        },
+        {
+          "pid": 44203,
+          "name": "java",
+          "rssBytes": 1309106176,
+          "cpuPercent": 0.007615759545085297
+        },
+        {
+          "pid": 59489,
+          "name": "Codex (Renderer)",
+          "rssBytes": 577282048,
+          "cpuPercent": 0.6470893970893972
+        },
+        {
+          "pid": 59940,
+          "name": "node",
+          "rssBytes": 305836032,
+          "cpuPercent": 0.031133250311332503
+        },
+        {
+          "pid": 59521,
+          "name": "Codex (Renderer)",
+          "rssBytes": 265764864,
+          "cpuPercent": 0.03636741479634248
+        },
+        {
+          "pid": 68546,
+          "name": "Google Chrome",
+          "rssBytes": 225071104,
+          "cpuPercent": 0.049520433694745625
+        },
+        {
+          "pid": 84628,
+          "name": "WhatsApp",
+          "rssBytes": 150179840,
+          "cpuPercent": 0.11713869221157852
+        },
+        {
+          "pid": 17183,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 148914176,
+          "cpuPercent": 0.03577269010629599
+        },
+        {
+          "pid": 16890,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 134029312,
+          "cpuPercent": 0.010229132569558102
+        },
+        {
+          "pid": 59440,
+          "name": "ChatGPT",
+          "rssBytes": 132403200,
+          "cpuPercent": 0.03641281731169371
+        },
+        {
+          "pid": 70081,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 115740672,
+          "cpuPercent": 0.0
+        },
+        {
+          "pid": 59487,
+          "name": "codex",
+          "rssBytes": 114073600,
+          "cpuPercent": 0.02338877338877339
+        }
+      ],
+      "policy": {
+        "enabled": false,
+        "mode": "BALANCED",
+        "threads": 4,
+        "headroom": 2,
+        "reason": "2 logical cores of scheduling headroom; Some host pressure signals unavailable",
+        "savedThreads": 4,
+        "cores": 16,
+        "ignoreBattery": false,
+        "ignoreMemory": false,
+        "thermalPressureAvailable": false,
+        "powerSaverAvailable": false,
+        "appliesOnReload": true,
+        "appliedThreadHint": null
+      },
+      "modelLoaded": false
+    }
+  ],
+  "performancePolicy": {
+    "id": "38df00aa-3564-497f-854b-2ed156d22e97",
+    "enabled": true,
+    "mode": "PERFORMANCE",
+    "threads": 6,
+    "headroom": 2,
+    "reason": "2 logical cores of scheduling headroom; Some host pressure signals unavailable",
+    "savedThreads": 4,
+    "cores": 16,
+    "ignoreBattery": false,
+    "ignoreMemory": false,
+    "thermalPressureAvailable": false,
+    "powerSaverAvailable": false,
+    "appliesOnReload": true,
+    "appliedThreadHint": null
+  },
+  "plusPolicy": {
+    "id": "9af75ccd-b4cc-4a61-9e41-8dd41827c161",
+    "enabled": true,
+    "mode": "OVERDRIVE_PLUS",
+    "threads": 16,
+    "headroom": 0,
+    "reason": "0 logical cores of scheduling headroom; Some host pressure signals unavailable; Overdrive+ CPU overrides: CpuOverrides(heat=false, saver=false, battery=true, memory=true, background=false). Android protections and model admission still apply.",
+    "savedThreads": 4,
+    "cores": 16,
+    "ignoreBattery": true,
+    "ignoreMemory": true,
+    "thermalPressureAvailable": false,
+    "powerSaverAvailable": false,
+    "appliesOnReload": true,
+    "appliedThreadHint": null
+  },
+  "roleCount": 268,
+  "invalidModeRejected": true,
+  "lockedTeamAccessRejected": true,
+  "ownedModelStopAcknowledged": true,
+  "isolatedPreferencesAndUsage": false,
+  "guiQualified": false,
+  "preferencesIsolationCorrection": "macOS CFPreferences ignored userRoot flags; original workload policy was restored and verified. Subsequent packaged qualification used an in-memory PreferencesFactory.",
+  "ownerWorkloadRestored": true
+}

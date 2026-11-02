@@ -1,10 +1,20 @@
 # Optional Tailscale and VPN observations
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
 Implementation increment: 2026-10-26. Open **Dashboards → VPN & network**. Basic settings remain the existing six Android/four Studio entries; VPN setup belongs to its dashboard, with technical fields under **Advanced details**.
+
+## Physical setup checkpoint — 2026-11-02
+
+At the owner's request, official Tailscale 1.104.4 clients were installed on the Intel Mac and Samsung SM-A207F. Published hashes, Mac Developer ID/notarization and Android APK signature checks passed. The owner completed both clients' login/VPN prompts. The Mac reports Running with no health issues and sees the online Android peer. With Samsung Wi-Fi disabled and LTE/VPN transport observed, five warmed direct probes passed with median 57 ms; initial discovery had three timeouts. No auth key, exit node, subnet route or public Funnel was created. See the [sanitized setup evidence](desktop/evidence/tailscale-physical-setup-20261102.json).
+
+## Native service qualification — 2026-11-03
+
+A real development native layer completion passed over the tunnel: Mac Metal/CPU layers 0-18 and Samsung CPU layers 19-24 returned `4`, with an actual 186.51 MiB remote model buffer. Setup took 84.406 s and the request 29.011 s in this one uncontrolled run. Native data used the VPN route, not USB forwarding. The owner explicitly approved temporary authenticated WAN-worker access and TCP 50551; the exact original firewall policy and LAN-only worker setting were restored afterward. The worker, TLS listener and owned Mac processes were stopped, temporary credentials removed, and the owner model/Accessibility state preserved. [Native WAN evidence](desktop/evidence/mixed-mac-samsung-wan-native-20261103.json).
+
+A controlled TLS disconnect during a second request failed the generation and exited its coordinator. The phone worker released resident memory and accepted a fresh authenticated capability read. This proves neither seamless Wi-Fi/cellular handover nor distributed checkpoint recovery. Managed Studio/HyperL allocation, oversized models and cross-owner qualification remain separate gates.
 
 ## Studio
 

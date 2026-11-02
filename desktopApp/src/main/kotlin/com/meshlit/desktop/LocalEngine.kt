@@ -36,6 +36,8 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
     private val lock = Any()
     @Volatile private var revision = 0L
     private var process: Process? = null
+    @Volatile var appliedCpuThreads:Int?=null
+        private set
     private var privateDirectory: Path? = null
     private val hook = Thread({ stop() }, "meshlit-local-shutdown")
     init { if (registerShutdownHook) Runtime.getRuntime().addShutdownHook(hook) }
@@ -124,7 +126,7 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
                     check(effectiveContext == options.context) { "Native context differs from configured capacity" }
                     val effectiveModel = props["model_path"]?.jsonPrimitive?.content ?: error("Native model identity missing")
                     check(Path.of(effectiveModel).toRealPath() == model.toRealPath()) { "Native runtime loaded another model" }
-                    checkCurrent(expectedRevision); return LocalSession(host, token, options.context, admission, backend)
+                    checkCurrent(expectedRevision);appliedCpuThreads=options.threads; return LocalSession(host, token, options.context, admission, backend)
                 }
                 Thread.sleep(150)
             }
@@ -138,12 +140,13 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
     private fun checkCurrent(expected: Long) {
         if (revision != expected || Thread.currentThread().isInterrupted) throw CancellationException("Local load cancelled")
     }
+    fun processId():Long?=synchronized(lock){process?.takeIf{it.isAlive}?.pid()}
     fun isRunning() = synchronized(lock) { process?.isAlive == true }
     fun stop() {
         val owned = synchronized(lock) {
             revision++
             val result = process to privateDirectory
-            process = null; privateDirectory = null
+            process = null; privateDirectory = null;appliedCpuThreads=null
             result
         }
         owned.first?.destroy()

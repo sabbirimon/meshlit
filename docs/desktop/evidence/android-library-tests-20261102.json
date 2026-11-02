@@ -1,0 +1,226 @@
+[
+  {
+    "module": "core-advanced-engines",
+    "tests": 14,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-agent-memory",
+    "tests": 45,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-bootstrap",
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-cloud-mcp",
+    "tests": 71,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-common",
+    "tests": 31,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-config",
+    "tests": 9,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-discovery",
+    "tests": 20,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-federation",
+    "tests": 55,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-files",
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-firewall",
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-flags",
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-gibberlink",
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2
+  },
+  {
+    "module": "core-gpu",
+    "tests": 36,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-guardrails",
+    "tests": 29,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-hyperl",
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  {
+    "module": "core-inference",
+    "tests": 323,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-lifecycle",
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-mcp",
+    "tests": 155,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-net",
+    "tests": 46,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-observability",
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-orchestration",
+    "tests": 0,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-probe",
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-registry",
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-role",
+    "tests": 14,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-sandbox",
+    "tests": 14,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-ssh",
+    "tests": 13,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  {
+    "module": "core-training",
+    "tests": 27,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-trust",
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-tunnel",
+    "tests": 4,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "core-users",
+    "tests": 5,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "feature-advanced",
+    "tests": 12,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  {
+    "module": "feature-ghosty",
+    "tests": 9,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+]

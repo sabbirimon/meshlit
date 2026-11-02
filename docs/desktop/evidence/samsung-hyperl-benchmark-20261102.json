@@ -1,0 +1,452 @@
+{
+  "metadata": {
+    "format": "meshlit-device-qualification/1",
+    "package": "com.meshlit.v2.debug",
+    "model": "SM-A207F",
+    "androidApi": 30,
+    "androidRelease": "11",
+    "abi": "arm64-v8a",
+    "timestampEpochMs": 1793608348114,
+    "debugBuild": true
+  },
+  "backend": "CPU_REFERENCE",
+  "verifiedRecipes": [
+    "add",
+    "multiply",
+    "relu",
+    "weighted_relu",
+    "residual_relu",
+    "affine",
+    "affine_relu",
+    "residual_affine_relu",
+    "dot",
+    "sum",
+    "positive_sum",
+    "squared_norm"
+  ],
+  "warmupsPerSize": 1,
+  "samplesPerSize": 5,
+  "samples": [
+    {
+      "size": 3,
+      "sample": 0,
+      "parsePlanExecuteWallMs": 6.067968,
+      "estimatedArrayBytes": 65844,
+      "before": {
+        "appProcessPssKiB": 870866,
+        "javaUsedBytes": 23664472,
+        "nativeHeapAllocatedBytes": 1017080592,
+        "deviceAvailableRamBytes": 705654784,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 871203,
+        "javaUsedBytes": 23730008,
+        "nativeHeapAllocatedBytes": 1017078144,
+        "deviceAvailableRamBytes": 716865536,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 3,
+      "sample": 1,
+      "parsePlanExecuteWallMs": 4.348542,
+      "estimatedArrayBytes": 65844,
+      "before": {
+        "appProcessPssKiB": 871194,
+        "javaUsedBytes": 10605360,
+        "nativeHeapAllocatedBytes": 1011577080,
+        "deviceAvailableRamBytes": 713875456,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 854982,
+        "javaUsedBytes": 10638128,
+        "nativeHeapAllocatedBytes": 1011556432,
+        "deviceAvailableRamBytes": 736550912,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 3,
+      "sample": 2,
+      "parsePlanExecuteWallMs": 3.921354,
+      "estimatedArrayBytes": 65844,
+      "before": {
+        "appProcessPssKiB": 855067,
+        "javaUsedBytes": 10638128,
+        "nativeHeapAllocatedBytes": 1011555448,
+        "deviceAvailableRamBytes": 766894080,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855075,
+        "javaUsedBytes": 10670896,
+        "nativeHeapAllocatedBytes": 1011572024,
+        "deviceAvailableRamBytes": 765657088,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 3,
+      "sample": 3,
+      "parsePlanExecuteWallMs": 4.013177,
+      "estimatedArrayBytes": 65844,
+      "before": {
+        "appProcessPssKiB": 855075,
+        "javaUsedBytes": 10670896,
+        "nativeHeapAllocatedBytes": 1011572144,
+        "deviceAvailableRamBytes": 764297216,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855103,
+        "javaUsedBytes": 10687280,
+        "nativeHeapAllocatedBytes": 1011590704,
+        "deviceAvailableRamBytes": 764473344,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 3,
+      "sample": 4,
+      "parsePlanExecuteWallMs": 3.780677,
+      "estimatedArrayBytes": 65844,
+      "before": {
+        "appProcessPssKiB": 855107,
+        "javaUsedBytes": 10703664,
+        "nativeHeapAllocatedBytes": 1011590608,
+        "deviceAvailableRamBytes": 764538880,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855129,
+        "javaUsedBytes": 10720048,
+        "nativeHeapAllocatedBytes": 1011610800,
+        "deviceAvailableRamBytes": 764616704,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 257,
+      "sample": 0,
+      "parsePlanExecuteWallMs": 11.671563,
+      "estimatedArrayBytes": 72956,
+      "before": {
+        "appProcessPssKiB": 855232,
+        "javaUsedBytes": 10818352,
+        "nativeHeapAllocatedBytes": 1011632448,
+        "deviceAvailableRamBytes": 764596224,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855465,
+        "javaUsedBytes": 10900272,
+        "nativeHeapAllocatedBytes": 1011653024,
+        "deviceAvailableRamBytes": 764030976,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 257,
+      "sample": 1,
+      "parsePlanExecuteWallMs": 8.702187,
+      "estimatedArrayBytes": 72956,
+      "before": {
+        "appProcessPssKiB": 855321,
+        "javaUsedBytes": 10900272,
+        "nativeHeapAllocatedBytes": 1011653024,
+        "deviceAvailableRamBytes": 764166144,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855409,
+        "javaUsedBytes": 10982192,
+        "nativeHeapAllocatedBytes": 1011671856,
+        "deviceAvailableRamBytes": 764043264,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 257,
+      "sample": 2,
+      "parsePlanExecuteWallMs": 7.929843,
+      "estimatedArrayBytes": 72956,
+      "before": {
+        "appProcessPssKiB": 855417,
+        "javaUsedBytes": 10998576,
+        "nativeHeapAllocatedBytes": 1011671856,
+        "deviceAvailableRamBytes": 764043264,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855505,
+        "javaUsedBytes": 11096880,
+        "nativeHeapAllocatedBytes": 1011689120,
+        "deviceAvailableRamBytes": 764043264,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 257,
+      "sample": 3,
+      "parsePlanExecuteWallMs": 5.509011,
+      "estimatedArrayBytes": 72956,
+      "before": {
+        "appProcessPssKiB": 855517,
+        "javaUsedBytes": 11096880,
+        "nativeHeapAllocatedBytes": 1011689120,
+        "deviceAvailableRamBytes": 764043264,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855589,
+        "javaUsedBytes": 11195184,
+        "nativeHeapAllocatedBytes": 1011706960,
+        "deviceAvailableRamBytes": 764047360,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 257,
+      "sample": 4,
+      "parsePlanExecuteWallMs": 6.41125,
+      "estimatedArrayBytes": 72956,
+      "before": {
+        "appProcessPssKiB": 855593,
+        "javaUsedBytes": 11195184,
+        "nativeHeapAllocatedBytes": 1011707088,
+        "deviceAvailableRamBytes": 764047360,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 855673,
+        "javaUsedBytes": 11277104,
+        "nativeHeapAllocatedBytes": 1011727600,
+        "deviceAvailableRamBytes": 763801600,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.2,
+        "plugged": true
+      }
+    },
+    {
+      "size": 4096,
+      "sample": 0,
+      "parsePlanExecuteWallMs": 29.933542,
+      "estimatedArrayBytes": 180448,
+      "before": {
+        "appProcessPssKiB": 858443,
+        "javaUsedBytes": 12526384,
+        "nativeHeapAllocatedBytes": 1011825792,
+        "deviceAvailableRamBytes": 761012224,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 859155,
+        "javaUsedBytes": 13505328,
+        "nativeHeapAllocatedBytes": 1011846016,
+        "deviceAvailableRamBytes": 757481472,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      }
+    },
+    {
+      "size": 4096,
+      "sample": 1,
+      "parsePlanExecuteWallMs": 29.759427,
+      "estimatedArrayBytes": 180448,
+      "before": {
+        "appProcessPssKiB": 859139,
+        "javaUsedBytes": 13521712,
+        "nativeHeapAllocatedBytes": 1011845984,
+        "deviceAvailableRamBytes": 757370880,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 860091,
+        "javaUsedBytes": 14500656,
+        "nativeHeapAllocatedBytes": 1011864544,
+        "deviceAvailableRamBytes": 754909184,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      }
+    },
+    {
+      "size": 4096,
+      "sample": 2,
+      "parsePlanExecuteWallMs": 30.070312,
+      "estimatedArrayBytes": 180448,
+      "before": {
+        "appProcessPssKiB": 860095,
+        "javaUsedBytes": 14500656,
+        "nativeHeapAllocatedBytes": 1011864496,
+        "deviceAvailableRamBytes": 754483200,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 861057,
+        "javaUsedBytes": 15512368,
+        "nativeHeapAllocatedBytes": 1011883792,
+        "deviceAvailableRamBytes": 753467392,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      }
+    },
+    {
+      "size": 4096,
+      "sample": 3,
+      "parsePlanExecuteWallMs": 29.335729,
+      "estimatedArrayBytes": 180448,
+      "before": {
+        "appProcessPssKiB": 861061,
+        "javaUsedBytes": 15512368,
+        "nativeHeapAllocatedBytes": 1011883776,
+        "deviceAvailableRamBytes": 753532928,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 862032,
+        "javaUsedBytes": 16491312,
+        "nativeHeapAllocatedBytes": 1011898880,
+        "deviceAvailableRamBytes": 752537600,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      }
+    },
+    {
+      "size": 4096,
+      "sample": 4,
+      "parsePlanExecuteWallMs": 29.087448,
+      "estimatedArrayBytes": 180448,
+      "before": {
+        "appProcessPssKiB": 862036,
+        "javaUsedBytes": 16507696,
+        "nativeHeapAllocatedBytes": 1011898832,
+        "deviceAvailableRamBytes": 752668672,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      },
+      "after": {
+        "appProcessPssKiB": 863008,
+        "javaUsedBytes": 17486640,
+        "nativeHeapAllocatedBytes": 1011916784,
+        "deviceAvailableRamBytes": 751398912,
+        "lowMemory": false,
+        "thermalStatus": 0,
+        "batteryPercent": 59.0,
+        "batteryTemperatureC": 34.8,
+        "plugged": true
+      }
+    }
+  ],
+  "phoneGpuExecuted": false
+}

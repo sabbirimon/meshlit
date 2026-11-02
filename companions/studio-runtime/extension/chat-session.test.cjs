@@ -5,12 +5,12 @@ function fixture(options={}){
  const vscode={EventEmitter:class{fire(){}},TreeItem:class{},ThemeIcon:class{},ViewColumn:{Beside:2},StatusBarAlignment:{Right:1},Uri:{file:fsPath=>({fsPath}),parse:text=>text},WorkspaceEdit:class{replace(...args){this.args=args;}},Range:class{},
   workspace:{isTrusted:true,workspaceFolders:[{uri:{scheme:'file',fsPath:'/scratch'}}],registerTextDocumentContentProvider:()=>disposable,openTextDocument:async()=>({isDirty:false,version:1,getText:()=> 'original',positionAt:n=>n}),applyEdit:async edit=>{edits.push(edit);return true;}},
   commands:{registerCommand:(name,fn)=>{commands.set(name,fn);return disposable;},executeCommand:async(name,...args)=>commands.get(name)?.(...args)},
-  window:{showQuickPick:async()=>picks.shift(),showInformationMessage:(m,...choices)=>{messages.push(m);return choices[0];},showWarningMessage:async(_m,_options,choice)=>choice,showErrorMessage:m=>messages.push(m),registerTreeDataProvider:()=>disposable,createStatusBarItem:()=>({show(){}}),tabGroups:{all:[{tabs:[{}]}]},createWebviewPanel:(_type,_title,column)=>{const p={viewColumn:column===2?3:column,sent:[],webview:{postMessage:m=>p.sent.push(m),onDidReceiveMessage:f=>{p.receive=f;}},onDidDispose:f=>{p.dispose=f;}};panels.push(p);return p;}}
+  window:{showQuickPick:async()=>picks.shift(),showInformationMessage:(m,...choices)=>{messages.push(m);return choices[0];},showWarningMessage:async(_m,_options,choice)=>choice,showErrorMessage:m=>messages.push(m),registerTreeDataProvider:()=>disposable,createStatusBarItem:()=>({show(){},hide(){}}),tabGroups:{all:[{tabs:[{}]}]},createWebviewPanel:(_type,_title,column)=>{const p={viewColumn:column===2?3:column,sent:[],webview:{postMessage:m=>p.sent.push(m),onDidReceiveMessage:f=>{p.receive=f;}},onDidDispose:f=>{p.dispose=f;}};panels.push(p);return p;}}
  };
  const hostEvents={};const child={stdin:{write:text=>outbound.push(JSON.parse(text)),end(){}},stdout:{},stderr:{on(){}},on:(name,fn)=>hostEvents[name]=fn};
  const exports={},context={extensionPath:'/fixture',subscriptions:[]};
  const noop={register(){}};
- const imports={vscode,'./usage.cjs':{create:()=>({open(){},accept(){},failure(){},refresh(){}})},'node:fs':{readFileSync:()=>JSON.stringify({python:'/python',agentHost:'/agent'})},'node:child_process':{spawn:()=>child},'node:readline':{createInterface:()=>({on:(name,fn)=>{event=fn;}})},'./connections.cjs':{chooseConnection:async()=>routes.shift(),chooseMcp:async()=>options.connectors||[]},'./settings.cjs':noop,'./resource-sharing.cjs':noop,'./companions.cjs':noop,'./memory.cjs':{register:()=>options.memory||({contextFor:async()=>'',recordAction:async()=>{}})},'./voice.cjs':noop,'./navigation.cjs':noop,'./app-access.cjs':noop,'./protocols.cjs':noop,'./deepseek-harness.cjs':noop,'./gateways.cjs':noop};
+ const imports={vscode,'./system-monitor.cjs':{create:()=>({open(){},accept(){},failure(){}})},'./connected-services.cjs':{register:()=>({contextFor:async()=>''})},'./agent-teams.cjs':{create:()=>({open(){},accept(){},failure(){},revokeSource(){}})},'./usage.cjs':{create:()=>({open(){},accept(){},failure(){},refresh(){}})},'node:fs':{readFileSync:()=>JSON.stringify({python:'/python',agentHost:'/agent'})},'node:child_process':{spawn:()=>child},'node:readline':{createInterface:()=>({on:(name,fn)=>{event=fn;}})},'./connections.cjs':{chooseConnection:async()=>routes.shift(),chooseMcp:async()=>options.connectors||[]},'./settings.cjs':noop,'./resource-sharing.cjs':noop,'./companions.cjs':noop,'./memory.cjs':{register:()=>options.memory||({contextFor:async()=>'',recordAction:async()=>{}})},'./voice.cjs':noop,'./navigation.cjs':noop,'./app-access.cjs':noop,'./protocols.cjs':noop,'./deepseek-harness.cjs':noop,'./gateways.cjs':noop};
  if(options.tools)imports['./workspace-tools.cjs']=options.tools;
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'extension.cjs'),'utf8'),{exports,require:n=>imports[n]||require(n.startsWith('.')?path.join(__dirname,n):n),process:{env:{}},Map,JSON});
  exports.activate(context);
@@ -30,6 +30,18 @@ test('composer changes reach the SDK; existing sessions fork without changing th
 test('cancelled route selection keeps the local model',async()=>{
  const f=fixture();await f.open();const p=f.panels[0];await p.receive({op:'connection'});await p.receive({op:'ready'});
  assert.equal(p.sent.find(e=>e.type==='configuration').label,'Bundled local model');f.unlock();await p.receive({op:'send',prompt:'hello'});assert.equal(f.outbound.at(-1).route.kind,'local');
+});
+test('effort changes stay in the same compatible chat and local unsupported choices preserve Auto',async()=>{
+ const f=fixture();await f.open();f.unlock();const panel=f.panels[0];
+ f.picks.push({id:'high'});await panel.receive({op:'effort'});
+ assert.match(panel.sent.at(-1).message,/unavailable/);
+ await panel.receive({op:'send',prompt:'local question'});assert.equal(f.outbound.at(-1).effort,'auto');f.done(f.outbound.at(-1).session);
+ const route={kind:'compatible',endpoint:'https://example.test/v1',model:'reasoning-fixture',effortSupport:{endpoint:'https://example.test/v1',model:'reasoning-fixture',adapter:'reasoning_effort',values:['low','high']}};
+ f.routes.push(route);await panel.receive({op:'connection'});const remote=f.panels[1];
+ f.picks.push({id:'high'});await remote.receive({op:'effort'});await remote.receive({op:'send',prompt:'hard question'});
+ const first=f.outbound.at(-1);assert.equal(first.effort,'high');f.done(first.session);
+ f.picks.push({id:'low'});await remote.receive({op:'effort'});await remote.receive({op:'send',prompt:'short follow-up'});
+ assert.equal(f.outbound.at(-1).effort,'low');assert.equal(f.outbound.at(-1).session,first.session);assert.equal(f.panels.length,2);
 });
 
 test('locked host rejects send before creating a runtime request',async()=>{
@@ -90,4 +102,32 @@ test('Stop during final file revalidation prevents an editor mutation',async()=>
  f.event({type:'tool',id:'read',session,name:'read_file',arguments:{path:'file.txt'}});await until(()=>f.outbound.some(e=>e.id==='read'));
  f.event({type:'tool',id:'edit',session,name:'propose_edit',arguments:{path:'file.txt',old:'original',new:'replacement'}});await until(()=>blocked);await f.panels[0].receive({op:'stop'});release();await until(()=>f.outbound.some(e=>e.id==='edit'));
  assert.equal(f.edits.length,0);assert.match(f.outbound.find(e=>e.id==='edit').result,/Cancelled/);
+});
+test('Auto workspace reads skip initial read prompts but an edit still needs diff Apply',async()=>{
+ const document={file:'/scratch/file.txt',hash:'same',text:'original'},f=fixture({tools:{read:async()=>document,replacement:()=> 'replacement'}});
+ await f.open();f.unlock();const panel=f.panels[0];f.picks.push({id:'edit'});await panel.receive({op:'mode'});
+ f.picks.push({id:'read-only'});await panel.receive({op:'approvals'});await panel.receive({op:'send',prompt:'Review edit'});const session=f.outbound.at(-1).session;
+ f.event({type:'tool',id:'read-auto',session,name:'read_file',arguments:{path:'file.txt'}});await until(()=>f.outbound.some(e=>e.id==='read-auto'));
+ assert.equal(f.messages.some(m=>m.includes('read_file —')),false);
+ f.event({type:'tool',id:'edit-auto',session,name:'propose_edit',arguments:{path:'file.txt',old:'original',new:'replacement'}});await until(()=>f.outbound.some(e=>e.id==='edit-auto'));
+ assert.equal(f.messages.some(m=>m.includes('propose_edit —')),true);assert.equal(f.messages.some(m=>m.includes('apply the reviewed edit')),true);assert.equal(f.edits.length,1);
+});
+test('Selected workspace tools only skip selected initial prompts, and later policy changes open a fresh chat',async()=>{
+ const document={file:'/scratch/file.txt',hash:'same',text:'original'},f=fixture({tools:{read:async()=>document,replacement:()=> 'replacement'}});
+ await f.open();f.unlock();const panel=f.panels[0];f.picks.push({id:'edit'});await panel.receive({op:'mode'});
+ f.picks.push({id:'selected'},[{id:'read_file'},{id:'propose_edit'}]);await panel.receive({op:'approvals'});await panel.receive({op:'send',prompt:'Review selected tools'});const session=f.outbound.at(-1).session;
+ f.event({type:'tool',id:'read-selected',session,name:'read_file',arguments:{path:'file.txt'}});await until(()=>f.outbound.some(e=>e.id==='read-selected'));
+ f.event({type:'tool',id:'edit-selected',session,name:'propose_edit',arguments:{path:'file.txt',old:'original',new:'replacement'}});await until(()=>f.outbound.some(e=>e.id==='edit-selected'));
+ assert.equal(f.messages.some(m=>m.includes('read_file —')||m.includes('propose_edit —')),false);
+ assert.equal(f.messages.some(m=>m.includes('apply the reviewed edit')),true);assert.equal(f.edits.length,1);
+ f.done(session);f.picks.push({id:'ask'});await panel.receive({op:'approvals'});assert.equal(f.panels.length,2);
+ await f.panels[1].receive({op:'ready'});assert.equal(f.panels[1].sent.find(e=>e.type==='configuration').approval,'ask');
+ await panel.receive({op:'ready'});assert.equal(panel.sent.filter(e=>e.type==='configuration').at(-1).approval,'selected');
+});
+test('Stop while workspace read history is saving suppresses the file result',async()=>{
+ let release,recording=false;const pending=new Promise(resolve=>release=resolve);
+ const f=fixture({tools:{read:async()=>({file:'/scratch/file.txt',hash:'same',text:'private fixture content'})},memory:{contextFor:async()=>'',recordAction:async record=>{if(record.status==='complete'){recording=true;await pending;}}}});
+ await f.open();f.unlock();const panel=f.panels[0];f.picks.push({id:'plan'});await panel.receive({op:'mode'});f.picks.push({id:'read-only'});await panel.receive({op:'approvals'});await panel.receive({op:'send',prompt:'Read selected file'});const session=f.outbound.at(-1).session;
+ f.event({type:'tool',id:'delayed-read',session,name:'read_file',arguments:{path:'file.txt'}});await until(()=>recording);await panel.receive({op:'stop'});release();await until(()=>f.outbound.some(e=>e.id==='delayed-read'));
+ const result=f.outbound.find(e=>e.id==='delayed-read').result;assert.match(result,/denied/);assert.doesNotMatch(result,/private fixture content/);
 });

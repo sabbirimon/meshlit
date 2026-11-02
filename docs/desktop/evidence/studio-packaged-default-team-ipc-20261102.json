@@ -1,0 +1,332 @@
+{
+  "status": "passed",
+  "samples": [
+    {
+      "id": "31c692af-0f42-421b-914e-945178024c1c",
+      "observedAtMs": 1793627167866,
+      "cpuPercent": null,
+      "ramTotalBytes": 17179869184,
+      "ramAvailableBytes": 4478865408,
+      "heapUsedBytes": 12049728,
+      "backendRssBytes": 102998016,
+      "modelRssBytes": null,
+      "processCount": 873,
+      "cores": 16,
+      "host": "Mac OS X \u00b7 x86_64",
+      "activeWork": null,
+      "queuedWork": 0,
+      "batteries": [
+        "InternalBattery-0: 100% \u00b7 not charging \u00b7 power sensor unavailable"
+      ],
+      "gpus": [
+        "Intel UHD Graphics 630 \u00b7 hardware-reported VRAM 1.50 GiB \u00b7 inference driver not qualified here",
+        "Radeon Pro 560X \u00b7 hardware-reported VRAM 4.00 GiB \u00b7 inference driver not qualified here"
+      ],
+      "processes": [
+        {
+          "pid": 59489,
+          "name": "Codex (Renderer)",
+          "rssBytes": 582586368,
+          "cpuPercent": null
+        },
+        {
+          "pid": 82278,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 552923136,
+          "cpuPercent": null
+        },
+        {
+          "pid": 17183,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 418508800,
+          "cpuPercent": null
+        },
+        {
+          "pid": 68546,
+          "name": "Google Chrome",
+          "rssBytes": 362852352,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59940,
+          "name": "node",
+          "rssBytes": 309743616,
+          "cpuPercent": null
+        },
+        {
+          "pid": 84628,
+          "name": "WhatsApp",
+          "rssBytes": 293228544,
+          "cpuPercent": null
+        },
+        {
+          "pid": 14985,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 231194624,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59440,
+          "name": "ChatGPT",
+          "rssBytes": 221532160,
+          "cpuPercent": null
+        },
+        {
+          "pid": 16890,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 202264576,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59521,
+          "name": "Codex (Renderer)",
+          "rssBytes": 191877120,
+          "cpuPercent": null
+        },
+        {
+          "pid": 59487,
+          "name": "codex",
+          "rssBytes": 129110016,
+          "cpuPercent": null
+        },
+        {
+          "pid": 47697,
+          "name": "java",
+          "rssBytes": 109764608,
+          "cpuPercent": null
+        }
+      ],
+      "policy": {
+        "enabled": false,
+        "mode": "BALANCED",
+        "threads": 4,
+        "headroom": 2,
+        "reason": "2 logical cores of scheduling headroom; Some host pressure signals unavailable",
+        "savedThreads": 4,
+        "cores": 16,
+        "ignoreBattery": false,
+        "ignoreMemory": false,
+        "thermalPressureAvailable": false,
+        "powerSaverAvailable": false,
+        "appliesOnReload": true,
+        "appliedThreadHint": null
+      },
+      "modelLoaded": false
+    },
+    {
+      "id": "328bed89-c446-4ff6-a38c-1efcba69bccd",
+      "observedAtMs": 1793627169627,
+      "cpuPercent": 9.522313010685103,
+      "ramTotalBytes": 17179869184,
+      "ramAvailableBytes": 4469645312,
+      "heapUsedBytes": 20766192,
+      "backendRssBytes": 111374336,
+      "modelRssBytes": null,
+      "processCount": 873,
+      "cores": 16,
+      "host": "Mac OS X \u00b7 x86_64",
+      "activeWork": null,
+      "queuedWork": 0,
+      "batteries": [
+        "InternalBattery-0: 100% \u00b7 not charging \u00b7 power sensor unavailable"
+      ],
+      "gpus": [
+        "Intel UHD Graphics 630 \u00b7 hardware-reported VRAM 1.50 GiB \u00b7 inference driver not qualified here",
+        "Radeon Pro 560X \u00b7 hardware-reported VRAM 4.00 GiB \u00b7 inference driver not qualified here"
+      ],
+      "processes": [
+        {
+          "pid": 59489,
+          "name": "Codex (Renderer)",
+          "rssBytes": 582500352,
+          "cpuPercent": 0.2903096636412173
+        },
+        {
+          "pid": 82278,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 553590784,
+          "cpuPercent": 0.09539473684210525
+        },
+        {
+          "pid": 17183,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 418508800,
+          "cpuPercent": 0.006520605112154408
+        },
+        {
+          "pid": 68546,
+          "name": "Google Chrome",
+          "rssBytes": 362852352,
+          "cpuPercent": 0.01687365010799136
+        },
+        {
+          "pid": 59940,
+          "name": "node",
+          "rssBytes": 309821440,
+          "cpuPercent": 0.033280085197018104
+        },
+        {
+          "pid": 84628,
+          "name": "WhatsApp",
+          "rssBytes": 293625856,
+          "cpuPercent": 0.14816810344827586
+        },
+        {
+          "pid": 14985,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 231194624,
+          "cpuPercent": 0.0
+        },
+        {
+          "pid": 59440,
+          "name": "ChatGPT",
+          "rssBytes": 221532160,
+          "cpuPercent": 0.023408239700374533
+        },
+        {
+          "pid": 16890,
+          "name": "Google Chrome Helper (Aperitif Renderer)",
+          "rssBytes": 202309632,
+          "cpuPercent": 0.006541077969649398
+        },
+        {
+          "pid": 59521,
+          "name": "Codex (Renderer)",
+          "rssBytes": 191881216,
+          "cpuPercent": 0.013340448239060833
+        },
+        {
+          "pid": 59487,
+          "name": "codex",
+          "rssBytes": 129110016,
+          "cpuPercent": 0.003338675213675214
+        },
+        {
+          "pid": 73136,
+          "name": "java",
+          "rssBytes": 111374336,
+          "cpuPercent": 3.9505620848237095
+        }
+      ],
+      "policy": {
+        "enabled": false,
+        "mode": "BALANCED",
+        "threads": 4,
+        "headroom": 2,
+        "reason": "2 logical cores of scheduling headroom; Some host pressure signals unavailable",
+        "savedThreads": 4,
+        "cores": 16,
+        "ignoreBattery": false,
+        "ignoreMemory": false,
+        "thermalPressureAvailable": false,
+        "powerSaverAvailable": false,
+        "appliesOnReload": true,
+        "appliedThreadHint": null
+      },
+      "modelLoaded": false
+    }
+  ],
+  "performancePolicy": {
+    "id": "4e33c3bd-e509-4441-b0d7-95b2a331c75b",
+    "enabled": true,
+    "mode": "PERFORMANCE",
+    "threads": 6,
+    "headroom": 2,
+    "reason": "2 logical cores of scheduling headroom; Some host pressure signals unavailable",
+    "savedThreads": 4,
+    "cores": 16,
+    "ignoreBattery": false,
+    "ignoreMemory": false,
+    "thermalPressureAvailable": false,
+    "powerSaverAvailable": false,
+    "appliesOnReload": true,
+    "appliedThreadHint": null
+  },
+  "plusPolicy": {
+    "id": "82255621-f098-44ac-a4de-82ac6cb90547",
+    "enabled": true,
+    "mode": "OVERDRIVE_PLUS",
+    "threads": 16,
+    "headroom": 0,
+    "reason": "0 logical cores of scheduling headroom; Some host pressure signals unavailable; Overdrive+ CPU overrides: CpuOverrides(heat=false, saver=false, battery=true, memory=true, background=false). Android protections and model admission still apply.",
+    "savedThreads": 4,
+    "cores": 16,
+    "ignoreBattery": true,
+    "ignoreMemory": true,
+    "thermalPressureAvailable": false,
+    "powerSaverAvailable": false,
+    "appliesOnReload": true,
+    "appliedThreadHint": null
+  },
+  "roleCount": 268,
+  "invalidModeRejected": true,
+  "lockedTeamAccessRejected": true,
+  "ownedModelStopAcknowledged": true,
+  "isolatedPreferencesAndUsage": true,
+  "guiQualified": false,
+  "realLocalTeam": {
+    "id": "a3ab32fb-1317-4963-bada-d7c0a12a3551",
+    "plan": {
+      "goal": "Compute two plus two. Use short sentences.",
+      "mode": "SINGLE_DEVICE",
+      "members": [
+        {
+          "id": "planner",
+          "role": "planner",
+          "sourceId": "local",
+          "modelId": "meshlit-local",
+          "profileId": null,
+          "guidance": "Keep your contribution under 20 words."
+        },
+        {
+          "id": "worker",
+          "role": "worker",
+          "sourceId": "local",
+          "modelId": "meshlit-local",
+          "profileId": null,
+          "guidance": "Keep your contribution under 20 words."
+        },
+        {
+          "id": "reviewer",
+          "role": "reviewer",
+          "sourceId": "local",
+          "modelId": "meshlit-local",
+          "profileId": null,
+          "guidance": "Keep your contribution under 20 words."
+        }
+      ],
+      "control": "USER_DIRECTED",
+      "maxRounds": 1,
+      "parallelWorkers": 1
+    },
+    "phase": "SUCCEEDED",
+    "agentInitiated": false,
+    "outputs": [
+      {
+        "memberId": "planner",
+        "sourceId": "local",
+        "text": "Compute two plus two.",
+        "callIndex": 1,
+        "round": 1
+      },
+      {
+        "memberId": "worker",
+        "sourceId": "local",
+        "text": "Two plus two equals four.",
+        "callIndex": 2,
+        "round": 1
+      },
+      {
+        "memberId": "reviewer",
+        "sourceId": "local",
+        "text": "The owner's task is to compute two plus two, which equals four.",
+        "callIndex": 3,
+        "round": 1
+      }
+    ],
+    "active": []
+  },
+  "modelContext": 4096,
+  "preferencesFactory": "In-memory QA factory",
+  "packagedApp": "/Users/code/Documents/Codex/output/Meshlit Studio Current 2026-11-02/Meshlit Studio.app"
+}

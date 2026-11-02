@@ -1,0 +1,5 @@
+Agency Agents role templates
+https://github.com/msitarzewski/agency-agents
+Pinned source: b37b5bb33b78f2c1d6567d98e25ca818e3259219
+MIT License; copyright retained in LICENSE.
+Meshlit adaptation: searchable data catalog and bounded instruction excerpts; no installer scripts, autonomous grants, or third-party runtime are imported.

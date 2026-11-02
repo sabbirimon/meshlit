@@ -12,10 +12,14 @@ const groups=[
   ['context','Preview recalled context','Inspect which saved notes match a query before using them in a chat.','meshlit.contextPreview','prompt provenance'],
   ['history','Reviewed action history','Inspect recorded tool outcomes. Recording is opt-in; arguments and secrets are excluded.','meshlit.actionHistory','receipts audit'],
   ['mcp','MCP connectors','Select installed or remote tools per agent. Each tool call still requires review.','meshlit.connectors','plugins server'],
+  ['connected','Connected capabilities','Connect OpenViking memory and Google Artemis phone automation to existing Meshlit workflows.','meshlit.connectedCapabilities','OpenViking Artemis Google memory knowledge skills phone automation'],
+  ['device-connect','Device connection assistance','Approve exact saved model APIs for bounded agent contact checks; review setup-only devices and connectors.','meshlit.deviceConnections','device connect local remote automatic source approval identity'],
+  ['teams','Agent teams and role library','Run user-directed or supervised autonomous teams; adapt and manage role templates.','meshlit.agentTeams','agency manager workers reviewer multi device cluster'],
   ['access','Agent app access','Review macOS app grants and native operator capabilities.','meshlit.appAccess','permissions automation'],
   ['stop','Stop app access','Revoke ongoing Meshlit app access. Completed external actions are not undone.','meshlit.stopAppAccess','cancel revoke']
  ]},
  {id:'services',title:'Services and integrations',description:'Connect optional companions; their setup and accounts remain explicit.',items:[
+  ['system','System resources and CPU','Live local CPU/RAM charts, process status and guarded workload modes.','meshlit.systemMonitor','monitor dashboard performance Overdrive memory pressure battery'],
   ['resources','Resource sharing','Inspect an authorized host’s advertised models over HTTPS. Capacity and prices remain unverified.','meshlit.resourceSharing','LAN WAN internet remote users teams organizations hosting resources'],
   ['companions','Memory and computer companions','Configure claude-mem, OpenMausBot and OpenBot; check availability and open their full interfaces.','meshlit.companions','bots AG-UI computers'],
   ['protocols','APIs and protocols','Inspect existing protocol connections and their supported operations.','meshlit.protocols','endpoint gateway'],

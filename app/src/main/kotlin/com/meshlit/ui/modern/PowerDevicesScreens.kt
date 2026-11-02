@@ -125,7 +125,7 @@ import kotlinx.serialization.json.Json
     val selectedLabel=choices.firstOrNull{it.first==selectedModel}?.second ?: "Choose a model"
     val tools=remember(revision){registry.list()}
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item{TextButton(onClick=onBack){Text("Back to settings")};Text("Agent management",style=MaterialTheme.typography.headlineSmall);Text("Saved permissions govern typed commands. Online access also needs opt-in on the selected provider profile. The built-in phone agent and optional OpenClaw gateway have separate controls.")
+        item{TextButton(onClick=onBack){Text("Back to settings")};TextButton(onClick={onOpen("connected-capabilities")}){Text("Connected capabilities")};TextButton(onClick={onOpen("agent-catalog")}){Text("Agent role library")};TextButton(onClick={onOpen("agent-teams")}){Text("Agent teams")};Text("Agent management",style=MaterialTheme.typography.headlineSmall);Text("Saved permissions govern typed commands. Online access also needs opt-in on the selected provider profile. The built-in phone agent and optional OpenClaw gateway have separate controls.")
             Column {
                 TextButton(onClick={onOpen("agent-registry")}){Text("Agent registry")}
                 TextButton(onClick={onOpen("agent-logs")}){Text("Agent logs")}

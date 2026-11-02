@@ -49,6 +49,16 @@ import java.util.UUID
             Row{TextButton(onClick={edit(profile)}){Text("Edit")};TextButton(onClick={try{cancelCatalog();providers.remove(profile.id);if(editing?.id==profile.id){editing=null;key=""}}catch(_:Exception){error="Profile and key could not be removed."}}){Text("Remove profile and key")}}}}}
         item{Text("Device and cluster endpoints",style=MaterialTheme.typography.titleMedium)
             Text("The phone's loaded model and negotiated group are selected in Chat → Conversation settings. Add a compatible endpoint here for a local server, remote device or existing cluster. Saving a group endpoint does not start or shard a model.")
+            Text("Ollama and LM Studio",style=MaterialTheme.typography.titleSmall)
+            Text("Use a desktop/server model from this phone. Ollama's desktop API is usually 127.0.0.1:11434/v1; LM Studio's is 127.0.0.1:1234/v1. On this phone, use the host's authenticated HTTPS address or an authenticated tunnel ending on phone loopback. A placeholder API key does not secure an Ollama server.",style=MaterialTheme.typography.bodySmall)
+            FlowRow {
+                listOf("Ollama host","LM Studio host").forEach{name->
+                    OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),name,"",sourceKind=ModelSourceKind.REMOTE_DEVICE))}){Text("Connect $name")}
+                }
+            }
+            Text("Select an exact model from Refresh model catalog. Local phone inference remains available separately. Choose a local model on the host to use its CPU/GPU and memory. The server may also offer cloud models; its label does not prove local execution. These connections do not pool devices or install an Android runtime.",style=MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),"Strata host","",sourceKind=ModelSourceKind.REMOTE_DEVICE))}){Text("Connect Strata host")}
+            Text("Strata runs on a compatible desktop/server. Use its authenticated HTTPS API or a loopback tunnel on this device; the phone's 127.0.0.1 address is not your computer. Models, CPU/GPU offload and storage stay on the host.",style=MaterialTheme.typography.bodySmall)
             FlowRow { listOf(ModelSourceKind.LOCAL_SERVER to "Local server",ModelSourceKind.MULTI_LOCAL to "Multiple local models",ModelSourceKind.REMOTE_DEVICE to "Remote device",ModelSourceKind.GROUP_CLUSTER to "Group / cluster").forEach { (kind,label) ->
                 OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),label,"",sourceKind=kind))}) { Text(label) }
             } }
@@ -78,6 +88,7 @@ import java.util.UUID
             if(storedKey==true) TextButton(onClick={try{cancelCatalog();providers.removeStoredKey(profile.id);editing=profile.copy(enabled=false);key="";storedKey=false}catch(_:Exception){error="Saved key could not be removed."}}){Text("Remove saved key and disable profile")}
             if(profile.gateway==OnlineGateway.OMNIROUTE) Text("Use an OmniRoute client API key here. Manage upstream provider keys, accounts and routing on its dashboard. Removing this saved key disables this profile; it does not revoke the key on OmniRoute or delete a Cloud vault credential.",style=MaterialTheme.typography.bodySmall)
             OutlinedTextField(profile.model,{editing=profile.copy(model=it,pricingSource=null,priceCheckedAtMs=null);inputRate="";outputRate=""},label={Text("Model ID")})
+            ModelEffortSetup(profile){editing=it}
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(enabled=!busy,onClick={
                     cancelCatalog();val revision=catalogRevision;val enteredKey=key

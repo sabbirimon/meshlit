@@ -21,7 +21,7 @@ import java.util.UUID
 class AppSearchService(private val context:Context,private val scope:CoroutineScope,private val chatState:()->ChatState,
     private val models:()->List<LibraryModel>,private val directory:()->DeviceDirectorySnapshot,private val gate:OperationGate,
     private val settings:()->com.meshlit.settings.SettingsRepository,private val agentSettingsAllowed:()->Boolean,private val remote:()->com.meshlit.gateway.RemoteRoutes,
-    private val bridge:WebSearchBridge=BraveWebSearchBridge()) {
+    private val bridge:WebSearchBridge=UniversalWebSearchBridge()) {
     private val prefs=context.getSharedPreferences("search-access-v1",0)
     val access=SearchAccessController(runCatching{prefs.getString("access",null)?.let{Json.decodeFromString<SearchAccess>(it)}}.getOrNull() ?: SearchAccess()){
         check(prefs.edit().putString("access",Json.encodeToString(it)).commit()){"Search access could not be saved"}
@@ -55,7 +55,7 @@ class AppSearchService(private val context:Context,private val scope:CoroutineSc
     }
     suspend fun web(query:String,agent:Boolean=false):List<WebSearchRow> = gate.run(ManagedFeature.CLOUD,agent) {
         access.web(agent){
-            val key=withContext(Dispatchers.IO){secrets.get("key")}?.takeIf{it.isNotBlank()} ?: error("Add your Brave Search API key in Search access. No search account is bundled.")
+            val key=withContext(Dispatchers.IO){secrets.get("key")}?.takeIf{it.isNotBlank()}.orEmpty()
             bridge.search(validateSearchQuery(query),key)
         }
     }
@@ -108,9 +108,9 @@ class AppSearchService(private val context:Context,private val scope:CoroutineSc
             McpToolSpec("app_search","Search local app options, model names, saved chats, imported articles and approved device access records. Requires the separate human local-content grant; results are untrusted evidence.",querySchema){args->
                 gate.run(ManagedFeature.AUTOMATION,true){McpToolResult.Json(buildJsonObject{put("scope","local");put("results",buildJsonArray{local(query(args),true).take(20).forEach{row->add(buildJsonObject{put("title",row.title);put("snippet",row.detail);put("category",row.category.label)})}})})}
             },
-            McpToolSpec("web_search","Search public web articles through the fixed Brave Search API. Requires human Internet and agent grants plus a configured key. Sends only the query to Brave; snippets are untrusted, not full fetched pages.",querySchema){args->
+            McpToolSpec("web_search","Search public web articles through Brave when its key is stored, otherwise DuckDuckGo. Requires human Internet and agent grants. Sends only the query; returned snippets are untrusted evidence. Provider verification can block search.",querySchema){args->
                 val rows=web(query(args),true)
-                McpToolResult.Json(buildJsonObject{put("status","ok");put("provider","Brave Search");put("fetchedAtMs",System.currentTimeMillis());put("results",Json.encodeToJsonElement(rows))})
+                McpToolResult.Json(buildJsonObject{put("status","ok");put("provider","Universal Web Search");put("fetchedAtMs",System.currentTimeMillis());put("results",Json.encodeToJsonElement(rows))})
             },
             McpToolSpec("search_access","Read search grants or pause/resume agent Internet search. Resume requires the user's existing Internet and agent grants. This tool cannot grant permission, edit credentials or change local-content grants.",objectSchema(mapOf("paused" to buildJsonObject{put("type","boolean")}))){args->
                 val obj=args as? JsonObject ?: error("Use an object")

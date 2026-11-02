@@ -592,7 +592,7 @@ class InferenceCoordinator(
                 try {
                     val effectiveRequest = try { request.copy(prompt=localBehavior().decorate(request.prompt)) }
                     catch(e:IllegalArgumentException){return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid("local_behavior: ${e.message}"))}
-                    val result = targetEngine.infer(effectiveRequest)
+                    val result = if(targetEngine.engineTag in setOf("runanywhere","llama-native-local")) CpuWorkGate.run("Text generation") {targetEngine.infer(effectiveRequest)} else targetEngine.infer(effectiveRequest)
                     if(request.publishEvents) _events.tryEmit(InferenceEvent.GenerationFinished(result))
                     if (targetEngine.isReady()) {
                         _state.value = CoordinatorState.Ready(

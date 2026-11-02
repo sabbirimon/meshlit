@@ -256,7 +256,7 @@ class RunAnywhereVisionEngine(
         streaming_enabled = true,
         system_prompt = "You are a helpful assistant that describes images.",
         max_image_size = 1024,
-        n_threads = 0,
+        n_threads = AndroidCpuBudget.generationThreads(),
         use_gpu = false,
         model_family = VLMModelFamily.VLM_MODEL_FAMILY_UNSPECIFIED,
         custom_chat_template = VLMChatTemplate(

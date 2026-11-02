@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-31",
+  "updated": "2026-11-03",
   "applicationSourceCommit": "12bd20a",
   "sourceEvidenceCheckpoint": "630cba2",
   "review": "https://github.com/sabbirimon/meshlit-v2/pull/2",
@@ -15,23 +15,23 @@
     },
     {
       "name": "Shared sharding",
-      "state": "Admission/storage/active Android launch fixes contract-tested; desktop controller pending",
-      "nextGate": "Live paired-worker controller and independent-device oversized-model/peer-loss proof"
+      "state": "2026-11-03: physical Mac Metal/CPU plus Samsung CPU layer completion passed over Tailscale LTE",
+      "nextGate": "Managed Studio/HyperL mixed adapter, oversized model, cross-owner and distributed recovery proof"
     },
     {
       "name": "Desktop management",
-      "state": "Partial source and scoped host qualification",
-      "nextGate": "Remaining real category controllers and operational acceptance"
+      "state": "2026-11-02: portable Intel runtime and local streaming/usage qualified; GUI and broader controllers remain partial",
+      "nextGate": "Desktop visual approval, clean-target signing and physical paired-phone acceptance"
     },
     {
       "name": "Android reliability",
-      "state": "278 tests per flavor and both final debug APK assemblies passed",
-      "nextGate": "Full lint and physical voice/cluster/health qualification"
+      "state": "2026-11-02: 326 unit tests per flavor, both APKs and final lints passed; physical fast-reply service-race regression and Chat handler routing passed",
+      "nextGate": "Wider device, lifecycle/stress and provider acceptance"
     },
     {
       "name": "Governed agents and fleet",
-      "state": "Android reference; desktop authority/audit port pending",
-      "nextGate": "Common permission/controller/audit bridge before autonomous MCP/A2A/hooks"
+      "state": "2026-11-02: real Samsung/Studio forward handoffs and actual Chat phone/web/device-read routing qualified; reverse workflows remain model-limited",
+      "nextGate": "Correct model-driven reverse workflows, physical cross-device A2A and configured approved device-command execution"
     },
     {
       "name": "Platform and distribution",
@@ -52,8 +52,13 @@
     },
     {
       "name": "Local/WAN topology and smart communication",
-      "state": "Replica alternative-path routing and read fallback contract/socket-tested",
-      "nextGate": "Physical link proof, NAT/relay, WAN placement, automatic takeover and carrier adapters"
+      "state": "2026-11-03: physical native TLS layer execution over Tailscale LTE passed; raw public-IP ingress failed",
+      "nextGate": "Web/API WAN enrollment, cross-owner access, Wi-Fi/cellular roaming and failover qualification"
+    },
+    {
+      "name": "Optional inference hosts",
+      "state": "2026-11-02: Android/Studio Ollama and LM Studio presets; real isolated Ollama API and Samsung client qualified over USB",
+      "nextGate": "Supported-host LM Studio execution, fair same-model benchmarks and remote host qualification"
     }
   ],
   "releaseUrl": "https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-macos-intel-build40.1",
@@ -167,5 +172,65 @@
     "review": "https://github.com/sabbirimon/meshlit-v2/pull/4",
     "document": "docs/PAUSED_CHECKPOINT_2026-10-24.md",
     "build45Qualified": false
+  },
+  "currentPerformanceCheckpoint": {
+    "date": "2026-11-02",
+    "baselineSourceCommit": "d4361ab",
+    "workingTreeChangesIncluded": true,
+    "document": "docs/VERIFICATION_2026-11-02.md",
+    "evidence": "docs/desktop/evidence/resume-20261102.json",
+    "state": "Both Android builds/lints and scoped Samsung/portable Studio runtime tests passed; streaming and speech-startup improvements measured",
+    "fullProductAcceptance": false,
+    "releasePublished": false
+  },
+  "currentHostAndMixedCheckpoint": {
+    "date": "2026-11-02",
+    "baselineSourceCommit": "d4361ab",
+    "workingTreeChangesIncluded": true,
+    "plan": "docs/LOCAL_INFERENCE_HOSTS_2026-11-02.md",
+    "nativeDocument": "docs/MIXED_NATIVE_EXECUTION_2026-11-02.md",
+    "evidence": [
+      "docs/desktop/evidence/ollama-host-20261102.json",
+      "docs/desktop/evidence/samsung-chat-follow-ollama-20261102.json",
+      "docs/desktop/evidence/mixed-mac-samsung-native-20261102.json"
+    ],
+    "lmStudioExecutionQualified": false,
+    "physicalUsbMixedCompletionQualified": true,
+    "liveWanQualified": false,
+    "managedMixedAdapterQualified": false,
+    "fullProductAcceptance": false,
+    "releasePublished": false
+  },
+  "currentPublicIpWanCheckpoint": {
+    "date": "2026-11-02",
+    "state": "Actual owner-supplied public IPv4 and matching cellular IPv6 tested with the real phone TLS listener; no public connection established",
+    "evidence": "docs/desktop/evidence/samsung-public-ip-wan-20261102.json",
+    "usbPinnedTlsVerified": true,
+    "publicIpv4Connect": "timeout",
+    "publicIpv6Connect": "EHOSTUNREACH",
+    "liveWanReachable": false,
+    "liveWanPairingQualified": false,
+    "temporarySettingsRestored": true,
+    "accessibilityStillBound": true
+  },
+  "currentNativeWanCheckpoint": {
+    "date": "2026-11-03",
+    "state": "Physical Mac Metal/CPU plus Samsung CPU layer completion over Tailscale LTE passed; controlled disconnect failed active run and released worker memory",
+    "evidence": "docs/desktop/evidence/mixed-mac-samsung-wan-native-20261103.json",
+    "nativeWanExecutionVerified": true,
+    "oversizedModelQualified": false,
+    "seamlessHandoverQualified": false,
+    "automaticDistributedRecoveryImplemented": false,
+    "managedStudioHyperLMixedAdapterQualified": false
+  },
+  "currentIllustratedManualCheckpoint": {
+    "date": "2026-11-03",
+    "chapters": 20,
+    "originalScreenshots": 7,
+    "vectorGraphics": 4,
+    "html": "docs/visual-guide.html",
+    "offlineSource": "app/src/main/assets/help/index.html",
+    "physicalFinalPackageVerified": true,
+    "evidence": "docs/desktop/evidence/manual-final-install-20261103.json"
   }
 }

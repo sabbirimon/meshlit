@@ -202,6 +202,7 @@ class MeshlitApplication : android.app.Application() {
 
     // ---- lifecycle ----
     override fun onCreate() {
+        com.meshlit.core.inference.AndroidCpuBudget.initialize(this)
         super.onCreate()
         AppLoggerFactory.install()
         startKoin {
@@ -256,6 +257,7 @@ class MeshlitApplication : android.app.Application() {
         RunAnywhereCatalogEngine.install(offlineFallback = ::catalogFallback)
 
         val appScope: kotlinx.coroutines.CoroutineScope = get()
+        com.meshlit.resources.CpuAlerts.start(this,appScope)
         val inferenceCoordinator: InferenceCoordinator = get()
         val notificationCenter: com.meshlit.notifications.NotificationCenter = get()
         notificationCenter.toString()

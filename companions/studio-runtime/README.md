@@ -1,6 +1,6 @@
 # Studio upstream runtime qualification
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-31: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-03: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
 Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -93,3 +93,44 @@ Sources: [SDK product](https://antigravity.google/product/antigravity-sdk/),
 See the [current implementation and setup](../../docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md#managed-gateways-and-durable-ide-usage--2026-10-30). The original qualification limits above describe earlier checkpoints. Gateway lifecycle now uses reviewed local development inputs; portable gateway redistribution remains pending. Usage is a ledger-backed page with persistent budget controls. Real local two-session, budget-reopen and gateway-auth evidence is recorded separately from native UI qualification.
 
 Voice and vision: see [OpenLive setup and tuning](../../docs/VOICE_AND_VISION.md).
+
+## Portable Intel Mac candidate — 2026-11-02
+
+`prepare_workbench.py --portable` now accepts explicit `--portable-python`,
+`--portable-java` and `--resources` directories. Python must contain the pinned
+SDK; Java must retain its legal tree; resources must match the pinned model and
+engine manifests. Optional `--portable-openssl /absolute/prefix` bundles only that
+prefix's `libssl.3.dylib`, `libcrypto.3.dylib` and `LICENSE.txt`, relocating their
+references inside Python. Arbitrary external native dependencies remain errors.
+The packager normalizes native library identities, verifies dependencies, signs
+the runtime, and refreshes engine integrity manifests after signing.
+
+The candidate was physically moved to a directory with spaces. Its packaged
+Python imported SSL and the SDK in a minimal environment; two real local chats,
+usage and budget persistence, wrong-passphrase rejection, and all 12 native
+HyperL CPU recipes passed there. Three Mach-O packaging tests include loading
+relocated dependent libraries after removing the original build-input path.
+See [verification evidence](../../docs/VERIFICATION_2026-11-02.md).
+The candidate remains ad-hoc signed and not notarized. Desktop computer control
+was denied, so this run does not qualify the new candidate's visual interface.
+Optional gateway, OpenLive, crawler and other service runtimes remain separate.
+
+Local SDK chat now streams real native text through the usage broker. The broker
+admits each request before dispatch and withholds completion/usage chunks and DONE
+until ledger settlement succeeds. Stream/line limits, timeout, Stop and failure
+reporting remain enforced. Hosted responses retain their existing path. Run
+`benchmark_latency.py --runtime /absolute/runtime.json --output /absolute/results.json`
+with the packaged Python for isolated local first-text timing; output length varies
+with default sampling, so this is not a fixed-token decode benchmark.
+
+## Ollama and LM Studio hosts — 2026-11-02
+
+Models includes named Ollama and LM Studio sources, reusing the existing catalog,
+compatible completion route, SecretStorage and usage admission. Local defaults
+are `http://127.0.0.1:11434/v1` and `http://127.0.0.1:1234/v1`; no runtime or model
+is installed by selecting them. For remote use choose authenticated HTTPS or an
+authenticated loopback tunnel. Ollama ignores ordinary local API keys; a client
+bearer string alone is not server authentication. Current LM Studio hosting does
+not support Intel Mac; Ollama on Intel Mac is CPU only. Android can connect to
+these hosts with its model profiles. See the [platform plan and real API
+checks](../../docs/LOCAL_INFERENCE_HOSTS_2026-11-02.md).

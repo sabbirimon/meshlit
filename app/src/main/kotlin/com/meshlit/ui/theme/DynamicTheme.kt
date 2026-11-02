@@ -232,7 +232,7 @@ fun buildColorScheme(
     val tertiary = customResolved?.tertiary ?: MeshlitEmerald
     val onPrimary = if (primary.luminance() > 0.45f) Color(0xFF0A0E1A) else Color(0xFFFFFFFF)
 
-    return if (isLight) {
+    val scheme = if (isLight) {
         lightColorScheme(
             primary = primary,
             onPrimary = onPrimary,
@@ -292,6 +292,7 @@ fun buildColorScheme(
             onError = Color(0xFFFFFFFF),
         )
     }
+    return scheme.readableTextColors()
 }
 
 /**

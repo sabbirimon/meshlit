@@ -82,11 +82,40 @@ def add_portable_runtime(args,extension,here,repo,dependencies,lock):
         shutil.copy2(repo/name,notices/name)
     shutil.copytree(repo/'desktopApp/distribution/notices',notices/'desktop')
     shutil.copy2(here/'upstreams.lock.json',notices/'upstreams.lock.json')
+    if args.portable_openssl: bundle_openssl(runtime,args.portable_openssl)
     # The SDK's own .dist-info, Python LICENSE and JDK legal tree are retained in full.
     check_python(runtime/'python',lock['antigravity']['version'])
     return dict(schema=2,kind='portable',python='runtime/python/bin/python3',agentHost='runtime/agent_host.py',
         backend=dict(java='runtime/java/bin/java',resources='runtime/resources',
             classpath=['meshlit-backend.jar','runtime/jars/*'],main='com.meshlit.desktop.MainKt'))
+
+
+def bundle_openssl(runtime, prefix):
+    runtime=Path(runtime); prefix=Path(prefix).resolve(strict=True)
+    destination=runtime/'python/lib/meshlit-openssl'; destination.mkdir(parents=True,exist_ok=True)
+    sources={}
+    for name in ('libssl.3.dylib','libcrypto.3.dylib'):
+        source=(prefix/'lib'/name).resolve(strict=True)
+        target=destination/name
+        if target.exists(): target.chmod(target.stat().st_mode | 0o200)
+        shutil.copy2(source,target)
+        target.chmod(target.stat().st_mode | 0o200)
+        sources[source]=target
+    notices=runtime/'notices/openssl';notices.mkdir(parents=True,exist_ok=True)
+    shutil.copy2(prefix/'LICENSE.txt',notices/'LICENSE.txt')
+    for file in (runtime/'python').rglob('*'):
+        if not file.is_file() or file.is_symlink():continue
+        with file.open('rb') as stream:
+            if stream.read(4) not in {b'\xfe\xed\xfa\xce',b'\xce\xfa\xed\xfe',b'\xfe\xed\xfa\xcf',b'\xcf\xfa\xed\xfe',b'\xca\xfe\xba\xbe',b'\xbe\xba\xfe\xca'}:continue
+        output=subprocess.run(['otool','-L',str(file)],check=True,capture_output=True,text=True).stdout
+        for line in output.splitlines()[1:]:
+            dependency=line.strip().split(' (',1)[0]
+            if not dependency.startswith('/'):continue
+            source=Path(dependency).resolve()
+            if source in sources:
+                file.chmod(file.stat().st_mode | 0o200)
+                relative=os.path.relpath(sources[source],file.parent)
+                subprocess.run(['install_name_tool','-change',dependency,'@loader_path/'+relative,str(file)],check=True,capture_output=True)
 
 
 def qualify_native_runtime(runtime,identity):
@@ -99,6 +128,12 @@ def qualify_native_runtime(runtime,identity):
         kind=subprocess.run(['/usr/bin/file','-b',str(file)],check=True,capture_output=True,text=True).stdout
         if 'Mach-O' not in kind: continue  # Java class files share one fat-binary magic.
         if 'x86_64' not in kind: raise ValueError(f'Non-Intel native runtime: {file.relative_to(runtime)}')
+        identity_output=subprocess.run(['/usr/bin/otool','-D',str(file)],capture_output=True,text=True)
+        identity_lines=identity_output.stdout.splitlines()
+        library_id=identity_lines[1].strip() if len(identity_lines)==2 else None
+        file.chmod(file.stat().st_mode | 0o200)  # Only mutate our copied runtime, including read-only upstream files.
+        if library_id and library_id.startswith('/'):
+            subprocess.run(['/usr/bin/install_name_tool','-id','@rpath/'+file.name,str(file)],check=True,capture_output=True)
         output=subprocess.run(['/usr/bin/otool','-L',str(file)],check=True,capture_output=True,text=True).stdout
         for line in output.splitlines()[1:]:
             if line.rstrip().endswith(':'): continue
@@ -130,6 +165,31 @@ def reseal_engines(resources):
         hyperl.write_text(json.dumps(metadata,indent=2)+'\n')
 
 
+def finalize_workbench(args,lock):
+    extension=args.output/'Contents/Resources/app/extensions/meshlit-workbench'
+    if args.portable:
+        native=qualify_native_runtime(extension/'runtime',args.sign_identity)
+    subprocess.run(['codesign','--force','--deep','--sign',args.sign_identity,str(args.output)],check=True)
+    if args.portable:
+        reseal_engines(extension/'runtime/resources')
+        check_python(extension/'runtime/python',lock['antigravity']['version'])
+        from runtime_config import load_runtime
+        resolved=load_runtime(extension/'runtime.json')
+        subprocess.run([resolved['backend'][0],'-version'],check=True,capture_output=True,timeout=30)
+        report=dict(kind='portable candidate',architecture='x86_64',sdk=lock['antigravity']['version'],
+            workbench=lock['workbench']['version'],nativeFilesChecked=native,externalNativeDependencies=[],
+            absoluteDevelopmentPaths=False,pythonImportAfterRelocation=True,javaLaunchAfterRelocation=True,
+            installedAppQualified=False,notarized=False,upstreamServiceRuntimesBundled=False)
+        (extension/'PACKAGING.json').write_text(json.dumps(report,indent=2)+'\n')
+        subprocess.run(['codesign','--force','--sign',args.sign_identity,str(args.output)],check=True)
+    subprocess.run(['codesign','--verify','--deep','--strict',str(args.output)],check=True)
+    print(json.dumps({'app':str(args.output),'kind':'portable candidate' if args.portable else 'development workbench','upstream':lock['workbench']['version'],
+        'dependencies':'Bundled Python/SDK, Java, Studio jars and local resources; optional services configured separately' if args.portable else 'Existing local SDK environment, JDK, Studio jars and bundled model resources required',
+        'signing':'ad-hoc development; Keychain may ask again after rebuilds' if args.sign_identity=='-' else 'configured identity; notarization not performed',
+        'launched':False},indent=2))
+
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cache',type=Path,required=True)
@@ -139,6 +199,7 @@ def main():
     parser.add_argument('--resources',type=Path,required=True)
     parser.add_argument('--portable',action='store_true',help='Bundle explicit standalone runtime trees; no development path dependencies')
     parser.add_argument('--portable-python',type=Path,help='Standalone Python tree with the pinned SDK and dependencies installed')
+    parser.add_argument('--portable-openssl',type=Path,help='Explicit OpenSSL prefix with libssl, libcrypto and LICENSE.txt to bundle for Python')
     parser.add_argument('--portable-java',type=Path,help='Redistributable Java runtime Home containing bin/java and legal/')
     parser.add_argument('--gateways',type=Path,help='Optional prepare_gateways.py manifest for reviewed development gateway builds')
     parser.add_argument('--sign-identity',default='-',help='Installed signing identity; default is ad-hoc development signing, not a trusted publisher.')
@@ -212,27 +273,7 @@ def main():
             helper_plist.write_bytes(plistlib.dumps(data))
             helper.rename(helper.with_name(name+'.app'))
         shutil.move(str(app),args.output)
-    extension=args.output/'Contents/Resources/app/extensions/meshlit-workbench'
-    if args.portable:
-        native=qualify_native_runtime(extension/'runtime',args.sign_identity)
-    subprocess.run(['codesign','--force','--deep','--sign',args.sign_identity,str(args.output)],check=True)
-    if args.portable:
-        reseal_engines(extension/'runtime/resources')
-        check_python(extension/'runtime/python',lock['antigravity']['version'])
-        from runtime_config import load_runtime
-        resolved=load_runtime(extension/'runtime.json')
-        subprocess.run([resolved['backend'][0],'-version'],check=True,capture_output=True,timeout=30)
-        report=dict(kind='portable candidate',architecture='x86_64',sdk=lock['antigravity']['version'],
-            workbench=lock['workbench']['version'],nativeFilesChecked=native,externalNativeDependencies=[],
-            absoluteDevelopmentPaths=False,pythonImportAfterRelocation=True,javaLaunchAfterRelocation=True,
-            installedAppQualified=False,notarized=False,upstreamServiceRuntimesBundled=False)
-        (extension/'PACKAGING.json').write_text(json.dumps(report,indent=2)+'\n')
-        subprocess.run(['codesign','--force','--sign',args.sign_identity,str(args.output)],check=True)
-    subprocess.run(['codesign','--verify','--deep','--strict',str(args.output)],check=True)
-    print(json.dumps({'app':str(args.output),'kind':'portable candidate' if args.portable else 'development workbench','upstream':lock['workbench']['version'],
-        'dependencies':'Bundled Python/SDK, Java, Studio jars and local resources; optional services configured separately' if args.portable else 'Existing local SDK environment, JDK, Studio jars and bundled model resources required',
-        'signing':'ad-hoc development; Keychain may ask again after rebuilds' if args.sign_identity=='-' else 'configured identity; notarization not performed',
-        'launched':False},indent=2))
+    finalize_workbench(args,lock)
 
 
 if __name__=='__main__': main()

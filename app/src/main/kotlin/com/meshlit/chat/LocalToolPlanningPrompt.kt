@@ -10,3 +10,10 @@ internal fun localToolPlanningPrompt(engine: String, modelName: String, planning
     // into a long reasoning response that exhausts the planning output budget.
     return prompt + if (modelName.contains("Qwen3", ignoreCase = true)) "<think>\n\n</think>\n\n" else ""
 }
+
+/** Imported artifacts often have hashed filenames. Prefer verified architecture/catalog identity. */
+internal fun localToolPlanningModelName(runtimeName:String,catalogName:String?,architecture:String?):String = when(architecture?.lowercase()) {
+    "qwen3"->"Qwen3"
+    "qwen2"->"Qwen2.5"
+    else->catalogName?.takeIf{it.isNotBlank()} ?: runtimeName
+}

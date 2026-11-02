@@ -25,6 +25,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
@@ -55,6 +59,11 @@ fun UserManualScreen(
     onBack: () -> Unit,
     onOpenSection: ((ManualSection) -> Unit)? = null,
 ) {
+    var illustrated by remember { mutableStateOf(false) }
+    if (illustrated) {
+        com.meshlit.ui.modern.HelpTutorialScreen(back = { illustrated = false }, initialFull = true)
+        return
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -74,6 +83,15 @@ fun UserManualScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Full illustrated device manual", style = MaterialTheme.typography.titleMedium)
+                        Text("20 offline chapters with screenshots, diagrams, setup steps, expected results and troubleshooting.")
+                        TextButton(onClick = { illustrated = true }) { Text("Open full manual") }
+                    }
+                }
+            }
             items(ManualSection.all, key = { it.title }) { section ->
                 ManualCard(section = section, onCta = { onOpenSection?.invoke(section) })
             }

@@ -104,6 +104,11 @@ class MeshlitAccessibilityService : AccessibilityService() {
      */
     fun dispatch(request: AutomationRequest): AutomationResponse {
         fun result(ok:Boolean,error:String)=AutomationResponse.UnitResponse(ok,if(ok) null else error)
+        // Delegated UI access must never approve its own policies/credentials.
+        // Reading Meshlit is allowed; its clicks and text entry stay human-only.
+        if ((request is AutomationRequest.ClickRequest || request is AutomationRequest.TypeRequest) &&
+            (request.targetPackage == packageName || foregroundPackage() == packageName))
+            return result(false,"Meshlit administration and input require human control")
         if(request !is AutomationRequest.OpenApp && request !is AutomationRequest.ListApps &&
             request.targetPackage.isNotBlank() && request.targetPackage!=foregroundPackage())
             return result(false,"Foreground target changed; take a fresh snapshot")
@@ -120,7 +125,7 @@ class MeshlitAccessibilityService : AccessibilityService() {
                 val node=findActive { (request.text!=null && it.text?.toString()==request.text) ||
                     (request.contentDescription!=null && it.contentDescription?.toString()==request.contentDescription) ||
                     (request.resourceId!=null && it.viewIdResourceName==request.resourceId) }
-                try {result(node?.performAction(AccessibilityNodeInfo.ACTION_CLICK)==true,"Node unavailable or not clickable")}
+                try {result(clickObservedTarget(node,request.targetPackage),"Node unavailable or not clickable")}
                 finally {node?.recycle()}
             }
             is AutomationRequest.TypeRequest -> {
@@ -128,6 +133,7 @@ class MeshlitAccessibilityService : AccessibilityService() {
                 val node=root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 root?.recycle()
                 try {
+                    if(node?.packageName?.toString()==packageName) return result(false,"Meshlit input requires human control")
                     if(node?.isPassword==true) return result(false,"Password input requires a separate human workflow")
                     val args=android.os.Bundle().apply{putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,request.text.take(8192))}
                     result(node?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,args)==true,"No editable focused node")
@@ -197,6 +203,26 @@ class MeshlitAccessibilityService : AccessibilityService() {
             isPassword = isPassword,
             children = childList,
         )
+    }
+
+    /** Click a labelled node's enabled button ancestor without leaving its app or window. */
+    private fun clickObservedTarget(node:AccessibilityNodeInfo?,targetPackage:String):Boolean {
+        if(node==null) return false
+        val window=node.windowId
+        // Compose often exposes a labelled icon or text below the actual button.
+        // Follow only its own ancestors, never another matching control or window.
+        var candidate:AccessibilityNodeInfo?=AccessibilityNodeInfo.obtain(node)
+        try {
+            repeat(12) {
+                val current=candidate ?: return false
+                if(current.windowId!=window || current.packageName?.toString()!=targetPackage || targetPackage==packageName || !current.isEnabled) return false
+                if(current.isClickable) return foregroundPackage()==targetPackage &&
+                    current.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                candidate=current.parent
+                current.recycle()
+            }
+            return false
+        } finally {candidate?.recycle()}
     }
 
     /** Production accessibility traversal: bounded, detached result owned by caller. */

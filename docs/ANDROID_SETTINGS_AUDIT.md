@@ -1,6 +1,6 @@
 # Android settings, tools and voice audit
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -195,3 +195,12 @@ unknown-field retention, failed AndroidControl commits and effective revocation.
 The device tools-settings test also checks worker-group Cancel versus Save and
 restores the owner's original group/options. Passing those isolated contracts is
 not proof of every automatic feature, browser action, remote harness or OS grant.
+
+## Samsung follow-up — 2026-11-02
+
+Physical checks now cover Basic/Advanced navigation, categories/search, voice
+settings, rewards/network routes, chat tool persistence, search settings, HyperL
+editor execution/errors/source generation, and permissions/Monitor navigation.
+HyperL opt-in was performed by the owner. This does not replace the route-by-route
+source-only qualification boundary above. The [verification report](VERIFICATION_2026-11-02.md)
+records exact device/runtime tests, performance changes, and remaining gates.

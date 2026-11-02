@@ -30,9 +30,8 @@ class MainActivity:ComponentActivity() {
                     // Both flavors use the shared optional permission setup. A second
                     // legacy wizard must not race navigation or cover the first chat.
                     com.meshlit.legal.LegalAgreementGate(onDecline = { finishAndRemoveTask() }) {
-                        com.meshlit.ui.modern.BootLoadingGate {
-                            if(BuildConfig.USE_NEW_UI) V2Root() else MeshlitApp()
-                        }
+                        // Open the workspace immediately; model loading stays visible in Chat and Models.
+                        if(BuildConfig.USE_NEW_UI) V2Root() else MeshlitApp()
                     }
                 }
             }

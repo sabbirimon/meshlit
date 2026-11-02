@@ -1,0 +1,89 @@
+{
+  "schema": "meshlit-tailscale-physical-setup/1",
+  "observedAtUtc": "2026-11-02T17:28:25.320407+00:00",
+  "clientVersion": "1.104.4",
+  "downloads": [
+    {
+      "name": "Tailscale-1.104.4-macos.zip",
+      "bytes": 31823652,
+      "sha256": "c0684365d8b77a2f838a14a79374ac92849b59a81bc347a5cc36bda81379a3ee",
+      "source": "https://pkgs.tailscale.com/stable/Tailscale-1.104.4-macos.zip"
+    },
+    {
+      "name": "tailscale-android-universal-1.104.4.apk",
+      "bytes": 105698535,
+      "sha256": "47628cecde2de0ed03f4a69424635259023daf76fb5d9afeeddfa62761690984",
+      "source": "https://pkgs.tailscale.com/stable/tailscale-android-universal-1.104.4.apk"
+    }
+  ],
+  "mac": {
+    "platform": "Intel macOS 15.8.2",
+    "installedPath": "/Applications/Tailscale.app",
+    "vendorSignature": "Tailscale Inc. (W5364U7YZB)",
+    "codesignVerified": true,
+    "notarizationAssessmentAccepted": true,
+    "ownerCompletedLoginAndVpnPrompts": true,
+    "cliExitCode": 0,
+    "backendState": "Running",
+    "tunReported": true,
+    "assignedAddressCount": 2,
+    "healthIssueCount": 0,
+    "networkDiagnostic": {
+      "udp": true,
+      "ipv4": true,
+      "ipv6": false,
+      "preferredDerpRegion": 3,
+      "preferredDerpLatencyMs": 62.47
+    }
+  },
+  "samsung": {
+    "platform": "Samsung SM-A207F Android 11",
+    "package": "com.tailscale.ipn",
+    "officialApkInstalled": true,
+    "apkSignatureVerified": true,
+    "loginAndVpnConsent": "completed by owner",
+    "onboardingScreenVerified": "Owner reported Connected; Mac status verified one online Android peer",
+    "wifiDisabled": true,
+    "cellularTransport": "LTE with VPN transport observed"
+  },
+  "checks": {
+    "macControlPlaneConnected": true,
+    "phoneEnrollmentVerified": true,
+    "macPhoneTunnelPingVerified": true,
+    "outsideLanRouteVerified": true,
+    "meshlitApplicationPairingVerified": false,
+    "distributedComputeOverWanVerified": false
+  },
+  "limits": [
+    "Existing Meshlit integration observes network/client status and hands off to official clients; it does not provision a VPN.",
+    "Mac-to-Samsung Tailscale-layer reachability passed on LTE with Wi-Fi disabled. Application pairing and distributed execution over WAN remain unqualified.",
+    "Account identity, node keys, private addresses, authentication URLs and peer inventory are excluded.",
+    "No exit node, subnet route, auth key, Funnel exposure or Meshlit access grant was created by this setup."
+  ],
+  "tunnelProbe": {
+    "tool": "Official tailscale ping; Tailscale-layer discovery probes",
+    "initialAttempts": 5,
+    "initialTimeouts": 3,
+    "initialResponseLatenciesMs": [
+      94,
+      52
+    ],
+    "warm": {
+      "exitCode": 0,
+      "attempts": 5,
+      "responses": 5,
+      "timeouts": 0,
+      "latencyMs": [
+        62.0,
+        54.0,
+        55.0,
+        57.0,
+        62.0
+      ],
+      "medianMs": 57.0,
+      "directResponses": 5
+    },
+    "path": "Direct UDP endpoint reported; no DERP response in successful samples",
+    "scope": "Tunnel connectivity only; not application TLS/authentication or distributed compute"
+  }
+}

@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshlit.chat.*
+import com.meshlit.core.inference.models.*
 import com.meshlit.providers.OnlineProviders
 import com.meshlit.di.koinInject
 import androidx.compose.ui.unit.dp
@@ -39,10 +40,14 @@ import kotlinx.coroutines.withContext
         catch(_:Exception){hasWebKey=null;webKeyReadFailed=true}
     }
     var options by remember{mutableStateOf(state.current?.options ?: ChatOptions())}
+    var confirmSelectedTools by remember{mutableStateOf(false)}
     var budget by remember{mutableStateOf(options.maxTokens.toString())}
-    val maxOutput=if(options.routeId==null) 2048 else 1024
+    val effortProfile=profiles.firstOrNull{it.id==options.onlineProfileId}
+    val allowedEfforts=chatSupportedEfforts(options,profiles,routes)
+    val maxOutput=if(options.routeId!=null)1024 else if(effortProfile?.supportedEfforts()?.isNotEmpty()==true)16384 else 2048
     val validBudget=budget.toIntOrNull()?.let{it in 1..maxOutput}==true
-    LaunchedEffect(options.routeId){if((budget.toIntOrNull() ?: 0)>maxOutput) budget=maxOutput.toString()}
+    LaunchedEffect(maxOutput){if((budget.toIntOrNull() ?: 0)>maxOutput) budget=maxOutput.toString()}
+    LaunchedEffect(options.onlineProfileId,options.routeId,allowedEfforts){if(options.reasoningEffort!=ReasoningEffort.AUTO && options.reasoningEffort !in allowedEfforts)options=options.copy(reasoningEffort=ReasoningEffort.AUTO)}
     val coordinator=koinInject<com.meshlit.core.inference.InferenceCoordinator>()
     val context=LocalContext.current
     val savedAgents=remember(context){runCatching{com.meshlit.agent.AgentProfileStore(context).load()}.getOrDefault(emptyList())}
@@ -57,6 +62,7 @@ import kotlinx.coroutines.withContext
     val evidence by controller.clusterEvidence.collectAsStateWithLifecycle()
     val capacity=(runtime as? com.meshlit.core.inference.CoordinatorState.Ready)?.model?.contextSize?.takeIf{it>0}
     var error by remember{mutableStateOf<String?>(null)}
+    if(confirmSelectedTools)SelectedToolsConfirmation(onDismiss={confirmSelectedTools=false},onConfirm={confirmSelectedTools=false;options=options.copy(approvalMode=ChatApprovalMode.SELECTED_TOOLS)})
     ModalBottomSheet(onDismissRequest=onClose,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
     Column(Modifier.fillMaxWidth().heightIn(max=720.dp).navigationBarsPadding().imePadding().padding(horizontal=12.dp)) {
     Text("Conversation settings",style=MaterialTheme.typography.titleLarge)
@@ -123,25 +129,36 @@ import kotlinx.coroutines.withContext
             if (pipelineStatus.coordinator) Text("Removing the cluster unloads its model. Load a phone model in Models before sending locally.")
             Text("Agent tools below run through the selected local or cluster model only when their separate grants are enabled. Online profiles and model routes use their own controls.")
         }
-        profiles.filter{it.enabled && !com.meshlit.BuildProfile.coreCandidate}.forEach{profile->FilterChip(options.onlineProfileId==profile.id && options.routeId==null,{options=options.copy(onlineProfileId=profile.id,routeId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false)},label={Text("${profile.sourceKind.name.lowercase().replace('_',' ')} · ${profile.name} / ${profile.model}")})}
+        profiles.filter{it.enabled && !com.meshlit.BuildProfile.coreCandidate}.forEach{profile->FilterChip(options.onlineProfileId==profile.id && options.routeId==null,{options=options.copy(onlineProfileId=profile.id,routeId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false)},label={Text("${profile.sourceKind.name.lowercase().replace('_',' ')} · ${profile.name} / ${profile.model}")})}
         if(!com.meshlit.BuildProfile.coreCandidate && routes.any{it.enabled}) {
-            FilterChip(options.routeId=="__auto__",{options=options.copy(routeId="__auto__",onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,maxTokens=minOf(options.maxTokens,1024))},label={Text("Model router · automatic rules")})
-            routes.filter{it.enabled}.forEach{route->FilterChip(options.routeId==route.id,{options=options.copy(routeId=route.id,onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,maxTokens=minOf(options.maxTokens,1024))},label={Text("Route · ${route.name} / ${route.mode}")})}
+            FilterChip(options.routeId=="__auto__",{options=options.copy(routeId="__auto__",onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,maxTokens=minOf(options.maxTokens,1024))},label={Text("Model router · automatic rules")})
+            routes.filter{it.enabled}.forEach{route->FilterChip(options.routeId==route.id,{options=options.copy(routeId=route.id,onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,maxTokens=minOf(options.maxTokens,1024))},label={Text("Route · ${route.name} / ${route.mode}")})}
             if(options.routeId!=null) OutlinedTextField(options.routeScenario,{options=options.copy(routeScenario=it.lowercase())},label={Text("Route scenario")})
         }
         if(!com.meshlit.BuildProfile.coreCandidate) {
             Text("Colibri host",style=MaterialTheme.typography.titleMedium)
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                com.meshlit.workspace.ColibriMode.entries.forEach{mode->FilterChip(options.colibriMode==mode.name,{options=if(mode==com.meshlit.workspace.ColibriMode.OFF) options.copy(colibriMode=mode.name) else options.copy(colibriMode=mode.name,onlineProfileId=null,routeId=null,webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false)},label={Text(mode.name.lowercase().replaceFirstChar{it.uppercase()})},modifier=Modifier.testTag("chat-colibri-${mode.name}"))}
+                com.meshlit.workspace.ColibriMode.entries.forEach{mode->FilterChip(options.colibriMode==mode.name,{options=if(mode==com.meshlit.workspace.ColibriMode.OFF) options.copy(colibriMode=mode.name) else options.copy(colibriMode=mode.name,onlineProfileId=null,routeId=null,webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false)},label={Text(mode.name.lowercase().replaceFirstChar{it.uppercase()})},modifier=Modifier.testTag("chat-colibri-${mode.name}"))}
             }
             Text("On needs saved host access and a model refreshed within 5 minutes. Auto keeps local inference unless no local model is ready or you prefer the host. Configure Settings → Colibri host. No automatic download or host-error fallback.",style=MaterialTheme.typography.bodySmall)
             Row{Text("Allow agent mode requests for this chat",Modifier.weight(1f));Switch(options.colibriAgentAllowed,{options=options.copy(colibriAgentAllowed=it)},enabled=options.colibriAgentAllowed || (colibriConfig.hostAccess && colibriConfig.agentSwitching),modifier=Modifier.testTag("chat-colibri-agent-grant"))}
             Text("Also requires the saved host agent grant and Models/cloud/automation delegation. Agent requests expire after 30 minutes; local tool conversations retain their on-device route.",style=MaterialTheme.typography.bodySmall)
         }
         Text("Configure API profiles in Settings → Online providers. Online sends this conversation to the selected endpoint and may incur charges. Replies are buffered; local replies stream.")
+        Text("Reasoning effort",style=MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ReasoningEffort.entries.forEach { effort ->
+            FilterChip(options.reasoningEffort==effort,{options=options.copy(reasoningEffort=effort)},enabled=effort==ReasoningEffort.AUTO || effort in allowedEfforts,label={Text(effort.label)},modifier=Modifier.testTag("chat-effort-${effort.wire}"))
+        } }
+        Text(if(allowedEfforts.isEmpty())"This selection has no declared reasoning control. Configure documented support for an exact API model in Model connections. Local and mixed routes stay Auto."
+            else "Requests the provider's reasoning setting for this exact model. It is separate from response length and permissions. Reasoning can consume the same token budget as the answer.",style=MaterialTheme.typography.bodySmall)
         }
         SettingsFeatureSection("Permissions and tools") {
         Text("This conversation only. Main Settings controls device-wide permission; Save here does not change another chat.",style=MaterialTheme.typography.bodySmall)
+        Text("Action approval",style=MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ChatApprovalMode.entries.forEach { mode ->
+            FilterChip(options.approvalMode==mode,{if(mode==ChatApprovalMode.SELECTED_TOOLS && options.approvalMode!=mode)confirmSelectedTools=true else options=options.copy(approvalMode=mode)},label={Text(mode.label)})
+        } }
+        Text("Ask reviews each selected tool call. Auto allows known approved reads and asks before other calls. Selected tools uses existing grants without another chat prompt. OS, root and protected policy controls remain human-only. This choice lasts for the app session; restart returns to Ask.",style=MaterialTheme.typography.bodySmall)
         if(operationPolicy.agentsPaused || operationPolicy.emergencyStopped) {
             Text(if(operationPolicy.emergencyStopped) "App-wide emergency stop is active. Resume in Settings → Operations."
                 else "Agents are paused for this device. Enable Agents on this device in main Settings → Agent management.",color=MaterialTheme.colorScheme.error)
@@ -162,7 +179,7 @@ import kotlinx.coroutines.withContext
             Text("App-wide search: ${if(searchAccess.webEnabled) "on" else "off"} · agent search: ${if(searchAccess.agentWeb) "allowed" else "not allowed"} · ${if(searchAccess.agentWebPaused) "paused" else "not paused"}. Brave key: ${when {webKeyReadFailed->"could not read status";hasWebKey==true->"stored";hasWebKey==false->"missing";else->"checking"}}.",
                 style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("chat-web-global-status"))
             Text("This switch changes only the current chat after Save. It cannot turn on app-wide Internet or agent access.",style=MaterialTheme.typography.bodySmall)
-            Text("The local model can request web_search using your configured Brave API key, Internet switch and agent grant. Queries go to Brave. crawl_url also requires the HTTPS Crawl4AI companion and approved domains; URLs and fetched content go to that host. Neither service is silently enabled.")
+            Text("Web search uses the provider saved in Search settings. DuckDuckGo needs no API key; selecting Brave requires its key. Internet access and the search agent grant must be on. Queries go to the selected provider. Reading full pages uses your configured HTTPS Crawl4AI host and approved domains.")
             TextButton(onClick=onSearchSettings){Text("App-wide search setup")}
             ChatToolSwitch(ChatToolGroup.PHONE,options,label="This chat: phone-agent access"){options=it}
             Text("Runs with the loaded on-device model and needs no external host. Requires saved autonomy, app scope and Android Accessibility in Settings → Phone agent and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant.")
@@ -170,8 +187,10 @@ import kotlinx.coroutines.withContext
             Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. The combined chat tool list is limited to ten. VM/QEMU and remote nodes must actually be available.")
             ChatToolSwitch(ChatToolGroup.CRYPTO,options){options=it}
             Text("Requires the saved cryptography agent grant. Keys/tool results are visible to the model and saved chat; keep real credentials in the vault.")
-            ChatToolSwitch(ChatToolGroup.AUDIO,options){options=it}
-            Text("Saved audio/agent and Media operation grants plus a visible GibberLink screen are required. Incoming English transcripts never auto-execute.")
+            ChatToolSwitch(ChatToolGroup.TEAMS,options){options=it}
+            Text("Uses only your separately saved team setup and Models delegation. It can start bounded text teams, inspect findings and pause or stop their runs. Role templates do not grant tools.")
+            ChatToolSwitch(ChatToolGroup.CONNECTIONS,options){options=it}
+            Text("Shows real saved/opt-in discovered choices. Automatic contact checks need Connection assistance enabled in Devices and an exact source approval. First identities and unsupported transports require owner setup. Connection checks do not grant model use, commands or compute.")
             ChatToolSwitch(ChatToolGroup.REMOTE,options){options=it}
             Text("Commands only saved fingerprint-pinned SSH nodes within per-node action grants. Configure Device and cluster commands plus SSH delegation.")
             ChatToolSwitch(ChatToolGroup.PEER,options){options=it}
@@ -194,7 +213,7 @@ import kotlinx.coroutines.withContext
         OutlinedTextField(budget,{budget=it.take(5)},Modifier.fillMaxWidth().testTag("chat-output-budget"),label={Text("Maximum output tokens")},singleLine=true,
             keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),isError=!validBudget,supportingText={Text("1–$maxOutput · a ceiling, not a guaranteed reply length")})
         FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-            listOf(256,512,1024,2048).filter{it<=maxOutput}.forEach{limit->FilterChip(budget==limit.toString(),{budget=limit.toString()},label={Text(limit.toString())})}
+            listOf(256,512,1024,2048,4096,8192,16384).filter{it<=maxOutput}.forEach{limit->FilterChip(budget==limit.toString(),{budget=limit.toString()},label={Text(limit.toString())})}
         }
         Text("History messages: ${options.historyMessages}");Slider(options.historyMessages.toFloat(),{options=options.copy(historyMessages=it.toInt())},valueRange=0f..20f,steps=19)
         Text("History is selected by message count, not measured token count. Reduce history for a smaller context; saved messages are kept.",style=MaterialTheme.typography.bodyMedium)

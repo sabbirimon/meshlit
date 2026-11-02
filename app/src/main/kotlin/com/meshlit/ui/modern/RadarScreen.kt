@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -27,6 +28,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meshlit.MeshlitApplication
 import com.meshlit.core.users.UserStore
@@ -61,6 +64,7 @@ import kotlin.math.sin
     val endpoints by settings.remoteEndpointsFlow.collectAsStateWithLifecycle(initialValue=emptyList())
     val pipelineStatus by pipeline.status.collectAsStateWithLifecycle()
     val animateScan=LocalMeshlitThemeConfig.current.animationsEnabled
+    val list=rememberLazyListState()
     var showIdentifiers by rememberSaveable { mutableStateOf(false) }
     var selectedMarker by remember { mutableIntStateOf(-1) }
     var fingerprint by remember { mutableStateOf("Loading…") }
@@ -85,7 +89,7 @@ import kotlin.math.sin
             savedOnly=false)
     }
     val markerNames=visible.map { it.advertisement.displayName.ifBlank { "Nearby Meshlit device" } }
-    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("radar-screen"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("radar-screen"),state=list,contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item { TextButton(onClick=onBack) { Text("Back to settings") };Text("Device radar",style=MaterialTheme.typography.headlineSmall)
             Text("Live Meshlit discoveries only. Saved devices are listed separately below. Rings do not measure physical distance.",style=MaterialTheme.typography.bodyMedium) }
         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
@@ -101,7 +105,7 @@ import kotlin.math.sin
                 Text("Identifiers are local records, not proof of ownership. Verify the other device's fingerprint before approving it.",style=MaterialTheme.typography.bodySmall)
             }
         } } }
-        item { RadarTopology(markers,state.scanning,animateScan,markerNames) {
+        item { RadarTopology(markers,state.scanning,animateScan && !list.isScrollInProgress,markerNames) {
             selectedMarker=it
             visible.getOrNull(it)?.advertisement?.nodeId?.let(onDiscovered)
         }
@@ -215,20 +219,31 @@ private val remoteBlue=Color(0xFF4B9BFF)
 @Composable internal fun RadarTopology(markers:List<RadarMarker>,scanning:Boolean,animateScan:Boolean,names:List<String> = emptyList(),onMarkerTap:(Int)->Unit={}) {
     val primary=MaterialTheme.colorScheme.primary
     val muted=MaterialTheme.colorScheme.outline
+    val currentOnMarkerTap by rememberUpdatedState(onMarkerTap)
+    val animated=animateScan && (scanning || markers.any{!it.savedOnly})
+    val sweepState:State<Float>
+    val pingState:State<Float>
+    if(animated) {
     val transition=rememberInfiniteTransition(label="radar-sweep")
-    val sweep by transition.animateFloat(initialValue=0f,targetValue=360f,
+    sweepState=transition.animateFloat(initialValue=0f,targetValue=360f,
         animationSpec=infiniteRepeatable(tween(3000,easing=LinearEasing),RepeatMode.Restart),label="radar-angle")
-    val ping by transition.animateFloat(initialValue=0f,targetValue=1f,
+    pingState=transition.animateFloat(initialValue=0f,targetValue=1f,
         animationSpec=infiniteRepeatable(tween(1800,easing=LinearEasing),RepeatMode.Restart),label="radar-ping")
-    Canvas(Modifier.fillMaxWidth().height(300.dp).testTag("radar-topology").pointerInput(markers) {
+    } else {sweepState=remember{mutableFloatStateOf(0f)};pingState=remember{mutableFloatStateOf(0f)}}
+    var canvasSize by remember{mutableStateOf(IntSize.Zero)}
+    val points=remember(markers,canvasSize){markers.indices.map{radarMarkerPoint(markers,it,canvasSize.width.toFloat(),canvasSize.height.toFloat())}}
+    val labelPaint=remember{android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{color=android.graphics.Color.WHITE}}
+    val insetPaint=remember{android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{color=android.graphics.Color.LTGRAY;textAlign=android.graphics.Paint.Align.CENTER}}
+    Canvas(Modifier.fillMaxWidth().height(300.dp).onSizeChanged{canvasSize=it}.testTag("radar-topology").pointerInput(points) {
         detectTapGestures { tap ->
             val hit=markers.indices.map { index ->
-                val point=radarMarkerPoint(markers,index,size.width.toFloat(),size.height.toFloat())
+                val point=points[index]
                 index to (tap-point).getDistance()
             }.minByOrNull { it.second }
-            if(hit!=null && hit.second<=22.dp.toPx()) onMarkerTap(hit.first)
+            if(hit!=null && hit.second<=22.dp.toPx()) currentOnMarkerTap(hit.first)
         }
     }) {
+        val sweep=sweepState.value;val ping=pingState.value
         val center=Offset(size.width/2,size.height*0.46f)
         val radius=minOf(size.width,size.height)*0.44f
         listOf(0.33f,0.65f,1f).forEach { fraction -> drawCircle(muted.copy(alpha=0.5f),radius*fraction,center,style=Stroke(2.dp.toPx())) }
@@ -253,14 +268,11 @@ private val remoteBlue=Color(0xFF4B9BFF)
             drawRoundRect(Color(0xFF172027).copy(alpha=0.95f),
                 topLeft=Offset(center.x-radius*0.5f,size.height*0.56f),
                 size=Size(radius,size.height*0.28f),cornerRadius=CornerRadius(10.dp.toPx()))
-            val insetLabel=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color=android.graphics.Color.LTGRAY;textSize=10.dp.toPx()
-                textAlign=android.graphics.Paint.Align.CENTER
-            }
-            drawContext.canvas.nativeCanvas.drawText("POSITION UNKNOWN",center.x,size.height*0.61f,insetLabel)
+            insetPaint.textSize=10.dp.toPx()
+            drawContext.canvas.nativeCanvas.drawText("POSITION UNKNOWN",center.x,size.height*0.61f,insetPaint)
         }
         markers.forEachIndexed { index,marker ->
-            val point=radarMarkerPoint(markers,index,size.width,size.height)
+            val point=points[index]
             if(point.x<0f) return@forEachIndexed
             val color=if(marker.known) knownGreen else unknownRed
             if(!marker.savedOnly && animateScan) {
@@ -276,9 +288,7 @@ private val remoteBlue=Color(0xFF4B9BFF)
             val located=marker.bearingDegrees!=null && marker.rangeFraction!=null
             val shortName=if(located) names.getOrNull(index)?.substringAfterLast('/')?.take(9).orEmpty() else ""
             val label="#${index+1} $shortName".trim()
-            val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                this.color=android.graphics.Color.WHITE;textSize=11.dp.toPx()
-            }
+            val paint=labelPaint.apply{textSize=11.dp.toPx()}
             val labelX=(point.x+9.dp.toPx()).coerceAtMost(size.width-paint.measureText(label)-3.dp.toPx())
             drawContext.canvas.nativeCanvas.drawText(label,labelX,point.y-9.dp.toPx(),paint)
         }

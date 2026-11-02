@@ -48,6 +48,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
     private var spoken:CompletableDeferred<Unit>?=null
     private var utterance:String?=null
     private var capturing=false
+    private var awaitPreparedOutput:(suspend()->Unit)?=null
     private val finishCapture=java.util.concurrent.atomic.AtomicBoolean(false)
     private val turns=VoiceTurnControl()
     private val audioManager=context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -95,7 +96,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         check(engine.setPitch((options.style.pitch*options.tuning.pitch).coerceIn(0.5f,2f))==TextToSpeech.SUCCESS && engine.setSpeechRate((options.style.speed*options.tuning.speechRate).coerceIn(0.5f,2f))==TextToSpeech.SUCCESS)
         return engine
     }
-    private suspend fun prepare(input:Boolean,output:Boolean=true) {
+    private suspend fun prepare(input:Boolean,output:Boolean=true,deferOfflineOutput:Boolean=false) {
         val selected=buildSet {
             if(input && options.input==SpeechInput.OFFLINE_MODEL) add(options.sttPack)
             if(output && options.output==SpeechOutput.OFFLINE_MODEL) add(options.ttsPack)
@@ -113,7 +114,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             if(output && options.output in setOf(SpeechOutput.OPENLIVE,SpeechOutput.ELEVENLABS)) check(options.naturalVoice.isNotBlank()){ "Load and select a natural voice first" }
         }
         if(input && options.input==SpeechInput.OFFLINE_MODEL) withContext(Dispatchers.IO){offline.load(options.sttPack,SpeechKind.WHISPER_STT)}
-        if(output && options.output==SpeechOutput.OFFLINE_MODEL) withContext(Dispatchers.IO){offline.load(options.ttsPack,SpeechKind.PIPER_TTS)}
+        if(output && options.output==SpeechOutput.OFFLINE_MODEL && !deferOfflineOutput) withContext(Dispatchers.IO){offline.load(options.ttsPack,SpeechKind.PIPER_TTS)}
         else if(output && options.output==SpeechOutput.ANDROID) configureAndroid()
         if(input && options.input==SpeechInput.ANDROID) {
             val local=Build.VERSION.SDK_INT>=31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
@@ -227,8 +228,20 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             try {
                 acquireAudioFocus()
                 gate.run(ManagedFeature.MEDIA) { speechLock.withLock {speechCleanup.requireReady();try{
-                    if(options.network) gate.run(ManagedFeature.CLOUD){withTimeout(180_000){prepare(needsInput,needsOutput)};work()}
-                    else {withTimeout(180_000){prepare(needsInput,needsOutput)};work()}
+                    suspend fun preparedWork() {
+                        val overlap=conversation && needsInput && needsOutput && options.output==SpeechOutput.OFFLINE_MODEL
+                        withTimeout(180_000){prepare(needsInput,needsOutput,deferOfflineOutput=overlap)}
+                        if(overlap) withSpeechOutputPreparation(
+                            // Once native creation starts, await its result so close()
+                            // can unload it even when Stop cancels the conversation.
+                            prepare={withTimeout(180_000){withContext(NonCancellable+Dispatchers.IO){offline.load(options.ttsPack,SpeechKind.PIPER_TTS)}}}
+                        ) { ready ->
+                            awaitPreparedOutput=ready
+                            try {work()} finally {awaitPreparedOutput=null}
+                        } else work()
+                    }
+                    if(options.network) gate.run(ManagedFeature.CLOUD){preparedWork()}
+                    else preparedWork()
                 }finally{
                     try{withContext(NonCancellable){speechCleanup.cleanup{offline.close()}}}
                     catch(e:Exception){_state.update{it.copy(error="Native speech cleanup failed. Restart Meshlit before using voice again.")};throw e}
@@ -245,6 +258,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         for(segment in speechSegments(text)) {
             currentCoroutineContext().ensureActive()
             _state.update{it.copy(phase="Preparing voice",outputLevel=null)}
+            awaitPreparedOutput?.invoke()
             when(options.output){
                 SpeechOutput.OFFLINE_MODEL->{
                     val audio=withContext(Dispatchers.IO){offline.synthesize(segment,options.style)}

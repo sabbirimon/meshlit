@@ -16,17 +16,21 @@ import java.util.concurrent.ConcurrentHashMap
     CLUSTER_START, CLUSTER_WORKER_START, CLUSTER_STOP, RECOVERY_STATUS, CHECKPOINT_LIST, CHECKPOINT_SAVE, CHECKPOINT_RESTORE, CHECKPOINT_DELETE, MODEL_STARTUP_SET,
     TASK_LIST, TASK_CREATE, TASK_UPDATE, TASK_BATCH_UPDATE, TASK_DELETE, WORKSPACE_LIST, WORKSPACE_READ, WORKSPACE_WRITE, CLOUD_PROFILES, ENVIRONMENT_PROFILES, CLOUD_EXECUTE, BROWSER_STATUS, BROWSER_AUTONOMOUS_RUN, BROWSER_STOP
 }
+@Serializable data class CpuConfigurationPatch(val expectedRevision:Long,val mode:String?=null,val workers:Int?=null) {
+    fun validate(){require(expectedRevision>=0);require(mode==null || mode in setOf("BALANCED","BATTERY_SAVER","PERFORMANCE","OVERDRIVE","OVERDRIVE_PLUS"));require(workers==null || workers in 1..128)}
+}
 @Serializable data class AppearancePatch(val themeMode:String?=null,val accentHue:String?=null,
-    val dynamicColors:Boolean?=null,val animationsEnabled:Boolean?=null,val fontScale:Float?=null,val uiFont:String?=null,val surfaceStyle:String?=null)
+    val dynamicColors:Boolean?=null,val animationsEnabled:Boolean?=null,val fontScale:Float?=null,val uiFont:String?=null,val surfaceStyle:String?=null,val cpu:CpuConfigurationPatch?=null)
 @Serializable data class AgentCommand(val requestId:String,val operation:AgentOperation,val modelId:String?=null,
     val url:String?=null,val name:String?=null,val importUri:String?=null,val appearance:AppearancePatch?=null,
     val prompt:String?=null,val maxTokens:Int=256,val temperature:Float=0.7f,
-    val startupEnabled:Boolean?=null,val task:TaskMutation?=null,val fileName:String?=null,val fileText:String?=null,val expectedSha256:String?=null,val downloadBackend:String="VERIFIED_HTTP",val contextSize:Int=2048,val runtimeBackend:String="RUNANYWHERE",val keyCacheType:String="f16",val checkpointId:String?=null,val cloudProfileId:String?=null,val cloudAction:String?=null,val cloudPage:Int=1,val browserMaxSteps:Int=10) {
+    val startupEnabled:Boolean?=null,val task:TaskMutation?=null,val fileName:String?=null,val fileText:String?=null,val expectedSha256:String?=null,val downloadBackend:String="VERIFIED_HTTP",val contextSize:Int=2048,val runtimeBackend:String="RUNANYWHERE",val keyCacheType:String="f16",val checkpointId:String?=null,val cloudProfileId:String?=null,val cloudAction:String?=null,val cloudPage:Int=1,val browserMaxSteps:Int=10,val promptFormat:String="RAW") {
     fun validate(){
         require(requestId.matches(Regex("[A-Za-z0-9_-]{1,80}"))){"requestId must be a stable 1–80 character identifier"}
         require(downloadBackend in setOf("RUNANYWHERE","VERIFIED_HTTP")) {"Unknown model download backend"}
         require(contextSize in 256..8192 && runtimeBackend in setOf("RUNANYWHERE","NATIVE_LOCAL") && keyCacheType in setOf("f16","q8_0","q4_0"))
         require(name==null || name.length<=256)
+        require(promptFormat in setOf("RAW","INSTRUCT")){"Unknown prompt format"}
         when(operation){
             AgentOperation.BROWSER_AUTONOMOUS_RUN->require(!prompt.isNullOrBlank() && prompt.length<=4000 && browserMaxSteps in 1..20){"Browser task and 1–20 steps required"}
             AgentOperation.CLOUD_EXECUTE->require(cloudProfileId?.matches(Regex("[A-Za-z0-9_-]{1,80}"))==true && cloudAction?.matches(Regex("[a-z][a-z0-9_-]{0,39}"))==true && cloudPage in 1..100){"cloudProfileId, cloudAction and bounded cloudPage required"}
@@ -39,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap
             AgentOperation.WORKSPACE_READ ->require(!fileName.isNullOrBlank())
             AgentOperation.WORKSPACE_WRITE ->require(!fileName.isNullOrBlank() && fileText!=null && fileText.length<=32000)
             AgentOperation.MODEL_STARTUP_SET ->require(startupEnabled!=null || !modelId.isNullOrBlank())
-            AgentOperation.SETTINGS_PATCH ->require(appearance!=null){"appearance patch required"}
+            AgentOperation.SETTINGS_PATCH ->{require(appearance!=null){"appearance patch required"};appearance.cpu?.validate()}
             else ->Unit
         }
     }

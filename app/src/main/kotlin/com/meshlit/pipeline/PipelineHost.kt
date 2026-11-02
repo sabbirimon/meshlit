@@ -60,6 +60,8 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     }
     private val checkpoints by lazy{NativeCheckpointStore(context)}
     private var worker:Process?=null
+    @Volatile var workerThreadHint:Int?=null
+        private set
     @Volatile private var workerStartedAtMs:Long?=null
     private var server:Process?=null
     private var workerTunnel:RpcTunnel?=null
@@ -74,6 +76,12 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     }
     fun agentControlAllowed()=context.getSharedPreferences("pipeline-policy",0).getBoolean("agent-control",false)
     fun setAgentControlAllowed(allowed:Boolean){context.getSharedPreferences("pipeline-policy",0).edit().putBoolean("agent-control",allowed).apply()}
+    fun workerInternetAllowed()=context.getSharedPreferences("pipeline-policy",0).getBoolean("worker-internet",false)
+    /** Human-only control; stop closes existing channels before changing this grant. */
+    fun setWorkerInternetAllowed(allowed:Boolean){
+        check(worker==null && !status.value.starting){"Stop the worker before changing coordinator access"}
+        check(context.getSharedPreferences("pipeline-policy",0).edit().putBoolean("worker-internet",allowed).commit()){"Coordinator access could not be saved"}
+    }
     fun peers():List<PipelinePeer> = credentials.get("peers")?.let { runCatching{Json.decodeFromString<List<PipelinePeer>>(it)}.getOrNull() }.orEmpty()
     fun activeGroup():String=credentials.get("active-group")?.takeIf(::validGroupName) ?: "default"
     fun groups():List<String> = (peers().map{it.group}+activeGroup()+"default").distinct().sorted()
@@ -192,21 +200,28 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
         try {
             service()
             val nativePort=port()
-            worker=launch("worker",listOf("-H","127.0.0.1","-p","$nativePort","--device","CPU","-t","2"))
+            val threads=com.meshlit.models.AccelerationPreferences(context).effectiveThreads()
+            worker=launch("worker",listOf("-H","127.0.0.1","-p","$nativePort","--device","CPU","-t",threads.toString()))
+            workerThreadHint=threads
             delay(500);check(running(worker!!)){"Native worker exited"}
-            workerTunnel=RpcTunnel.server(certificate().first,publicPort,nativePort,pairingToken(),::log,capabilities={Json.encodeToString(offer())},networkAllowed={remote->(context.applicationContext as com.meshlit.MeshlitApplication).meshlitFirewall.decide(remote,null,null,publicPort).allowed})
+            val internetAllowed=workerInternetAllowed()
+            workerTunnel=RpcTunnel.server(certificate().first,publicPort,nativePort,pairingToken(),::log,
+                capabilities={Json.encodeToString(offer())},
+                networkAllowed={remote->(context.applicationContext as com.meshlit.MeshlitApplication).meshlitFirewall.decide(
+                    remote,null,if(internetAllowed) com.meshlit.core.trust.TrustTier.LOCAL_TRUSTED else null,publicPort).allowed},
+                authenticateBeforeNetworkCheck=internetAllowed)
             workerStartedAtMs=System.currentTimeMillis()
             _status.update{it.copy(worker=true)}
             val process=worker!!
             scope.launch(Dispatchers.IO) {
                 process.waitFor()
-                if(worker===process) {workerTunnel?.close();worker=null;workerStartedAtMs=null;_status.update{it.copy(worker=false,error="Native worker stopped")}}
+                if(worker===process) {workerTunnel?.close();worker=null;workerStartedAtMs=null;workerThreadHint=null;_status.update{it.copy(worker=false,error="Native worker stopped")}}
             }
         } catch(cancelled:CancellationException) {stopWorkerInternal();throw cancelled}
         catch(e:Exception) {stopWorkerInternal();_status.update{it.copy(error=e.message)};throw e}
         finally {_status.update{it.copy(starting=false)};stopServiceIfIdle()}
     } }
-    private fun stopWorkerInternal(){workerTunnel?.close();workerTunnel=null;val process=worker;worker=null;workerStartedAtMs=null;process?.destroy();_status.update{it.copy(worker=false)}}
+    private fun stopWorkerInternal(){workerTunnel?.close();workerTunnel=null;val process=worker;worker=null;workerStartedAtMs=null;workerThreadHint=null;process?.destroy();_status.update{it.copy(worker=false)}}
     suspend fun stopWorker()=lock.withLock {stopWorkerInternal();stopServiceIfIdle()}
     private fun offer():NodeOffer {
         val memory=ActivityManager.MemoryInfo().also{context.getSystemService(ActivityManager::class.java).getMemoryInfo(it)}
@@ -215,7 +230,7 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
             ClusterNegotiation.REVISION,workerAllowed=worker!=null,
             thermalStatus=if(Build.VERSION.SDK_INT>=29) context.getSystemService(PowerManager::class.java).currentThermalStatus else 0,
             deviceClass=if(context.resources.configuration.smallestScreenWidthDp>=600) "tablet" else "phone",
-            backend="CPU",cpuThreads=2,workerStartedAtMs=workerStartedAtMs)
+            backend="CPU",cpuThreads=workerThreadHint ?: com.meshlit.models.AccelerationPreferences(context).effectiveThreads(),workerStartedAtMs=workerStartedAtMs)
     }
     /** Query only explicitly paired workers. Local model ownership limits current
      * activation to this coordinator; the election contract also supports remote owners. */

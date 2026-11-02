@@ -38,13 +38,13 @@ class HyperLWorkbenchController(private val gate:OperationGate) {
     }
     private suspend fun <T> bounded(work:suspend()->T):T {
         check(capacity.tryAcquire()){"HyperL busy; no request queued"}
-        try{return gate.run(ManagedFeature.HYPERL){withTimeout(10000){withContext(Dispatchers.Default){work()}}}}
+        try{return gate.run(ManagedFeature.HYPERL){withTimeout(10000){withContext(Dispatchers.Default){com.meshlit.core.inference.CpuWorkGate.run("HyperL"){work()}}}}}
         finally{capacity.release()}
     }
     suspend fun execute(program:String,inputs:String,budgetBytes:Long,choice:HyperLCpuChoice=HyperLCpuChoice.REFERENCE):HyperLWorkbenchResult=bounded {
         val start=System.nanoTime();val prepared=prepare(program,inputs,budgetBytes);val plan=backendPlan(prepared,choice);HyperLAdmission.requireAdmission(plan)
         val result=if(choice==HyperLCpuChoice.NATIVE) NativeCpu.execute(prepared.program,prepared.inputs,budgetBytes)
-            else HyperLRuntime(listOf(HyperLCpuBackend(budgetBytes)),maxConcurrentExecutions=1)
+            else HyperLRuntime(listOf(HyperLCpuBackend(budgetBytes,com.meshlit.core.inference.AndroidCpuBudget.decision().threads)),maxConcurrentExecutions=1)
                 .execute(HyperLTarget.CPU_REFERENCE,prepared.program,prepared.inputs)
         HyperLWorkbenchResult(result,plan,(System.nanoTime()-start)/1_000_000.0,
             if(choice==HyperLCpuChoice.NATIVE) "NATIVE_C99 · ${HyperLContract.RUNTIME_REVISION}" else "CPU_REFERENCE")
@@ -57,7 +57,7 @@ class HyperLWorkbenchController(private val gate:OperationGate) {
         suspend fun run():FloatArray {
             currentCoroutineContext().ensureActive()
             return if(choice==HyperLCpuChoice.NATIVE) NativeCpu.execute(prepared.program,prepared.inputs,budgetBytes)
-                else HyperLRuntime(listOf(HyperLCpuBackend(budgetBytes)),maxConcurrentExecutions=1).execute(HyperLTarget.CPU_REFERENCE,prepared.program,prepared.inputs)
+                else HyperLRuntime(listOf(HyperLCpuBackend(budgetBytes,com.meshlit.core.inference.AndroidCpuBudget.decision().threads)),maxConcurrentExecutions=1).execute(HyperLTarget.CPU_REFERENCE,prepared.program,prepared.inputs)
         }
         fun hash(values:FloatArray):String {
             val digest=java.security.MessageDigest.getInstance("SHA-256")

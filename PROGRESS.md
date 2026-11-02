@@ -1,8 +1,42 @@
 # Meshlit progress and evidence
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-31: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Native WAN execution and illustrated manual — 2026-11-03
+
+Real Mac Metal/CPU plus Samsung CPU layer execution passed over Tailscale with the phone on LTE and Wi-Fi disabled: 19 local assigned layers plus six remote layers returned `4`, with a 186.51 MiB phone model buffer and observed native RSS/CPU growth. Setup took 84.406 s and the request 29.011 s; no fair speedup or oversized-model claim. Controlled mid-generation TLS loss failed the run and exited the coordinator; phone memory was released and fresh authenticated capability reads worked, without transparent resume or automatic replay. The exact original firewall policy, worker-off/LAN-only state and temporary credentials were restored. [Physical WAN evidence](docs/desktop/evidence/mixed-mac-samsung-wan-native-20261103.json).
+
+The [illustrated guide](docs/visual-guide.html) has 20 chapters, seven labeled original screenshots and four vector graphics, with a 22-page PDF under output/pdf. Modern Guide and tutorial plus the legacy V1/V2 manual link to the full offline manual. Only embedded PNG data resources are allowed by its viewer; scripts, network and file loads stay blocked. Both final Android builds and lints passed (zero errors/fatal; 415 warnings per flavor), all six APKs contain the identical offline manual, and the V2 arm64 update installed on Samsung with the existing draft preserved. The physical viewer passed contents navigation, Find, embedded PNG and inline-vector display. All 97 Studio extension tests passed, and the development Hosts candidate was refreshed and signed. A separately observed scroll-opening-drawer defect is owned by the coordinated UI chat for its subsequent package. [Manual verification](docs/desktop/evidence/manual-final-install-20261103.json). Their source tests and physical acceptance are tracked separately; no commit, push or release was made.
+
+## Tailscale physical setup — 2026-11-02
+
+The official 1.104.4 clients are installed on the Intel Mac and Samsung; vendor hashes and signatures were verified. Both owner-enrolled clients connected and the physical LTE tunnel passed five warmed direct probes, median 57 ms. Native service execution was qualified on November 3 as described above; Web/API enrollment and cross-owner testing remain separate. No auth key, exit node, subnet route or public Funnel was created. [Setup scope and evidence](docs/TAILSCALE_AND_VPN.md#physical-setup-checkpoint--2026-11-02).
+
+## Supplied Samsung public-IP WAN retest — 2026-11-02
+
+The owner resumed WAN testing with supplied public IPv4/IPv6 addresses. With the real phone TLS bridge listening, the exact phone certificate verified through USB; the unchanged HTTP port rules returned 403. Public IPv4 timed out at TCP connect (5.01 s), and the phone's matching global IPv6 returned EHOSTUNREACH before TLS. Direct WAN pairing therefore did not pass. The phone's IPv4 service-continuity interface was not the supplied public IPv4; the precise upstream ingress restriction is unproven. Original endpoint and bridge-off state were restored, no firewall/enrollment/model/keyboard policy changed, and Accessibility remained connected. [Live evidence and cleanup](docs/desktop/evidence/samsung-public-ip-wan-20261102.json).
+
+## Ollama/LM Studio, chat following and physical mixed execution — 2026-11-02
+
+Added named Ollama and LM Studio connections to Android and Studio using the existing compatible-provider catalog, credentials and request paths. Android connects to a configured desktop/server; RunAnywhere and the existing Native llama.cpp CPU option remain the on-phone runtimes. Current LM Studio hosting excludes this Intel Mac, while Ollama supports Intel CPU inference. No new runtime or model download is triggered by the presets. The [platform plan](docs/LOCAL_INFERENCE_HOSTS_2026-11-02.md) records official sources, host/cloud execution boundaries and remaining acceptance.
+
+The installed Ollama 0.40.13 passed real buffered and streamed requests in an isolated, cloud-disabled instance using the existing bundled GGUF. Samsung's actual compatible client then read its catalog and generated the correct answer with reported usage through explicit USB loopback forwarding. The production chat-follow helper passed long streamed text, viewport resize, manual history and Latest-resume checks on Samsung (2 tests total). Both initial APK builds/unit/lint gates passed; subsequent agent-example changes have separate final qualification owned by the coordinated backend chat. [Physical UI/host evidence](docs/desktop/evidence/samsung-chat-follow-ollama-20261102.json).
+
+A genuine native completion now split layers across the Mac's local Metal/CPU scheduler and Samsung CPU/RAM through certificate-pinned authenticated TLS over USB. Actual per-device buffers, Metal operations, phone CPU/RSS changes and returned token IDs are retained. This qualifies the tested mixed topology, with unsupported Radeon operations on the local CPU. It does not prove WAN, arbitrary shared RAM, private VRAM pooling, oversized models, faster execution or a managed Studio/HyperL mixed adapter. [Native topology and limits](docs/MIXED_NATIVE_EXECUTION_2026-11-02.md).
+
+Direct enrollment to Samsung's mobile IPv6 failed with NoRouteToHostException from the Mac; the later Tailscale native WAN proof is recorded above. Pending-enrollment denial, OBSERVE-only status/resources and mutation rejection passed through USB; these Web/API results remain USB qualification. The portable Studio Hosts development candidate is signed and self-contained, with native desktop visual acceptance still blocked by unavailable native computer-use access. The earlier backend checks passed and its candidate was refreshed; latest connection/manual/UI packaging and final checks are tracked in the current checkpoint. No commit, push or release was made.
+
+## CPU, teams, connected capabilities and UX continuation — 2026-11-02
+
+The working tree adds shared adaptive CPU/headroom policy, separate Overdrive and Overdrive+ overrides/warnings, live Android/Studio resource dashboards, scoped device observations/sensors, bounded user-directed/supervised agent teams, the attributed Agency role catalog, original OpenViking/Google Artemis service adapters, and Strata-compatible model-provider setup. Chat now opens during model preparation and retains unsent drafts. Retired modem/wallet/lab entry points and unused role bodies are pruned while preserving owner data.
+
+Samsung's unlocked SDK sweep measured 1/2/3/4/6/8 hints; six was fastest for the short request (median 1.737 s versus 2.206 s at eight). Performance/six is now saved on this phone. A separate native six-worker load-policy test passed five actual 16-token generations (median 1.867 s, native-reported median 10.58 tokens/s), cancellation and recovery. Those are distinct backend measurements. Full raw profiles and limits are in [verification](docs/VERIFICATION_2026-11-02.md).
+
+Both final app unit suites passed 311 tests each; both APKs built and both lints passed with zero errors (410 warnings, 19 hints). Shared/core/desktop suites and Studio's 90 Node plus 21 final packaged-Python tests passed. The portable Intel Mac candidate passed signature/runtime verification and real three-role local team runs at contexts 1024 and 4096, including a cold 4096 start. Final Samsung dashboard/mode/draft checks, all 12 HyperL recipes (including 8192 elements), native generation/cancellation/recovery and editor/settings/permission navigation passed. Actual native child CPU/RSS/thread readings were observed. Temporary phone startup/awake preferences and desktop test policy values were restored. See the [final artifact and scope manifest](docs/desktop/evidence/multicore-20261102/final-verification.json).
+
+The [connected-capability review](docs/CONNECTED_CAPABILITIES_2026-11-02.md), [UX acceptance](docs/UX_REVIEW_2026-11-02.md) and [multi-device gates](docs/MULTIDEVICE_TEAM_BUILD_2026-11-02.md) distinguish implementation from live proof. WAN testing is deferred by the owner. Optional OpenViking/Artemis/Strata services are unconfigured; distributed HyperL tensors/RAM/GPU, live fleet reconciliation and multi-device allocation remain unfinished. No new commit, push or release was performed.
 
 ## Agent and provider continuation — 2026-10-31
 
@@ -1460,3 +1494,64 @@ Direct large-file retries again returned HTTP 408. No APK/DMG upload or publicat
 [Meshlit v2.0.0-beta.5](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5) was published at 06:52:57 UTC as a prerelease, without promotion to latest stable. [The byte-preserving relay](https://github.com/sabbirimon/meshlit/actions/runs/40273491384) succeeded. All thirteen final assets match the local release inputs by exact name, uploaded state, size and SHA-256; no temporary parts remain. Failed starter placeholders were removed before the final verification. The equivalent Mac PKG remains local-only. No application rebuild or replacement signing was needed.
 
 Android/Intel Mac application source remains 5a2b179; Windows/Linux CI source remains 4452c2bc79c96865955b7edd647e5a6a36ce34ce. Release notes retain signing, hardware and provider limitations. Physical Windows/Linux installation, production publisher signing/notarization, live Tailscale and paid-account qualification remain open. This closes delivery, not full product acceptance. Publication evidence is in docs/desktop/evidence/prerelease45-validation.json.
+
+
+## Android and Studio verification and performance — 2026-11-02
+
+After generated-output cleanup, both Android variants built and passed unit/lint checks.
+The expanded library run passed 1,031 cases with four skips; the peer-security JVM
+module adds three passes. Studio passed its JVM/Node/runtime checks and was packaged
+as a relocatable Intel Mac candidate with explicit Python, Java, model and native
+resources. Relocation, SSL imports, real local chats, usage/budget persistence,
+wrong-passphrase rejection and native HyperL recipes passed. Desktop computer-control
+access was denied, so visual acceptance remains open. No new release was published.
+
+Samsung settings/navigation, chat tools, rendering, search settings, VPN/usage,
+knowledge imports, codec and HyperL CPU/storage/editor checks passed. The owner
+manually accepted HyperL's optional terms. Real offline speech and a cued microphone
+conversation passed; the owner heard the correct answer and reported slow processing.
+The confirmed turn took 29.998 seconds from capture end to playback start, including
+23.710 seconds in chat/model preparation and generation.
+
+Search fixes preserve saved Brave routing, reject unsupported vendor credential
+forwarding and surface DuckDuckGo verification challenges. Live DuckDuckGo remains
+blocked by its upstream challenge. Native packaging fixes relocate library identities
+and explicitly supplied OpenSSL dependencies while preserving notices.
+
+Performance follow-up: Studio now streams local text instead of buffering a complete
+answer. Final real first-text trials improved from 6.50–14.04 seconds to
+0.41–2.09 seconds; completion/usage wait for durable settlement. Repackaged local
+chat, budget/usage restart and signatures passed.
+Samsung SDK short-prompt trials averaged 1.78 seconds, first text 1.09 seconds;
+its separate native engine is absent from this APK. Android speech preparation now
+overlaps offline output loading with capture, with cleanup/cancellation regression
+coverage. Both final builds/lints and 309 app tests per flavor passed. Three
+physical startup/Stop cycles and an owner-confirmed spoken turn passed: speech
+preparation 19.061 → 10.557 seconds; post-capture reply wait 29.998 → 28.438 seconds.
+The model still spends about 24 seconds thinking on that conversation. Original
+phone startup/awake/chat preferences were restored.
+
+See [verification and performance](docs/VERIFICATION_2026-11-02.md) and
+[current evidence](docs/desktop/evidence/resume-20261102.json). Provider accounts,
+optional companions, physical Studio-to-phone SSH, additional devices and accelerator
+workflows remain separate gates; catalog coverage is not universal runtime acceptance.
+
+## Adaptive multicore and device/team expansion — active 2026-11-02
+
+Owner approved implementation of the adaptive CPU plan, then requested Overdrive,
+Overdrive+, selected app CPU-limit overrides, live process/resource charts and
+gauges, optional dynamic alarm notifications, local/external/paired sensor use,
+bidirectional device results, dynamic task coordination and multi-device agent
+team modes. Pairing and broad settings/function verification follow implementation.
+See [active build and remaining gates](docs/MULTIDEVICE_TEAM_BUILD_2026-11-02.md).
+Source compilation/core contracts pass for the initial increment; final installation,
+full lints, native thread measurements and cross-device/team acceptance are pending.
+
+## 2026-11-02 — Active connected-capability and UX continuation
+
+Owner expanded the adaptive-resource/device-team increment to both Android and Studio, supervised autonomous teams, Agency Agents role adaptation, OpenViking unified context, Google Artemis phone automation, Strata compatibility, discretionary feature pruning and human-facing UI improvements. Current source and explicit live-service/runtime limits are recorded in [CONNECTED_CAPABILITIES_2026-11-02](docs/CONNECTED_CAPABILITIES_2026-11-02.md), [UX_REVIEW_2026-11-02](docs/UX_REVIEW_2026-11-02.md) and the [active multi-device build](docs/MULTIDEVICE_TEAM_BUILD_2026-11-02.md). Old installed APK/Studio artifacts do not yet represent this increment. Final build/lint, physical acceptance, live optional hosts and distributed runtime/fleet-control gates remain open. No new release/publication is claimed.
+
+
+## 2026-11-03 — Chat effort and action approvals
+
+Both owner-requested controls are implemented in Android Chat and the Code OSS Studio chat composer. Exact model/endpoint capability declarations gate external-model effort; unknown/local runners stay Auto-only. Android offers session-only Ask, Auto approved reads and Selected approved tools, with exact expiring decisions and independent device/OS gates. Studio uses scoped workspace approval modes and mandatory edit review. See [setup and platform boundaries](docs/CHAT_EFFORT_AND_APPROVALS_2026-11-03.md). The first Android suite and isolated HTTP contract tests passed; final build/physical acceptance is recorded separately in the evidence file, without claiming live hosted-provider execution.

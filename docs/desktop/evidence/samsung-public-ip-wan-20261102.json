@@ -1,0 +1,62 @@
+{
+  "format": "meshlit-supplied-ip-live-wan/1",
+  "testedAtUtc": "2026-11-02T16:54:29.411195+00:00",
+  "device": "Samsung SM-A207F Android11",
+  "service": "Real WebBridgeHost TLS control listener",
+  "listener": "*:18792 observed on phone",
+  "phoneGlobalIpv6MatchesSupplied": true,
+  "phoneIpv4Interface": "192.0.0.4/32 on v4-rmnet_data4",
+  "publicIpv4DirectlyAssignedToPhone": false,
+  "networkRulesModified": false,
+  "existingEnrollmentsModified": false,
+  "accessibilityRestarted": false,
+  "results": [
+    {
+      "route": "USB baseline",
+      "port": 61224,
+      "tlsVerified": true,
+      "httpStatus": 403,
+      "responseBytes": 33,
+      "responseSha256": "e58d2162de283e6e6ed149a195fc4ff936bfa59c1ff68dfaedb70bcb1f003a95",
+      "wallSeconds": 0.18
+    },
+    {
+      "route": "Supplied public IPv4",
+      "port": 18792,
+      "tlsVerified": false,
+      "failure": {
+        "type": "TimeoutError",
+        "errno": null,
+        "message": "timed out"
+      },
+      "wallSeconds": 5.01
+    },
+    {
+      "route": "Supplied public IPv6",
+      "port": 18792,
+      "tlsVerified": false,
+      "failure": {
+        "type": "OSError",
+        "errno": 65,
+        "message": "[Errno 65] No route to host"
+      },
+      "wallSeconds": 0.007
+    }
+  ],
+  "wanReachable": false,
+  "wanPairingVerified": false,
+  "cleanup": {
+    "originalPublicEndpointRestored": true,
+    "temporaryTlsListenerStopped": true,
+    "temporaryUsbForwardRemoved": true,
+    "networkRulesUnchanged": true,
+    "enrollmentDirectoryUnchanged": true,
+    "accessibilityStillBound": true
+  },
+  "usb403Reason": "Original port-layer rules were preserved; TLS verified but HTTP route denied by policy. Public failures occurred before TLS, independently of the HTTP policy.",
+  "interpretation": {
+    "publicIpv4": "Not directly assigned to the phone; interface is an IPv4 service-continuity address. This supports a translation-path explanation, but the TCP timeout alone cannot identify which carrier/upstream rule blocked ingress.",
+    "ipv6": "The phone global IPv6 matched the supplied address; the Mac connection failed before TLS with EHOSTUNREACH.",
+    "result": "Live direct WAN attempt performed; connectivity and pairing did not pass."
+  }
+}

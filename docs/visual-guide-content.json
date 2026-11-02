@@ -1,0 +1,988 @@
+{
+  "title": "Meshlit illustrated user guide",
+  "date": "2026-11-03",
+  "subtitle": "Android and Studio: from your first reply to approved connected devices",
+  "chapters": [
+    {
+      "id": "start",
+      "title": "Choose your starting point",
+      "platform": "Android + Studio",
+      "intro": "Start with one local model and a short conversation. Add network services, agents and workers only after that works. Android, the Compose Studio dashboards and the Code OSS Studio workbench have different menus; search for the destination name when your layout differs.",
+      "diagram": "routes",
+      "steps": [
+        [
+          "Android",
+          "Open Models, load the bundled Qwen2.5 0.5B model, wait for readiness, then open Chat. Optional permissions can be granted when you use their feature."
+        ],
+        [
+          "Studio workbench",
+          "Open a local folder, choose Chat, select a configured model and wait for readiness. Use a tool-enabled mode for workspace actions."
+        ],
+        [
+          "Compose Studio",
+          "Use Models, Devices and Dashboards for the existing native-engine and device controls. These screens are not all migrated into the workbench."
+        ],
+        [
+          "Verify first",
+          "Ask a short question, inspect the actual reply, press Stop during another request, and check that the app remains responsive."
+        ]
+      ],
+      "success": "A model reports ready and produces a real reply on your chosen device. An installed application or model catalog alone is not a successful inference check.",
+      "notes": [
+        "This guide describes the November 2 source and retained captures. Screenshots are labeled by platform and capture age. Build availability can restrict some pages."
+      ],
+      "refs": [
+        "USER_MANUAL.md",
+        "USER_GUIDE.md"
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "Read, write and control a chat",
+      "platform": "Android",
+      "route": "Chat > model picker / composer / access controls",
+      "intro": "The top bar identifies the selected model and readiness. The compact composer has independent reasoning-effort and tool-approval menus. Menu opens the sidebar; dragging from the closed edge does not.",
+      "figure": {
+        "path": "assets/screenshots/samsung-chat-effort-controls-20261103.png",
+        "alt": "Physical Samsung Chat with active Qwen2.5 model, compact navigation, shield tool approval and Auto effort menus",
+        "caption": "Real Samsung capture, November 3. Bundled Qwen2.5 is ready; tools are off. Auto is the only supported local effort level. No hosted-model or completed tool-call result is shown."
+      },
+      "steps": [
+        [
+          "Choose the route",
+          "Select the intended local model or explicitly configured provider. A phone loopback address reaches the phone, not your Mac."
+        ],
+        [
+          "Choose effort and approvals",
+          "Auto leaves reasoning at the runner default. Low, Medium and High need documented support for the exact API model. The shield menu offers Ask each time, Auto approved reads and Selected approved tools. Existing device and OS permissions still apply. Android approval choices reset to Ask after app restart."
+        ],
+        [
+          "Write and send",
+          "Enter a message, check the access chip, then tap the send arrow. Keep tool access off for ordinary conversation."
+        ],
+        [
+          "Follow a reply",
+          "When viewing the newest message, new text follows the reply. If you scroll into history, use Latest to return. The keyboard should leave the composer visible."
+        ],
+        [
+          "Inspect and stop",
+          "Use response actions to copy or expand text. Press Stop to cancel active generation. Check actual tool receipts when a reply claims an action."
+        ],
+        [
+          "Start independently",
+          "New chat separates the next conversation. Changing a model does not make previous output or tool claims trustworthy."
+        ]
+      ],
+      "success": "Your reply and composer stay visible as text arrives. Stop ends the active request. Missing native token counts remain unavailable.",
+      "notes": [
+        "If the latest reply is below the screen, try Latest, close the keyboard and reopen the chat. Report the build, font size and keyboard state if it persists.",
+        "Configure documented API effort support in Settings → Online providers, save the exact model profile, then select it in Conversation settings. Local runners remain Auto-only. Reply quotes a message into the draft; search shows match counts, result positions and a full-text reader."
+      ],
+      "refs": [
+        "USER_GUIDE.md#reading-replies-and-managing-tokens",
+        "CHAT_EFFORT_AND_APPROVALS_2026-11-03.md"
+      ]
+    },
+    {
+      "id": "models",
+      "title": "Download, import and load models",
+      "platform": "Android + supported Studio builds",
+      "route": "Models > Recommended / Installed > Runtime options",
+      "intro": "Model files, runtime compatibility, memory and context all matter. Current Android builds package the verified Qwen2.5 0.5B starter. Use a smaller context when memory is tight.",
+      "figure": {
+        "path": "assets/screenshots/samsung-models-20261103.png",
+        "alt": "Current physical Samsung model library with capacity, Qwen3 recommendation and Loaded ready status",
+        "caption": "Real Samsung capture, November 3, after WAN cleanup. The owner Qwen3 model is ready. Recommendation memory is an estimate, separate from measured process RSS."
+      },
+      "steps": [
+        [
+          "Review capacity",
+          "Check reported free RAM and storage. Download size is not the complete runtime memory requirement; context also needs memory."
+        ],
+        [
+          "Use a verified source",
+          "Choose a catalog entry, use View installed models, or scroll past recommendations for Import files / Add URL. Gated downloads need their own access."
+        ],
+        [
+          "Wait for validation",
+          "Transfer progress must finish and file validation must pass. A downloaded file can still be incompatible with the chosen runtime."
+        ],
+        [
+          "Load explicitly",
+          "Select an installed model and Load. Wait until the engine reports ready before treating it as usable."
+        ],
+        [
+          "Tune carefully",
+          "Open Runtime options for backend, context and supported cache precision. Reload after changing settings that apply on model load."
+        ],
+        [
+          "Free resources",
+          "Unload before switching heavy workloads. Delete only models you no longer need; a configuration export does not contain their weights."
+        ]
+      ],
+      "success": "The runtime accepts the exact installed file and answers a prompt. An unsupported architecture or failed validation is shown as a failure, not a ready state.",
+      "refs": [
+        "USER_GUIDE.md#local-models-downloads-and-import"
+      ],
+      "notes": [
+        "After the owner uninstalled and reinstalled the app on November 3, the current phone uses the bundled Qwen2.5 0.5B model. The Qwen3 capture is historical; uninstalling removes private settings, chats and separately downloaded models."
+      ]
+    },
+    {
+      "id": "studio",
+      "title": "Work with Studio",
+      "platform": "Desktop",
+      "route": "Chat / Coding agent > mode > selected model and tools",
+      "intro": "Use the Code OSS workbench for editor-based tasks and the earlier Compose application for its existing engine/device dashboards. A development candidate is different from a production-qualified installer.",
+      "figure": {
+        "path": "desktop/evidence/studio-chat-redesign.png",
+        "alt": "Compose Studio chat component showing model, Load, navigation and composer",
+        "caption": "Retained Compose Studio component render, October 26. It illustrates controls; it is not a native-window acceptance screenshot or the Code OSS workbench."
+      },
+      "steps": [
+        [
+          "Open the workspace",
+          "Choose Open Folder for a local project and review workspace trust. Project tools need a trusted workspace."
+        ],
+        [
+          "Pick a mode",
+          "Chat has no workspace tools. Plan reads approved information. Edit / Build proposes reviewed edits. Autopilot performs bounded steps with the same approval requirements."
+        ],
+        [
+          "Select tools",
+          "Use the + menu and Select MCP tools for this chat. Saving an MCP connector does not select it for every conversation."
+        ],
+        [
+          "Review changes",
+          "Inspect proposed edits and tool outcomes. Save accepted editor changes yourself. Changing mode or tools after a session starts opens an independent conversation."
+        ],
+        [
+          "Use project memory",
+          "Save a deliberate project note, choose local/host recall permissions, and inspect Context preview before sending it to a model."
+        ]
+      ],
+      "success": "The selected model responds, and only chosen tools appear in the chat. Reviewed changes have observable outcomes.",
+      "notes": [
+        "Some builds ask to unlock the Meshlit usage ledger. Its passphrase is separate from your OS login and API key. Avoid two Studio instances competing for the same vault."
+      ],
+      "refs": [
+        "USER_MANUAL.md#start-a-desktop-conversation"
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Find and personalize settings",
+      "platform": "Android + Studio",
+      "route": "Settings > Search > exact destination",
+      "intro": "Search is the quickest way to find a feature. Current Android settings groups common preferences under General and tools under Advanced tools. Older builds use Basic / Advanced labels. Changing the view does not reset choices or grant permissions.",
+      "figure": {
+        "path": "assets/screenshots/samsung-settings-20261102.png",
+        "alt": "Current Samsung Settings with search, General, Advanced tools and grouped destinations",
+        "caption": "Real Samsung capture, November 2, after the native WAN test update. Search and grouped destinations are visible; Advanced tools is selected."
+      },
+      "steps": [
+        [
+          "Search by purpose",
+          "Try Acceleration, Resources and sensors, Agent teams, Network and pairing, HyperL libraries or Configuration profiles."
+        ],
+        [
+          "Adjust appearance",
+          "Choose theme, font size, accent and supported dynamic colors. Prefer readable solid surfaces when transparency or contrast makes text hard to read."
+        ],
+        [
+          "Review access separately",
+          "Opening a page or pinning a shortcut does not enable phone control, remote commands, a provider account or an OS permission."
+        ],
+        [
+          "Use desktop editor settings",
+          "Studio's Meshlit settings hub configures product features. Editor settings separately configures Code OSS fonts, themes and editor behavior."
+        ],
+        [
+          "Check persistence",
+          "Return to the page after saving. Runtime options may require reload; permissions may require the operating system's own confirmation."
+        ]
+      ],
+      "success": "The named destination opens and its saved state is reflected after revisiting. Unavailable backends stay visibly unavailable.",
+      "refs": [
+        "USER_MANUAL.md#find-settings-without-guessing"
+      ]
+    },
+    {
+      "id": "voice-files",
+      "title": "Voice, photos and files",
+      "platform": "Android; host services on Studio",
+      "route": "Chat > microphone or + menu; Settings > Camera, vision and audio",
+      "intro": "Speech recognition, language-model generation and playback are separate stages. A local text model cannot automatically understand a photo just because it is attached.",
+      "steps": [
+        [
+          "Set up speech",
+          "Choose an installed, supported recognition/playback path and grant the microphone only when needed. Optional voice hosts require their own endpoint and service setup."
+        ],
+        [
+          "Test one turn",
+          "Use One turn, wait for Listening, speak a short question, then inspect the transcript and answer. Live mode adds repeated turn handling."
+        ],
+        [
+          "Control the session",
+          "Use mute, End or Stop as available. If a stage is slow, inspect whether the app is listening, transcribing, preparing the model, generating or playing audio."
+        ],
+        [
+          "Attach a photo",
+          "Open +, choose or capture an image, and select a configured vision-capable route. Review which host receives the image."
+        ],
+        [
+          "Attach useful text",
+          "Use supported text attachments or the Knowledge library. Importing a PDF/Office file does not imply the current text-only parser can read it."
+        ],
+        [
+          "Manage storage",
+          "Use Files and granted folders for previews and supported ZIP operations. Import model weights through Models rather than treating every AI asset as executable."
+        ]
+      ],
+      "success": "A voice test has a real transcript, correct model reply and audible playback. A vision test returns evidence from the configured image-capable route.",
+      "notes": [
+        "Samsung's earlier human-confirmed speech turn worked, but short synthetic generation timings are not the same as complete microphone-to-answer latency."
+      ],
+      "refs": [
+        "NATURAL_VOICES.md",
+        "USER_GUIDE.md#files-ai-assets-and-zip--unzip"
+      ]
+    },
+    {
+      "id": "resources",
+      "title": "Read the live resource dashboard",
+      "platform": "Android + Studio with platform limits",
+      "route": "Settings > Resources and sensors > Live resource deep dive",
+      "intro": "Use the dashboard to understand what the app is doing before changing CPU policy. Readings are observations, not promises of available model capacity.",
+      "figure": {
+        "path": "desktop/evidence/multicore-20261102/samsung-resource-dashboard.png",
+        "alt": "Real Samsung live resource dashboard with CPU, RAM and battery gauges, history chart and alert switches",
+        "caption": "Real Samsung capture, November 2. Values describe that moment only. The screen states its foreground refresh interval and CPU normalization."
+      },
+      "steps": [
+        [
+          "Check freshness",
+          "Read Last sample. The Android deep dive refreshes every two seconds while visible; old or missing readings should not guide admission."
+        ],
+        [
+          "Separate measurements",
+          "Meshlit CPU covers the app and readable owned native workers, normalized by logical core capacity. System RAM and battery are whole-device readings."
+        ],
+        [
+          "Read trends",
+          "Compare the recent CPU and RAM chart with workload start/stop. A rising RAM gauge is not proof that a remote worker owns model layers."
+        ],
+        [
+          "Inspect processes",
+          "Use available process/RSS/thread details to distinguish the app from native children. Configured worker count and observed thread activity are different."
+        ],
+        [
+          "Check platform limits",
+          "Studio shows real available process/system data. Missing macOS thermal or power-saver information remains unavailable, not zero."
+        ],
+        [
+          "Change one variable",
+          "Compare the same model, context and prompt before and after a policy change. Stop a test if UI responsiveness or memory behavior degrades."
+        ]
+      ],
+      "success": "Fresh readings change with actual work and settle after Stop. Unknown sensors and process metrics remain unknown.",
+      "refs": [
+        "ANDROID_MULTICORE_PLAN_2026-11-02.md",
+        "VERIFICATION_2026-11-02.md"
+      ]
+    },
+    {
+      "id": "cpu",
+      "title": "Balanced, Performance and Overdrive",
+      "platform": "Android + supported Studio control",
+      "route": "Settings > Acceleration; Resources > CPU modes and process budget",
+      "intro": "More workers are not always faster. Android schedules all applications; a Meshlit worker cap is scheduling headroom, not exclusive reservation of physical cores.",
+      "diagram": "cpu",
+      "table": {
+        "headers": [
+          "Mode",
+          "Use and limits"
+        ],
+        "rows": [
+          [
+            "Battery saver",
+            "Lower compute demand; suitable when conserving power."
+          ],
+          [
+            "Balanced",
+            "Up to four workers while retaining two logical cores of headroom."
+          ],
+          [
+            "Performance",
+            "Up to six workers with the same headroom; pressure guards remain active."
+          ],
+          [
+            "Overdrive",
+            "May request all online cores; normal pressure guards still apply."
+          ],
+          [
+            "Overdrive+",
+            "All-core option with individually selected app policy overrides and an active warning."
+          ]
+        ]
+      },
+      "steps": [
+        [
+          "Start with Balanced",
+          "Measure a representative task, then try Performance if memory and thermal conditions permit."
+        ],
+        [
+          "Apply at the right boundary",
+          "SDK thread hints apply on the next request. Native local servers and workers need a reload/restart for changed startup thread settings."
+        ],
+        [
+          "Review Overdrive+",
+          "Select only needed overrides for heat, saver, battery, memory pressure or background policy. OS protections and model memory admission still apply."
+        ],
+        [
+          "Watch the result",
+          "Compare total latency, first text, memory, heat and UI response. Shared speech/HyperL work still competes for the bounded heavy-work queue."
+        ]
+      ],
+      "success": "The chosen mode persists and its effective target/reason is visible. An eight-core request is not a claim that eight cores were busy throughout.",
+      "refs": [
+        "ANDROID_MULTICORE_PLAN_2026-11-02.md"
+      ],
+      "notes": [
+        "Chart source: the retained real Samsung SDK profile summary. Profiles 1/2 used an earlier CPU-policy build; 3/4/6/8 used its foreground-aware revision. One short prompt, one model, five warm samples each, plugged-in phone; this is not a fair cross-build or whole-voice benchmark."
+      ]
+    },
+    {
+      "id": "sensors-alerts",
+      "title": "Alerts, sensors and external readings",
+      "platform": "Android + supported connected sources",
+      "route": "Resources and sensors > Smart resource alerts / Sensors and external sources",
+      "intro": "Sample only the information needed for your task. Android's built-in and supported dynamic sensors differ by device; an unavailable sensor must not produce an invented reading.",
+      "steps": [
+        [
+          "Choose alerts",
+          "Turn Dynamic warning notifications and Warning alarm sound on or off independently. Android notification permission, channel settings and Do Not Disturb still affect delivery."
+        ],
+        [
+          "Understand timing",
+          "Alerts change with resource conditions and have a 60-second cooldown. They run while Meshlit is alive, not as a guaranteed external monitoring service."
+        ],
+        [
+          "Select sensors",
+          "Choose an actually reported motion/environment sensor. External sensors must first be exposed by a supported platform adapter."
+        ],
+        [
+          "Enable sampling deliberately",
+          "Foreground lifecycle and Stop control collection. Camera, microphone, location and permission-protected sensors retain their separate grants."
+        ],
+        [
+          "Share deliberately",
+          "Enable sharing only for intended readings. Paired/MCP sources need their own approval. Inspect the source, observation time and expiry before using a result."
+        ],
+        [
+          "Coordinate by capability",
+          "A device that contributes a sensor result is not automatically a transformer worker. Do not schedule model layers from a sensor or capacity label alone."
+        ]
+      ],
+      "success": "A real selected source produces fresh labeled readings, and Stop/background clears the appropriate observations. Turning sound off does not disable Android's system safeguards.",
+      "refs": [
+        "MULTIDEVICE_TEAM_BUILD_2026-11-02.md"
+      ]
+    },
+    {
+      "id": "agents",
+      "title": "Give an agent useful, bounded access",
+      "platform": "Android + Studio",
+      "route": "Chat > access controls; Settings > Phone agent and autonomy / Agent access",
+      "intro": "A model response is a proposal or statement until an actual handler/tool reports an outcome. Model instructions cannot authorize new devices, credentials or permissions.",
+      "diagram": "trust",
+      "steps": [
+        [
+          "Choose a small task",
+          "Start with a status question. On the qualified Samsung build, asking for phone-control status uses the actual Android handler."
+        ],
+        [
+          "Grant only the needed class",
+          "Phone, web, remote device commands, cloud and browser use have distinct saved grants. Turn on the chat's request control as well."
+        ],
+        [
+          "Connect a saved device",
+          "Enable Devices > Connection assistance and approve exact saved sources. Select Device connection assistance in Chat tools; ask list saved devices or connect followed by the saved name. Inspect the offered choices."
+        ],
+        [
+          "Complete OS permission",
+          "For phone UI control, review Android Accessibility and the allowed app scope. A saved Meshlit switch cannot replace Android consent."
+        ],
+        [
+          "Inspect receipts",
+          "Check the actual tool name, source and result. A device listing can truthfully say Remote commands are off; that is not a connection failure to hide."
+        ],
+        [
+          "Stop and revoke",
+          "Use Stop for active work. Remove the relevant saved grant to prevent later requests. Completed external effects are not undone by revocation."
+        ],
+        [
+          "Keep sensitive steps human",
+          "Review new identities, permission expansion, login/credential handling and destructive actions in their proper owner-controlled flows."
+        ]
+      ],
+      "success": "The intended tool executes under the intended scope and returns an observable result. A refusal or missing backend is reported honestly.",
+      "refs": [
+        "AGENT_CHAT_CHECKPOINT_2026-10-31.md",
+        "USER_MANUAL.md#android-agent-controls-and-provider-dashboard"
+      ],
+      "notes": [
+        "Delegated Android UI Click/Type cannot operate Meshlit's own app. Change Meshlit permissions yourself; an all-supported-apps grant does not allow an agent to grant itself more access."
+      ]
+    },
+    {
+      "id": "teams",
+      "title": "Run agent teams and conversations",
+      "platform": "Android + Studio",
+      "route": "Agents > Agent teams",
+      "intro": "Teams use selected roles and explicit model sources. Roles from the attributed Agency catalog are editable instructions; their names do not confer special capabilities.",
+      "diagram": "teams",
+      "steps": [
+        [
+          "Choose the control mode",
+          "Use a user-directed run for a fixed task or the supported supervised mode when a manager chooses bounded next steps."
+        ],
+        [
+          "Select real members",
+          "Choose role templates and local or approved remote model sources. A remote source needs its own reachable endpoint and saved approval."
+        ],
+        [
+          "Bound the work",
+          "Set the available round/parallelism controls. Start with a small task and a small team; more agents can increase latency and memory demand."
+        ],
+        [
+          "Try Agent conversation",
+          "This mode lets one selected member delegate to another and receive a correlated reply. The coordinator assigns authors and message IDs."
+        ],
+        [
+          "Read the exchange",
+          "Inspect the actual task and answer, not only valid JSON. Small models may choose an incorrect workflow or answer even when routing succeeds."
+        ],
+        [
+          "Pause or Stop",
+          "Pause holds new calls after active calls finish. Stop cancels the run. Permission revocation and bounded call/depth/time limits remain enforced."
+        ]
+      ],
+      "success": "A real task was sent, a correlated peer reply arrived, and its answer is correct. Single-device forward exchange has physical evidence; cross-device team and complex reverse workflows need further qualification.",
+      "refs": [
+        "MULTIDEVICE_TEAM_BUILD_2026-11-02.md"
+      ]
+    },
+    {
+      "id": "hosts",
+      "title": "Use Ollama or LM Studio hosts",
+      "platform": "Desktop host + Android/Studio client",
+      "route": "Settings > Online models / provider connections > compatible host preset",
+      "intro": "These presets use Meshlit's existing compatible API path. They do not install a desktop runtime inside Android or start a model server for you.",
+      "table": {
+        "headers": [
+          "Where",
+          "What to configure"
+        ],
+        "rows": [
+          [
+            "Same host computer",
+            "Use the server's documented local API address and model ID."
+          ],
+          [
+            "Android to desktop",
+            "Use the desktop's reachable LAN/VPN HTTPS route; phone localhost is the phone."
+          ],
+          [
+            "Ollama",
+            "Install/run on a supported desktop or server; compatible API model IDs come from that host."
+          ],
+          [
+            "LM Studio",
+            "Enable its supported host API. The current Intel Mac in this test setup is not a supported LM Studio host."
+          ]
+        ]
+      },
+      "steps": [
+        [
+          "Start the host",
+          "Follow the runtime's official instructions, load a model and verify its API locally. Review whether it is using local or cloud execution."
+        ],
+        [
+          "Add a named connection",
+          "Choose the corresponding preset, enter the reachable endpoint and exact model ID, and use the app's credential control if authentication is needed."
+        ],
+        [
+          "Check the catalog",
+          "Read actual models from the configured route. Catalog success does not prove generation, GPU use or credit."
+        ],
+        [
+          "Generate a short answer",
+          "Select the profile in Chat, run a small request and inspect the returned usage/source metadata. Keep unknown costs unknown."
+        ],
+        [
+          "Grant agent use separately",
+          "Enable an appropriate profile's agent permission only if needed. Changing endpoint/model identity can invalidate an older selection."
+        ]
+      ],
+      "success": "The configured host returns a correct generated answer. Samsung's retained Ollama client proof used USB forwarding; it is not a WAN benchmark.",
+      "refs": [
+        "LOCAL_INFERENCE_HOSTS_2026-11-02.md"
+      ]
+    },
+    {
+      "id": "hyperl",
+      "title": "Use HyperL libraries",
+      "platform": "Android + supported Studio workbench",
+      "route": "Settings > search HyperL > HyperL libraries",
+      "intro": "HyperL has its own optional terms and runtime boundaries. Its workbench recipes are distinct from RunAnywhere chat and from a distributed model-layer coordinator.",
+      "steps": [
+        [
+          "Review optional terms",
+          "Open HyperL libraries, read the optional terms and use the opt-in control if you accept them. Installation alone does not save consent."
+        ],
+        [
+          "Run a small recipe",
+          "Choose a supported bounded CPU recipe and inspect actual inputs, result and error state. Use the same input size when comparing timings."
+        ],
+        [
+          "Read timing carefully",
+          "The workbench's warm-up and measured runs describe that recipe. They do not establish language-model token rate or GPU/NPU support."
+        ],
+        [
+          "Use datasets deliberately",
+          "Create/import only supported data, review its scope and keep dataset keys in the intended protected controls."
+        ],
+        [
+          "Check the selected backend",
+          "A library or accelerator catalog entry does not prove that your hardware has a working adapter for the required operators."
+        ],
+        [
+          "Separate distributed claims",
+          "The qualified native Mac Metal/CPU plus Samsung CPU layer proof is separate from managed HyperL mixed-device allocation, which remains an acceptance gate."
+        ]
+      ],
+      "success": "The enabled workbench returns the expected real recipe result. Unsupported adapters and missing consent remain visible failures.",
+      "refs": [
+        "../HYPERL.md",
+        "hyperl/ANDROID_ALPHA6.md",
+        "MIXED_NATIVE_EXECUTION_2026-11-02.md"
+      ]
+    },
+    {
+      "id": "tailscale",
+      "title": "Connect Mac and phone with Tailscale",
+      "platform": "Official Mac + Android clients",
+      "route": "Official Tailscale clients; Meshlit > Dashboards > VPN & network",
+      "intro": "Tailscale supplies the private network path. Meshlit still needs its own running service and approved identity. Use the normal Tailscale device clients; the optional Aperture product is not a prerequisite for this device VPN setup.",
+      "figure": {
+        "path": "desktop/evidence/vpn-dashboard.png",
+        "alt": "Compose Studio VPN dashboard with optional local Tailscale status observation disabled",
+        "caption": "Retained desktop component render, October 26. This shows Meshlit's status-read controls, not a connected phone or native Mac consent dialog."
+      },
+      "steps": [
+        [
+          "Install the official clients",
+          "Use Tailscale's official Mac and Android distribution. Review their terms and OS network prompts yourself."
+        ],
+        [
+          "Join the intended account",
+          "For your own devices, sign both clients into the intended tailnet account and wait for Connected. Browser console login alone does not connect a client."
+        ],
+        [
+          "Observe in Meshlit",
+          "Studio can opt in to local tailscale status reads. Android can show its actual VPN/network state but cannot identify another app's VPN owner or peers through that adapter."
+        ],
+        [
+          "Test outside the LAN",
+          "On the phone, turn Wi-Fi off and use cellular. Verify both peer presence and a successful tunnel probe; then test the actual Meshlit service."
+        ],
+        [
+          "Read the measured scope",
+          "November 2: the Mac-to-Samsung LTE tunnel returned five of five warmed direct probes, median 57 ms. Initial discovery included three timeouts."
+        ],
+        [
+          "Keep service checks separate",
+          "A tunnel ping is not application pairing, model generation, throughput or distributed recovery proof."
+        ]
+      ],
+      "success": "Both clients are connected and the intended peer is reachable over the chosen path. A browser login, installed package or VPN icon alone is insufficient.",
+      "refs": [
+        "TAILSCALE_AND_VPN.md"
+      ],
+      "links": [
+        [
+          "Official Android setup",
+          "https://tailscale.com/docs/install/android"
+        ],
+        [
+          "Official Mac setup",
+          "https://tailscale.com/docs/install/mac"
+        ]
+      ]
+    },
+    {
+      "id": "other-owners",
+      "title": "Connect devices owned by other people",
+      "platform": "Approved local / remote devices",
+      "route": "Tailscale device sharing or user invitation, then Meshlit pairing",
+      "intro": "Different people can keep separate accounts. Network membership and Meshlit workload permission remain independent decisions.",
+      "table": {
+        "headers": [
+          "Choice",
+          "Appropriate use"
+        ],
+        "rows": [
+          [
+            "Share one Tailscale machine",
+            "One owner contributes a specific worker across different tailnets."
+          ],
+          [
+            "Invite a tailnet member",
+            "A managed team uses separate logins with reviewed network access controls."
+          ],
+          [
+            "Meshlit device approval",
+            "Verify the endpoint certificate and choose the exact service/role/scopes."
+          ],
+          [
+            "Native compute worker",
+            "Use only a trusted coordinator and compatible runtime; a bearer pairing token grants experimental native RPC access."
+          ]
+        ]
+      },
+      "steps": [
+        [
+          "Choose the worker",
+          "Ask its owner to share the intended machine or accept a properly scoped team invitation. A shared machine does not expose the owner's whole LAN."
+        ],
+        [
+          "Verify reachability",
+          "Check the specific reachable service. Network ACLs and shared-machine direction restrictions still matter."
+        ],
+        [
+          "Verify identity",
+          "Compare the full certificate fingerprint and the native worker's check code through an independent owner-controlled channel."
+        ],
+        [
+          "Approve a bounded use",
+          "Select only intended observation, model or worker privileges. Keep pairing tokens and API keys out of chat and screenshots."
+        ],
+        [
+          "Revoke when finished",
+          "Stop active work, revoke Meshlit access and remove the network share when no longer needed. Network removal alone is not a completed-job rollback."
+        ]
+      ],
+      "success": "The intended device is reachable under its owner's identity and only the approved service works. Cross-owner live allocation/revocation needs separate qualification.",
+      "refs": [
+        "TAILSCALE_AND_VPN.md",
+        "OPEN_RESOURCE_NETWORK.md"
+      ],
+      "links": [
+        [
+          "Tailscale device sharing",
+          "https://tailscale.com/docs/features/sharing"
+        ],
+        [
+          "Inviting versus sharing",
+          "https://tailscale.com/docs/reference/inviting-vs-sharing"
+        ]
+      ]
+    },
+    {
+      "id": "pairing",
+      "title": "Pair a control client or compute worker",
+      "platform": "Android + supported Studio / host tools",
+      "route": "Network and pairing > Web/API devices or Layer pipeline",
+      "intro": "Choose the connection type by the work you need. A browser control client, SSH host, model API and native layer worker are different capabilities.",
+      "steps": [
+        [
+          "For status/control",
+          "Open the Meshlit Web/API bridge. Configure the reviewed reachable HTTPS endpoint and port policy, verify its certificate, create a short-lived invitation and approve only the needed client scopes."
+        ],
+        [
+          "For native layers",
+          "Use Layer pipeline. The worker needs a packaged native runtime and a reachable authenticated TLS endpoint on TCP 50551. Raw native RPC stays on loopback."
+        ],
+        [
+          "For a WAN worker",
+          "Keep the worker stopped while reviewing its owner-only authenticated VPN / Internet coordinator option. An allowed port rule is also required; a port rule alone is not worker approval."
+        ],
+        [
+          "Pair explicitly",
+          "Use the worker's private QR or enter its address, full certificate hash and pairing token. Verify the check code before approving; changed identities require review."
+        ],
+        [
+          "Assess before loading",
+          "Read actual runtime revision, memory, thermal state and control latency. Capacity metadata is an admission estimate, not proof of native layer placement."
+        ],
+        [
+          "Verify actual work",
+          "Check native assigned layers, worker buffer/RSS/CPU changes and correct output. Stop the worker/pipeline and confirm processes and connections end."
+        ]
+      ],
+      "success": "The correct authenticated service succeeds and forbidden scopes fail. The development mixed Mac/Samsung proof is separate from a fully managed Studio/HyperL cluster.",
+      "refs": [
+        "MIXED_NATIVE_EXECUTION_2026-11-02.md",
+        "USER_GUIDE.md#phone-clusters-mixed-devices-and-pairing",
+        "desktop/evidence/mixed-mac-samsung-wan-native-20261103.json"
+      ],
+      "figure": {
+        "path": "assets/screenshots/samsung-worker-wan-confirmation-20261102.png",
+        "alt": "Actual Samsung dialog asking the owner to allow authenticated remote native coordinators",
+        "caption": "Real Samsung capture, November 2. The new owner-only permission is awaiting review. This screenshot is not proof that a WAN model generation completed."
+      },
+      "notes": [
+        "November 3 development proof: 19 Mac layers plus six Samsung layers returned 4 over 4G. Phone model buffer: 186.51 MiB. Setup: 84.4s; generation: 29.0s. One run; no speedup or oversized-model claim."
+      ]
+    },
+    {
+      "id": "network-loss",
+      "title": "Handle network changes and interrupted work",
+      "platform": "Local + WAN workloads",
+      "intro": "A stable device identity helps reconnect, but it does not restore lost model state or prove an uncertain action completed. Do not treat every interrupted request as safe to repeat.",
+      "table": {
+        "headers": [
+          "Workload",
+          "What recovery means"
+        ],
+        "rows": [
+          [
+            "Short Wi-Fi / cellular change",
+            "Tailscale keeps the virtual IP; an active connection may recover before its deadline."
+          ],
+          [
+            "Read-only status",
+            "Reconnect, revalidate identity and permissions, then retry within a bounded policy."
+          ],
+          [
+            "Device action / write",
+            "Check the original job outcome before another attempt; avoid duplicate effects."
+          ],
+          [
+            "Native layer generation",
+            "Observed WAN TLS loss failed the active native run and exited its coordinator. Transparent KV migration / replacement is not complete."
+          ],
+          [
+            "Local checkpoint",
+            "Restore only a compatible saved native state; it is not replicated task failover."
+          ]
+        ]
+      },
+      "steps": [
+        [
+          "Watch real status",
+          "Use source freshness, job phase and actual endpoint checks. A node can remain listed while unreachable."
+        ],
+        [
+          "Keep the deadline",
+          "Show reconnecting/failed/interrupted rather than claiming success or waiting forever. Stop must remain available."
+        ],
+        [
+          "Verify on return",
+          "A changed certificate, revoked grant or edited source must not silently inherit the old approval."
+        ],
+        [
+          "Resume appropriately",
+          "Retry safe reads; inspect uncertain mutations. Restart generation deliberately if the active native session was lost."
+        ],
+        [
+          "Measure a fault test",
+          "Record the interruption, outcome, reconnect time and any replay. A successful ordinary request is not a network-handover test."
+        ]
+      ],
+      "success": "The controlled November 3 disconnect test observed active remote CPU work, then RemoteDisconnected after 3.577s. The phone released resident worker memory and accepted a fresh authenticated capability read. No generation was automatically replayed.",
+      "refs": [
+        "MIXED_NATIVE_EXECUTION_2026-11-02.md",
+        "desktop/evidence/mixed-mac-samsung-wan-native-20261103.json"
+      ],
+      "links": [
+        [
+          "Stable Tailscale addresses",
+          "https://tailscale.com/docs/concepts/tailscale-ip-addresses"
+        ]
+      ],
+      "notes": [
+        "This injected TLS-path loss is separate from an actual Wi-Fi / 4G roaming test, which remains unqualified."
+      ]
+    },
+    {
+      "id": "backup",
+      "title": "Back up, restore and reset settings",
+      "platform": "Android; Studio stores are separate",
+      "route": "Settings > Configuration profiles",
+      "intro": "Configuration transfer moves supported settings. It is not a complete copy of your models, conversations, OS key store or cluster identity.",
+      "steps": [
+        [
+          "Export a baseline",
+          "Choose Export current configuration and save the versioned JSON through the file picker before changing settings."
+        ],
+        [
+          "Save a checkpoint",
+          "Save checkpoint keeps configuration and changed-field history locally. Protect a separate exported copy if you need recovery after app data loss."
+        ],
+        [
+          "Import for review",
+          "Choose a supported JSON file. Wait for validation, then inspect the preview before applying anything."
+        ],
+        [
+          "Choose restore areas",
+          "Use Full configuration restore or select appearance, power, CPU, models, providers and network. Missing models are skipped; credentials and grants remain local."
+        ],
+        [
+          "Apply and recheck",
+          "Apply reviewed configuration, read its report and revisit relevant pages. Interrupted cross-store application is not an atomic cluster transaction."
+        ],
+        [
+          "Reset deliberately",
+          "Review safe defaults first. Full app reset erases this app's data, models, journals, credentials and pairing identity after typing RESET; devices must enroll again."
+        ]
+      ],
+      "success": "Only reviewed settings change and the report names skipped/failed areas. Rebind credentials locally; do not assume a settings file can decrypt another installation's secrets.",
+      "notes": [
+        "Existing matching provider templates can become disabled after import. Recheck endpoint, model identity and permission before enabling them."
+      ],
+      "refs": [
+        "USER_GUIDE.md#configuration-transfer-logs-and-troubleshooting"
+      ]
+    },
+    {
+      "id": "knowledge-costs",
+      "title": "Knowledge, services, usage and logs",
+      "platform": "Android + Studio, feature-dependent",
+      "route": "Settings > Knowledge library / Services / Usage and costs / Logs",
+      "intro": "Optional integrations should be useful when configured and honest when unavailable. An upstream repository or saved service URL does not mean that service is installed or operating.",
+      "table": {
+        "headers": [
+          "Area",
+          "Use it deliberately"
+        ],
+        "rows": [
+          [
+            "Knowledge library",
+            "Import supported text, inspect excerpts and enable local/remote/agent recall separately. Retrieval is not training."
+          ],
+          [
+            "Project memory",
+            "Save deliberate desktop notes; inspect context and destination before model use. Android personal memory is a separate store."
+          ],
+          [
+            "MCP / cloud / SSH",
+            "Configure an existing service, verify host identity, select exact tools/actions and save credentials only in protected controls."
+          ],
+          [
+            "OpenViking / Artemis / Strata",
+            "Optional host adapters need their real upstream service, supported device and grants. They are not bundled mobile runtimes."
+          ],
+          [
+            "Usage / costs",
+            "Inspect source and reported counts. Unknown costs stay unknown; local budgets are not provider invoice caps."
+          ],
+          [
+            "Logs",
+            "Filter by source/severity and export a redacted report. A tool approval receipt is not necessarily a successful remote action."
+          ]
+        ]
+      },
+      "steps": [
+        [
+          "Check availability first",
+          "Use a documented health/catalog/status check on the exact configured endpoint before attempting a long task."
+        ],
+        [
+          "Bind access",
+          "Keep service origins, host pins and scopes specific. Changing the target can require fresh approval."
+        ],
+        [
+          "Inspect outcomes",
+          "Look for a real response and timestamps. Missing data, partial inventory, denied access and unsupported features should remain explicit."
+        ],
+        [
+          "Clean up",
+          "Stop optional jobs, revoke unused access and delete obsolete profiles when you no longer need them."
+        ]
+      ],
+      "success": "The selected service returns real, source-labeled results under its intended grants. No empty account is displayed as a connected resource fleet.",
+      "refs": [
+        "CONNECTED_CAPABILITIES_2026-11-02.md",
+        "USER_MANUAL.md",
+        "cloud-and-credential-management.md"
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "title": "Troubleshoot and verify a workflow",
+      "platform": "Android + Studio",
+      "intro": "Check one boundary at a time: runtime, network, service, identity, permission, task and result. Keep the build number and exact error when reporting a failure.",
+      "table": {
+        "headers": [
+          "Symptom",
+          "Next useful check"
+        ],
+        "rows": [
+          [
+            "No reply",
+            "Model actually ready? Correct route? Stop stale work; try a short fresh conversation."
+          ],
+          [
+            "Reply below screen",
+            "Latest, keyboard state, font size and build; preserve your draft."
+          ],
+          [
+            "Voice is slow",
+            "Separate listening, transcription, model preparation, generation and playback."
+          ],
+          [
+            "More cores is slower",
+            "Repeat the same task; six workers beat eight in the retained short Samsung test."
+          ],
+          [
+            "Phone control unavailable",
+            "Saved phone grant, chat request chip, Android Accessibility connection and app scope."
+          ],
+          [
+            "VPN connected, service fails",
+            "Correct endpoint/port, running service, network policy, TLS pin and service credentials."
+          ],
+          [
+            "HyperL opt-in missing",
+            "Open HyperL libraries and check the optional-terms switch is actually saved."
+          ],
+          [
+            "Worker disappeared",
+            "Read the actual job state; do not assume automatic replacement or replay."
+          ],
+          [
+            "Configuration restore incomplete",
+            "Read the apply report, missing model IDs and disabled provider templates."
+          ]
+        ]
+      },
+      "steps": [
+        [
+          "Run the small acceptance path",
+          "Load > short reply > Stop > unload; then add one approved tool or peer and repeat."
+        ],
+        [
+          "Record evidence",
+          "Keep source, build, settings, actual output, timings and error state. Capture only relevant screens without keys, private QR codes or account details."
+        ],
+        [
+          "Check the boundaries",
+          "A ping proves connectivity; a status read proves that route; a correct native completion with placement/process evidence proves that particular execution."
+        ],
+        [
+          "Use the reference",
+          "Open the full manual for advanced features and the current progress/evidence record for platform-specific acceptance."
+        ]
+      ],
+      "success": "You can say what passed, what failed and what remains untested without confusing a menu, plan, connection or mock with real execution.",
+      "refs": [
+        "USER_GUIDE.md",
+        "USER_MANUAL.md",
+        "../PROGRESS.md",
+        "VERIFICATION_2026-11-02.md"
+      ]
+    }
+  ]
+}

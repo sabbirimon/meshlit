@@ -1,10 +1,16 @@
 # Meshlit user manual
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-31: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-31. This manual covers the current source and build candidates.
+Start with the [illustrated user guide](visual-guide.html): 20 practical chapters,
+seven original screenshots and four vector graphics covering Android, Studio,
+models, permissions, resources, Tailscale, pairing, backup and interrupted work.
+The same walkthrough is included in the offline guide source. Screenshots name
+their capture/platform; older images are not presented as current device proof.
+
+Updated 2026-11-02. This manual covers the current source and build candidates.
 Check the accompanying build evidence for what was actually tested on your platform.
 The older Compose Studio, the newer Code OSS Studio, and Android share product
 concepts but do not yet expose every feature in the same place.

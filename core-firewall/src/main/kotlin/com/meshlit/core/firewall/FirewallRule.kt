@@ -20,7 +20,12 @@ import com.meshlit.core.trust.TrustTier
 sealed class FirewallRule {
     abstract fun matches(remoteAddr: String, remoteNodeId: String?, remoteTier: TrustTier?): Boolean
 
-    /** IPv4 CIDR. v1 supports `/8` … `/32` only. */
+    /** Local control tunnels must remain local; no DNS or remote interface matches. */
+    object AllowLoopback : FirewallRule() {
+        override fun matches(remoteAddr:String,remoteNodeId:String?,remoteTier:TrustTier?):Boolean =
+            remoteAddr in setOf("::1","0:0:0:0:0:0:0:1") || CidrMatcher.ipv4ToLong(remoteAddr)?.ushr(24)==127L
+    }
+    /** IPv4 CIDR. */
     data class AllowSubnet(val cidr: String) : FirewallRule() {
         private val parsed: Cidr? by lazy { CidrMatcher.parse(cidr) }
         override fun matches(remoteAddr: String, remoteNodeId: String?, remoteTier: TrustTier?): Boolean =
@@ -55,6 +60,7 @@ data class FirewallPolicy(
         for (rule in rules) {
             if (rule.matches(remoteAddr, remoteNodeId, remoteTier)) {
                 return when (rule) {
+                    is FirewallRule.AllowLoopback,
                     is FirewallRule.AllowSubnet,
                     is FirewallRule.AllowNode,
                     is FirewallRule.AllowTier -> Decision.ALLOW
@@ -78,6 +84,7 @@ data class FirewallPolicy(
          */
         val Default: FirewallPolicy = FirewallPolicy(
             rules = listOf(
+                FirewallRule.AllowLoopback,
                 FirewallRule.AllowSubnet("192.168.0.0/16"),
                 FirewallRule.AllowSubnet("10.0.0.0/8"),
                 FirewallRule.AllowSubnet("172.16.0.0/12"),

@@ -76,7 +76,7 @@ import kotlinx.coroutines.*
             }},enabled=!busy,modifier=Modifier.testTag("agent-internet-access"))
         }
         Text(when(hasKey){true->"Brave key stored. Authorized search queries go to Brave and may incur provider charges."
-            false->"Setup needed: save a Brave Search API key before searches can work."
+            false->"No Brave key stored. Authorized search queries go to DuckDuckGo without an API key."
             null->"Search credential status is not yet available."})
         Text("Off cancels agent searches while preserving the human search setting. Page crawling has separate host/domain setup.")
         TextButton(onClick={onOpen("search")}){Text("Search key and app-wide setup")}

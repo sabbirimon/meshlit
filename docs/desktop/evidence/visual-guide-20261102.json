@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-03",
+  "chapters": 20,
+  "screenshots": [
+    {
+      "path": "assets/screenshots/samsung-chat-effort-controls-20261103.png",
+      "sha256": "8e7c789bf511791a311758a2a62495a54d2b33df783a4ba28af08e4e5424f85e",
+      "caption": "Real Samsung capture, November 3. Bundled Qwen2.5 is ready; tools are off. Auto is the only supported local effort level. No hosted-model or completed tool-call result is shown."
+    },
+    {
+      "path": "assets/screenshots/samsung-models-20261103.png",
+      "sha256": "cd3b09267504ac736b71fc3358330beb903111e7679f46a6b70316a09c755a96",
+      "caption": "Real Samsung capture, November 3, after WAN cleanup. The owner Qwen3 model is ready. Recommendation memory is an estimate, separate from measured process RSS."
+    },
+    {
+      "path": "desktop/evidence/studio-chat-redesign.png",
+      "sha256": "5e2fa9804f179196dda162fda1f633dec57869261239b6ca3d4077a28074a31d",
+      "caption": "Retained Compose Studio component render, October 26. It illustrates controls; it is not a native-window acceptance screenshot or the Code OSS workbench."
+    },
+    {
+      "path": "assets/screenshots/samsung-settings-20261102.png",
+      "sha256": "3f8e77007041c24bb9d1b48eb1cdc0d2a98f433a2bd6187f004c3ac178bfc3c4",
+      "caption": "Real Samsung capture, November 2, after the native WAN test update. Search and grouped destinations are visible; Advanced tools is selected."
+    },
+    {
+      "path": "desktop/evidence/multicore-20261102/samsung-resource-dashboard.png",
+      "sha256": "726444a3d822800f367297b1b9e76d4f3a3f8469054fe9a7c57cac864a737e3d",
+      "caption": "Real Samsung capture, November 2. Values describe that moment only. The screen states its foreground refresh interval and CPU normalization."
+    },
+    {
+      "path": "desktop/evidence/vpn-dashboard.png",
+      "sha256": "4a7539801c2a3493b885e18c51de10c880e4d073cb99c6b71f3e330384424571",
+      "caption": "Retained desktop component render, October 26. This shows Meshlit's status-read controls, not a connected phone or native Mac consent dialog."
+    },
+    {
+      "path": "assets/screenshots/samsung-worker-wan-confirmation-20261102.png",
+      "sha256": "16c2d874e9c6193c1b845fe8186f4c03baf524a9dbc844c4f079a1e5656acf5a",
+      "caption": "Real Samsung capture, November 2. The new owner-only permission is awaiting review. This screenshot is not proof that a WAN model generation completed."
+    }
+  ],
+  "diagrams": [
+    "cpu",
+    "routes",
+    "teams",
+    "trust"
+  ],
+  "networkAssets": false,
+  "scripts": false
+}

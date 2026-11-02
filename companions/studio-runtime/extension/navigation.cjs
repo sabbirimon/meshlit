@@ -1,6 +1,6 @@
 const vscode=require('vscode');
 const crypto=require('node:crypto');
-const entries=[['Home','home','home'],['Chat','chat','comment-discussion'],['Workspace','workbench.action.files.openFolder','folder-opened'],['Coding agent','agent','code'],['Models','models','server'],['Voice and vision','voice','mic'],['Project memory','memory','book'],['Computer companions','companions','remote'],['Usage','usage','graph'],['Settings','settings','settings-gear']];
+const entries=[['Home','home','home'],['Chat','chat','comment-discussion'],['Workspace','workbench.action.files.openFolder','folder-opened'],['Coding agent','agent','code'],['Agent teams & roles','agentTeams','organization'],['Connected capabilities','connectedCapabilities','plug'],['System resources','systemMonitor','dashboard'],['Models','models','server'],['Voice and vision','voice','mic'],['Project memory','memory','book'],['Computer companions','companions','remote'],['Usage','usage','graph'],['Settings','settings','settings-gear']];
 const command=id=>id.startsWith('workbench.')?id:'meshlit.'+id;
 function register(context){
  let home;

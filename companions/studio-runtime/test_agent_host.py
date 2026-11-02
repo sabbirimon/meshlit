@@ -1,5 +1,6 @@
 """Real SDK/native-harness transport tests against an explicitly synthetic local model."""
 import asyncio
+import json
 import unittest
 import uuid
 from unittest.mock import patch
@@ -7,10 +8,10 @@ import agent_host
 
 
 class FixtureBackend:
-    def __init__(self): self.calls=[]
+    def __init__(self): self.calls=[]; self.requests=[]
     async def call(self, op, **fields):
         if op != 'complete': raise AssertionError(op)
-        body=fields['body']; self.calls.append(body)
+        body=fields['body']; self.calls.append(body); self.requests.append(fields)
         user=next(m['content'] for m in reversed(body['messages']) if m['role']=='user')
         # Delay one session to verify another can finish independently.
         if 'slow-fixture' in str(user): await asyncio.sleep(2)
@@ -20,6 +21,109 @@ class FixtureBackend:
 
 
 class NativeSdkTest(unittest.IsolatedAsyncioTestCase):
+    async def test_effort_changes_between_turns_without_changing_connection(self):
+        events=[]; backend=FixtureBackend(); host=agent_host.Host(backend); host.start_proxy(); session=str(uuid.uuid4())
+        route=dict(kind='compatible',endpoint='https://example.test/v1',model='fixture-model',token='fixture-only')
+        try:
+            with patch.object(agent_host,'emit',events.append):
+                for index, effort in enumerate(('high','low','auto'),1):
+                    await host.command(dict(op='send',session=session,mode='chat',route=route,effort=effort,prompt='effort fixture'))
+                    async def done():
+                        while len([e for e in events if e['type']=='done'])<index: await asyncio.sleep(.02)
+                    await asyncio.wait_for(done(),20)
+                    self.assertEqual(backend.requests[-1]['effort'],effort)
+                    self.assertEqual(backend.requests[-1]['route']['endpoint'],route['endpoint'])
+                with self.assertRaises(ValueError):
+                    await host.command(dict(op='send',session=session,mode='chat',route={**route,'endpoint':'https://other.test/v1'},effort='high',prompt='denied change'))
+                self.assertEqual(len(backend.requests),3)
+        finally:
+            for s in list(host.sessions): await host.command(dict(op='close',session=s))
+            await asyncio.to_thread(host.server.shutdown); host.server.server_close()
+
+    async def test_local_and_unknown_effort_are_rejected_without_starting_session(self):
+        host=agent_host.Host(FixtureBackend())
+        for effort in ('high','ultra'):
+            with self.assertRaises(ValueError):
+                await host.command(dict(op='send',session=str(uuid.uuid4()),mode='chat',effort=effort,prompt='blocked'))
+        self.assertEqual(host.sessions,{})
+
+    async def test_ipc_chunks_do_not_finish_request_and_failure_cancels_it(self):
+        written=[]
+        class Input:
+            def write(self, value): written.append(json.loads(value))
+            async def drain(self): pass
+        class Process:
+            stdin=Input()
+            stdout=asyncio.StreamReader()
+        process=Process();backend=agent_host.Backend(process);reader=asyncio.create_task(backend.read())
+        chunks=[]
+        try:
+            call=asyncio.create_task(backend.call('complete',on_chunk=chunks.append,body={}))
+            await asyncio.sleep(0)
+            request=written[-1]['id']
+            process.stdout.feed_data((json.dumps(dict(id=request,chunk={'text':'early'}))+'\n').encode())
+            await asyncio.sleep(0)
+            self.assertEqual(chunks,[{'text':'early'}]);self.assertFalse(call.done())
+            process.stdout.feed_data((json.dumps(dict(id=request,error='failed'))+'\n').encode())
+            with self.assertRaises(RuntimeError):await call
+            self.assertEqual(written[-1]['op'],'cancel')
+            self.assertEqual(backend.pending,{});self.assertEqual(backend.chunk_handlers,{})
+        finally:
+            process.stdout.feed_eof();await reader
+
+    async def test_stop_after_streamed_text_cancels_the_backend(self):
+        events=[];released=asyncio.Event()
+        class StreamingBackend:
+            async def call(self, op, on_chunk=None, **fields):
+                try:
+                    on_chunk(dict(id='fixture',object='chat.completion.chunk',model='fixture',
+                        choices=[dict(index=0,delta=dict(role='assistant',content='Partial answer'),finish_reason=None)]))
+                    await asyncio.Event().wait()
+                finally:released.set()
+        host=agent_host.Host(StreamingBackend());host.start_proxy();session=str(uuid.uuid4())
+        try:
+            with patch.object(agent_host,'emit',events.append):
+                await host.command(dict(op='send',session=session,mode='chat',prompt='Cancel fixture'))
+                async def first_text():
+                    while not any(e['type']=='delta' and e.get('text') for e in events):await asyncio.sleep(.02)
+                await asyncio.wait_for(first_text(),20)
+                await host.command(dict(op='stop',session=session))
+                await asyncio.wait_for(released.wait(),3)
+                self.assertFalse(any(e['type']=='done' for e in events))
+        finally:
+            for s in list(host.sessions):await host.command(dict(op='close',session=s))
+            await asyncio.to_thread(host.server.shutdown);host.server.server_close()
+
+    async def test_native_sdk_receives_text_before_backend_completion(self):
+        events=[]; release=asyncio.Event()
+        class StreamingBackend:
+            async def call(self, op, on_chunk=None, **fields):
+                self_outer.assertTrue(fields['body']['stream'])
+                on_chunk(dict(id='fixture',object='chat.completion.chunk',model='fixture',
+                    choices=[dict(index=0,delta=dict(role='assistant',content='Early text'),finish_reason=None)]))
+                await release.wait()
+                terminal=dict(id='fixture',object='chat.completion.chunk',model='fixture',
+                    choices=[dict(index=0,delta={},finish_reason='stop')])
+                return dict(response=dict(streamed=True,terminalChunks=[terminal]))
+        self_outer=self
+        host=agent_host.Host(StreamingBackend());host.start_proxy();session=str(uuid.uuid4())
+        try:
+            with patch.object(agent_host,'emit',events.append):
+                await host.command(dict(op='send',session=session,mode='chat',prompt='Streaming fixture'))
+                async def first_text():
+                    while not any(e['type']=='delta' and e.get('text') for e in events):await asyncio.sleep(.02)
+                await asyncio.wait_for(first_text(),20)
+                self.assertFalse(any(e['type']=='done' for e in events))
+                release.set()
+                async def done():
+                    while not any(e['type'] in ('done','error') for e in events):await asyncio.sleep(.02)
+                await asyncio.wait_for(done(),20)
+                self.assertFalse(any(e['type']=='error' for e in events),events)
+        finally:
+            release.set()
+            for s in list(host.sessions):await host.command(dict(op='close',session=s))
+            await asyncio.to_thread(host.server.shutdown);host.server.server_close()
+
     async def test_backend_write_failure_cleans_pending_request(self):
         class BrokenInput:
             def write(self, _): raise BrokenPipeError()

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.meshlit.chat.ChatTokenUsage
@@ -36,7 +37,7 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     context.startActivity(Intent.createChooser(send,"Share output"))
 }
 
-@Composable internal fun MessageActions(text:String,usage:ChatTokenUsage?=null) {
+@Composable internal fun MessageActions(text:String,usage:ChatTokenUsage?=null,onReply:(()->Unit)?=null) {
     val clipboard=LocalClipboardManager.current
     val context=LocalContext.current
     var error by remember{mutableStateOf<String?>(null)}
@@ -53,6 +54,7 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     if(reader) ReplyReader(text){reader=false}
     if(details) TokenUsageDetails(usage){details=false}
     Surface(shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) { Row {
+        onReply?.let { reply -> IconButton(onClick=reply){Icon(Icons.AutoMirrored.Filled.Reply,"Reply to response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)} }
         IconButton(onClick={clipboard.setText(AnnotatedString(text))}){
             Icon(Icons.Default.ContentCopy,"Copy response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }

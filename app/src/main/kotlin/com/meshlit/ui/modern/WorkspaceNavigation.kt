@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -92,7 +93,7 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
             }
             IconButton(onClick={onSelect("settings")}) {Icon(Icons.Default.Settings,"Settings")}
         }
-        OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("workspace-search"),singleLine=true,
+        OutlinedTextField(query,{query=it.take(600)},Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("workspace-search"),singleLine=true,
             textStyle=MaterialTheme.typography.bodyMedium,placeholder={Text("Find a page or tool")},leadingIcon={Icon(Icons.Default.Search,null)},
             trailingIcon={if(query.isNotBlank()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear menu search")}},shape=RoundedCornerShape(16.dp))
         FilledTonalButton(onClick=onNew,enabled=!state.running,modifier=Modifier.fillMaxWidth().padding(T.medium)) {
@@ -103,7 +104,11 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
             val matches=WorkspaceDestinations.search(query)
             if(query.isNotBlank()) {
                 if(matches.isEmpty()) item{Text("No matching workspace",style=MaterialTheme.typography.bodyMedium)}
-                items(matches,key={it.id}) {entry->WorkspaceNavigationCard(entry,current==entry.id,onSelect,Modifier.fillMaxWidth(),rows=true)}
+                itemsIndexed(matches,key={_,it->it.id}) {index,entry->
+                    val found=com.meshlit.search.textSearchMatches("${entry.title}\n${entry.description}\n${entry.keywords}",query,words=true,maxPositions=1)
+                    Text("${index+1} / ${matches.size} · ${found.total} matches · ${found.location()}",style=MaterialTheme.typography.labelSmall,color=colors.primary)
+                    WorkspaceNavigationCard(entry,current==entry.id,onSelect,Modifier.fillMaxWidth(),rows=true,searchQuery=query)
+                }
             } else {
                 item{Text("Quick access",style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant)}
                 items(shortcuts,key={"quick:$it"}) {id ->
@@ -151,7 +156,7 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
     }
 }
 
-@Composable private fun WorkspaceNavigationCard(entry:WorkspaceDestination,selected:Boolean,onSelect:(String)->Unit,modifier:Modifier,rows:Boolean=false) {
+@Composable private fun WorkspaceNavigationCard(entry:WorkspaceDestination,selected:Boolean,onSelect:(String)->Unit,modifier:Modifier,rows:Boolean=false,searchQuery:String="") {
     val colors=MaterialTheme.colorScheme
     Surface(onClick={onSelect(entry.id)},modifier=modifier.testTag("workspace-${entry.id}"),shape=RoundedCornerShape(14.dp),
         color=if(selected) colors.secondaryContainer else colors.surfaceContainerLow,
@@ -159,7 +164,13 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
         if(rows) Row(Modifier.heightIn(min=T.touch).padding(horizontal=T.medium,vertical=T.small),verticalAlignment=Alignment.CenterVertically,
             horizontalArrangement=Arrangement.spacedBy(T.medium)) {
             SettingsIconTile(entry.id)
-            Text(entry.title,Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium)
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Text(entry.title,style=MaterialTheme.typography.bodyMedium)
+                if(searchQuery.isNotBlank()) {
+                    Text(entry.description,style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)
+                    if(entry.keywords.isNotBlank())Text("Keywords: ${entry.keywords}",style=MaterialTheme.typography.labelSmall,color=colors.onSurfaceVariant)
+                }
+            }
         } else Column(Modifier.heightIn(min=88.dp).padding(10.dp),verticalArrangement=Arrangement.spacedBy(T.small)) {
             SettingsIconTile(entry.id)
             Text(entry.title,style=MaterialTheme.typography.labelLarge)

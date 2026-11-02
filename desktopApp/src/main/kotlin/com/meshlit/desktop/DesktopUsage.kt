@@ -89,7 +89,83 @@ internal class DesktopUsage(private val directory: Path = Path.of(System.getProp
             }
         } finally { Files.deleteIfExists(temporary) }
     }
+    /** Purpose-bound encrypted team journal under the same unlocked owner session. */
+    @Synchronized fun teamDocument():String? {
+        val activeKey=checkNotNull(key){"Unlock Usage first"}
+        val target=directory.resolve("agent-teams.mul")
+        require(!Files.isSymbolicLink(directory) && !Files.isSymbolicLink(target))
+        if(!Files.exists(target,LinkOption.NOFOLLOW_LINKS))return null
+        require(Files.isRegularFile(target,LinkOption.NOFOLLOW_LINKS) && Files.size(target)<=3_000_048)
+        val bytes=Files.newInputStream(target,LinkOption.NOFOLLOW_LINKS).use{it.readNBytes(3_000_049)}
+        require(bytes.size in 48..3_000_048 && bytes.copyOfRange(0,4).contentEquals(byteArrayOf(77,84,77,1)))
+        require(bytes.copyOfRange(4,20).contentEquals(checkNotNull(salt)))
+        val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE,SecretKeySpec(activeKey,"AES"),GCMParameterSpec(128,bytes.copyOfRange(20,32)))
+        cipher.updateAAD(bytes.copyOfRange(0,20)+"agent-teams".toByteArray())
+        val plain=cipher.doFinal(bytes.copyOfRange(32,bytes.size))
+        return try{plain.decodeToString(throwOnInvalidSequence=true)}finally{plain.fill(0)}
+    }
+    @Synchronized fun teamEpoch():Long {check(key!=null){"Unlock Usage first"};return revision}
+    @Synchronized fun saveTeamDocument(text:String,epoch:Long=revision) {
+        require(epoch==revision){"Usage session changed"}
+        val activeKey=checkNotNull(key){"Unlock Usage first"}
+        val target=directory.resolve("agent-teams.mul")
+        require(!Files.isSymbolicLink(directory) && !Files.isSymbolicLink(target))
+        val plain=text.toByteArray(Charsets.UTF_8);require(plain.size<=3_000_000)
+        val header=byteArrayOf(77,84,77,1)+checkNotNull(salt)
+        val nonce=ByteArray(12).also(random::nextBytes)
+        val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE,SecretKeySpec(activeKey,"AES"),GCMParameterSpec(128,nonce))
+        cipher.updateAAD(header+"agent-teams".toByteArray())
+        val payload=try{header+nonce+cipher.doFinal(plain)}finally{plain.fill(0)}
+        val temporary=Files.createTempFile(directory,"team-",".tmp")
+        try {
+            privatePermissions(temporary,"rw-------")
+            java.nio.channels.FileChannel.open(temporary,StandardOpenOption.WRITE).use{channel->
+                val buffer=ByteBuffer.wrap(payload);while(buffer.hasRemaining())channel.write(buffer);channel.force(true)
+            }
+            Files.move(temporary,target,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+            if(Files.getFileStore(directory).supportsFileAttributeView("posix"))java.nio.channels.FileChannel.open(directory,StandardOpenOption.READ).use{it.force(true)}
+        }finally{Files.deleteIfExists(temporary)}
+    }
     private fun privatePermissions(path: Path, permissions: String) {
         if (Files.getFileStore(path).supportsFileAttributeView("posix")) Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
+    }
+    /** Separate authenticated document; routes/credentials never enter chat or model prompts. */
+    @Synchronized fun deviceConnectionDocument():String? {
+        val activeKey=checkNotNull(key){"Unlock Usage first"}
+        val target=directory.resolve("device-connections.mul")
+        require(!Files.isSymbolicLink(directory) && !Files.isSymbolicLink(target))
+        if(!Files.exists(target,LinkOption.NOFOLLOW_LINKS))return null
+        require(Files.isRegularFile(target,LinkOption.NOFOLLOW_LINKS) && Files.size(target)<=1_000_048)
+        val bytes=Files.newInputStream(target,LinkOption.NOFOLLOW_LINKS).use{it.readNBytes(1_000_049)}
+        require(bytes.size in 48..1_000_048 && bytes.copyOfRange(0,4).contentEquals(byteArrayOf(77,68,67,1)))
+        require(bytes.copyOfRange(4,20).contentEquals(checkNotNull(salt)))
+        val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE,SecretKeySpec(activeKey,"AES"),GCMParameterSpec(128,bytes.copyOfRange(20,32)))
+        cipher.updateAAD(bytes.copyOfRange(0,20)+"agent-device-connections".toByteArray())
+        val plain=cipher.doFinal(bytes.copyOfRange(32,bytes.size))
+        return try{plain.decodeToString(throwOnInvalidSequence=true)}finally{plain.fill(0)}
+    }
+    @Synchronized fun saveDeviceConnectionDocument(text:String,epoch:Long) {
+        require(epoch==revision){"Usage session changed"}
+        val activeKey=checkNotNull(key){"Unlock Usage first"}
+        val target=directory.resolve("device-connections.mul")
+        require(!Files.isSymbolicLink(directory) && !Files.isSymbolicLink(target))
+        val plain=text.toByteArray(Charsets.UTF_8);require(plain.size<=1_000_000)
+        val header=byteArrayOf(77,68,67,1)+checkNotNull(salt)
+        val nonce=ByteArray(12).also(random::nextBytes)
+        val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE,SecretKeySpec(activeKey,"AES"),GCMParameterSpec(128,nonce));cipher.updateAAD(header+"agent-device-connections".toByteArray())
+        val payload=try{header+nonce+cipher.doFinal(plain)}finally{plain.fill(0)}
+        val temporary=Files.createTempFile(directory,"connection-",".tmp")
+        try {
+            privatePermissions(temporary,"rw-------")
+            java.nio.channels.FileChannel.open(temporary,StandardOpenOption.WRITE).use{channel->
+                val buffer=ByteBuffer.wrap(payload);while(buffer.hasRemaining())channel.write(buffer);channel.force(true)
+            }
+            Files.move(temporary,target,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+            if(Files.getFileStore(directory).supportsFileAttributeView("posix"))java.nio.channels.FileChannel.open(directory,StandardOpenOption.READ).use{it.force(true)}
+        }finally{Files.deleteIfExists(temporary)}
     }
 }
