@@ -1,6 +1,6 @@
 {
   "title": "Meshlit illustrated user guide",
-  "date": "2026-11-03",
+  "date": "2026-11-06",
   "subtitle": "Android and Studio: from your first reply to approved connected devices",
   "chapters": [
     {
@@ -16,7 +16,7 @@
         ],
         [
           "Studio workbench",
-          "Open a local folder, choose Chat, select a configured model and wait for readiness. Use a tool-enabled mode for workspace actions."
+          "Current development source opens General Chat in its own main window. Bundled local chat uses passwordless session usage by default. Workspaces opens a separate IDE and project chat; first project setup can choose Local autonomous without a password for bounded reads/edits."
         ],
         [
           "Compose Studio",
@@ -29,11 +29,14 @@
       ],
       "success": "A model reports ready and produces a real reply on your chosen device. An installed application or model catalog alone is not a successful inference check.",
       "notes": [
-        "This guide describes the November 2 source and retained captures. Screenshots are labeled by platform and capture age. Build availability can restrict some pages."
+        "This guide describes the November 2 source and retained captures. Screenshots are labeled by platform and capture age. Build availability can restrict some pages.",
+        "November 6 source adds Chat settings, personality, message Copy/local export/read aloud, and a visible Bots dashboard. Final package and human voice acceptance remain separate. Image/video/sound generation and persistent self-improving workers are planned, not implied by these controls.",
+        "Management now groups models/compute, devices/clusters, network, health/resources, credentials/SSH and usage/storage. Android has the shared category structure. Credentials use platform storage when available; whole-app biometric locking and verified TPM policy remain planned. Bot details can be opened independently where supported; live browser workers remain a separate capability."
       ],
       "refs": [
         "USER_MANUAL.md",
-        "USER_GUIDE.md"
+        "USER_GUIDE.md",
+        "CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md"
       ]
     },
     {
@@ -54,7 +57,7 @@
         ],
         [
           "Choose effort and approvals",
-          "Auto leaves reasoning at the runner default. Low, Medium and High need documented support for the exact API model. The shield menu offers Ask each time, Auto approved reads and Selected approved tools. Existing device and OS permissions still apply. Android approval choices reset to Ask after app restart."
+          "Auto leaves reasoning at the runner default. Low, Medium and High need documented support for the exact API model. The shield menu offers Ask each time, Auto approved reads and Selected approved tools. Existing device and OS permissions still apply. Android approval choices reset to Ask after app restart. Android development source also adds saved Chat / Agent choices: Chat runs no chat tools; select tool groups and choose Agent to plan every message. Existing November 3 screenshots predate this addition."
         ],
         [
           "Write and send",
@@ -132,7 +135,7 @@
       "id": "studio",
       "title": "Work with Studio",
       "platform": "Desktop",
-      "route": "Chat / Coding agent > mode > selected model and tools",
+      "route": "General Chat > model source, or Workspaces > Workspace agents",
       "intro": "Use the Code OSS workbench for editor-based tasks and the earlier Compose application for its existing engine/device dashboards. A development candidate is different from a production-qualified installer.",
       "figure": {
         "path": "desktop/evidence/studio-chat-redesign.png",
@@ -141,12 +144,12 @@
       },
       "steps": [
         [
-          "Open the workspace",
-          "Choose Open Folder for a local project and review workspace trust. Project tools need a trusted workspace."
+          "Open chat or a workspace",
+          "General Chat opens in an empty Studio window. Use Workspaces to open a project in a separate IDE window and review workspace trust before enabling project tools."
         ],
         [
-          "Pick a mode",
-          "Chat has no workspace tools. Plan reads approved information. Edit / Build proposes reviewed edits. Autopilot performs bounded steps with the same approval requirements."
+          "Pick a model and mode",
+          "Use the chat source picker for bundled inference, an approved provider or model server, or an existing LAN or remote coordinator. LLM settings controls local temperature, output length, and history. Plan reads approved project information. Edit / Build and Autopilot use bounded reviewed tools."
         ],
         [
           "Select tools",
@@ -154,7 +157,7 @@
         ],
         [
           "Review changes",
-          "Inspect proposed edits and tool outcomes. Save accepted editor changes yourself. Changing mode or tools after a session starts opens an independent conversation."
+          "In Meshlit Changes, pick Last turn for applied agent edits or Working tree for Git changes, filter the file list, and open a side-by-side diff. Protected-storage builds can save a review for later. Review the inverse diff before undoing a current edit. Right-click a workspace file or a chat file reference for open, copy, save and reveal actions."
         ],
         [
           "Use project memory",
@@ -163,10 +166,12 @@
       ],
       "success": "The selected model responds, and only chosen tools appear in the chat. Reviewed changes have observable outcomes.",
       "notes": [
-        "Some builds ask to unlock the Meshlit usage ledger. Its passphrase is separate from your OS login and API key. Avoid two Studio instances competing for the same vault."
+        "The QA package uses volatile editor secrets and asks for the Usage passphrase each session. The encrypted Usage ledger persists separately. Remembered unlock and saved workspace review require a protected-storage build.",
+        "Worker pairing and native layer placement happen on the coordinator. A saved Studio route connects to the coordinator's model API."
       ],
       "refs": [
-        "USER_MANUAL.md#start-a-desktop-conversation"
+        "USER_MANUAL.md#start-a-desktop-conversation",
+        "layer-pipeline-and-recovery.md#use-a-coordinator-from-studio"
       ]
     },
     {
@@ -220,7 +225,7 @@
         ],
         [
           "Test one turn",
-          "Use One turn, wait for Listening, speak a short question, then inspect the transcript and answer. Live mode adds repeated turn handling."
+          "Use One turn, wait for Listening, then speak a short question. Turn on Review transcript before sending in voice options to edit, send or discard each recognized turn. Live mode adds repeated turn handling and an optional wired headset interruption control."
         ],
         [
           "Control the session",
@@ -228,7 +233,7 @@
         ],
         [
           "Attach a photo",
-          "Open +, choose or capture an image, and select a configured vision-capable route. Review which host receives the image."
+          "Open + and choose or capture an image. On device is the default: import a matching vision GGUF and projector under Camera, vision and audio. Select a hosted route explicitly if you want that provider to receive the image. Offline photo turns remain visible and are kept out of later model prompts. Live camera observations sample the visible phone camera and use the same on-device model."
         ],
         [
           "Attach useful text",
@@ -403,7 +408,7 @@
         ],
         [
           "Grant only the needed class",
-          "Phone, web, remote device commands, cloud and browser use have distinct saved grants. Turn on the chat's request control as well."
+          "Phone, web, remote device commands, cloud and browser use have distinct saved grants. Turn on the chat's request control as well. In Android development source, select Agent under Conversation mode and Save; tool selections alone leave Chat mode active. Agent planning no longer depends on English action words."
         ],
         [
           "Connect a saved device",
@@ -718,7 +723,7 @@
         ],
         [
           "Verify actual work",
-          "Check native assigned layers, worker buffer/RSS/CPU changes and correct output. Stop the worker/pipeline and confirm processes and connections end."
+          "Check native assigned layers, worker memory and correct output. Optionally enable Reload once if a worker drops before loading. If the coordinator process exits and an assigned worker is unreachable, the same model can reload with the remaining approved workers. Send the interrupted request again yourself."
         ]
       ],
       "success": "The correct authenticated service succeeds and forbidden scopes fail. The development mixed Mac/Samsung proof is separate from a fully managed Studio/HyperL cluster.",

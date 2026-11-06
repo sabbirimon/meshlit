@@ -6,21 +6,40 @@
 
 # Meshlit — Many devices. One mind.
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
 **Current prerelease (2026-10-26):** [v2.0.0-beta.5](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.0-beta.5) provides Android, Intel macOS, Windows x64 and Linux amd64 installers. All thirteen release assets passed size/SHA-256 verification. [Validation and platform limits](docs/desktop/evidence/prerelease45-validation.json): Windows/Linux physical installation and production publisher signing remain unqualified.
 
-**Development checkpoint (2026-11-03):** Android Chat and Code OSS Studio include
-model-specific reasoning effort and scoped action approvals. See the
-[setup and platform limits](docs/CHAT_EFFORT_AND_APPROVALS_2026-11-03.md),
-[illustrated guide](docs/visual-guide.html), and
-[Samsung verification](docs/desktop/evidence/android-chat-effort-approval-20261103.json).
-Local runners stay Auto-only; live hosted reasoning remains unqualified.
+**Development checkpoint (2026-11-06):** Studio opens a dedicated General Chat
+window, with separate workspace IDE windows, bot details and grouped management.
+The Intel Mac development build retains Qwen2.5 1.5B as its local default and adds
+Qwen3 4B with Thinking On/Off. Native replies and Stop were verified; enough free
+RAM is required. Android defaults are unchanged. These source changes are newer
+than the published beta listed above.
+
+![Meshlit Studio application and model-engine map](docs/assets/meshlit-studio-map-20261106.svg)
+
+### Studio in use
+
+| General Chat | Settings and management |
+| --- | --- |
+| ![Actual Studio General Chat with an empty composer and local model ready](docs/assets/screenshots/studio-main-20261106.png) | ![Actual Studio settings with grouped destinations](docs/assets/screenshots/studio-settings-20261106.png) |
+
+Genuine captures from an isolated native QA profile, with no private conversation.
+[Native model validation](docs/desktop/evidence/studio-qwen3-native-20261106.json)
+· [Current requests and limits](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md)
+· [User guide](docs/visual-guide.html).
+
+**HyperL relationship:** the reusable model execution and sharding engine belongs
+to [HyperL](https://github.com/sabbirimon/HyperL). Studio's new HyperL client and
+broader-format graphical imports remain pending. Its current local bundle uses
+GGUF; HyperL's separate source/CLI adds format inspection and a narrow SafeTensors
+conversion path. [Integration plan](docs/STUDIO_HYPERL_ENGINE_PLAN_2026-11-06.md).
 
 
-**Local AI, GGUF models, owner-controlled agents and experimental device compute.**
+**Local AI chat, coding workspaces, bots and experimental device compute.**
 Meshlit has an Android app, an experimental Intel Mac Studio preview and optional
 host companions. Its Kotlin and Jetpack Compose Android client uses RunAnywhere
 and llama.cpp; agent tools, MCP connections, offline model use and federated

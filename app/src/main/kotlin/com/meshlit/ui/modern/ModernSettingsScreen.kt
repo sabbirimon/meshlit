@@ -116,6 +116,8 @@ import kotlinx.coroutines.*
     if(destination=="connected-capabilities"){ConnectedServicesScreen(back,{navigate(it)});return}
     if(destination=="agent-catalog"){AgencyAgentCatalogScreen(back);return}
     if(destination=="agent-teams"){AgentTeamsScreen(back,{navigate(it)});return}
+    if(destination=="bot-connections"){BotConnectionsScreen(back,{navigate(it)});return}
+    if(destination=="bot-inbox"){BotInboxScreen(back);return}
     if(destination=="agents"){AgentManagementScreen(back,{navigate(it)});return}
     if(destination=="acceleration"){AccelerationScreen(back);return}
     if(destination=="ssh"){SshConnectionsScreen(back);return}

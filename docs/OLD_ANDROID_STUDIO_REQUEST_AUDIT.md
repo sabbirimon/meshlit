@@ -1,8 +1,17 @@
 # Older Android Studio request and plan audit
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Current request reconciliation — 2026-11-06
+
+The [Chat/Studio request inventory](CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md)
+reconciles this plan with the current main shell, passwordless local chat, bounded
+project autonomy, bots, personalities, voice/translation and media requests.
+Earlier architecture choices and completion labels below retain their dated
+scope. Studio settings parity, durable history/RAG, training, media adapters,
+managed device execution and release acceptance remain separate gates.
 
 Reviewed 2026-10-23 against the separate `mllm` checkout's `PLAN.md`, `REQUESTS.md` and `TODO.md`. These files are historical requests and implementation notes from a different working tree. Their “done” labels do not prove that the current Meshlit APK contains or qualifies the same behavior. This table names the current gate to close before marking a request transferred.
 

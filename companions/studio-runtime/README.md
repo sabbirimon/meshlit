@@ -1,8 +1,26 @@
 # Studio upstream runtime qualification
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
 Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Current Chat settings and remaining features — 2026-11-06
+
+The development main window separates General Chat from workspace IDE chats.
+Chat settings groups models/modes, reasoning, permissions, personality, read-aloud
+and live-voice setup; Bots is available in primary navigation. Message
+actions add Copy, Reply, Read aloud and explicit local chat export. Export saves
+a file selected by the user; it does not publish a public link.
+
+Local chat uses session usage without a passphrase by default. Local autonomous
+projects permit bounded reads/edits with Stop and unsaved review; protected work,
+credentials and external capabilities retain separate controls. Personality is a
+prompt preference, not model retraining or a grant of tools. Native Mac read-aloud
+is distinct from OpenLive's separate call/transcript UI. Native inline Studio
+subtitles, image/video/sound generation, persistent bot workers and actual RL
+remain open. Final packaged navigation and human-audio qualification are pending.
+
+[Current request/acceptance inventory](../../docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
 
 Meshlit will reuse a full Code OSS workbench and the Google Antigravity agent
 SDK rather than implement another editor or agent loop. This directory contains a development workbench extension, SDK host and Kotlin
@@ -134,3 +152,71 @@ bearer string alone is not server authentication. Current LM Studio hosting does
 not support Intel Mac; Ollama on Intel Mac is CPU only. Android can connect to
 these hosts with its model profiles. See the [platform plan and real API
 checks](../../docs/LOCAL_INFERENCE_HOSTS_2026-11-02.md).
+
+
+## Main-window shell — 2026-11-06
+
+The previous Chat tab inside IDE chrome did not meet the requested main-window
+layout. Current source adds a full-width empty-window shell with primary Chat,
+Workspaces, Models, and LLM settings navigation. Usage and Settings stay at the
+bottom; collapsed Studio tools holds agents, bots, devices/clusters, MCP, and
+resources. Dedicated Models, Workspaces, and LLM settings pages reuse existing
+services. Conversation navigation selects actual open transient sessions.
+Project selection opens a separate native IDE with its own chat and agents.
+
+`prepare_shell.py` patches only empty-window startup/layout and keeps native
+window controls, notifications, and dialogs. Packaging refreshes all existing
+workbench integrity checksums after branding and startup changes, before signing.
+It does not suppress corruption detection. Five shell, five main-page, and nine
+packaging tests passed at that checkpoint. Native screenshots subsequently
+verified the shell; final candidate qualification remains pending.
+
+Local Chat now defaults to passwordless in-memory session usage with no usage
+history written to disk. **LLM settings → Require a passphrase before local
+chat** takes effect next launch. Protected hosted/remote accounting, saved
+budgets, and credentials remain separate. The QA package uses volatile editor
+secrets on the Mac reporting `Keychain Not Found`; it does not reset Keychain or
+write plaintext keys. Existing encrypted Usage history is preserved.
+
+Chat settings groups Models & modes, LLM & reasoning, Tools & permissions,
+model/gateway setup, MCP, devices, project memory, and Protected Usage. Models
+exposes provider dashboards. Project setup offers Local/Protected security and
+then Ask each action, Auto workspace reads, or Autonomous workspace edits.
+Saved presets remain project-scoped, with bounded unsaved edits and independent
+shell/device/MCP/provider grants. Optional app-access task grants bind the exact
+app/model/human task/chat for 25 operations or 10 minutes and end on Stop or
+completion. OS Accessibility permission remains required; native app actions
+were not requalified in this increment.
+
+Chat identity now uses the actual local load label or configured remote
+model/source, with explicit uncertainty about gateway upstreams. The offline
+Qwen process was confirmed after a false Anthropic identity reply. Fifteen host
+tests passed; live identity-response acceptance is pending. Native screenshots
+verified the main shell, while final candidate qualification remains pending.
+
+General Chat sends direct role messages with a bounded recent history and usage
+accounting. Workspace agent modes retain the SDK, workspace scope, and reviewed
+tool policies. Models and the composer source picker expose bundled inference,
+approved model servers, third-party APIs, and already-running LAN or remote
+cluster coordinators. Agent teams, bots, MCP connectors, and device checks have
+separate controls. The coordinator owns native layer placement, and the local
+IDE retains workspace and tool approvals. [Studio and cluster test evidence](../../PROGRESS.md#studio-chat-and-cluster-routing--2026-11-06).
+
+## Workspace review — 2026-11-05
+
+Open a trusted local project and choose **Workspace changes** from Meshlit
+navigation or a chat. **Last turn** compares the text before and after edits
+actually applied in that conversation. **Working tree** compares the Git HEAD
+revision with current files, including untracked files. Filter by path and click
+a row to open the editor diff. Refresh after an external Git operation.
+
+Right-click a change, Explorer file, or assistant file reference for file
+actions. References accept workspace paths with optional line numbers such as
+`[README](README.md:10)` or `[Guide](<docs/Quick Start.md:4>)`. The review
+keeps last-turn snapshots while the chat is open. In a protected-storage build,
+use **Save for later** to save one encrypted review and **Saved review** to reopen
+it within seven days. The QA package offers in-session review.
+**Forget saved** clears it. On a current last-turn row, **Undo last Meshlit
+edit** opens an inverse diff and requires confirmation. It checks the editor
+version and refuses to overwrite subsequent edits. Use the editor to save an
+applied undo to disk.

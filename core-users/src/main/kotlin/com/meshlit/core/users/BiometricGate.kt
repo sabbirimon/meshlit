@@ -2,9 +2,9 @@ package com.meshlit.core.users
 
 /**
  * Pure-Kotlin interface for biometric / device-credential unlock.
- * The Android implementation lives in `:app` and wraps `BiometricPrompt`
- * + `KeyguardManager`; this interface is what the UI calls and what
- * tests can stub.
+ * Platform implementations must wrap native authentication such as Android
+ * `BiometricPrompt` with authentication-bound key use. This interface alone
+ * does not establish a wired app lock or a qualified biometric implementation.
  *
  * Why a thin abstraction: we want the unlock gate to be testable in
  * plain JUnit (no Robolectric, no FragmentActivity) and we want the
@@ -16,8 +16,8 @@ interface BiometricGate {
 
     /**
      * Suspend until the user authenticates. Returns true on success,
-     * false on cancel/failure. Implementations should call the
-     * supplied [onUnavailable] when no biometric is configured so
+     * false on cancel/failure. Implementations should return [BiometricResult.Unavailable]
+     * when no biometric is configured so
      * the UI can fall back to a PIN prompt.
      */
     suspend fun requireUnlock(reason: String): BiometricResult

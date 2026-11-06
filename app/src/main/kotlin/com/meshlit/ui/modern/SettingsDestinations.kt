@@ -8,10 +8,11 @@ data class SettingsDestination(val id:String,val title:String,val description:St
 
 /** Purpose-based navigation, independent of permission and runtime availability. */
 enum class SettingsGroup(val title:String,val description:String,val destinations:Set<String>) {
+    MANAGEMENT("Management", "Models, devices, network, health, credentials and storage dashboards", setOf("dashboards")),
     MODELS("Models & voice", "Models, speech, online providers and numerical tools", setOf(
         "models","voice-settings","media","providers","huggingface","router","behavior","training","acceleration","hyperl","colibri","rag","usage")),
     AGENTS("Agents & memory", "Remember preferences, review jobs and connect approved tools", setOf(
-        "personalization","tasks","connected-capabilities","agent-catalog","agent-teams","agents","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
+        "personalization","tasks","connected-capabilities","agent-catalog","agent-teams","agents","bot-connections","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
     CONNECTIONS("Devices and connections", "Pair devices, manage transports and inspect real capabilities", setOf(
         "devices","network","vpn","sharding","radar","host-map","external-services","web-bridge","device-dashboard","meshchat","remotecommands","p2p","gibberlink","external","ssh","peers")),
     PRIVACY("Privacy & permissions", "Permissions, network rules, identity and data policy", setOf(
@@ -19,12 +20,12 @@ enum class SettingsGroup(val title:String,val description:String,val destination
     TOOLS("System & developer tools", "Files, diagnostics, optional runtimes and host services", setOf(
         "files","ide","device","resources","power","monitor","operations","recovery","runtime","commands","packages","securitylab","termux","crawler","cloud","audit","logs","rewards")),
     PREFERENCES("App & help", "Appearance, shortcuts, saved configuration and guidance", setOf(
-        "dashboards","appearance","notifications","menu-layout","configuration","help","about"))
+        "appearance","notifications","menu-layout","configuration","help","about"))
 }
 
 object SettingsDestinations {
     val all=listOf(
-        SettingsDestination("dashboards","Dashboards","Models, routing, usage and private connections",keywords="workspace overview dashboard"),
+        SettingsDestination("dashboards","Management","Models, devices, network, health, credentials and storage",keywords="workspace overview dashboard SSH security compute"),
         SettingsDestination("usage","Usage & costs","Online text history, device budgets and bill reconciliation",keywords="tokens spending billing usage"),
         SettingsDestination("vpn","VPN & network","App-network observations and optional Tailscale companion",keywords="Tailscale VPN private connection"),
         SettingsDestination("menu-layout","Customize menu","Add, remove and reorder shortcuts in Settings and the main drawer",keywords="layout rearrange quick access shortcuts navigation"),
@@ -73,6 +74,7 @@ object SettingsDestinations {
         SettingsDestination("acceleration","Acceleration","Actual backend availability, CPU limits and platform roadmap",keywords="CUDA Vulkan OpenCL OpenGL Metal ROCm QNN CANN Intel NVIDIA AMD Huawei"),
         SettingsDestination("agent-catalog","Agent role library","Search and adapt Agency Agents role templates",keywords="agency agent selection roles specialists"),
         SettingsDestination("agent-teams","Agent teams","Planner, worker and reviewer teams across approved local and remote devices",keywords="multi agent teams local remote cluster"),
+        SettingsDestination("bot-connections","Bots and connections","Custom bot profiles, AstrBot chat, Grok Bot routines and OpenClaw",keywords="bots messaging automation agent custom integrations webhook Grok AstrBot"),
         SettingsDestination("agents","Agent management","Delegated permissions, real jobs and registered tools",keywords="autonomous scopes tasks MCP"),
         SettingsDestination("ssh","SSH nodes and connections","Key-authenticated inbound node commands and pinned outbound connections",keywords="server LAN internet VM sandbox agent SSH NAS terminal external inter device"),
         SettingsDestination("firewall","Network rules","Persisted Meshlit listener firewall and network status",keywords="ports security IP allow deny"),

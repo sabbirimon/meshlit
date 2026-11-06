@@ -121,7 +121,6 @@ class CameraDispatcher(
                 .setFlashMode(flashMode)
                 .build()
             lifecycle.moveTo(Lifecycle.State.STARTED)
-            provider.unbindAll()
             provider.bindToLifecycle(lifecycle, selector, Preview.Builder().build(), capture)
             lifecycle.moveTo(Lifecycle.State.RESUMED)
             return takePicture(capture, outFile)

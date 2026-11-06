@@ -44,6 +44,7 @@ import java.util.UUID
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item{TextButton(onClick=onBack){Text("Back")};Text("Model connections",style=MaterialTheme.typography.headlineSmall)
             Text("Requests send conversation content to the selected provider. Keys are encrypted locally. Local failures never trigger a cloud request. API access and billing are separate from consumer chat subscriptions.")}
+        item{OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),"Grok (xAI API)","https://api.x.ai/v1"))}){Text("Connect Grok model API")}}
         item{OmniRouteDashboardSetup(providers){address->cancelCatalog();key="";dashboard=address}}
         items(profiles,key={it.id}){profile->Card{Column(Modifier.padding(16.dp)){Text(profile.name,style=MaterialTheme.typography.titleMedium);Text("${profile.model.ifBlank{"Model not selected"}} · ${if(profile.enabled) "Enabled" else "Disabled"}");Text(profile.endpoint,style=MaterialTheme.typography.bodySmall)
             Row{TextButton(onClick={edit(profile)}){Text("Edit")};TextButton(onClick={try{cancelCatalog();providers.remove(profile.id);if(editing?.id==profile.id){editing=null;key=""}}catch(_:Exception){error="Profile and key could not be removed."}}){Text("Remove profile and key")}}}}}
@@ -118,6 +119,13 @@ import java.util.UUID
             Text("Disable key authentication only for an endpoint that explicitly supports anonymous requests. Public HF catalog discovery works without a login; hosted inference normally needs a token.",style=MaterialTheme.typography.bodySmall)
             Row{Text("Enable online requests",Modifier.weight(1f));Switch(profile.enabled,{editing=profile.copy(enabled=it)})}
             Row{Text("Allow delegated agents to use this profile",Modifier.weight(1f));Switch(profile.agentAllowed,{editing=profile.copy(agentAllowed=it)})}
+            if(profile.canReviewHostedTools() || profile.hostedToolSupport!=null) {
+                Row{Text("Reviewed native tool calling for this model",Modifier.weight(1f));Switch(profile.reviewedHostedTools()!=null,{enabled->
+                    runCatching{editing=profile.copy(hostedToolSupport=if(enabled)HostedToolSupport.review(profile) else null)}
+                        .onFailure{error="Choose a valid direct Chat Completions endpoint and exact model first."}
+                })}
+                Text("Turn this on only if the model's API documents function tools, a single call per request, and tool replies. This declaration applies after Save profile and becomes invalid if the endpoint, model or protocol changes. Conversation permission is separate.",style=MaterialTheme.typography.bodySmall)
+            }
             Row{Text("Send temperature (model must support it)",Modifier.weight(1f));Switch(profile.sendTemperature,{editing=profile.copy(sendTemperature=it)})}
             OutlinedTextField(inputRate,{inputRate=it;editing=profile.copy(pricingSource=null,priceCheckedAtMs=null)},label={Text("Input price / million tokens (optional)")})
             OutlinedTextField(outputRate,{outputRate=it;editing=profile.copy(pricingSource=null,priceCheckedAtMs=null)},label={Text("Output price / million tokens (optional)")})

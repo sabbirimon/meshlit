@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "recordedDate": "2026-11-06",
+  "candidate": "Meshlit Studio 2026-11-06 UI Polish QA",
+  "scope": "Isolated synthetic native Intel macOS profile; existing owner app processes and drafts preserved.",
+  "packaging": {
+    "adHocSignatureVerified": true,
+    "integrityEntriesVerified": 10,
+    "extensionModulesMatchedSource": 51,
+    "notarized": false
+  },
+  "layoutChecks": [
+    {
+      "page": "main",
+      "size": "normal",
+      "viewport": [
+        1400,
+        965
+      ],
+      "sidebarWidth": 248,
+      "footerTop": 874.8125,
+      "footerBottom": 955,
+      "footerVisible": true,
+      "scrollAreaHeight": 672,
+      "scrollContentHeight": 672,
+      "middleScrollable": false,
+      "bodyHorizontalOverflow": false,
+      "svgNavigationIcons": 32,
+      "currentConversationRows": 1,
+      "footerLabels": "Usage\nSettings",
+      "toggleExpanded": "true"
+    },
+    {
+      "page": "main",
+      "size": "short",
+      "viewport": [
+        760,
+        565
+      ],
+      "sidebarWidth": 190,
+      "footerTop": 468.8125,
+      "footerBottom": 549,
+      "footerVisible": true,
+      "scrollAreaHeight": 274,
+      "scrollContentHeight": 571,
+      "middleScrollable": true,
+      "bodyHorizontalOverflow": false,
+      "svgNavigationIcons": 32,
+      "currentConversationRows": 1,
+      "footerLabels": "Usage\nSettings",
+      "toggleExpanded": "true"
+    },
+    {
+      "page": "settings",
+      "size": "normal",
+      "viewport": [
+        1400,
+        965
+      ],
+      "sidebarWidth": 248,
+      "footerTop": 874.8125,
+      "footerBottom": 955,
+      "footerVisible": true,
+      "scrollAreaHeight": 672,
+      "scrollContentHeight": 672,
+      "middleScrollable": false,
+      "bodyHorizontalOverflow": false,
+      "svgNavigationIcons": 32,
+      "currentConversationRows": 0,
+      "footerLabels": "Usage\nSettings",
+      "toggleExpanded": "true"
+    },
+    {
+      "page": "settings",
+      "size": "short",
+      "viewport": [
+        760,
+        565
+      ],
+      "sidebarWidth": 190,
+      "footerTop": 468.8125,
+      "footerBottom": 549,
+      "footerVisible": true,
+      "scrollAreaHeight": 274,
+      "scrollContentHeight": 607,
+      "middleScrollable": true,
+      "bodyHorizontalOverflow": false,
+      "svgNavigationIcons": 32,
+      "currentConversationRows": 0,
+      "footerLabels": "Usage\nSettings",
+      "toggleExpanded": "true"
+    },
+    {
+      "page": "bots",
+      "size": "normal",
+      "viewport": [
+        1400,
+        965
+      ],
+      "sidebarWidth": 248,
+      "footerTop": 874.8125,
+      "footerBottom": 955,
+      "footerVisible": true,
+      "scrollAreaHeight": 672,
+      "scrollContentHeight": 672,
+      "middleScrollable": false,
+      "bodyHorizontalOverflow": false,
+      "svgNavigationIcons": 32,
+      "currentConversationRows": 0,
+      "footerLabels": "Usage\nSettings",
+      "toggleExpanded": "true"
+    },
+    {
+      "page": "bots",
+      "size": "short",
+      "viewport": [
+        760,
+        565
+      ],
+      "sidebarWidth": 190,
+      "footerTop": 468.8125,
+      "footerBottom": 549,
+      "footerVisible": true,
+      "scrollAreaHeight": 274,
+      "scrollContentHeight": 643,
+      "middleScrollable": true,
+      "bodyHorizontalOverflow": false,
+      "svgNavigationIcons": 32,
+      "currentConversationRows": 0,
+      "footerLabels": "Usage\nSettings",
+      "toggleExpanded": "true"
+    }
+  ],
+  "visualReview": {
+    "mainTypical": "passed",
+    "settingsTypicalAndShort": "passed",
+    "botsTypicalAndShort": "passed",
+    "mainShort": "passed after short-height welcome layout correction"
+  },
+  "startupObservation": "Corrected initialization was observed as Preparing local chat \u2192 Ready without a passphrase prompt during isolated and normal native launches. These were accessibility samples, not exhaustive video recording.",
+  "foregroundLaunchPerformed": true,
+  "rawArtifacts": "Private isolated fixture holds polish-*.png screenshots and native measurements.",
+  "startupStates": [
+    {
+      "state": "Starting model host\u2026",
+      "unlockVisible": false,
+      "local": "Loading the bundled local model\u2026"
+    },
+    {
+      "state": "Create a Meshlit passphrase to start chatting. Your draft stays here.",
+      "unlockVisible": true,
+      "local": "Loading the bundled local model\u2026"
+    },
+    {
+      "state": "Ready \u00b7 local chat needs no passphrase \u00b7 usage is session-only",
+      "unlockVisible": false,
+      "local": "Qwen2.5 1.5B Instruct \u00b7 Q4_K_M \u00b7 Ready \u00b7 runs on this Mac"
+    }
+  ],
+  "finalCandidateIncludesSecondModel": true
+}

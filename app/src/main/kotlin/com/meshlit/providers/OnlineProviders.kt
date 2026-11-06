@@ -59,7 +59,7 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
         val changes = mutableMapOf<String, String?>()
         if(previous?.endpoint != profile.endpoint || previous.protocol != profile.protocol) changes["key-${profile.id}"] = null
         key?.let { require(it.length <= 4096 && it.none(Char::isWhitespace)); changes["key-${profile.id}"] = it.takeIf(String::isNotBlank) }
-        val updated = _profiles.value.filterNot { it.id == profile.id } + profile
+        val updated = _profiles.value.filterNot { it.id == profile.id } + profile.copy(hostedToolSupport=profile.reviewedHostedTools())
         changes["profiles"] = json.encodeToString(updated)
         commit(changes)
         _profiles.value = updated
@@ -93,6 +93,39 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
         require(profile.enabled)
         val credential = resolveToken(profile, agent)
         client.validateGeneration(profile, credential, messages, system, maxTokens, temperature,effort)
+        val reply=metered<OnlineReply>(profile,(messages.sumOf{it.text.length.toLong()}+system.length)*4+1024,maxTokens,{it.inputTokens to it.outputTokens}) {
+            requireCurrent(profile,credential)
+            currentCoroutineContext().ensureActive()
+            client.generate(profile,credential,messages,system,maxTokens,temperature,effort)
+        }
+        return profile to reply
+    }
+
+    internal suspend fun requireHostedProfile(profile:OnlineProfile,reviewId:String):String {
+        operations.requireAllowed(com.meshlit.core.common.control.ManagedFeature.CLOUD,true)
+        require(profile.hostedToolsAllowed(reviewId)){"Review and enable hosted web search for this exact provider model"}
+        val credential=resolveToken(profile,true)
+        requireCurrent(profile,credential)
+        require(!profile.requiresApiKey || credential.isNotBlank()){ "Save a provider key before using hosted tools" }
+        return credential
+    }
+
+    internal suspend fun hostedWebRound(profile:OnlineProfile,reviewId:String,boundCredential:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,
+        temperature:Float,effort:ReasoningEffort,evidence:HostedSearchEvidence?=null):HostedWebTurn =
+        operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,true) {
+            val credential=requireHostedProfile(profile,reviewId)
+            require(credential==boundCredential){"Provider credentials changed during this Agent turn"}
+            val prepared=client.prepareHostedWebRound(profile,credential,messages,system,maxTokens,temperature,effort,reviewId,evidence)
+            val reply=metered<HostedWebTurn>(profile,prepared.inputTokenEstimate,maxTokens,{it.inputTokens to it.outputTokens}) {
+                require(requireHostedProfile(profile,reviewId)==credential){"Provider credential changed before dispatch"}
+                currentCoroutineContext().ensureActive()
+                client.hostedWebRound(credential,prepared)
+            }
+            require(requireHostedProfile(profile,reviewId)==credential){"Provider authorization changed during the request"}
+            reply
+        }
+
+    private suspend fun <T> metered(profile:OnlineProfile,inputEstimate:Long,maxTokens:Int,counts:(T)->Pair<Long?,Long?>,dispatch:suspend()->T):T {
         val ledger = withContext(Dispatchers.IO) { UsageHistory.get(appContext) }
         val price = UsagePrice(profile.currency,
             profile.inputPricePerMillion?.let { UsageMoney.parse(java.math.BigDecimal.valueOf(it).setScale(9, java.math.RoundingMode.CEILING).stripTrailingZeros().toPlainString()) },
@@ -101,14 +134,12 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
         var attempt: String? = null
         try {
             withContext(Dispatchers.IO) {
-                attempt = ledger.begin(UsageLedger.route(profile.endpoint + "/" + profile.protocol, profile.model), profile.model, price,
-                    (messages.sumOf { it.text.length.toLong() } + system.length) * 4 + 1024, maxTokens.toLong())
+                attempt = ledger.begin(UsageLedger.route(profile.endpoint + "/" + profile.protocol, profile.model), profile.model, price,inputEstimate,maxTokens.toLong())
             }
-            requireCurrent(profile, credential)
-            currentCoroutineContext().ensureActive()
-            val reply = client.generate(profile, credential, messages, system, maxTokens, temperature,effort)
-            withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", reply.inputTokens, reply.outputTokens) }
-            return profile to reply
+            val reply=dispatch()
+            val (input,output)=counts(reply)
+            withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", input,output) }
+            return reply
         } catch (e: Exception) {
             withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, if (e is CancellationException) "cancelled" else "failed") } }
             throw e

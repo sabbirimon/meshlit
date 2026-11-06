@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-11-06T07:06:12.523735+00:00",
+  "scope": "Desktop-only read-only capability/source assessment; no engine rebuilt or replaced",
+  "nativeRevision": "4df29be4f4c3673f428170fda944a5b19f743bb8",
+  "os": "macOS 15.8.2",
+  "architecture": "x86_64",
+  "defaultMetalDevice": "AMD Radeon Pro 560X",
+  "devices": [
+    {
+      "name": "AMD Radeon Pro 560X",
+      "unifiedMemory": false,
+      "recommendedWorkingSetMiB": 4096,
+      "maxBufferMiB": 3072,
+      "Mac2": true,
+      "Apple7": false,
+      "Metal3": false,
+      "tinyRuntimeShaderCompile": "passed",
+      "simdSumPipelineCompile": "passed"
+    },
+    {
+      "name": "Intel UHD Graphics 630",
+      "unifiedMemory": true,
+      "recommendedWorkingSetMiB": 1536,
+      "maxBufferMiB": 2048,
+      "Mac2": true,
+      "Apple7": false,
+      "Metal3": true,
+      "tinyRuntimeShaderCompile": "passed",
+      "simdSumPipelineCompile": "passed"
+    }
+  ],
+  "toolchain": {
+    "clang": "Apple clang 17.0.0",
+    "metalCommand": "not found",
+    "metallibCommand": "not found",
+    "embeddedSourceRuntimeCompilePath": true
+  },
+  "sourceEvidence": [
+    {
+      "path": "vendored/runanywhere-llama/ggml/src/ggml-metal/ggml-metal-device.m",
+      "lines": "731-734",
+      "finding": "has_simdgroup_reduction = Apple7 OR Metal3; matrix-matrix capability = Apple7"
+    },
+    {
+      "path": "vendored/runanywhere-llama/ggml/src/ggml-metal/ggml-metal-device.m",
+      "lines": "1215-1234,1379-1391",
+      "finding": "essential reduction/norm/softmax/SSM_CONV/GATED_DELTA_NET/MUL_MAT operators reject AMD560X because reduction gate is false"
+    },
+    {
+      "path": "vendored/runanywhere-llama/ggml/src/ggml-metal/ggml-metal-device.m",
+      "lines": "720,234",
+      "finding": "selects system default device; supports runtime source library compilation"
+    },
+    {
+      "path": "scripts/build-desktop-llama.py",
+      "lines": "26-31",
+      "finding": "current portable Intel engine build explicitly disables Metal"
+    }
+  ],
+  "conclusion": "Enabling Metal alone at this pin will not provide essential AMD560X model kernels. CPU baseline remains required. Generic tiny simd_sum pipeline compilation is not full backend or inference proof; conservative feature gate must not be bypassed without operator correctness tests. Intel integrated GPU is a distinct small-memory unqualified candidate, not automatic combined GPU memory.",
+  "inferenceBenchmarkRun": false,
+  "engineChanged": false,
+  "mobileTouched": false
+}

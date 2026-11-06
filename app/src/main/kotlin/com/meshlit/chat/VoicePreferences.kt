@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
 object VoicePreferences {
     private const val FILE="voice-preferences"
     private const val KEY="options"
-    private val codec=Json{ignoreUnknownKeys=true}
+    private val codec=Json{ignoreUnknownKeys=true;encodeDefaults=true}
     data class Read(val options:VoiceOptions,val problem:String?=null)
     fun read(context:Context,packs:List<SpeechPack>)=decode(context.getSharedPreferences(FILE,Context.MODE_PRIVATE).getString(KEY,null),defaults(packs))
     internal fun decode(saved:String?,fallback:VoiceOptions):Read {

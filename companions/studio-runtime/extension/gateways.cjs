@@ -18,7 +18,7 @@ function register(context){const panels=new Map();
  context.subscriptions.push(runtime);
  for(const service of SERVICES)context.subscriptions.push(vscode.commands.registerCommand('meshlit.gateway.'+service,()=>{
   if(panels.has(service)){panels.get(service).reveal();return;}
-  const panel=vscode.window.createWebviewPanel('meshlit.gateway',service,vscode.ViewColumn.One,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});panels.set(service,panel);panel.onDidDispose(()=>panels.delete(service));
+  const panel=require('./shell.cjs').createPanel(vscode,'meshlit.gateway',service,vscode.ViewColumn.One,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});panels.set(service,panel);panel.onDidDispose(()=>panels.delete(service));
   const profiles=()=>context.globalState.get('meshlit.connections',[]).filter(p=>p.service===service);
   let current, busy=false;
   function state(){const list=profiles();if(!list.some(p=>p.id===current))current=list[0]?.id;const profile=list.find(p=>p.id===current);panel.webview.postMessage({type:'state',service,runtime:runtime.status(service),profiles:list.map(p=>({id:p.id,endpoint:p.endpoint,model:p.model})),current,models:profile?context.globalState.get('meshlit.catalog.'+profile.id,[]):[],health:profile?context.globalState.get('meshlit.connectionHealth',{})[profile.id]:null,dashboard:context.globalState.get('meshlit.dashboard.'+service,defaults[service])});}

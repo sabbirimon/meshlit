@@ -16,8 +16,9 @@ import java.util.concurrent.TimeUnit
 class RpcPipelineEngine(private val port:Int,private val credential:String,private val modelPath:String,
     override val engineTag:String="llama-rpc-layer",private val onStop:suspend()->Unit):InferenceEngine {
     @Volatile private var info:ModelInfo?=null
-    private val client=OkHttpClient.Builder().connectTimeout(5,TimeUnit.SECONDS).readTimeout(120,TimeUnit.SECONDS)
-        .callTimeout(180,TimeUnit.SECONDS).followRedirects(false).build()
+    private val client=OkHttpClient.Builder().proxy(java.net.Proxy.NO_PROXY)
+        .connectTimeout(5,TimeUnit.SECONDS).readTimeout(120,TimeUnit.SECONDS)
+        .callTimeout(180,TimeUnit.SECONDS).followRedirects(false).retryOnConnectionFailure(false).build()
     override fun isReady()=info!=null
     override fun loadedModel()=info
     override suspend fun loadModel(request:ModelLoadRequest):MeshlitResult<ModelInfo> = withContext(Dispatchers.IO) {

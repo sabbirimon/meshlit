@@ -18,6 +18,8 @@ object ChatTaskPreset {
         var draft=options.copy(systemPrompt=preset.instruction)
         ChatToolGroup.entries.forEach { draft=it.update(draft,false,review) }
         preset.suggestedTools.forEach { draft=it.update(draft,true,review) }
-        return draft
+        // Replacing groups is one draft edit: preserve an already chosen Agent
+        // mode only if the final preset still has tools. A preset never enables it.
+        return if(draft.canSelectAgentMode) draft.copy(executionMode=options.executionMode) else draft
     }
 }

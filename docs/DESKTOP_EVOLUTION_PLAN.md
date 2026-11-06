@@ -1,13 +1,90 @@
 # Desktop evolution, settings and cross-device plan
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Personality, live conversation, and media request reconciliation — 2026-11-06
+
+The latest owner requests extend the separate Chat window and its settings. They
+do not replace the earlier workspace, bot, autonomy, device-compute, security,
+model-quality, and Android-parity requests recorded below and in the
+[settings parity audit](STUDIO_ANDROID_SETTINGS_PARITY_2026-11-06.md). Track each
+requested surface through implementation, wiring, packaged checks, and real use.
+
+| Requested feature | Current implementation and evidence | Remaining acceptance |
+| --- | --- | --- |
+| Chat personality and custom instructions | [Personality module](../companions/studio-runtime/extension/chat-personality.cjs) has eight tone presets, bounded custom instructions, and persisted ordinary app preferences. Module tests cover validation, escaping and failed saves. Main Chat/backend integration is being qualified. | Open from main Chat and Settings; save, reload and relaunch; inspect the exact next request for local, hosted and bot chats; verify tone changes without changing model identity or tool authority. Retain workspace-specific agent policy separately. |
+| Local candid discussion style | The personality module has Default/Candid discussion as a local style preference. It is separate from security controls and is intended only for the bundled local route. It does not alter model weights, learned restrictions, hosted-provider policy or device permissions. | Verify the local prompt includes the selected style, hosted requests omit it, custom text cannot replace runtime identity, and changing it cannot unlock data, grant tools or widen a project scope. Android behavior/guardrail-editor parity remains incomplete. |
+| Per-message read aloud and voice settings | [Chat voice module](../companions/studio-runtime/extension/chat-voice.cjs) uses installed macOS voices through owned `/usr/bin/say` processes. Saved voice and rate, bounded text, Stop, owner isolation, errors, timeouts and cancellation have eight module tests. It sends text through stdin and does not use a speech API. | Finish composer/message-action wiring; verify installed-voice selection and audible output on this Mac; test Stop/new reply/window close, removed voices and output-device changes. Non-macOS should expose the separate OpenLive setup honestly. Speaker playback is not microphone/transcription proof. |
+| Live voice conversation, captions and transcript | Existing OpenLive is the separate live-call interface. Studio's Voice and vision page now adds live-call/transcript navigation and text-response tuning under integration. The Studio page itself does not capture a microphone or render a live transcript. | Exercise a real microphone-to-transcript-to-model-to-spoken-reply cycle; inspect captions, interim/final transcript, interruptions, Stop and capture release in the actual call UI. Check headset and device-loss paths independently. The reported Android “does not hear or reply” issue remains a distinct phone gate. |
+| Live translation and voice tuning | [Live voice settings](../companions/studio-runtime/extension/live-voice-settings.cjs) adds conversation/translation, input/output language and response-style preferences through OpenLive custom instructions. This changes the language model's text response, not the recognition or synthesis engine. Integration and live language qualification remain open. | Save/load against the installed OpenLive runtime without overwriting unrelated instructions; test unsupported languages, translation target selection, transcript accuracy, spoken target language and cancellation. Configure actual microphone sensitivity, turn timing, speech engine, voice and speed in OpenLive. Bengali text preference is not evidence of Bengali recognition or speech; independent source/target speech pipelines are not yet provided by this preset. |
+| Images, video and generated speech | Android has explicit online image, speech, vision and video-job adapters in [MediaGeneration.kt](../app/src/main/kotlin/com/meshlit/media/MediaGeneration.kt). Those adapters do not establish current Studio generation support. A native Studio media creation/output page remains planned. | Design modality-specific model/provider selection and request review, protected credentials/accounting, real progress/cancel/error states, bounded downloads, preview/export/delete and restart recovery. Qualify actual image and speech artifacts plus video submit/poll/download, separating an accepted job from a finished video. |
+| Sound effects, music and other media | Requested; no general Studio sound/music generation adapter or qualified local diffusion/video/music runtime is currently provided. Speech synthesis is a different operation. | Select and license an actual supported runtime/provider, define modality-specific inputs and ownership/export metadata, implement bounded artifact lifecycle and usage handling, then generate and inspect real outputs. Unsupported controls must stay visibly unavailable until wired. |
+
+Implementation order is personality/request wiring and local read aloud, then
+real OpenLive live conversation/translation checks, then the desktop media
+creation pipeline. Preserve the current working text/model routes and the separate
+coding window with its own chat. Do not equate a style choice, a model source,
+a settings link, a generated text response, or a unit fixture with successful
+speech/media generation. Final integration evidence must update this checkpoint;
+module completion alone does not close the product request.
+
+## Chat defaults and controls checkpoint — 2026-11-06
+
+Current source defaults local Chat to passwordless session accounting in memory,
+with optional require-unlock on next launch. Protected hosted/remote accounting
+and credentials stay separate. The visible Chat settings group covers models,
+modes, dashboards, LLM/reasoning, tool permissions, connectors, devices, memory,
+and protected unlock. Composer controls reflect the selected model/source.
+
+Project setup separately selects security and a saved Ask/read-only/autonomous
+workspace action preset. Edits remain bounded and unsaved for review. App-access
+task grants bind app/model/human task/chat for 25 operations or 10 minutes and
+end on Stop/completion; OS Accessibility consent remains independent.
+
+The pinned offline Qwen runner was confirmed after a false Anthropic identity
+reply. Runtime identity grounding now passes 15 host tests; live reply acceptance
+is pending. Native screenshots verify the main shell. Final candidate checks and
+native app-action requalification remain open; no complete parity is claimed.
+
+## Separate main-window shell correction — 2026-11-06
+
+The earlier Chat tab within the IDE did not fulfill the owner's application
+layout. Current source gives empty windows a full-width main shell. Chat,
+Workspaces, Models, and LLM settings are primary navigation; Usage and Settings
+are at the bottom. Studio tools groups agents, bots, devices/clusters, MCP, and
+resources. Models, Workspaces, and LLM settings have dedicated pages backed by
+existing services. Open conversations are real transient sessions.
+
+Project selection opens a separate IDE window, keeping its own chat and agents.
+The main shell shares the active IDE theme. Workbench checksum refresh preserves
+installation integrity checks. Five shell, five main-page, and nine packaging
+tests passed. Next qualify the packaged startup, navigation, window separation,
+and absence of the corruption warning visually. Session unlock limitations are
+unchanged. Earlier Chat-first evidence qualifies routing, not this new shell.
 
 Requested and planned 2026-10-31, before implementation. This plan extends the
 voice work; it does not replace the native inference and device-compute priorities.
 Each acceptance gate is independent. A source change, health response, unit test,
 installed app and real device execution are different evidence.
+
+## Studio chat and compute continuation — 2026-11-06
+
+Keep the chat and project windows separate and use the active IDE theme across
+the Studio UI. General Chat uses direct model messages. Explicit agent modes
+retain workspace scope and review. Models and LLM settings cover route choice,
+local sampling, output length, and history. The source picker exposes a local
+model, reviewed providers and devices, approved coordinator APIs, agents, bots,
+and reviewed MCP connectors.
+
+Studio generated through two CPU RPC workers on one Mac, then through physical
+Mac and Samsung CPU workers over scoped USB. The remaining sequence is native
+packaged navigation, cluster-backed project edits, then managed placement and
+models larger than one node's usable memory. Use the earlier development
+Tailscale/LTE run as a separate baseline for managed WAN and failover.
+[Ordered plan](../PLAN.md#studio-chat-workspace-windows-and-mixed-device-compute--2026-11-06) ·
+[Evidence](../PROGRESS.md#studio-chat-and-cluster-routing--2026-11-06).
 
 ## Why, where and how
 

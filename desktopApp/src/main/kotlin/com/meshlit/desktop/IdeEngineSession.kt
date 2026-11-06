@@ -1,13 +1,19 @@
 package com.meshlit.desktop
 
-/** Workbench and Compose consume the same saved options; an active model is never silently retuned. */
+/** One owned model at a time. Every request binds its own catalog identity. */
 internal class IdeEngineSession(private val options: () -> EngineOptions,
-    private val running: () -> Boolean, private val start: (EngineOptions) -> LocalSession) {
+    private val running: () -> Boolean, private val start: (EngineOptions, StudioBundledModel) -> LocalSession) {
+    constructor(options: () -> EngineOptions, running: () -> Boolean, start: (EngineOptions) -> LocalSession) :
+        this(options, running, { settings, _ -> start(settings) })
     private var session: LocalSession? = null
-    @Synchronized fun load(): LocalSession {
-        session?.takeIf { running() }?.let { return it }
-        return start(options().also { it.validate() }).also { session = it }
+    private var modelId: String? = null
+    @Synchronized fun load(requestedModelId: String? = null): LocalSession {
+        val model = StudioBundledModels.resolve(requestedModelId)
+        session?.takeIf { modelId == model.id && running() }?.let { return it }
+        // Clear identity first: failed switches cannot silently reuse the previous route.
+        session = null; modelId = null
+        return start(options().also { it.validate() }, model).also { session = it; modelId = model.id }
     }
 }
 
-internal fun ideOutputBudget(local: LocalSession?): Int = local?.let { minOf(1024, it.context / 2) } ?: 1024
+internal fun ideOutputBudget(local: LocalSession?, thinking: Boolean = false): Int = local?.let { minOf(if (thinking) 2048 else 1024, it.context / 2) } ?: 1024

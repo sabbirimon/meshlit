@@ -1,5 +1,6 @@
 """Prepare an Intel Mac workbench in a new staging location; never replace the installed Studio."""
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -11,6 +12,8 @@ import tempfile
 import zipfile
 from qualify import verify
 from prepare_app_access import build as build_app_access
+from prepare_shell import configure_chat_shell
+from studio_models import load_catalog, verify_catalog
 
 
 def digest(file):
@@ -57,10 +60,8 @@ def add_portable_runtime(args,extension,here,repo,dependencies,lock):
     java=safe_tree(args.portable_java); resources=safe_tree(args.resources)
     if not (java/'bin/java').is_file() or not (java/'legal').is_dir():
         raise ValueError('Portable Java needs bin/java and its complete legal notices')
-    model=json.loads((repo/'desktopApp/distribution/bundled-model.json').read_text())
-    weights=resources/'models'/model['filename']
-    if not weights.is_file() or weights.stat().st_size!=model['sizeBytes'] or digest(weights)!=model['sha256']:
-        raise ValueError('Portable package requires the pinned real bundled model')
+    catalog=load_catalog(repo/'desktopApp/distribution/studio-models.json')
+    verify_catalog(resources/'models',catalog)
     native=json.loads((resources/'local/engine.json').read_text())
     if digest(resources/'local/llama-server')!=native['sha256']:
         raise ValueError('Source local engine does not match its integrity manifest')
@@ -68,6 +69,8 @@ def add_portable_runtime(args,extension,here,repo,dependencies,lock):
     shutil.copytree(args.portable_python,runtime/'python',symlinks=True)
     shutil.copytree(java,runtime/'java',symlinks=True)
     shutil.copytree(resources,runtime/'resources',symlinks=True)
+    verify_catalog(runtime/'resources/models',catalog)
+    (runtime/'resources/models/studio-models.json').write_text(json.dumps(catalog,indent=2)+'\n')
     shutil.copy2(repo/'desktopApp/distribution/bundled-model.json',runtime/'resources/models/bundled-model.json')
     jars=runtime/'jars'; jars.mkdir()
     copied=0
@@ -165,10 +168,40 @@ def reseal_engines(resources):
         hyperl.write_text(json.dumps(metadata,indent=2)+'\n')
 
 
+def refresh_workbench_checksums(resources):
+    """Seal the branded workbench using Code OSS's existing integrity contract.
+
+    The pinned product lists paths relative to out/, with unpadded base64
+    SHA-256 digests. Keep every entry so the installed integrity service still
+    detects subsequent modifications, instead of suppressing its warning.
+    """
+    resources = Path(resources)
+    product_path = resources / 'product.json'
+    product = json.loads(product_path.read_text())
+    checksums = product.get('checksums')
+    if not isinstance(checksums, dict) or not checksums:
+        raise ValueError('Pinned workbench product must retain integrity checksums')
+    out = (resources / 'out').resolve(strict=True)
+    refreshed = {}
+    for name in checksums:
+        relative = Path(name)
+        target = (out / relative).resolve(strict=True)
+        if relative.is_absolute() or '..' in relative.parts or out not in target.parents or not target.is_file():
+            raise ValueError('Invalid workbench integrity path: ' + name)
+        checksum = hashlib.sha256()
+        with target.open('rb') as source:
+            for block in iter(lambda: source.read(1024 * 1024), b''):
+                checksum.update(block)
+        refreshed[name] = base64.b64encode(checksum.digest()).decode('ascii').rstrip('=')
+    product['checksums'] = refreshed
+    product_path.write_text(json.dumps(product, indent=2) + '\n')
+
+
 def finalize_workbench(args,lock):
     extension=args.output/'Contents/Resources/app/extensions/meshlit-workbench'
     if args.portable:
         native=qualify_native_runtime(extension/'runtime',args.sign_identity)
+    refresh_workbench_checksums(args.output/'Contents/Resources/app')
     subprocess.run(['codesign','--force','--deep','--sign',args.sign_identity,str(args.output)],check=True)
     if args.portable:
         reseal_engines(extension/'runtime/resources')
@@ -190,6 +223,26 @@ def finalize_workbench(args,lock):
 
 
 
+def configure_workbench_defaults(resources, session_secrets=False):
+    """Apply explicit product defaults to the locked Code OSS bundle."""
+    def replace(path, old, new):
+        source = path.read_text()
+        if source.count(old) != 1:
+            raise ValueError('Unexpected pinned workbench startup code: ' + path.name)
+        path.write_text(source.replace(old, new))
+
+    out = resources / 'out'
+    restore_setting = 'this.configurationService.inspect("window.restoreWindows")'
+    replace(out / 'mainImpl.js', 'this.configurationService.getValue("window")?.restoreWindows||"all"',
+            '(' + restore_setting + '.policyValue??' + restore_setting + '.userLocalValue??"none")')
+    restore_schema = '"window.restoreWindows":{type:"string",enum:["preserve","all","folders","one","none"],enumDescriptions:[d(26700,null),d(26696,null),d(26697,null),d(26699,null),d(26698,null)],default:'
+    for name in ('workbench', 'sessions'):
+        replace(out / 'vs' / name / (name + '.desktop.main.js'), restore_schema + '"all"', restore_schema + '"none"')
+    if session_secrets:
+        entry = 'g1("main");await import("./mainImpl.js");'
+        replace(out / 'main.js', entry, 'process.argv.splice(1,0,"--use-inmemory-secretstorage");' + entry)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cache',type=Path,required=True)
@@ -203,6 +256,7 @@ def main():
     parser.add_argument('--portable-java',type=Path,help='Redistributable Java runtime Home containing bin/java and legal/')
     parser.add_argument('--gateways',type=Path,help='Optional prepare_gateways.py manifest for reviewed development gateway builds')
     parser.add_argument('--sign-identity',default='-',help='Installed signing identity; default is ad-hoc development signing, not a trusted publisher.')
+    parser.add_argument('--session-secrets',action='store_true',help='Use volatile editor secrets in a QA build without Keychain access')
     args=parser.parse_args()
     if args.portable:
         if not args.portable_python or not args.portable_java: parser.error('--portable requires --portable-python and --portable-java')
@@ -236,6 +290,8 @@ def main():
         electron_package.write_text(json.dumps(electron_metadata,indent=2)+'\n')
         # Retain upstream extension gallery and all licences/notices.
         product_path.write_text(json.dumps(product,indent=2)+'\n')
+        configure_workbench_defaults(app_resources,args.session_secrets)
+        configure_chat_shell(app_resources)
         plist_path=content/'Info.plist'; plist=plistlib.loads(plist_path.read_bytes())
         plist.update(CFBundleName='Meshlit',CFBundleDisplayName='Meshlit',CFBundleIdentifier='com.meshlit.desktop')
         icon=repo/'desktopApp/distribution/icons/meshlit.icns'
@@ -260,6 +316,7 @@ def main():
                          'com.meshlit.desktop.MainKt','--ide-backend'])
         if args.gateways:
             config['gateways']=json.loads(args.gateways.read_text())
+        config['secretStorage']='session' if args.session_secrets else 'protected'
         (extension/'runtime.json').write_text(json.dumps(config,indent=2)+'\n')
         for helper in list((content/'Frameworks').glob('VSCodium Helper*.app')):
             old=helper.stem; name=old.replace('VSCodium','Meshlit',1)

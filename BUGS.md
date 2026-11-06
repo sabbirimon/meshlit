@@ -1,8 +1,139 @@
 # Current regressions, limitations and verification
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## HyperL engine priority — 2026-11-06
+
+The owner moved the custom model engine into standalone HyperL; Studio will be
+its application client. [Engine plan](docs/STUDIO_HYPERL_ENGINE_PLAN_2026-11-06.md)
+separates specialist-model routing, native MoE expert paging, layer sharding and
+cloud API calls. Plan-first, bounded implementation and focused tests take priority
+to conserve credits. Agreement onboarding is explicitly deferred until engine work.
+
+HyperL's first increment extends its existing residency planner with exact total/
+active expert metadata, shared/router weights and cache accounting. All experts
+remain counted; this does not execute expert paging. Standalone checks: 13 focused,
+84 Python passed / 5 optional JAX skipped, Gradle distribution build successful,
+5 native tests passed. Existing HyperL native CPU/RPC model evidence is separate.
+
+Studio now has compact SVG navigation, a native Studio menu and source support for
+a second desktop-only Qwen3-4B Q4_K_M reasoning model. The verified artifact is
+2,497,280,256 bytes; Qwen2.5-1.5B stays the default. Integration checks: 225 Node,
+46 packaged Python, 17 focused desktop backend tests passed. Native Qwen3 loaded
+and answered 2+2 correctly after idle build daemons released memory; preserve the
+memory admission guard. Native Thinking off returned 4 for 2+2; Thinking on returned 8 for 3+5;
+Stop closed a further active request. Package provenance/launch evidence is
+recorded separately. No Android model/default change.
+
+An isolated AMD560X prototype passed 11 numerical cases and produced the same
+short text as CPU with 4/29 layers on GPU. It was slower (0.75 versus 11.23 decode
+tokens/s in that short probe), so it is not promoted into the app. See
+[hardware evidence](docs/desktop/evidence/studio-amd560x-partial-offload-20261106.json).
+Actual tiered MoE inference, efficient GPU kernels and the new Studio→HyperL client
+remain pending; no general throughput or production claim is made.
+
+Obsolete QA bundles, an old QA DMG, the abandoned Qwen3.5 partial and regenerable
+Android intermediates were removed. Current/rollback builds, verified models,
+final APKs/reports and user data were preserved. APFS shared blocks/snapshots mean
+logical deleted bytes do not equal immediately reclaimed space; use the
+[cleanup record](docs/desktop/evidence/build-storage-cleanup-20261106.json).
+
+## Verified delivery checkpoint — 2026-11-06
+
+Bots is a primary General Chat sidebar destination. The dashboard creates and
+edits reusable bot profiles, assigns local or saved cloud/device/cluster model
+connections, and opens per-bot Details in a separate native window. Starting
+chat from detached Details keeps that chat in the detached window; General Chat
+remains open. Details shows actual model/source, instructions, capabilities and
+links to workspace agents, teams, companions, connectors and permissions.
+Native window creation and chat placement passed. Saved notification handling
+was corrected so it cannot block subsequent bot actions.
+
+Management groups models, devices/clusters, network, health, credentials, SSH
+and usage. All 36 Settings destinations are registered; ten main pages passed
+native navigation checks. Credential controls and reviewed built-in/system
+Terminal SSH handoff have contract coverage; live key rotation and SSH login
+are not claimed. The native bundled Qwen reply correctly identified local
+Qwen2.5 inference. Copy and Markdown export passed using a synthetic chat.
+
+Final extension suite: **221 passed**. Android V1/V2 settings tests passed
+(seven each), both debug variants assembled and both lint tasks passed. The final
+APK rebuild passed with the synchronized offline manual verified in all six APKs. Samsung
+UI acceptance remains blocked by its locked/off screen; no data was replaced.
+This is a development candidate, not a production/notarized release. Native
+voice playback, hosted media, persistent browser bots, training/RL, hardware-
+bound full-app lock, iOS and HarmonyOS qualification remain open.
+
+[Native evidence](docs/desktop/evidence/studio-chat-settings-native-20261106.json) ·
+[Current feature matrix](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+
+## Running-preview and feature discoverability gaps — 2026-11-06
+
+- The owner again reproduced the incorrect Anthropic self-description in the
+  old running preview. An isolated updated-host test passed, but source changes
+  do not update a running process. Final package identity acceptance stays open.
+- Messages lacked visible Copy/share actions. Copy, selectable text, local chat
+  export and read-aloud integration are underway; public publishing is separate.
+- Bots was buried in collapsed Studio tools. A visible main-navigation dashboard
+  is being added; current reusable chat profiles are not always-on tool workers.
+- Personality/voice modules do not establish full Android settings parity.
+  Native inline live voice, media/sound generation, persistent bot workers and
+  real training/RL have explicit open gates in the [request inventory](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+
+## Local unlock, model identity, and permission scope — 2026-11-06
+
+- **Repeated local unlock.** Current source defaults local chat to passwordless
+  in-memory session accounting with no usage history written to disk. Requiring
+  a passphrase is optional in LLM settings and applies next launch. Protected
+  hosted/remote accounting, credentials, and existing encrypted history remain
+  separate. The Mac's Keychain issue is not repaired by this change.
+- **False model identity.** Local Qwen claimed Anthropic in the supplied reply,
+  while the process used the pinned Qwen GGUF offline. Chat now receives the
+  backend-reported local model label and runtime facts each turn. Remote routes
+  disclose configured identity and upstream uncertainty. Fifteen host tests
+  passed; the isolated live identity reply subsequently passed. Final packaged verification remains pending.
+- **Permission granularity.** Source now separates project security and saved
+  action presets. Autonomous workspace edits stay bounded and unsaved. Optional
+  app-access task grants are limited to the exact app/model/human task/chat,
+  25 operations, and 10 minutes, with Stop/completion revocation. OS approval is
+  still required. Native app actions have not been requalified in this increment.
+
+## Main-window frame and installation warning — 2026-11-06
+
+- **Default window still looked like an IDE.** The earlier Chat-tab layout did
+  not meet the owner's separate main-window requirement. Current source adds
+  full-width application navigation and content in empty windows, preserving
+  the complete IDE in separate project windows. Dedicated Models, Workspaces,
+  and LLM settings pages reuse existing backend routes. Native visual and
+  packaged-launch acceptance remains pending.
+- **Installation appeared corrupt.** Startup patches changed two files while
+  the product manifest retained upstream checksums. The packager now refreshes
+  every existing integrity entry before signing. It keeps integrity validation
+  active and rejects missing or escaping paths. Tests cover legitimate rebuilds
+  and detection of later modification. Verify the next package on launch.
+- The QA package's session-only unlock and protected-storage limitations remain
+  unchanged. No OS Keychain reset or plaintext credential fallback was added.
+
+## Studio reply shape, workspace windows, and secret storage — 2026-11-06
+
+- **Chat reply shape**. The old SDK chat path attached a timestamp and coding
+  instructions to a greeting. Direct chat now sends ordinary role messages
+  and retains usage gating. A same-model Studio/Ollama run verified a normal
+  greeting and the correct arithmetic answer.
+- **Workspace navigation**. Workspaces opens a separate IDE window. The
+  packaged app passed a cold launch into General Chat with an IDE in the prior
+  session state. The Usage ledger allows one backend to own its unlock at a time.
+  [Remaining acceptance](TODO.md#studio-source-selection-and-device-acceptance--2026-11-06).
+- **Protected editor storage on the current Mac**. The OS reported
+  `Keychain Not Found`. The QA build uses volatile editor secrets and session
+  unlock. Remembered unlock and persistent encrypted workspace review require a
+  protected-storage build. The encrypted Usage ledger retains its own persistence.
+- **Physical compute**. Studio JVM generated through Mac and Samsung CPU
+  workers over scoped USB. An earlier harness ran Mac/Samsung native layers
+  over Tailscale/LTE. Managed enrollment, oversized model admission, and
+  automatic WAN recovery remain open.
 
 ## Agent and provider continuation — 2026-10-31
 

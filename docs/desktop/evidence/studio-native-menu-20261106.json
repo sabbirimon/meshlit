@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "recordedDate": "2026-11-06",
+  "scope": "Isolated Intel macOS UI Polish QA app; native macOS accessibility menu actions, no owner conversations changed.",
+  "candidate": "Meshlit Studio 2026-11-06 UI Polish QA",
+  "topLevelMenusObserved": [
+    "Meshlit",
+    "File",
+    "Edit",
+    "Selection",
+    "View",
+    "Go",
+    "Run",
+    "Terminal",
+    "Studio",
+    "Window",
+    "Help"
+  ],
+  "studioEntries": [
+    {
+      "group": "1_chat",
+      "label": "New Chat",
+      "command": "meshlit.chat"
+    },
+    {
+      "group": "1_chat",
+      "label": "General Chat",
+      "command": "meshlit.generalChat"
+    },
+    {
+      "group": "1_chat",
+      "label": "Workspaces\u2026",
+      "command": "meshlit.workspaces"
+    },
+    {
+      "group": "1_chat",
+      "label": "Open IDE\u2026",
+      "command": "meshlit.openIde"
+    },
+    {
+      "group": "2_models",
+      "label": "Management",
+      "command": "meshlit.management"
+    },
+    {
+      "group": "2_models",
+      "label": "Models and Sources",
+      "command": "meshlit.models"
+    },
+    {
+      "group": "2_models",
+      "label": "LLM Settings",
+      "command": "meshlit.llmSettings"
+    },
+    {
+      "group": "3_agents",
+      "label": "Bots",
+      "command": "meshlit.botDashboard"
+    },
+    {
+      "group": "3_agents",
+      "label": "Workspace Agents",
+      "command": "meshlit.workspaceAgents"
+    },
+    {
+      "group": "3_agents",
+      "label": "Agent Teams",
+      "command": "meshlit.agentTeams"
+    },
+    {
+      "group": "4_connections",
+      "label": "Devices and Connections",
+      "command": "meshlit.deviceConnections"
+    },
+    {
+      "group": "4_connections",
+      "label": "MCP Connectors",
+      "command": "meshlit.connectors"
+    },
+    {
+      "group": "4_connections",
+      "label": "SSH and Terminals",
+      "command": "meshlit.sshDashboard"
+    },
+    {
+      "group": "5_preferences",
+      "label": "Chat Personality",
+      "command": "meshlit.chatPersonality"
+    },
+    {
+      "group": "5_preferences",
+      "label": "Voice and Vision",
+      "command": "meshlit.voice"
+    },
+    {
+      "group": "5_preferences",
+      "label": "Usage and Budgets",
+      "command": "meshlit.usage"
+    },
+    {
+      "group": "5_preferences",
+      "label": "Credentials",
+      "command": "meshlit.credentialsDashboard"
+    },
+    {
+      "group": "6_help",
+      "label": "Settings",
+      "command": "meshlit.settings"
+    },
+    {
+      "group": "6_help",
+      "label": "User Manual",
+      "command": "meshlit.manual"
+    }
+  ],
+  "mainWindowEntriesEnabled": true,
+  "nativeClicksVerified": [
+    {
+      "menuItem": "Models and Sources",
+      "resultHeading": "Models",
+      "observedLocalModelState": "Ready"
+    },
+    {
+      "menuItem": "Settings",
+      "resultHeading": "Settings",
+      "destinations": 36
+    }
+  ],
+  "upstreamBehaviorPreserved": "Native command entries are disabled while an auxiliary window is active, matching upstream noActiveMainWindow handling. Main app window has enabled Studio commands.",
+  "packagingTestsPassed": 12,
+  "pinnedJavaScriptSyntaxChecksPassed": true,
+  "adHocSignatureVerified": true,
+  "integrityChecksumsRefreshed": true,
+  "notarized": false,
+  "consolidatedUserLaunchPending": false,
+  "normalProfileStudioMenuVisibleAfterFocus": true
+}

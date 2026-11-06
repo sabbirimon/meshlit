@@ -1,6 +1,6 @@
 # Physical Android acceptance: Samsung and phone clusters
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -9,14 +9,33 @@ independent of consent to root, optional permissions, autonomy or OS-wide change
 Do not uninstall existing apps, clear data, bypass a signing conflict or silently
 alter the user's policy. Inspect hardware and installed app identity first.
 
-## Current connection evidence
+## Current connection and Studio JVM evidence — 2026-11-06
+
+ADB authorized the Samsung Galaxy A20s SM-A207F on Android 11, API 30, ARM64.
+The test extracted the pinned native CPU worker from the current APK into a
+temporary fixture. The worker bound phone loopback, and a scoped USB ADB
+forward reached it from the Mac. The installed app, app data, and permissions
+were preserved. The forward and worker fixture were removed after the test.
+
+Studio JVM sent one request to a coordinator using real Mac and Samsung CPU
+workers. Qwen2.5 0.5B Instruct Q4_K_M assigned layers 0–19 to the Mac and
+20–24 to Samsung. The phone held 176.13 MiB of model buffers and its CPU
+ticks rose from 135 to 355 during inference. Studio received `4` and its
+Usage ledger counted one request. This was a scoped USB transport test.
+Managed pairing, the workspace UI, TLS, and an oversized model were outside
+the test. An earlier development run separately qualified native Mac/Samsung
+layers over authenticated Tailscale/LTE.
+[USB evidence](desktop/evidence/studio-mac-samsung-usb-native-20261106.json) ·
+[Earlier WAN evidence](desktop/evidence/mixed-mac-samsung-wan-native-20261103.json).
+
+## Historical USB connection blocker — 2026-10-06
 
 macOS USB identifies `SAMSUNG_Android`, Samsung vendor `04e8`, product `6860`;
-a vendor interface with class 255/subclass 66/protocol 1 is present. ADB 37.0.1
-currently lists only the API35 emulator. The actual Mac ADB server log reports:
+a vendor interface with class 255/subclass 66/protocol 1 was present. ADB 37.0.1
+listed only the API35 emulator. The Mac ADB server log reported:
 `usb_osx.cpp:168 Unable to create an interface plug-in (e00002be)`.
-No Samsung model/OS/RAM has been read through ADB and no Samsung generation test
-is claimed. USB visibility is not an authorized usable ADB transport.
+That run stopped at USB visibility and did not establish an authorized ADB
+transport. Use the dated current evidence above for subsequent results.
 
 The owner was asked to restart ADB from a normal macOS/Android Studio terminal
 and accept its phone authorization prompt. An alternative is an owner-provided

@@ -252,6 +252,7 @@
     <service android:name=".openclaw.OpenClawNodeService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-connected paired OpenClaw Android device node" /></service>
     <service android:name=".openclaw.OpenClawService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled authenticated loopback model endpoint" /></service>
     <service android:name=".pipeline.PipelineService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled model layer computation with paired devices" /></service>
+    <service android:name=".bots.BotInboxService" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started private listener for signed bot messages awaiting review" /></service>
         <service android:name=".control.WebBridgeService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Owner-enabled authenticated device enrollment and command API" />
         </service>

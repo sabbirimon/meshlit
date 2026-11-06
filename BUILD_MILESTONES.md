@@ -1,8 +1,20 @@
 # Sequential implementation and acceptance ledger
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Studio and physical layer milestones — 2026-11-06
+
+| Milestone | Current evidence | Next gate |
+| --- | --- | --- |
+| Direct General Chat | Same Qwen file produced a normal greeting and correct arithmetic in direct Studio and Ollama | Packaged visual and settings acceptance |
+| Studio cluster route | Studio completion and usage record through two real CPU RPC workers on one Mac, then through physical Mac and Samsung CPU workers over scoped USB | Cluster-backed workspace action with explicit review |
+| Mac and Samsung layer placement | Current Studio JVM USB proof and earlier development harness with native Mac and Samsung layers over Tailscale/LTE | Managed physical pairing, per-worker placement and failure evidence, and a model larger than one node's measured usable memory |
+| Remote operation and recovery | Approved coordinator API routing and tested private replica handoff mechanisms | WAN placement, interrupted project work, fenced takeover, and live KV qualification |
+
+[Plan](PLAN.md#studio-chat-workspace-windows-and-mixed-device-compute--2026-11-06) ·
+[Evidence](PROGRESS.md#studio-chat-and-cluster-routing--2026-11-06).
 
 ## Current resource-network milestone — 2026-10-31
 

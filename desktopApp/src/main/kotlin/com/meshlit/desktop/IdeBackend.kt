@@ -12,10 +12,15 @@ import java.util.concurrent.*
 /** Private stdio backend for the Code OSS extension and explicit model routes. */
 internal fun runIdeBackend() {
     val vault = DesktopUsage()
+    val usageSession = IdeUsageSession(vault)
     val engine = LocalEngine()
     val enginePreferences = EnginePreferences()
     val systemMonitor=StudioSystemMonitor(engine,enginePreferences)
-    val localSession = IdeEngineSession({systemMonitor.apply(enginePreferences.load())}, engine::isRunning) { engine.start(options = it) }
+    val localSession = IdeEngineSession({systemMonitor.apply(enginePreferences.load())}, engine::isRunning) { options, model ->
+        val path = model.path(desktopResourceDirectory())
+        check(model.verifyPresence(desktopResourceDirectory())) { "Bundled model missing or incorrect size" }
+        engine.start(customModel = path, expectedModelSha256 = model.sha256, options = options, thinkingTemplates = model.thinkingSupported)
+    }
     val worker = Executors.newSingleThreadExecutor()
     val controlWorker = Executors.newSingleThreadExecutor()
     val connectionWorker = Executors.newFixedThreadPool(2)
@@ -29,19 +34,24 @@ internal fun runIdeBackend() {
     }
     fun complete(request:JsonObject,id:String):JsonObject {
         var attempt:String?=null
+        var lease:IdeUsageSession.Lease?=null
         try {
-            val ledger = vault.journal() // Fail before model load or request when locked.
             val body = request.getValue("body").jsonObject
             require(body.toString().length <= 131072)
             val messages = body.getValue("messages").jsonArray
             require(messages.size in 1..64)
             val route = request["route"] as? JsonObject
             val local = route == null || route["kind"]?.jsonPrimitive?.content == "local"
+            lease = usageSession.acquire(local) // Before engine load, network contact or budget admission.
+            val ledger = lease.ledger
             val effort = request["effort"]?.jsonPrimitive?.content ?: "auto"
+            val selectedModel = if (local) StudioBundledModels.resolve(route?.get("modelId")?.jsonPrimitive?.content) else null
+            val thinkingMode = request["thinking"]?.jsonPrimitive?.content ?: "auto"
+            val thinking = studioThinking(selectedModel, thinkingMode)
             require(!local || effort == "auto") { "Local reasoning effort is unavailable" }
             if(local && systemMonitor.needsReload())engine.stop()
-            val active = if (local) localSession.load() else null
-            val maxOutput = request["outputLimit"]?.jsonPrimitive?.int?.also{require(it in 1..1024)}?.coerceAtMost(ideOutputBudget(active)) ?: ideOutputBudget(active)
+            val active = if (local) localSession.load(selectedModel!!.id) else null
+            val maxOutput = request["outputLimit"]?.jsonPrimitive?.int?.also{require(it in 1..2048)}?.coerceAtMost(ideOutputBudget(active, thinking)) ?: ideOutputBudget(active, thinking)
             val endpoint = active?.endpoint ?: HostEndpoint.parse(route!!.getValue("endpoint").jsonPrimitive.content)
             val token = active?.token ?: route?.get("token")?.jsonPrimitive?.content.orEmpty()
             require(token.length <= 8192 && token.none(Char::isISOControl))
@@ -54,36 +64,47 @@ internal fun runIdeBackend() {
                 checkedAt = route?.get("checkedAt")?.jsonPrimitive?.longOrNull ?: 0,
                 source = "User-reviewed IDE connection")
             val streaming = local && body["stream"]?.jsonPrimitive?.booleanOrNull == true
-            val outbound = ideCompletionBody(body, route, effort, model, maxOutput, streaming)
-            attempt = ledger.begin(UsageLedger.route(if(local) "local:studio-ide" else endpoint.base.toString(), model),
-                model, price,
+            val allowedToolNames = (body["tools"] as? JsonArray)?.mapNotNull {
+                (it as? JsonObject)?.get("function")?.jsonObject?.get("name")?.jsonPrimitive?.contentOrNull
+            }?.toSet().orEmpty()
+            val outbound = ideCompletionBody(body, route, effort, model, maxOutput, streaming, thinkingMode)
+            attempt = ledger.begin(UsageLedger.route(if(local) "local:studio-ide" else endpoint.base.toString(), selectedModel?.id ?: model),
+                selectedModel?.id ?: model, price,
                 outbound.toString().length.toLong() * 4 + 1024, maxOutput.toLong())
+            val seconds = if (thinking) 300L else 120L
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds)
             val call = http.sendAsync(HttpRequest.newBuilder(endpoint.route("chat/completions"))
-                .timeout(Duration.ofSeconds(120)).apply { if(token.isNotBlank()) header("Authorization", "Bearer $token") }
+                .timeout(Duration.ofSeconds(seconds)).apply { if(token.isNotBlank()) header("Authorization", "Bearer $token") }
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(outbound.toString())).build(),
                 HttpResponse.BodyHandlers.ofInputStream())
-            val response = try { call.get(150, TimeUnit.SECONDS) } finally { if (!call.isDone) call.cancel(true) }
-            val timeout = deadlines.schedule({ response.body().close() }, 120, TimeUnit.SECONDS)
+            val response = try { call.get(seconds + 30, TimeUnit.SECONDS) } finally { if (!call.isDone) call.cancel(true) }
+            val remaining = (deadline - System.nanoTime()).coerceAtLeast(0)
+            val timeout = deadlines.schedule({ response.body().close() }, remaining, TimeUnit.NANOSECONDS)
             val parsed = try { response.body().use { stream ->
                 check(response.statusCode() == 200) { "Model rejected the request" }
                 if (streaming) {
                     require(response.headers().firstValue("Content-Type").orElse("").substringBefore(';').trim() == "text/event-stream")
-                    readIdeCompletionStream(stream) { chunk -> emit(id, buildJsonObject { put("chunk", chunk) }) }
+                    readIdeCompletionStream(stream, allowedToolNames) { chunk -> emit(id, buildJsonObject { put("chunk", chunk) }) }
                 } else {
                     val bytes = stream.readNBytes(2_000_001); require(bytes.size <= 2_000_000)
                     boundedJson(bytes.decodeToString(throwOnInvalidSequence = true), 2_000_000)
                 }
             } } finally { timeout.cancel(false) }
+            // Valid calls to declared tools may complete an SDK round without answer text.
+            if (selectedModel?.thinkingSupported == true) requireStudioFinalAnswer(parsed, allowedToolNames)
             val usage = parsed["usage"] as? JsonObject
             ledger.finish(attempt!!, "complete", usage?.get("prompt_tokens")?.jsonPrimitive?.longOrNull,
                 usage?.get("completion_tokens")?.jsonPrimitive?.longOrNull)
             attempt = null
-            return buildJsonObject { put("response", parsed) }
+            return buildJsonObject {
+                put("response", parsed)
+                selectedModel?.let { put("modelId", it.id); put("label", it.label); put("thinking", thinking); put("context", active!!.context) }
+            }
         } catch(e:Exception) {
-            attempt?.let{runCatching{vault.journal().finish(it,if(Thread.currentThread().isInterrupted)"cancelled" else "failed",null,null)}}
+            attempt?.let{runCatching{lease?.ledger?.finish(it,if(Thread.currentThread().isInterrupted)"cancelled" else "failed",null,null)}}
             throw e
-        }
+        } finally { lease?.close() }
     }
     fun newConnectionHost():DesktopDeviceConnections {
         var epoch:Long?=null
@@ -134,21 +155,24 @@ internal fun runIdeBackend() {
             val task = FutureTask<Unit> {
                 try {
                     val result = when (operation) {
+                        "session_usage" -> buildJsonObject { put("ready", true); put("usageMode", usageSession.startSession()) }
                         "unlock" -> {
-                            val pass = request.getValue("password").jsonPrimitive.content.toCharArray()
-                            try { connectionHost.get().close();vault.unlock(pass);connectionHost.set(newConnectionHost()) } finally { pass.fill('\u0000') }
-                            buildJsonObject { put("ready", true) }
+                            val pass = (request["password"] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty().toCharArray()
+                            try { connectionHost.get().close();usageSession.unlock(pass);connectionHost.set(newConnectionHost()) } finally { pass.fill('\u0000') }
+                            buildJsonObject { put("ready", true); put("usageMode", "protected") }
                         }
+                        "local_models" -> StudioBundledModels.catalog()
                         "load_local" -> {
-                            val session = localSession.load()
+                            val model = StudioBundledModels.resolve(request["modelId"]?.jsonPrimitive?.content)
+                            val session = localSession.load(model.id)
                             buildJsonObject {
-                                put("ready", true); put("label", DesktopStarter.label)
+                                put("ready", true); put("label", model.label); put("modelId", model.id); put("thinkingSupported", model.thinkingSupported)
                                 put("context", session.context)
                             }
                         }
-                        "usage" -> ideUsage(vault.journal())
+                        "usage" -> usageSession.view()
                         "budget" -> {
-                            val ledger = vault.journal()
+                            val ledger = usageSession.protectedLedger()
                             updateIdeBudget(ledger, request)
                             ideUsage(ledger)
                         }
@@ -193,11 +217,12 @@ internal fun runIdeBackend() {
                     }
                     emit(id, result)
                 } catch (e: Exception) {
-                    emit(id, buildJsonObject { put("error", when (operation) {
+                    emit(id, buildJsonObject { put("usageMode", usageSession.mode()); put("error", if (e is StudioNoFinalAnswer) e.message!! else when (operation) {
                         "load_local" -> "Bundled model could not load. Check packaged model/engine files and available memory. No online fallback was attempted."
                         "device_connection_sync","device_connection_view","device_connection_policy","device_connection_action","device_connection_close_owner" -> "Connection check blocked or failed. Unlock Usage, refresh choices and review the saved source's identity and connection approval. No new device or action scope was enrolled."
+                        "session_usage" -> "Local session chat could not start. Finish active requests and try again."
                         "unlock" -> "Cannot unlock usage: check passphrase and close the older Studio if it owns this vault."
-                        "usage" -> "Unlock your Meshlit usage ledger to view history and manage budgets."
+                        "usage" -> "Start local session chat or unlock protected Usage to view saved history and manage budgets."
                         "team_start","team_agent_start","team_status","team_agent_status","team_delegation","team_control","team_agent_control","team_revoke_profile","team_revoke_source" -> "Team action failed. Unlock Usage; check saved delegation, active limits, model sources and role configuration."
                         "budget" -> "Budget was not saved. Unlock Usage and use a positive monthly limit with a per-request limit no greater than it, or leave both amounts blank to remove that currency limit."
                         else -> "Request failed or was cancelled. Check Usage unlock, free-only/budget rules, model context, endpoint and credentials. Opaque gateways cannot use local spending budgets."
@@ -210,7 +235,7 @@ internal fun runIdeBackend() {
         }
     } finally {
         connectionHost.get().close();teams.close();jobs.values.forEach { it.cancel(true) }; connectionWorker.shutdownNow();controlWorker.shutdownNow();worker.shutdownNow()
-        engine.close(); worker.awaitTermination(5, TimeUnit.SECONDS); vault.lock()
+        engine.close(); worker.awaitTermination(5, TimeUnit.SECONDS); usageSession.lock()
         deadlines.shutdownNow()
     }
 }

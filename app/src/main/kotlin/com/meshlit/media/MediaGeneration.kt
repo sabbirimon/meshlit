@@ -60,7 +60,7 @@ class MediaGeneration(private val context:Context,private val providers:OnlinePr
     fun forget(video:SavedVideo){save(_videos.value.filterNot{it.profileId==video.profileId && it.job.id==video.job.id})}
     fun files()=directory.listFiles().orEmpty().filter{it.isFile && it.extension in setOf("png","wav","mp4")}.sortedByDescending{it.lastModified()}
     fun delete(file:File){require(file.parentFile?.canonicalFile==directory.canonicalFile);check(file.delete())}
-    private suspend fun readImage(uri:Uri):ByteArray=withContext(Dispatchers.IO) {
+    internal suspend fun readImage(uri:Uri):ByteArray=withContext(Dispatchers.IO) {
         require(uri.scheme=="content")
         val bytes=context.contentResolver.openInputStream(uri)?.use{input->
             val out=ByteArrayOutputStream();val buffer=ByteArray(32768)

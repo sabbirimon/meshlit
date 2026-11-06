@@ -1,0 +1,88 @@
+--- a/ggml/src/ggml-metal/ggml-metal-device.m
++++ b/ggml/src/ggml-metal/ggml-metal-device.m
+@@ -1087,6 +1087,22 @@
+     const bool has_simdgroup_mm        = dev->props.has_simdgroup_mm;
+     const bool has_simdgroup_reduction = dev->props.has_simdgroup_reduction;
+     const bool has_bfloat              = dev->props.has_bfloat;
++
++    // Isolated experiment: no SIMD assumptions and no implicit enablement.
++    if (getenv("MESHLIT_AMD_SCALAR_PROBE") != NULL && !has_simdgroup_reduction &&
++            [dev->mtl_device.name isEqualToString:@"AMD Radeon Pro 560X"]) {
++        if (op->op == GGML_OP_NONE || op->op == GGML_OP_VIEW || op->op == GGML_OP_RESHAPE ||
++                op->op == GGML_OP_PERMUTE || op->op == GGML_OP_TRANSPOSE) return true;
++        if (op->op != GGML_OP_MUL_MAT || op->type != GGML_TYPE_F32 ||
++                !op->src[0] || !op->src[1] || op->src[1]->type != GGML_TYPE_F32 ||
++                !ggml_is_contiguous(op->src[0]) || !ggml_is_contiguous(op->src[1]) || !ggml_is_contiguous(op) ||
++                op->src[0]->ne[2] != 1 || op->src[0]->ne[3] != 1 ||
++                op->src[1]->ne[2] != 1 || op->src[1]->ne[3] != 1 ||
++                op->src[0]->ne[0] != op->src[1]->ne[0]) return false;
++        const enum ggml_type type = op->src[0]->type;
++        return type == GGML_TYPE_F32 || type == GGML_TYPE_F16 ||
++                ((type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q6_K) && op->src[0]->ne[0] % 256 == 0);
++    }
+ 
+     if (!has_bfloat) {
+         if (op->type == GGML_TYPE_BF16) {
+--- a/ggml/src/ggml-metal/ggml-metal-ops.cpp
++++ b/ggml/src/ggml-metal/ggml-metal-ops.cpp
+@@ -12,6 +12,7 @@
+ #include <algorithm>
+ #include <limits>
+ #include <cmath>
++#include <cstdlib>
+ 
+ static ggml_metal_buffer_id ggml_metal_get_buffer_id(const ggml_tensor * t) {
+     if (!t) {
+@@ -2315,6 +2316,23 @@
+         }
+     }
+     const ggml_metal_device_props * props_dev = ggml_metal_device_get_props(ctx->dev);
++    if (!props_dev->has_simdgroup_reduction && getenv("MESHLIT_AMD_SCALAR_PROBE") != nullptr) {
++        const char * name = "kernel_meshlit_scalar_matmul";
++        auto pipeline = ggml_metal_library_get_pipeline(lib, name);
++        if (!pipeline.pipeline) pipeline = ggml_metal_library_compile_pipeline(lib, name, name, nullptr);
++        struct { uint32_t k, m, n, type; uint64_t a_row, b_row; } args = {
++            (uint32_t)op->src[0]->ne[0], (uint32_t)op->src[0]->ne[1],
++            (uint32_t)op->src[1]->ne[1], (uint32_t)op->src[0]->type,
++            op->src[0]->nb[1], op->src[1]->nb[1] };
++        ggml_metal_encoder_set_pipeline(enc, pipeline);
++        ggml_metal_encoder_set_bytes(enc, &args, sizeof(args), 0);
++        ggml_metal_encoder_set_buffer(enc, ggml_metal_get_buffer_id(op->src[0]), 1);
++        ggml_metal_encoder_set_buffer(enc, ggml_metal_get_buffer_id(op->src[1]), 2);
++        ggml_metal_encoder_set_buffer(enc, ggml_metal_get_buffer_id(op), 3);
++        ggml_metal_encoder_dispatch_threadgroups(enc, (args.m+63)/64, args.n, 1, 64, 1, 1);
++        return 1;
++    }
++
+ 
+     GGML_TENSOR_LOCALS( int32_t, ne0, op->src[0], ne);
+     GGML_TENSOR_LOCALS(uint64_t, nb0, op->src[0], nb);
+--- a/ggml/src/ggml-metal/ggml-metal.metal
++++ b/ggml/src/ggml-metal/ggml-metal.metal
+@@ -11818,3 +11818,26 @@
+         *(device float *) (dst + i0*args.nb_d0 + idst*args.nb_d1 + it*args.nb_d2) = result[idst];
+     }
+ }
++
++struct meshlit_scalar_args { uint k, m, n, type; ulong a_row, b_row; };
++kernel void kernel_meshlit_scalar_matmul(constant meshlit_scalar_args &args [[buffer(0)]],
++        device const char *a [[buffer(1)]], device const char *b [[buffer(2)]],
++        device float *output [[buffer(3)]], uint2 pos [[thread_position_in_grid]]) {
++    if (pos.x >= args.m || pos.y >= args.n) return;
++    device const char *row = a + ulong(pos.x)*args.a_row;
++    device const float *x = (device const float *)(b + ulong(pos.y)*args.b_row);
++    float sum = 0.0f;
++    if (args.type == 0) {
++        for (uint i=0; i<args.k; ++i) sum += ((device const float *)row)[i]*x[i];
++    } else if (args.type == 1) {
++        for (uint i=0; i<args.k; ++i) sum += float(((device const half *)row)[i])*x[i];
++    } else {
++        for (uint i=0; i<args.k; i+=16) {
++            float4x4 decoded;
++            if (args.type == 12) dequantize_q4_K((device const block_q4_K *)row+i/256, short((i%256)/16), decoded);
++            else dequantize_q6_K((device const block_q6_K *)row+i/256, short((i%256)/16), decoded);
++            for (uint j=0; j<16; ++j) sum += decoded[j/4][j%4]*x[i+j];
++        }
++    }
++    output[ulong(pos.y)*args.m+pos.x] = sum;
++}

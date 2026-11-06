@@ -15,6 +15,13 @@ class VoicePreferencesTest {
         assertTrue(data.getValue("tuning").jsonObject.getValue("futureFilter").jsonPrimitive.boolean)
         assertFalse(VoicePreferences.decode(encoded,VoiceOptions()).options.captions)
     }
+    @Test fun networkAndTranscriptReviewCanBeTurnedBackOffAfterTheyWereSaved() {
+        val enabled=VoicePreferences.encodePreservingUnknown(null,VoiceOptions(network=true,reviewTranscript=true))
+        val disabled=VoicePreferences.encodePreservingUnknown(enabled,VoiceOptions())
+        val settings=VoicePreferences.decode(disabled,VoiceOptions()).options
+        assertFalse(settings.network)
+        assertFalse(settings.reviewTranscript)
+    }
     @Test fun unreadableAndUnknownEnumSettingsAreNotReplacedOnOpenOrSave() {
         for(raw in listOf("not-json","""{"input":"FUTURE_ENGINE"}""","""{"tuning":{"threshold":-2}}""")) {
             val read=VoicePreferences.decode(raw,VoiceOptions())

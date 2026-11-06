@@ -1,8 +1,196 @@
 # Meshlit current implementation and acceptance queue
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## HyperL engine priority — 2026-11-06
+
+The owner moved the custom model engine into standalone HyperL; Studio will be
+its application client. [Engine plan](docs/STUDIO_HYPERL_ENGINE_PLAN_2026-11-06.md)
+separates specialist-model routing, native MoE expert paging, layer sharding and
+cloud API calls. Plan-first, bounded implementation and focused tests take priority
+to conserve credits. Agreement onboarding is explicitly deferred until engine work.
+
+HyperL's first increment extends its existing residency planner with exact total/
+active expert metadata, shared/router weights and cache accounting. All experts
+remain counted; this does not execute expert paging. Standalone checks: 13 focused,
+84 Python passed / 5 optional JAX skipped, Gradle distribution build successful,
+5 native tests passed. Existing HyperL native CPU/RPC model evidence is separate.
+
+Studio now has compact SVG navigation, a native Studio menu and source support for
+a second desktop-only Qwen3-4B Q4_K_M reasoning model. The verified artifact is
+2,497,280,256 bytes; Qwen2.5-1.5B stays the default. Integration checks: 225 Node,
+46 packaged Python, 17 focused desktop backend tests passed. Native Qwen3 loaded
+and answered 2+2 correctly after idle build daemons released memory; preserve the
+memory admission guard. Native Thinking off returned 4 for 2+2; Thinking on returned 8 for 3+5;
+Stop closed a further active request. Package provenance/launch evidence is
+recorded separately. No Android model/default change.
+
+An isolated AMD560X prototype passed 11 numerical cases and produced the same
+short text as CPU with 4/29 layers on GPU. It was slower (0.75 versus 11.23 decode
+tokens/s in that short probe), so it is not promoted into the app. See
+[hardware evidence](docs/desktop/evidence/studio-amd560x-partial-offload-20261106.json).
+Actual tiered MoE inference, efficient GPU kernels and the new Studio→HyperL client
+remain pending; no general throughput or production claim is made.
+
+Obsolete QA bundles, an old QA DMG, the abandoned Qwen3.5 partial and regenerable
+Android intermediates were removed. Current/rollback builds, verified models,
+final APKs/reports and user data were preserved. APFS shared blocks/snapshots mean
+logical deleted bytes do not equal immediately reclaimed space; use the
+[cleanup record](docs/desktop/evidence/build-storage-cleanup-20261106.json).
+
+## Verified delivery checkpoint — 2026-11-06
+
+Bots is a primary General Chat sidebar destination. The dashboard creates and
+edits reusable bot profiles, assigns local or saved cloud/device/cluster model
+connections, and opens per-bot Details in a separate native window. Starting
+chat from detached Details keeps that chat in the detached window; General Chat
+remains open. Details shows actual model/source, instructions, capabilities and
+links to workspace agents, teams, companions, connectors and permissions.
+Native window creation and chat placement passed. Saved notification handling
+was corrected so it cannot block subsequent bot actions.
+
+Management groups models, devices/clusters, network, health, credentials, SSH
+and usage. All 36 Settings destinations are registered; ten main pages passed
+native navigation checks. Credential controls and reviewed built-in/system
+Terminal SSH handoff have contract coverage; live key rotation and SSH login
+are not claimed. The native bundled Qwen reply correctly identified local
+Qwen2.5 inference. Copy and Markdown export passed using a synthetic chat.
+
+Final extension suite: **221 passed**. Android V1/V2 settings tests passed
+(seven each), both debug variants assembled and both lint tasks passed. The final
+APK rebuild passed with the synchronized offline manual verified in all six APKs. Samsung
+UI acceptance remains blocked by its locked/off screen; no data was replaced.
+This is a development candidate, not a production/notarized release. Native
+voice playback, hosted media, persistent browser bots, training/RL, hardware-
+bound full-app lock, iOS and HarmonyOS qualification remain open.
+
+[Native evidence](docs/desktop/evidence/studio-chat-settings-native-20261106.json) ·
+[Current feature matrix](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+
+## Cross-platform hosting, security and bots — 2026-11-06
+
+These requests cover desktop and mobile: unified Management, credential/SSH
+controls, optional full-app password/biometric lock, supported hardware-backed
+keys, and device client/host roles. iOS comes later with native Apple glass UI
+and accessibility alternatives; HarmonyOS NEXT retains its own native gates.
+Bots need detailed separate windows, General Chat access, explicit local/cloud/
+device/cluster model assignments, and browser/network access with manual or
+scoped automatic approvals. Whole-app lock, persistent workers and training/RL
+remain distinct from current passwordless local autonomy.
+
+[Per-feature status](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md) ·
+[Platform and hosting matrix](docs/CROSS_PLATFORM_HOSTING_PLAN_2026-11-06.md).
+
+## Unified Management dashboard — 2026-11-06
+
+Group model/compute, device/cluster, network/connection, health/resource and
+usage/storage management under one main-window Management overview and settings
+group. Reuse real controllers and runtime status; keep Chat settings and
+Studio-specific tools distinct. Preserve planned SDK/pipeline/HyperL/provider,
+security/recovery and audit dashboards with honest migration/qualification gaps.
+[Design and acceptance](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md#management-navigation-design).
+
+## Current integration queue — 2026-11-06
+
+- Deliver and retest the final preview: runtime identity, model/source labels,
+  Copy, local export, read aloud, personality settings and visible Bots.
+- Exercise settings save/reload, cancelled dialogs, failed clipboard/file writes,
+  changed-model history boundaries and large-text/narrow-window layout.
+- Qualify audible read-aloud and human live voice/transcripts/translation;
+  native inline microphone/subtitles and Bengali speech remain open.
+- Build actual Studio image/video/sound/music generation; Android adapter source
+  and TTS playback do not qualify these desktop features.
+- Implement durable bot workers and reviewed skills/hooks separately from saved
+  chat profiles. Define scoped feedback, evaluation, promotion and rollback
+  before enabling self-improvement; actual weight training/RL remains open.
+- Preserve all old model-library, durable chat/search/branch/RAG, model lifecycle,
+  router/fallback, training, managed sharding, recovery and platform gates in the
+  [reconciled inventory](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+
+## Final main-window and access acceptance — 2026-11-06
+
+- Qualify the final candidate after the latest source changes. Native screenshots
+  verified the main shell, but the final package still needs cold-start, separate
+  IDE, navigation, persisted settings, and integrity checks.
+- Verify passwordless local chat and session-only usage without disk history,
+  optional require-unlock on next launch, and separate protected hosted/remote
+  accounting. Preserve existing encrypted data and credentials.
+- Exercise both project security choices and all three saved action presets.
+  Confirm bounded unsaved edits, revocation, and independent external-tool grants.
+- Verify task-scoped app grants on native macOS with OS Accessibility consent,
+  the 25-operation/10-minute limits, exact app/model/task/chat binding, and
+  Stop/completion revocation. Current source tests do not requalify native actions.
+- Repeat identity regression in the final packaged UI, including misleading
+  prior history. The isolated live test passed; self-description is not provenance.
+  Qualify every provider dashboard and external route separately.
+
+## Main application window acceptance — 2026-11-06
+
+- Package and visually qualify the new full-width main shell. The earlier
+  Chat tab inside IDE chrome did not meet the requested application layout.
+- Verify cold start and restart after a project session, Chat/Models/Workspaces/
+  LLM settings navigation, collapsed Studio tools, and the Usage/Settings footer.
+- Open a real project from Workspaces and verify that its separate IDE retains
+  independent chat/agents while the main application window remains available.
+- Verify the rebuilt workbench integrity manifest and absence of the corruption
+  warning without suppressing integrity checks. Source suites passed five shell,
+  five main-page, and nine packaging tests; native visual acceptance is pending.
+
+## Studio, source selection, and device acceptance — 2026-11-06
+
+- General Chat startup after an IDE session and the separate IDE window passed
+  the native test. Qualify the rest of the settings and source paths against live
+  provider, device, coordinator, agent, bot, and MCP services.
+- Verify local, hosted, LAN, and remote selection against approved endpoints.
+  Check cancellation, deleted credentials, revocation, endpoint failure, and
+  usage accounting. Qualify remembered unlock and persistent encrypted review
+  on a protected-storage build and a Mac with working OS secret storage.
+  The current QA package uses session unlock and volatile editor secrets.
+- Run a cluster-backed coding task in a trusted workspace. Verify the selected
+  endpoint, tool approval, actual diff, explicit review, and cancellation.
+- Qualify managed Mac/Android enrollment, placement, generation, and restart on
+  physical devices. The current Studio JVM route passed over scoped USB with
+  real Mac and Samsung CPU workers. Use that run and the earlier development
+  Tailscale run as baselines. Compare measured memory and latency with a
+  single-node run, then test a model that exceeds one node's usable budget.
+- Qualify managed private WAN reachability, worker loss, and safe recovery.
+  Scope custom hooks, coordinator takeover, and live KV migration separately.
+
+## Meshlit continuation gates — 2026-11-05
+
+- Run managed Android coordinator CPU + one approved worker on physical devices;
+  then confirm opt-in reload after killing an assigned worker while another
+  approved placement can fit. Verify that the interrupted request stays idle.
+  Qualify mixed managed Mac/Android placement separately.
+- Repeat the tested private TLS quorum handoff on three or five physical
+  Android devices, including listener lifecycle and a revoked member. Automatic
+  takeover by another coordinator and live KV transfer are still open.
+- Qualify approved hosted web search and bot routes against live endpoints.
+  The signed Bot inbox now has a foreground receiver and a review queue.
+  Automated channel replies and sandboxed custom skill execution remain open.
+- Verify microphone, transcript correction, wired headset interruption and
+  repeated on-device camera frames on an ARM64 phone. The native Studio
+  development fixture verified the changes panel, file open, Git diff and
+  right-click review. Repeat those checks and exercise saved review and undo
+  in the packaged app after unlocking the Mac.
+- Sign the optimized Android release for distribution. Sign and notarize the
+  Studio installer with Developer ID, then verify Gatekeeper acceptance on a
+  clean Mac. The current packaged candidate is Intel and ad-hoc signed.
+  [Implementation and limits](docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md#meshlit-continuation--2026-11-05).
+
+## Explicit Android Chat / Agent continuation — 2026-11-04
+
+Implemented saved per-conversation Chat / Agent choices, replacing English-keyword
+activation. Selected groups alone cannot run chat tools; old chats default to Chat.
+Settings and the composer expose the mode, final tool removal returns to Chat, and
+device connection cards respect it. Existing grants and session-only exact-call
+approval remain independent. Android unit tests, debug builds and lint subsequently
+passed at the managed recovery checkpoint. Physical mode and tool acceptance
+remain open.
+[Details and next gates](docs/AGENT_CHAT_CHECKPOINT_2026-10-31.md).
+
 
 ## Agent and provider continuation — 2026-10-31
 

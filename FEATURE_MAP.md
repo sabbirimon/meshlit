@@ -1,8 +1,16 @@
 # Meshlit structured feature and architecture map
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+Current 2026-11-06 increment: separate Chat/project windows, grouped Management,
+model/source identity, local session usage, scoped autonomy, message actions,
+personality/voice tuning, Bots, credentials and explicit SSH profiles. The
+structured map contains 105 feature areas with individual status/limits.
+[Request inventory](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md) ·
+[Platform/hosting gates](docs/CROSS_PLATFORM_HOSTING_PLAN_2026-11-06.md).
+
 
 Current resource-network increment: model/shard admission, secure pairing,
 fair bounded forwarding, scoped external resource discovery and smart replica

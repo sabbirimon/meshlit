@@ -4,9 +4,11 @@ import kotlinx.serialization.json.*
 import java.net.URI
 
 /** Owner configuration and SDK output are separate: an SDK cannot raise effort. */
-internal fun ideCompletionBody(body: JsonObject, route: JsonObject?, effort: String, model: String, maxOutput: Int, streaming: Boolean): JsonObject {
+internal fun ideCompletionBody(body: JsonObject, route: JsonObject?, effort: String, model: String, maxOutput: Int, streaming: Boolean, thinking: String = "auto"): JsonObject {
     require(effort in setOf("auto", "low", "medium", "high")) { "Unknown reasoning effort" }
     val local = route == null || route["kind"]?.jsonPrimitive?.content == "local"
+    val localModel = if (local) StudioBundledModels.resolve(route?.get("modelId")?.jsonPrimitive?.content) else null
+    val thinkingEnabled = studioThinking(localModel, thinking)
     val support = route?.get("effortSupport") as? JsonObject
     val bound = support != null && route != null && support["endpoint"] == route["endpoint"] && support["model"] == route["model"]
     val configuredAdapter = support?.get("adapter")?.jsonPrimitive?.content
@@ -23,7 +25,11 @@ internal fun ideCompletionBody(body: JsonObject, route: JsonObject?, effort: Str
     }
     return JsonObject(body.toMutableMap().apply {
         // Ignore parameters from the SDK/model. Auto never sends an effort field.
-        for (field in listOf("reasoning_effort", "reasoning", "think", "thinking", "enable_thinking", "max_completion_tokens", "max_tokens", "stream_options")) remove(field)
+        for (field in listOf("reasoning_effort", "reasoning", "think", "thinking", "enable_thinking", "max_completion_tokens", "max_tokens", "stream_options", "chat_template_kwargs", "chat_template", "reasoning_format", "reasoning_budget")) remove(field)
+        if (localModel?.thinkingSupported == true) {
+            put("chat_template_kwargs", buildJsonObject { put("enable_thinking", thinkingEnabled) })
+            put("reasoning_format", JsonPrimitive("deepseek"))
+        }
         put("model", JsonPrimitive(model)); put("stream", JsonPrimitive(streaming))
         if (streaming) put("stream_options", buildJsonObject { put("include_usage", true) })
         put(if (adapter == "reasoning_effort") "max_completion_tokens" else "max_tokens", JsonPrimitive(maxOutput))

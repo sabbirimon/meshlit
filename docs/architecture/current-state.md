@@ -1,8 +1,76 @@
 # Current architecture and evidence boundaries
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Current Chat settings and remaining features — 2026-11-06
+
+The development main window separates General Chat from workspace IDE chats.
+Chat settings groups models/modes, reasoning, permissions, personality, read-aloud
+and live-voice setup; Bots is available in primary navigation. Message
+actions add Copy, Reply, Read aloud and explicit local chat export. Export saves
+a file selected by the user; it does not publish a public link.
+
+Local chat uses session usage without a passphrase by default. Local autonomous
+projects permit bounded reads/edits with Stop and unsaved review; protected work,
+credentials and external capabilities retain separate controls. Personality is a
+prompt preference, not model retraining or a grant of tools. Native Mac read-aloud
+is distinct from OpenLive's separate call/transcript UI. Native inline Studio
+subtitles, image/video/sound generation, persistent bot workers and actual RL
+remain open. Final packaged navigation and human-audio qualification are pending.
+
+[Current request/acceptance inventory](../../docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+
+## Session usage, action scope, and runtime identity — 2026-11-06
+
+Local Chat defaults to in-memory usage for the window session, without a disk
+usage history or required passphrase. The optional require-unlock setting takes
+effect next launch. Hosted/remote requests retain protected accounting, and
+credentials and existing encrypted data keep independent storage controls.
+Project policy stores security mode separately from its Ask/read-only/autonomous
+workspace action preset. Presets do not authorize shell, device, MCP, or provider
+access. Workspace edits remain bounded and unsaved for review.
+
+Optional app-access grants bind app, model, human task, and chat for at most 25
+operations or 10 minutes. Stop/completion revokes them; OS Accessibility consent
+is still required. Native actions have not been requalified in this increment.
+Chat runtime identity comes from the successful local-model load or configured
+remote model/source, without sending endpoints or keys into the prompt. Remote
+upstream identity remains unverified. The isolated live identity response passed;
+final running-package acceptance remains pending.
+
+The main shell now exposes grouped Chat settings and provider dashboards using
+existing services. Native screenshots verified its layout; that does not prove
+every setting, dashboard, or external workflow works on every platform.
+
+## Main application shell correction — 2026-11-06
+
+The earlier empty-window Chat tab still exposed IDE chrome. Current source uses
+a dedicated full-width main shell in empty windows and retains the complete
+workbench in project windows. The shell wraps existing webviews and routes
+without creating a second inference or settings backend. Primary navigation is
+Chat, Workspaces, Models, and LLM settings, with Usage/Settings below and grouped
+Studio tools for agents, bots, devices/clusters, MCP, and resources. Conversation
+navigation refers to actual open transient sessions. Projects open in separate
+native windows with independent chat/agent sessions.
+
+Pinned bootstrap and layout patches apply only to empty windows. Native window
+controls, dialogs, and notifications remain available. Packaging refreshes the
+existing integrity entries before signing; it does not disable verification.
+Five shell, five main-page, and nine packaging tests passed. Native visual and
+packaged-launch qualification of this shell is pending. Session unlock and
+protected-storage limitations remain as documented below.
+
+## Studio chat and coordinator routing — 2026-11-06
+
+General Chat sends standard model role messages through the usage-gated backend.
+Workspace agent modes continue through the SDK and retain separate tool grants.
+Studio selects a compatible completion endpoint, including an already-running
+coordinator. The coordinator owns its native layer placement. Agent teams can
+assign bounded jobs across hosts. Model-layer execution has separate evidence
+and does not depend on a team label. [Current evidence](../../PROGRESS.md#studio-chat-and-cluster-routing--2026-11-06) ·
+[Layer qualification](../layer-pipeline-and-recovery.md).
 
 ## Open resource network continuation — 2026-10-31
 

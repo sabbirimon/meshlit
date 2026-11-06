@@ -36,7 +36,7 @@ function register(context) {
   context.subscriptions.push(vscode.commands.registerCommand('meshlit.resourceSharing', () => {
     if (panel) { panel.reveal(); return; }
     lastMessage = '';
-    const view = panel = vscode.window.createWebviewPanel('meshlit.resourceSharing', 'Resource sharing', vscode.ViewColumn.One,
+    const view = panel = require('./shell.cjs').createPanel(vscode,'meshlit.resourceSharing', 'Resource sharing', vscode.ViewColumn.One,
       {enableScripts: true, localResourceRoots: []});
     view.webview.html = render(); context.subscriptions.push(view);
     view.onDidDispose(() => { configuration++; stop(); if (panel === view) panel = undefined; });

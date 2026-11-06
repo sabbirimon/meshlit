@@ -281,20 +281,23 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
     var showVoice by remember{mutableStateOf(false)}
     val providers=koinInject<com.meshlit.providers.OnlineProviders>()
     val profiles by providers.profiles.collectAsStateWithLifecycle()
+    val visionHost=koinInject<com.meshlit.media.LocalVisionHost>()
+    val importedVision by visionHost.model.collectAsStateWithLifecycle()
+    val offlineVision=importedVision.takeIf{visionHost.available()}
     val visionProfiles=profiles.filter{it.enabled && it.model.isNotBlank() && it.protocol in setOf(com.meshlit.core.inference.models.OnlineProtocol.OPENAI,com.meshlit.core.inference.models.OnlineProtocol.OPENAI_COMPATIBLE)}
     val chatRoutes=koinInject<com.meshlit.routing.ModelRoutes>()
     val effortRoutes by chatRoutes.routes.collectAsStateWithLifecycle()
     var photo by photoState
     var photoProvider by photoProviderState
     var photoTurnId by photoTurnState
-    LaunchedEffect(photo,visionProfiles) {if(photo!=null && visionProfiles.none{it.id==photoProvider}) photoProvider=visionProfiles.firstOrNull()?.id.orEmpty()}
+    LaunchedEffect(photo,visionProfiles) {if(photo!=null && photoProvider!=LOCAL_PHOTO_ROUTE && visionProfiles.none{it.id==photoProvider}) photoProvider=LOCAL_PHOTO_ROUTE}
     val context=LocalContext.current
     var captureFilePath by capturePathState
     var captureUri by captureUriState
     fun clearPhoto(){photo=null;captureFilePath?.let{java.io.File(it).delete()};captureFilePath=null;captureUri=null}
-    fun selectPhoto(uri:android.net.Uri){clearPhoto();photo=uri;showVoice=false;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}
+    fun selectPhoto(uri:android.net.Uri){clearPhoto();photo=uri;showVoice=false;photoProvider=LOCAL_PHOTO_ROUTE}
     val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->if(uri!=null) selectPhoto(uri)}
-    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){saved->if(saved && captureUri!=null){photo=captureUri;showVoice=false;photoProvider=visionProfiles.firstOrNull{it.id==state.current?.options?.onlineProfileId}?.id ?: visionProfiles.firstOrNull()?.id.orEmpty()}else{clearPhoto();controller.attachmentError("Photo capture was cancelled or failed")}}
+    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){saved->if(saved && captureUri!=null){photo=captureUri;showVoice=false;photoProvider=LOCAL_PHOTO_ROUTE}else{clearPhoto();controller.attachmentError("Photo capture was cancelled or failed")}}
     LaunchedEffect(state.running,photoTurnId) {
         val turn=photoTurnId
         if(turn!=null && !state.running) {
@@ -345,14 +348,15 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
         else {editDraft(quoted);composerFocus.requestFocus();keyboard?.show()}
     }
     val chosenVision=visionProfiles.firstOrNull{it.id==photoProvider}
+    val chosenOffline=offlineVision.takeIf{photoProvider==LOCAL_PHOTO_ROUTE}
     val hasChatModel=runtime is CoordinatorState.Ready || state.current?.options?.onlineProfileId!=null || state.current?.options?.routeId!=null
-    val nativeConnection=photo==null && state.current?.options?.let{deviceConnectionChatIntent(draft,it)!=null}==true
-    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) chosenVision!=null else (hasChatModel || nativeConnection) && draft.isNotBlank()
+    val nativeConnection=photo==null && state.current?.options?.let{it.agentToolsActive && deviceConnectionChatIntent(draft,it)!=null}==true
+    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection) && draft.isNotBlank()
     val send={ if(canSend) {
         followLatest=true
         val selectedPhoto=photo
         val sent=controller.send(if(selectedPhoto!=null) draft.ifBlank{"Describe this photo accurately, including any readable text."} else draft,
-            selectedPhoto?.let{PhotoChatRequest(it,checkNotNull(chosenVision))})
+            selectedPhoto?.let{PhotoChatRequest(it,chosenVision,chosenOffline)})
         if(sent!=null) {if(selectedPhoto!=null) photoTurnId=sent else draft=""}
     } }
     val colors=MaterialTheme.colorScheme
@@ -430,10 +434,10 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                                 Spacer(Modifier.width(T.medium));LinearProgressIndicator(Modifier.width(60.dp))
                                 Text(state.operationLabel,Modifier.padding(start=8.dp).weight(1f),style=MaterialTheme.typography.labelSmall,maxLines=2)
                             }
-                            else if(message.text.isEmpty()) message.status?.let{Text(it,Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)}
+                            else message.status?.let{Text(it,Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)}
                         }
                         "block" -> ReplyContent(checkNotNull(row.block),if(searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key) Modifier.background(colors.secondaryContainer.copy(alpha=0.45f)).testTag("chat-search-current-match") else Modifier)
-                        "devices" -> ChatDeviceConnections(message.deviceOffer,message.deviceReceipt,!state.running && state.current?.options?.connectionTools==true,controller::connectDevice,{controller.send("connect devices")},onConnections)
+                        "devices" -> ChatDeviceConnections(message.deviceOffer,message.deviceReceipt,!state.running && state.current?.options?.connectionTools==true && state.current?.options?.agentToolsActive==true,controller::connectDevice,{controller.send("connect devices")},onConnections)
                         "actions" -> Column {
                             ChatWebSources(message.id,message.webSources)
                             if (message.knowledgeSources.isNotEmpty()) {
@@ -451,14 +455,16 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                 modifier=Modifier.align(Alignment.BottomCenter).padding(T.small).testTag("chat-latest")) {Icon(Icons.Default.ArrowDownward,stringResource(R.string.modern_latest))}
         }
         if(showVoice && !com.meshlit.BuildProfile.coreCandidate) VoiceConversationOverlay(controller){showVoice=false}
-        if(photo!=null) ChatPhotoAttachment(checkNotNull(photo),visionProfiles,photoProvider,!state.running,
-            onProvider={photoProvider=it},onRemove={clearPhoto()},onSetup=onProviders,maxHeight=panelHeight)
+        if(photo!=null) ChatPhotoAttachment(checkNotNull(photo),visionProfiles,photoProvider,!state.running,offlineVision?.label,
+            onProvider={photoProvider=it},onRemove={clearPhoto()},onSetup=onProviders,onLocalSetup=onMedia,maxHeight=panelHeight)
         val access=state.current?.options ?: com.meshlit.chat.ChatOptions()
         val accessLabel=when {
+            access.hostedAgentToolsActive -> "Hosted agent · reviewed web search · ask each time"
             access.onlineProfileId!=null -> "Online provider selected · chat tools off"
             access.routeId!=null -> "Model route selected · chat tools off"
             access.colibriMode!="OFF" -> "Host policy ${access.colibriMode} · chat tools off"
-            access.usesLocalTools -> "Local chat · Web request ${if(access.webTools) "on" else "off"} · Phone request ${if(access.phoneTools) "on" else "off"} · Device connection requests ${if(access.connectionTools) "on" else "off"} · ${access.toolCount} tool slots"
+            access.executionMode==com.meshlit.chat.ChatExecutionMode.CHAT -> "Chat mode · tool execution off · ${access.toolCount} selected tool slots"
+            access.agentToolsActive -> "Agent mode · Web request ${if(access.webTools) "on" else "off"} · Phone request ${if(access.phoneTools) "on" else "off"} · Device connection requests ${if(access.connectionTools) "on" else "off"} · ${access.toolCount} tool slots"
             else -> "Local chat · Web and phone tools off"
         }
         if(!keyboardVisible && state.current?.options?.showTokenStats!=false) TokenSpeedIndicator(state,onOptions)
@@ -486,7 +492,9 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                     }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions)
                         ChatAccessControl(access,!state.running,onMode={mode->
                             runCatching{controller.setOptions(access.copy(approvalMode=mode))}.onFailure{controller.attachmentError(it.message ?: "Approval choice could not be applied")}
-                        },onTools=onOptions,modifier=Modifier.weight(1f).semantics{contentDescription="Access: $accessLabel"})
+                        },onTools=onOptions,onExecutionMode={mode->
+                            runCatching{controller.setOptions(access.copy(executionMode=mode))}.onFailure{controller.attachmentError(it.message ?: "Conversation mode could not be applied")}
+                        },modifier=Modifier.weight(1f).semantics{contentDescription="Access: $accessLabel"})
                         ReasoningEffortButton(access.reasoningEffort,chatSupportedEfforts(access,profiles,effortRoutes),!state.running && photo==null) { effort ->
                             runCatching{controller.setOptions(access.copy(reasoningEffort=effort))}.onFailure{controller.attachmentError(it.message ?: "Effort choice could not be applied")}
                         }
@@ -499,7 +507,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                     }
                 }
             }
-            if(!keyboardVisible && photo!=null) Text("Photo → selected vision provider",Modifier.fillMaxWidth().padding(top=4.dp),textAlign=TextAlign.Center,
+            if(!keyboardVisible && photo!=null) Text(if(photoProvider==LOCAL_PHOTO_ROUTE)"Photo → on-device vision" else "Photo → selected vision provider",Modifier.fillMaxWidth().padding(top=4.dp),textAlign=TextAlign.Center,
                 style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

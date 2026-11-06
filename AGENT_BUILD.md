@@ -1,8 +1,19 @@
 # Meshlit build and continuation contract for the Claude Opus agent
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Studio and mixed-device handoff — 2026-11-06
+
+Read the dated [plan](PLAN.md#studio-chat-workspace-windows-and-mixed-device-compute--2026-11-06),
+[evidence](PROGRESS.md#studio-chat-and-cluster-routing--2026-11-06), and
+[acceptance queue](TODO.md#studio-source-selection-and-device-acceptance--2026-11-06)
+before changing Studio routing. General Chat uses direct completions with
+usage accounting. Workspace agents retain SDK permissions and review. Studio
+generated through two CPU RPC workers on one Mac, then through a physical Mac
+CPU worker and Samsung CPU worker over scoped USB. Qualify managed placement,
+larger-than-node memory admission, managed WAN, and project edits independently.
 
 ## Read this before changing code
 

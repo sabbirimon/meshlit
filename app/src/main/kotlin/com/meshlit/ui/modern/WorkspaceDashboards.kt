@@ -20,7 +20,7 @@ import com.meshlit.workspace.DashboardDirectory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun WorkspaceDashboards(page: String, onBack: () -> Unit, navigate: (String) -> Unit) {
-    Scaffold(topBar = { TopAppBar(title = { Text(if (page == "dashboards") "Dashboards" else
+    Scaffold(topBar = { TopAppBar(title = { Text(if (page == "dashboards") "Management" else
         DashboardDirectory.entries.first { it.id == page }.title) }, navigationIcon = {
         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
     }) }) { padding ->
@@ -28,9 +28,16 @@ import com.meshlit.workspace.DashboardDirectory
             contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (page) {
                 "dashboards" -> {
-                    item { Text("Your everyday workspaces", style = MaterialTheme.typography.headlineSmall)
-                        Text("Manage models and connections here. Keep preferences in Settings.") }
-                    items(DashboardDirectory.entries.filter { BuildProfile.routeAllowed(it.id) }, key = { it.id }) { entry ->
+                    item { Text("Manage Meshlit", style = MaterialTheme.typography.headlineSmall)
+                        Text("Models, devices, connections and security in one place. Each dashboard shows its actual capabilities and available controls.") }
+                    DashboardDirectory.management.forEach { group ->
+                        val destinations = group.destinations.mapNotNull { id ->
+                            SettingsDestinations.all.firstOrNull { it.id == id && BuildProfile.routeAllowed(id) }
+                        }
+                        if (destinations.isNotEmpty()) item(key = "management:${group.id}") {
+                            Text(group.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 12.dp))
+                        }
+                    items(destinations, key = { it.id }) { entry ->
                         Card(onClick = { navigate(entry.id) }, modifier = Modifier.fillMaxWidth().testTag("dashboard-open-${entry.id}"),
                             shape = RoundedCornerShape(16.dp)) {
                             Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically,
@@ -44,6 +51,7 @@ import com.meshlit.workspace.DashboardDirectory
                                 }
                             }
                         }
+                    }
                     }
                     item {
                         listOf("providers" to "Online providers", "device-dashboard" to "Devices",

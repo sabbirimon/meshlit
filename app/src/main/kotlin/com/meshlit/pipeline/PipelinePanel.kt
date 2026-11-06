@@ -31,10 +31,13 @@ import kotlinx.coroutines.*
     var fingerprint by remember{mutableStateOf("")};var token by remember{mutableStateOf("")}
     var localPairing by remember{mutableStateOf<String?>(null)};var error by remember{mutableStateOf<String?>(null)}
     var delegated by remember{mutableStateOf(host.agentControlAllowed())}
+    var coordinatorCpuLayers by remember{mutableStateOf(host.coordinatorCpuLayersAllowed())}
+    var recoverOnWorkerLoss by remember{mutableStateOf(false)}
     var internetWorker by remember{mutableStateOf(host.workerInternetAllowed())}
     var confirmInternet by remember{mutableStateOf(false)}
     var selected by remember{mutableStateOf("")}
     LaunchedEffect(host){withContext(Dispatchers.IO){group=host.activeGroup();groups=host.groups();peers=host.groupPeers()};assessments=host.assessGroup()}
+    val placementLocked=status.coordinator || status.starting || status.repairing
     fun action(block:suspend()->Unit){scope.launch{try{error=null;block()}catch(e:CancellationException){throw e}catch(e:Exception){error=e.message}}}
     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(T.large),verticalArrangement=Arrangement.spacedBy(T.small)) {
         Text("Layer pipeline",style=MaterialTheme.typography.titleMedium)
@@ -61,19 +64,24 @@ import kotlinx.coroutines.*
         TextButton(enabled=!status.worker && !status.coordinator,onClick={action{withContext(Dispatchers.IO){host.rotatePairingToken()}}}){Text("Rotate pairing token")}
         Row {Text("Allow agents to control the paired cluster",Modifier.weight(1f));Switch(delegated,{delegated=it;host.setAgentControlAllowed(it)})}
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Cluster group: $group",style=MaterialTheme.typography.titleSmall)
-            TextButton(enabled=!status.coordinator && !status.starting,onClick={creatingGroup=true}){Text("New group")}}
+            TextButton(enabled=!placementLocked,onClick={creatingGroup=true}){Text("New group")}}
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(T.small)) {
             groups.forEach{name->FilterChip(selected=group==name,onClick={action{val updated=withContext(Dispatchers.IO){host.setActiveGroup(name)};group=name;peers=updated;assessments=host.assessGroup()}},
-                enabled=!status.coordinator && !status.starting,label={Text(name)})}
+                enabled=!placementLocked,label={Text(name)})}
         }
+        Row {Text("Use this coordinator's CPU for model layers",Modifier.weight(1f))
+            Switch(coordinatorCpuLayers,{enabled->action{host.setCoordinatorCpuLayersAllowed(enabled);coordinatorCpuLayers=enabled}},enabled=!placementLocked)}
+        Text(if(coordinatorCpuLayers)"One approved remote worker is sufficient when both devices admit their assigned layers, KV and graph headroom. This CPU option does not pool GPU memory or restore a failed session."
+            else "Remote-only layer placement needs at least two approved workers. The coordinator still needs memory for embeddings and scheduling.",style=MaterialTheme.typography.bodySmall)
+        if(status.plannedCoordinatorLayers>0)Text("Last admitted plan: ${status.plannedCoordinatorLayers} coordinator CPU layers; remote layer counts ${status.plannedWorkerLayers.joinToString()}. Actual buffers remain native-runtime evidence.",style=MaterialTheme.typography.bodySmall)
         Text("${peers.size} approved workers in this group")
-        TextButton(enabled=peers.isNotEmpty() && !status.starting,onClick={action{assessments=host.assessGroup()}}){Text("Assess workers")}
+        TextButton(enabled=peers.isNotEmpty() && !status.starting && !status.repairing,onClick={action{assessments=host.assessGroup()}}){Text("Assess workers")}
         Text("Risk is a 0–100 admission heuristic from live memory, thermal state and control latency. It is not a benchmark, bandwidth test or security certification.",style=MaterialTheme.typography.bodySmall)
         if(status.memoryBudgetBytes>0) Text("Negotiated memory estimate: ${com.meshlit.ui.modern.formatBytes(status.memoryBudgetBytes)}")
         if(status.estimatedKvBytes>0) Text("Estimated KV: ${com.meshlit.ui.modern.formatBytes(status.estimatedKvBytes)} · allocation remains subject to native placement")
         peers.forEach { peer -> Column {
             Row {Text("${peer.host}:${peer.port}",Modifier.weight(1f))
-            TextButton(enabled=!status.coordinator && !status.starting,onClick={action{peers=withContext(Dispatchers.IO){host.removePeer(peer)};assessments=host.assessGroup()}}){Text("Remove")}
+            TextButton(enabled=!placementLocked,onClick={action{peers=withContext(Dispatchers.IO){host.removePeer(peer)};assessments=host.assessGroup()}}){Text("Remove")}
             }
             assessments.firstOrNull{it.peer.host==peer.host && it.peer.port==peer.port}?.let{assessment->
                 val offer=assessment.offer
@@ -84,24 +92,37 @@ import kotlinx.coroutines.*
                 Text(assessment.reason,style=MaterialTheme.typography.bodySmall)
             }
         } }
-        OutlinedButton(enabled=!status.coordinator && !status.starting,onClick={action{
+        OutlinedButton(enabled=!placementLocked,onClick={action{
             when(val scan=com.meshlit.devices.QrScanner.scan(context)){
                 is com.meshlit.devices.QrScanner.ScanResult.Success -> scanned=LayerPairingQr.decode(scan.rawValue)
                 com.meshlit.devices.QrScanner.ScanResult.Cancelled ->Unit
                 else ->error="QR scanner unavailable; use manual pairing"
             }
         }}){Text("Scan worker QR")}
-        OutlinedButton(enabled=!status.coordinator && !status.starting,onClick={add=true}){Text("Add approved worker")}
+        OutlinedButton(enabled=!placementLocked,onClick={add=true}){Text("Add approved worker")}
         if(status.local) Text("Native local inference is active; no remote workers are being used.")
-        if(status.starting) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if(status.coordinator) Button(onClick={action{host.stopPipeline()}}){Text("Stop pipeline")}
+        if(status.starting || status.repairing) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(status.repairing) {
+            Text("Checking approved workers and attempting one reload…")
+            Button(onClick={action{host.stopPipeline()}}){Text("Cancel recovery")}
+        }
+        else if(status.coordinator) Button(onClick={action{host.stopPipeline()}}){Text("Stop pipeline")}
         else {
             models.filter{it.installed}.forEach { model ->
                 Row {RadioButton(selected==model.path,{selected=model.path});Text(model.name,Modifier.padding(top=T.medium))}
             }
-            Button(enabled=host.available() && peers.size>=2 && selected.isNotBlank() && !status.starting,
-                onClick={action{host.startPipeline(selected,models.first{it.path==selected}.runtimeOptions.contextSize,models.first{it.path==selected}.runtimeOptions.keyCacheType)}}){Text("Negotiate and load cluster")}
+            Row {
+                Text("Reload once if a worker drops",Modifier.weight(1f))
+                Switch(recoverOnWorkerLoss,{recoverOnWorkerLoss=it},enabled=!placementLocked)
+            }
+            Text("If the coordinator process stops and an assigned worker cannot be reached, try the same model on the remaining approved devices. Send any interrupted message again yourself.",style=MaterialTheme.typography.bodySmall)
+            Button(enabled=host.available() && peers.size>=(if(coordinatorCpuLayers)1 else 2) && selected.isNotBlank() && !placementLocked,
+                onClick={action{
+                    val options=models.first{it.path==selected}.runtimeOptions
+                    host.startPipeline(selected,options.contextSize,options.keyCacheType,recoverOnWorkerLoss)
+                }}){Text("Negotiate and load cluster")}
         }
+        status.repairNotice?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
         (error ?: status.error)?.let{Text(it,color=MaterialTheme.colorScheme.error)}
         if(status.log.isNotEmpty()) Text(status.log.takeLast(4).joinToString("\n"),style=MaterialTheme.typography.bodySmall)
     } }

@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 @Serializable enum class OnlineProtocol { OPENAI, OPENAI_COMPATIBLE, ANTHROPIC, GEMINI }
 @Serializable data class OnlineProfile(val id:String,val name:String,val endpoint:String,val model:String="",
     val protocol:OnlineProtocol=OnlineProtocol.OPENAI_COMPATIBLE,val enabled:Boolean=false,val agentAllowed:Boolean=false,
-    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT, val sourceKind:ModelSourceKind=ModelSourceKind.CLOUD,val effortSupport:EffortSupport?=null) {
+    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT, val sourceKind:ModelSourceKind=ModelSourceKind.CLOUD,val effortSupport:EffortSupport?=null,val hostedToolSupport:HostedToolSupport?=null) {
     fun validate() {
         require(gateway == OnlineGateway.DIRECT || protocol == OnlineProtocol.OPENAI_COMPATIBLE) { "Gateways use OpenAI-compatible protocol" }
         require(credentialEnvironmentId==null || credentialEnvironmentId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
@@ -76,6 +76,17 @@ class OnlineModelClient {
         require(messages.sumOf{it.text.length}+system.length<=96000 && maxTokens in 1..(if(profile.supportedEfforts().isNotEmpty())16384 else 2048) && temperature.isFinite() && temperature in 0f..2f)
         require(!profile.requiresApiKey || token.isNotBlank() && token.length<=4096 && token.none{it.isWhitespace()}) { "Save an API key first" }
         if(profile.protocol==OnlineProtocol.GEMINI) require(profile.model.matches(Regex("[A-Za-z0-9_.-]+")))
+    }
+    fun prepareHostedWebRound(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,
+        temperature:Float,effort:ReasoningEffort,reviewId:String,evidence:HostedSearchEvidence?):HostedWebTurnRequest {
+        require(profile.hostedToolsAllowed(reviewId)){"Review hosted tool calling for this exact API model and enable agent access"}
+        validateGeneration(profile,token,messages,system,maxTokens,temperature,effort)
+        return HostedWebTurnRequest(profile,hostedWebPayload(profile,messages,system,maxTokens,temperature,effort,evidence),evidence==null)
+    }
+    suspend fun hostedWebRound(token:String,turn:HostedWebTurnRequest):HostedWebTurn {
+        val request=request(turn.profile,token,"chat/completions")
+            .post(turn.payload.toString().oneShotJsonBody()).build()
+        return parseHostedWebTurn(fetch(request),turn.acceptsCall)
     }
     suspend fun generate(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,effort:ReasoningEffort=ReasoningEffort.AUTO):OnlineReply {
         validateGeneration(profile, token, messages, system, maxTokens, temperature,effort)

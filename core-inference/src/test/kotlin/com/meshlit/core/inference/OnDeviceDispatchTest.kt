@@ -35,4 +35,32 @@ class OnDeviceDispatchTest {
         assertTrue(events.last() is InferenceEvent.GenerationFinished)
         listener.cancelAndJoin();coordinator.unloadModel()
     }
+
+    @Test fun failedPipelineCanBeReplacedOnceWithoutRepeatingItsRequest() = runBlocking<Unit> {
+        val coordinator = InferenceCoordinator()
+        val failed = RecordingEngine("llama-rpc-layer")
+        val replacement = RecordingEngine("llama-rpc-layer")
+        coordinator.loadExternalEngine("model.gguf", 512) { failed }
+        coordinator.infer(InferenceRequest("interrupted request", onToken = {}))
+        assertTrue(coordinator.reportExternalFailure(failed, "worker offline"))
+        assertTrue(coordinator.loadExternalEngine("model.gguf", 512, expected = failed) { replacement } is MeshlitResult.Success)
+        assertEquals(1, failed.calls)
+        assertEquals(0, replacement.calls)
+        assertFalse(coordinator.reportExternalFailure(failed, "stale failure"))
+        val stale = coordinator.loadExternalEngine("model.gguf", 512, expected = failed) { error("stale recovery dispatched") }
+        assertTrue(stale is MeshlitResult.Failure)
+        assertTrue(replacement.isReady())
+        coordinator.unloadModel()
+    }
+
+    @Test fun stopInvalidatesAWaitingReplacement() = runBlocking {
+        val coordinator = InferenceCoordinator()
+        val failed = RecordingEngine("llama-rpc-layer")
+        coordinator.loadExternalEngine("model.gguf", 512) { failed }
+        assertTrue(coordinator.reportExternalFailure(failed, "worker offline"))
+        coordinator.unloadModel()
+        val result = coordinator.loadExternalEngine("model.gguf", 512, expected = failed) { error("stopped recovery dispatched") }
+        assertTrue(result is MeshlitResult.Failure)
+        assertNull(coordinator.loadedModel())
+    }
 }

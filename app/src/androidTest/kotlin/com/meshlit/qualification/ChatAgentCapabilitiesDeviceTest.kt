@@ -37,10 +37,11 @@ class ChatAgentCapabilitiesDeviceTest {
             put("appAndDeviceGrantsChanged",false);put("checks",JsonArray(rows))
         }.toString())}
         try {
+            // Only classified reads in this disposable QA conversation; saved device grants remain unchanged.
             val cases=listOf(
-                Triple("phone","check phone control status",ChatOptions(phoneTools=true,maxTokens=256,historyMessages=0)),
-                Triple("web","current ai news this week",ChatOptions(webTools=true,maxTokens=256,historyMessages=0)),
-                Triple("devices","list remote nodes",ChatOptions(remoteTools=true,maxTokens=256,historyMessages=0)),
+                Triple("phone","check phone control status",ChatOptions(executionMode=com.meshlit.chat.ChatExecutionMode.AGENT,approvalMode=com.meshlit.chat.ChatApprovalMode.AUTO_READS,phoneTools=true,maxTokens=256,historyMessages=0)),
+                Triple("web","current ai news this week",ChatOptions(executionMode=com.meshlit.chat.ChatExecutionMode.AGENT,approvalMode=com.meshlit.chat.ChatApprovalMode.AUTO_READS,webTools=true,maxTokens=256,historyMessages=0)),
+                Triple("devices","list remote nodes",ChatOptions(executionMode=com.meshlit.chat.ChatExecutionMode.AGENT,approvalMode=com.meshlit.chat.ChatApprovalMode.AUTO_READS,remoteTools=true,maxTokens=256,historyMessages=0)),
             )
             for((name,prompt,options) in cases) {
                 val previous=logs.entries.value.toSet()

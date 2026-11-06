@@ -101,6 +101,7 @@ import kotlinx.serialization.json.Json
     var agentStoreError by remember { mutableStateOf(if(initialProfiles.isFailure) "Could not read saved agents" else "") }
     var newAgentName by remember { mutableStateOf("") }
     var newAgentInstruction by remember { mutableStateOf("") }
+    var editingAgent by remember { mutableStateOf<String?>(null) }
     val agentTasks=remember { mutableStateMapOf<String,String>() }
     fun saveAgents(next:List<com.meshlit.agent.AgentProfile>) {
         runCatching { agentStore.save(next) }.onSuccess { savedAgents=next;agentStoreError="" }
@@ -124,14 +125,15 @@ import kotlinx.serialization.json.Json
         profiles.filter{it.enabled && it.agentAllowed}.map{"cloud:${it.id}" to "Online · ${it.name}"}
     val selectedLabel=choices.firstOrNull{it.first==selectedModel}?.second ?: "Choose a model"
     val tools=remember(revision){registry.list()}
-    LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    val agentList=androidx.compose.foundation.lazy.rememberLazyListState()
+    LazyColumn(state=agentList,modifier=Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item{TextButton(onClick=onBack){Text("Back to settings")};TextButton(onClick={onOpen("connected-capabilities")}){Text("Connected capabilities")};TextButton(onClick={onOpen("agent-catalog")}){Text("Agent role library")};TextButton(onClick={onOpen("agent-teams")}){Text("Agent teams")};Text("Agent management",style=MaterialTheme.typography.headlineSmall);Text("Saved permissions govern typed commands. Online access also needs opt-in on the selected provider profile. The built-in phone agent and optional OpenClaw gateway have separate controls.")
             Column {
                 TextButton(onClick={onOpen("agent-registry")}){Text("Agent registry")}
                 TextButton(onClick={onOpen("agent-logs")}){Text("Agent logs")}
             }
             OutlinedButton(onClick={onOpen("mcp-catalog")}){Text("MCP connections and tools")}}
-        item{OutlinedButton(onClick={onOpen("openclaw")}){Text("Phone autonomy and background node")}
+        item{OutlinedButton(onClick={onOpen("bot-connections")}){Text("Bots and connections")};OutlinedButton(onClick={onOpen("openclaw")}){Text("Phone autonomy and background node")}
             Button(onClick={onOpen("operations")},colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("Emergency stop all")}}
         item { AgentAccessPanel(onOpen,onChanged={revision++}) }
         item { SettingsFeatureSection("Task presets") {
@@ -149,7 +151,7 @@ import kotlinx.serialization.json.Json
             Text("Presets are named instructions, not background workers or permission grants. Enable a profile below, or choose a task preset directly in Chat → Tools.")
         } }
         item { Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text("Create an agent",style=MaterialTheme.typography.titleMedium)
+            Text(if(editingAgent==null)"Create a bot profile" else "Edit bot profile",style=MaterialTheme.typography.titleMedium)
             Text("A saved agent is a named task template. It starts disabled and has no tools, device access or network grant. Choose a loaded local model or a separately agent-approved online profile; enable MODELS delegation to run it.",style=MaterialTheme.typography.bodySmall)
             OutlinedTextField(newAgentName,{newAgentName=it.take(48)},Modifier.fillMaxWidth(),label={Text("Agent name")},singleLine=true)
             OutlinedTextField(newAgentInstruction,{newAgentInstruction=it.take(1200)},Modifier.fillMaxWidth(),label={Text("Task instruction · optional")},maxLines=3)
@@ -157,11 +159,17 @@ import kotlinx.serialization.json.Json
                 DropdownMenu(expanded=modelMenu,onDismissRequest={modelMenu=false}) { choices.forEach { (id,label) ->
                     DropdownMenuItem(text={Text(label)},onClick={selectedModel=id;modelMenu=false})
                 } } }
-            Button(enabled=initialProfiles.isSuccess && savedAgents.size<16 && newAgentName.isNotBlank() && selectedModel.isNotBlank(),onClick={
-                val profile=com.meshlit.agent.AgentProfile(name=newAgentName.trim(),modelId=selectedModel,instruction=newAgentInstruction.trim())
-                saveAgents(savedAgents+profile)
-                if(agentStoreError.isBlank()) { newAgentName="";newAgentInstruction="" }
-            }) { Text("Save disabled agent") }
+            val previous=savedAgents.firstOrNull{it.id==editingAgent}
+            Row {
+                Button(enabled=initialProfiles.isSuccess && (previous!=null || savedAgents.size<16) && newAgentName.isNotBlank() &&
+                    (previous?.modelId==selectedModel || choices.any{it.first==selectedModel}),onClick={
+                    val profile=previous?.copy(name=newAgentName.trim(),modelId=selectedModel,instruction=newAgentInstruction.trim(),
+                        enabled=previous.enabled && previous.modelId==selectedModel) ?: com.meshlit.agent.AgentProfile(name=newAgentName.trim(),modelId=selectedModel,instruction=newAgentInstruction.trim())
+                    saveAgents(if(previous==null)savedAgents+profile else savedAgents.map{if(it.id==profile.id)profile else it})
+                    if(agentStoreError.isBlank()){editingAgent=null;newAgentName="";newAgentInstruction=""}
+                }) { Text(if(previous==null)"Save disabled bot" else "Save changes") }
+                if(previous!=null)TextButton(onClick={editingAgent=null;newAgentName="";newAgentInstruction=""}){Text("Cancel edit")}
+            }
             if(agentStoreError.isNotBlank()) Text(agentStoreError,color=MaterialTheme.colorScheme.error)
         } } }
         items(savedAgents,key={it.id}) { profile -> Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -179,7 +187,8 @@ import kotlinx.serialization.json.Json
                     catch(error:CancellationException) { throw error }
                     catch(error:Exception) { parallelError=error.message ?: "Agent job failed to queue" }
                 }}) { Text("Run task") }
-                TextButton(onClick={saveAgents(savedAgents.filterNot{it.id==profile.id});agentTasks.remove(profile.id)}) { Text("Delete agent") }
+                TextButton(onClick={editingAgent=profile.id;newAgentName=profile.name;newAgentInstruction=profile.instruction;selectedModel=profile.modelId;scope.launch{agentList.animateScrollToItem(4)}}){Text("Edit bot")}
+                TextButton(onClick={saveAgents(savedAgents.filterNot{it.id==profile.id});agentTasks.remove(profile.id);if(editingAgent==profile.id){editingAgent=null;newAgentName="";newAgentInstruction=""}}) { Text("Delete agent") }
             }
         } } }
         items(AgentBackend.Scope.entries.filter{it!=AgentBackend.Scope.MODELS}){permission->Row{Text(permission.name,Modifier.weight(1f));Switch(backend.delegated(permission),{backend.setDelegated(permission,it);revision++})}}

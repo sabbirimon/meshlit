@@ -23,8 +23,9 @@ enum class VoiceStyle(val label:String,val pitch:Float,val speed:Float) {
 @Serializable enum class SpeechOutput(val label:String) { ANDROID("Installed Android voice"),OFFLINE_MODEL("Offline voice model"),PROVIDER("Online voice model"), OPENLIVE("Kokoro / Pocket · free local host"), ELEVENLABS("ElevenLabs · free-tier / paid") }
 @Serializable
 data class VoiceOptions(val input:SpeechInput=SpeechInput.OFFLINE_MODEL,val output:SpeechOutput=SpeechOutput.ANDROID,
-    val sttPack:String="",val ttsPack:String="",val providerId:String="",val sttModel:String="",val ttsModel:String="",val providerVoice:String="coral",val mode:VoiceMode=VoiceMode.LIVE,val captions:Boolean=true,val network:Boolean=false,val androidVoice:String?=null,val style:VoiceStyle=VoiceStyle.NATURAL,val tuning:VoiceTuning=VoiceTuning(),val naturalEngine:String="kokoro-en-v0_19-int8",val naturalVoice:String="",val naturalFreeOnly:Boolean=true)
-data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false,val testTranscript:String?=null,val inputLevel:Float=0f,val speechDetected:Boolean=false,val muted:Boolean=false,val elapsedSeconds:Int=0,val completedTurns:Int=0,val lastHeard:String?=null,val lastReply:String?=null,val outputLevel:Float?=null,val caption:String?=null,val inputThreshold:Float=0f,val micNotice:String?=null)
+    val sttPack:String="",val ttsPack:String="",val providerId:String="",val sttModel:String="",val ttsModel:String="",val providerVoice:String="coral",val mode:VoiceMode=VoiceMode.LIVE,val captions:Boolean=true,val network:Boolean=false,val androidVoice:String?=null,val style:VoiceStyle=VoiceStyle.NATURAL,val tuning:VoiceTuning=VoiceTuning(),val naturalEngine:String="kokoro-en-v0_19-int8",val naturalVoice:String="",val naturalFreeOnly:Boolean=true,val reviewTranscript:Boolean=false,
+    val headsetInterruption:Boolean=false)
+data class VoiceState(val phase:String="Stopped",val active:Boolean=false,val error:String?=null,val ready:Boolean=false,val voices:List<Voice> = emptyList(),val busy:Boolean=false,val testTranscript:String?=null,val inputLevel:Float=0f,val speechDetected:Boolean=false,val muted:Boolean=false,val elapsedSeconds:Int=0,val completedTurns:Int=0,val lastHeard:String?=null,val lastReply:String?=null,val outputLevel:Float?=null,val caption:String?=null,val inputThreshold:Float=0f,val micNotice:String?=null,val transcript:PendingVoiceTranscript?=null)
 internal fun androidRecognitionFailure(code:Int):Exception = when(code) {
     SpeechRecognizer.ERROR_SPEECH_TIMEOUT,SpeechRecognizer.ERROR_NO_MATCH -> NoVoiceDetected()
     else -> IllegalStateException("Android recognition failed (code $code)")
@@ -51,6 +52,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
     private var awaitPreparedOutput:(suspend()->Unit)?=null
     private val finishCapture=java.util.concurrent.atomic.AtomicBoolean(false)
     private val turns=VoiceTurnControl()
+    private val transcriptReview=VoiceTranscriptReview()
     private val audioManager=context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
     private var focusRequest:android.media.AudioFocusRequest?=null
     private val focusListener=android.media.AudioManager.OnAudioFocusChangeListener { change ->
@@ -143,10 +145,17 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
                 turns.awaitUnmuted()
                 check(chat.state.value.selectedId==selected) { "Conversation changed; start a new voice session" }
                 try {
-                    turns.run {
+                    val sent=turns.run {
+                        val targetOptions=chat.state.value.current?.options
                         _state.update{it.copy(phase="Listening",inputLevel=0f,speechDetected=false,outputLevel=null,micNotice=null,error=null)}
-                        val text=withTimeout(90_000){recognize()}
-                        currentCoroutineContext().ensureActive();check(text.isNotBlank() && text.length<=12000)
+                        val heard=withTimeout(90_000){recognize()}
+                        currentCoroutineContext().ensureActive();check(heard.isNotBlank() && heard.length<=12000)
+                        val text=if(options.reviewTranscript) {
+                            _state.update{it.copy(phase="Review transcript",inputLevel=0f,speechDetected=false)}
+                            transcriptReview.await(heard){draft->_state.update{it.copy(transcript=draft)}} ?: return@run false
+                        } else heard
+                        currentCoroutineContext().ensureActive()
+                        check(chat.state.value.selectedId==selected && chat.state.value.current?.options==targetOptions){"Conversation changed; start another voice session"}
                         _state.update{it.copy(phase="Thinking",lastHeard=text,inputLevel=0f,speechDetected=false)}
                         try {
                             ownedGeneration=chat.send(text,voiceConversation=true)
@@ -165,9 +174,9 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
                             if(ownedGeneration!=null) withContext(NonCancellable){withTimeout(15_000){chat.state.first{!it.running}}}
                             ownedGeneration=null
                         }
+                        true
                     }
-                    completed++
-                    _state.update{it.copy(completedTurns=completed)}
+                    if(sent){completed++;_state.update{it.copy(completedTurns=completed)}}
                     if(options.mode==VoiceMode.SINGLE_TURN) break
                 } catch(interrupted:VoiceTurnInterrupted) {
                     currentCoroutineContext().ensureActive()
@@ -182,6 +191,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             }
         }
     }
+    fun answerTranscript(id:String,text:String?) {if(state.value.active)transcriptReview.answer(id,text)}
     fun interrupt() {
         if(!state.value.active || state.value.phase !in setOf("Transcribing","Thinking","Preparing voice","Speaking")) return
         _state.update{it.copy(phase="Interrupting",outputLevel=null)}
@@ -220,7 +230,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         check(Looper.myLooper()==Looper.getMainLooper());check(!state.value.busy)
         val started=++epoch;turns.setMuted(false)
         _state.value=state.value.copy(active=conversation,busy=true,phase="Preparing speech adapters",error=null,testTranscript=null,
-            muted=false,elapsedSeconds=0,completedTurns=0,lastHeard=null,lastReply=null,caption=null,inputLevel=0f,outputLevel=null,speechDetected=false,micNotice=null,
+            muted=false,elapsedSeconds=0,completedTurns=0,lastHeard=null,lastReply=null,caption=null,inputLevel=0f,outputLevel=null,speechDetected=false,micNotice=null,transcript=null,
             inputThreshold=voiceMeterLevel(options.tuning.threshold))
         session=scope.launch {
             val began=SystemClock.elapsedRealtime()
@@ -254,7 +264,23 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
             }
         }
     }
-    private suspend fun speak(text:String) {
+    private suspend fun speak(text: String) = coroutineScope {
+        val monitor = if (options.headsetInterruption && options.mode == VoiceMode.LIVE && state.value.active && !turns.muted.value) {
+            launch {
+                val detected = try {
+                    waitForWiredHeadsetSpeech(
+                        context, options.tuning.threshold, allowed = { !turns.muted.value },
+                        watching = { state.value.phase == "Speaking" },
+                    )
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { false }
+                if (detected && !turns.muted.value && state.value.phase == "Speaking") interrupt()
+            }
+        } else null
+        try { speakSegments(text) } finally { monitor?.cancel() }
+    }
+
+    private suspend fun speakSegments(text:String) {
         for(segment in speechSegments(text)) {
             currentCoroutineContext().ensureActive()
             _state.update{it.copy(phase="Preparing voice",outputLevel=null)}
@@ -310,7 +336,7 @@ class HandsFreeVoice(private val context:Context,private val chat:ChatController
         finally{recognized=null;recognizer?.cancel();recognizer?.destroy();recognizer=null}
     }
     private fun releaseAndroid(){recognized?.cancel();recognized=null;spoken?.cancel();spoken=null;utterance=null;recognizer?.cancel();recognizer?.destroy();recognizer=null;tts?.stop()}
-    fun stop(){epoch++;session?.cancel();chat.stopIfMatching(ownedGeneration);ownedGeneration=null;releaseAndroid();_state.value=state.value.copy(active=false,phase=if(session==null) "Stopped" else "Stopping")
+    fun stop(){epoch++;session?.cancel();chat.stopIfMatching(ownedGeneration);ownedGeneration=null;releaseAndroid();_state.value=state.value.copy(active=false,transcript=null,phase=if(session==null) "Stopped" else "Stopping")
         // Keep controls locked until cancellation releases microphone, playback and native models.
         val pending=session;scope.launch{pending?.join();if(session===pending){session=null;_state.value=state.value.copy(active=false,busy=false,phase="Stopped",inputLevel=0f,outputLevel=null,speechDetected=false)}}
     }

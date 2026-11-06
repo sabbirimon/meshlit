@@ -45,7 +45,7 @@ object WorkspaceDestinations {
         "vpn","network","sharding","radar","host-map","device-dashboard","resources","ssh","securitylab","runtime","packages","commands","operations","power","firewall","recovery","logs","audit" -> "Operations"
         "meshchat" -> "Connections"
         "securityprivacy","guardrails","permissions","legal","identity-recovery" -> "Security & privacy"
-        "cloud","huggingface","providers","gateway","tools-automation","mcp-catalog","rag","external","external-services","web-bridge","peers","openclaw","automation","termux","crawler","hooks" -> "Connections"
+        "cloud","huggingface","providers","gateway","tools-automation","mcp-catalog","rag","external","external-services","web-bridge","peers","openclaw","bot-connections","automation","termux","crawler","hooks" -> "Connections"
         else -> "Preferences"
     }
     val all:List<WorkspaceDestination> = primary.filter { com.meshlit.BuildProfile.routeAllowed(it.id) }+SettingsDestinations.all.filter{entry->primary.none{it.id==entry.id}}.map { entry ->

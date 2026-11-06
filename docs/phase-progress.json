@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-11-03",
+  "updated": "2026-11-06",
   "applicationSourceCommit": "12bd20a",
   "sourceEvidenceCheckpoint": "630cba2",
   "review": "https://github.com/sabbirimon/meshlit-v2/pull/2",
@@ -15,13 +15,13 @@
     },
     {
       "name": "Shared sharding",
-      "state": "2026-11-03: physical Mac Metal/CPU plus Samsung CPU layer completion passed over Tailscale LTE",
+      "state": "2026-11-06: Studio JVM Mac/Samsung USB native layer completion; earlier development WAN evidence retained",
       "nextGate": "Managed Studio/HyperL mixed adapter, oversized model, cross-owner and distributed recovery proof"
     },
     {
       "name": "Desktop management",
-      "state": "2026-11-02: portable Intel runtime and local streaming/usage qualified; GUI and broader controllers remain partial",
-      "nextGate": "Desktop visual approval, clean-target signing and physical paired-phone acceptance"
+      "state": "2026-11-06: dedicated main shell and separate project IDE source; live passwordless local identity test passed",
+      "nextGate": "Final package identity/navigation/settings, protected storage, human voice and clean-target signing"
     },
     {
       "name": "Android reliability",
@@ -59,6 +59,11 @@
       "name": "Optional inference hosts",
       "state": "2026-11-02: Android/Studio Ollama and LM Studio presets; real isolated Ollama API and Samsung client qualified over USB",
       "nextGate": "Supported-host LM Studio execution, fair same-model benchmarks and remote host qualification"
+    },
+    {
+      "name": "Chat personality, voice, media and bots",
+      "state": "2026-11-06: personality, read-aloud and OpenLive tuning modules tested; final UI integration ongoing",
+      "nextGate": "Packaged message/bot/settings acceptance, live voice, actual media adapters, persistent workers and measured improvement pipeline"
     }
   ],
   "releaseUrl": "https://github.com/sabbirimon/meshlit-v2/releases/tag/v2.0.0-macos-intel-build40.1",
@@ -232,5 +237,39 @@
     "offlineSource": "app/src/main/assets/help/index.html",
     "physicalFinalPackageVerified": true,
     "evidence": "docs/desktop/evidence/manual-final-install-20261103.json"
+  },
+  "currentChatStudioCheckpoint": {
+    "date": "2026-11-06",
+    "workingTreeChangesIncluded": true,
+    "plan": "docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md",
+    "androidParity": "docs/STUDIO_ANDROID_SETTINGS_PARITY_2026-11-06.md",
+    "state": "221 extension tests passed; native Chat/model identity, Copy/export/personality, no-pass project, 36 Settings command registrations, ten page routes, separate bot Details and chat placement verified",
+    "liveLocalIdentityEvidence": "docs/desktop/evidence/studio-passwordless-local-identity-20261106.json",
+    "nativeLiveVoiceQualified": false,
+    "studioMediaGenerationImplemented": false,
+    "persistentCloudBotsImplemented": false,
+    "reinforcementLearningImplemented": false,
+    "productionQualified": false,
+    "nativeEvidence": "docs/desktop/evidence/studio-chat-settings-native-20261106.json",
+    "hostingPlan": "docs/CROSS_PLATFORM_HOSTING_PLAN_2026-11-06.md",
+    "androidManagement": "Seven settings tests per variant, both debug assemblies and both lint tasks passed; physical Samsung UI acceptance blocked by locked/off screen",
+    "extensionTestsPassed": 221
+  },
+  "hyperlEngineCheckpoint": {
+    "date": "2026-11-06",
+    "ownerProject": "HyperL",
+    "studioRole": "versioned application client (integration pending)",
+    "moeAccounting": "implemented; planner only",
+    "hyperlPythonPassed": 84,
+    "hyperlOptionalSkipped": 5,
+    "hyperlNativePassed": 5,
+    "studioNodePassed": 225,
+    "studioPythonPassed": 46,
+    "studioBackendPassed": 17,
+    "amdPartialOffload": "experimental correct short probe; slower than CPU; not promoted",
+    "agreements": "deferred by owner until engine work",
+    "nextGate": "implement Studio HyperL client; qualify tiered expert execution and efficient GPU paths",
+    "secondModelNative": "verified digest, Thinking off/on replies, Stop and idle CPU settle",
+    "nativeEvidence": "docs/desktop/evidence/studio-qwen3-native-20261106.json"
   }
 }

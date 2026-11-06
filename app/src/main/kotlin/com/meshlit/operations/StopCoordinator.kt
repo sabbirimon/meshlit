@@ -38,6 +38,7 @@ class StopCoordinator(private val context:Context) {
             actions["Android automation grant"]={koin.get<com.meshlit.settings.SettingsRepository>().setAndroidAutomationEnabled(false)}
             actions["remote node"]={koin.get<com.meshlit.openclaw.OpenClawNode>().disconnect()}
             actions["web bridge"]={koin.get<com.meshlit.control.WebBridgeHost>().stop()}
+            actions["bot inbox"]={koin.get<com.meshlit.bots.BotInbox>().stop()}
             actions["phone model endpoint"]={koin.get<com.meshlit.openclaw.OpenClawHost>().stopSharing()}
             actions["command jobs"]={val backend=koin.get<com.meshlit.control.AgentBackend>();for(controller in listOf(backend.controller,backend.humanController)){controller.ready.await();controller.jobs.value.filter{!it.terminal}.forEach{controller.cancel(it.command.requestId)}}}
         }

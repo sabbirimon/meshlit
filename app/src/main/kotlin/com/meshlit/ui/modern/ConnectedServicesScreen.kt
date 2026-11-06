@@ -21,6 +21,7 @@ import kotlinx.coroutines.*
             TextButton(onClick={onOpen("agent-teams")}){Text("Agent teams and supervision")}
             TextButton(onClick={onOpen("rag")}){Text("Built-in knowledge and recall")}
             TextButton(onClick={onOpen("openclaw")}){Text("On-phone agent and Accessibility grants")}
+            TextButton(onClick={onOpen("bot-connections")}){Text("Bots and connections")}
             TextButton(onClick={onOpen("providers")}){Text("Model providers")}
         }
         item{ConnectedServiceSettings("openviking")}

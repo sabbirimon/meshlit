@@ -28,7 +28,7 @@ import kotlinx.coroutines.sync.withLock
         require(modelOptions.size<=200 && modelOptions.map{it.modelId}.distinct().size==modelOptions.size)
         modelOptions.forEach{require(it.modelId.length in 1..200);it.options.validate()}
         require(onlineProfiles.size<=20 && onlineProfiles.map{it.id}.distinct().size==onlineProfiles.size)
-        onlineProfiles.forEach{it.copy(enabled=false,agentAllowed=false,credentialEnvironmentId=null).validate()};firewall.validate()
+        onlineProfiles.forEach{it.copy(enabled=false,agentAllowed=false,credentialEnvironmentId=null,hostedToolSupport=null).validate()};firewall.validate()
     }
 }
 /** Non-secret desired settings. Credentials, pairing/trust, root/autonomy and delegated scopes are never imported. */
@@ -38,7 +38,7 @@ class ConfigurationTransfer(private val context:Context,private val settings:Set
         models.ready.await();val theme=settings.flow.first();val accelerator=AccelerationPreferences(context)
         return PortableConfiguration(appearance=PortableAppearance(theme.themeMode.name,theme.accentHue.name,theme.dynamicColors,theme.animationsEnabled,theme.fontScale,theme.uiFont.name,theme.surfaceStyle.name,theme.highContrast),power=PowerRepository(context).policy(),
             nativeThreadLimit=accelerator.threadLimit(),cpuMode=accelerator.cpuMode(),cpuIgnoreHeat=accelerator.ignores("heat"),cpuIgnoreSaver=accelerator.ignores("saver"),cpuIgnoreBattery=accelerator.ignores("battery"),cpuIgnoreMemory=accelerator.ignores("memory"),cpuIgnoreBackground=accelerator.ignores("background"),defaultLocalBackend=accelerator.defaultBackend(),modelOptions=models.models.value.map{PortableModelOption(it.id,it.runtimeOptions)},
-            onlineProfiles=providers.profiles.value.map{it.copy(enabled=false,agentAllowed=false,credentialEnvironmentId=null)},firewall=settings.firewallFlow.first())
+            onlineProfiles=providers.profiles.value.map{it.copy(enabled=false,agentAllowed=false,credentialEnvironmentId=null,hostedToolSupport=null)},firewall=settings.firewallFlow.first())
     }
     fun decode(text:String):PortableConfiguration {require(text.toByteArray().size<=256*1024){"Configuration exceeds 256 KiB"};return json.decodeFromString<PortableConfiguration>(text).also{it.validate()}}
     fun encode(config:PortableConfiguration)=json.encodeToString(config.also{it.validate()})
@@ -54,7 +54,7 @@ class ConfigurationTransfer(private val context:Context,private val settings:Set
             PowerRepository(context).save(config.power);applied+="power policy"
             val acceleration=AccelerationPreferences(context);acceleration.setDefault(config.defaultLocalBackend);acceleration.setThreadLimit(config.nativeThreadLimit);acceleration.setCpuMode(config.cpuMode);acceleration.setIgnore("heat",config.cpuIgnoreHeat);acceleration.setIgnore("saver",config.cpuIgnoreSaver);acceleration.setIgnore("battery",config.cpuIgnoreBattery);acceleration.setIgnore("memory",config.cpuIgnoreMemory);acceleration.setIgnore("background",config.cpuIgnoreBackground);applied+="native defaults"
             config.modelOptions.forEach{entry->if(models.models.value.any{it.id==entry.modelId}){models.setRuntimeOptions(entry.modelId,entry.options);applied+="model ${entry.modelId}: reload required"}else applied+="skipped missing model ${entry.modelId}"}
-            config.onlineProfiles.forEach{providers.save(it.copy(enabled=false,agentAllowed=false,credentialEnvironmentId=null));applied+="disabled provider template ${it.name}"}
+            config.onlineProfiles.forEach{providers.save(it.copy(enabled=false,agentAllowed=false,credentialEnvironmentId=null,hostedToolSupport=null));applied+="disabled provider template ${it.name}"}
             settings.setFirewallPolicy(config.firewall);applied+="listener firewall"
             applied
         } catch(e:CancellationException){throw e}catch(e:Exception){throw IllegalStateException("Apply stopped after ${applied.joinToString()}; ${e.message}. Settings span multiple stores; reapply after inspection.")}

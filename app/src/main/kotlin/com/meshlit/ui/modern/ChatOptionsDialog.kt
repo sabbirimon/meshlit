@@ -83,14 +83,17 @@ import kotlinx.coroutines.withContext
                 ChatTaskPreset.unavailableReason(it,options,com.meshlit.BuildProfile.coreCandidate,com.meshlit.BuildConfig.PLAY_REVIEW)
             }.distinct().forEach {Text(it,style=MaterialTheme.typography.bodySmall)}
         }
-        if(savedAgents.any{it.enabled && !it.modelId.startsWith("cloud:")}) {
-            Text("Local agent profiles",style=MaterialTheme.typography.titleMedium)
-            Text("Apply a saved agent's instructions and local route to this conversation. Existing chat tool selections are kept; the profile does not grant app-wide or device access.",style=MaterialTheme.typography.bodySmall)
+        if(savedAgents.any{it.enabled}) {
+            Text("Saved bot profiles",style=MaterialTheme.typography.titleMedium)
+            Text("Copy a bot's instructions and model into this chat. Local and online providers retain their existing permissions. A bot profile never grants tools.",style=MaterialTheme.typography.bodySmall)
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                savedAgents.filter{it.enabled && !it.modelId.startsWith("cloud:")}.forEach{profile->
-                    val available=installedModels.any{it.id==profile.modelId && it.path==coordinator.loadedModel()?.modelPath}
-                    AssistChip(onClick={options=options.copy(systemPrompt=profile.instruction,onlineProfileId=null,routeId=null,colibriMode="OFF")},
-                        enabled=available,label={Text(if(available) profile.name else "${profile.name} · load its model")})
+                savedAgents.filter{it.enabled}.forEach{profile->
+                    val online=profile.modelId.takeIf{it.startsWith("cloud:")}?.removePrefix("cloud:")
+                    val allowed=if(online==null)installedModels.any{it.id==profile.modelId && it.path==coordinator.loadedModel()?.modelPath}
+                        else !com.meshlit.BuildProfile.coreCandidate && profiles.any{it.id==online && it.enabled && it.agentAllowed}
+                    AssistChip(onClick={val draft=options.copy(systemPrompt=profile.instruction)
+                        options=if(online==null)draft.localRoute() else draft.providerRoute(online)
+                    },enabled=allowed,label={Text(if(allowed)profile.name else "${profile.name} · model unavailable")})
                 }
             }
         }
@@ -109,7 +112,7 @@ import kotlinx.coroutines.withContext
         Text("Off by default. On requests open discussion of mature topics; the selected model or provider may still limit replies. This switch does not verify age or change tool permissions.",style=MaterialTheme.typography.bodySmall)
         }
         SettingsFeatureSection("Model and routing") {
-        FilterChip(options.onlineProfileId==null && options.routeId==null && options.colibriMode=="OFF",{options=options.copy(onlineProfileId=null,routeId=null,colibriMode="OFF")},label={Text(if(pipelineStatus.coordinator) "Paired cluster · currently loaded model" else "Local · currently loaded model")})
+        FilterChip(options.onlineProfileId==null && options.routeId==null && options.colibriMode=="OFF",{options=options.localRoute()},label={Text(if(pipelineStatus.coordinator) "Paired cluster · currently loaded model" else "Local · currently loaded model")})
         if (!com.meshlit.BuildProfile.coreCandidate) {
             Text(if (pipelineStatus.coordinator) "Cluster active: ${pipeline.activeGroup()} · ${pipeline.groupPeers().size} paired workers. Chat uses the cluster's loaded model when Local is selected."
                 else "No cluster active. Chat uses the loaded phone model when Local is selected. A paired group must be negotiated before cluster chat is available.")
@@ -127,18 +130,18 @@ import kotlinx.coroutines.withContext
             }
             Text("Save selects the worker group for the next cluster load. Cancel keeps the existing group. It does not move an active conversation; stop the current cluster first.")
             if (pipelineStatus.coordinator) Text("Removing the cluster unloads its model. Load a phone model in Models before sending locally.")
-            Text("Agent tools below run through the selected local or cluster model only when their separate grants are enabled. Online profiles and model routes use their own controls.")
+            Text("Agent tools below require a loaded on-device model, Agent mode and their separate grants. Online profiles and model routes use their own controls.")
         }
-        profiles.filter{it.enabled && !com.meshlit.BuildProfile.coreCandidate}.forEach{profile->FilterChip(options.onlineProfileId==profile.id && options.routeId==null,{options=options.copy(onlineProfileId=profile.id,routeId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false)},label={Text("${profile.sourceKind.name.lowercase().replace('_',' ')} · ${profile.name} / ${profile.model}")})}
+        profiles.filter{it.enabled && !com.meshlit.BuildProfile.coreCandidate}.forEach{profile->FilterChip(options.onlineProfileId==profile.id && options.routeId==null,{options=options.providerRoute(profile.id)},label={Text("${profile.sourceKind.name.lowercase().replace('_',' ')} · ${profile.name} / ${profile.model}")})}
         if(!com.meshlit.BuildProfile.coreCandidate && routes.any{it.enabled}) {
-            FilterChip(options.routeId=="__auto__",{options=options.copy(routeId="__auto__",onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,maxTokens=minOf(options.maxTokens,1024))},label={Text("Model router · automatic rules")})
-            routes.filter{it.enabled}.forEach{route->FilterChip(options.routeId==route.id,{options=options.copy(routeId=route.id,onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,maxTokens=minOf(options.maxTokens,1024))},label={Text("Route · ${route.name} / ${route.mode}")})}
+            FilterChip(options.routeId=="__auto__",{options=options.copy(routeId="__auto__",onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,hostedToolReviewId=null,executionMode=ChatExecutionMode.CHAT,maxTokens=minOf(options.maxTokens,1024))},label={Text("Model router · automatic rules")})
+            routes.filter{it.enabled}.forEach{route->FilterChip(options.routeId==route.id,{options=options.copy(routeId=route.id,onlineProfileId=null,colibriMode="OFF",webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,hostedToolReviewId=null,executionMode=ChatExecutionMode.CHAT,maxTokens=minOf(options.maxTokens,1024))},label={Text("Route · ${route.name} / ${route.mode}")})}
             if(options.routeId!=null) OutlinedTextField(options.routeScenario,{options=options.copy(routeScenario=it.lowercase())},label={Text("Route scenario")})
         }
         if(!com.meshlit.BuildProfile.coreCandidate) {
             Text("Colibri host",style=MaterialTheme.typography.titleMedium)
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                com.meshlit.workspace.ColibriMode.entries.forEach{mode->FilterChip(options.colibriMode==mode.name,{options=if(mode==com.meshlit.workspace.ColibriMode.OFF) options.copy(colibriMode=mode.name) else options.copy(colibriMode=mode.name,onlineProfileId=null,routeId=null,webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false)},label={Text(mode.name.lowercase().replaceFirstChar{it.uppercase()})},modifier=Modifier.testTag("chat-colibri-${mode.name}"))}
+                com.meshlit.workspace.ColibriMode.entries.forEach{mode->FilterChip(options.colibriMode==mode.name,{options=if(mode==com.meshlit.workspace.ColibriMode.OFF) options.copy(colibriMode=mode.name) else options.copy(colibriMode=mode.name,onlineProfileId=null,routeId=null,webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,hostedToolReviewId=null,executionMode=ChatExecutionMode.CHAT)},label={Text(mode.name.lowercase().replaceFirstChar{it.uppercase()})},modifier=Modifier.testTag("chat-colibri-${mode.name}"))}
             }
             Text("On needs saved host access and a model refreshed within 5 minutes. Auto keeps local inference unless no local model is ready or you prefer the host. Configure Settings → Colibri host. No automatic download or host-error fallback.",style=MaterialTheme.typography.bodySmall)
             Row{Text("Allow agent mode requests for this chat",Modifier.weight(1f));Switch(options.colibriAgentAllowed,{options=options.copy(colibriAgentAllowed=it)},enabled=options.colibriAgentAllowed || (colibriConfig.hostAccess && colibriConfig.agentSwitching),modifier=Modifier.testTag("chat-colibri-agent-grant"))}
@@ -154,6 +157,13 @@ import kotlinx.coroutines.withContext
         }
         SettingsFeatureSection("Permissions and tools") {
         Text("This conversation only. Main Settings controls device-wide permission; Save here does not change another chat.",style=MaterialTheme.typography.bodySmall)
+        Text("Conversation mode",style=MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ChatExecutionMode.entries.forEach { mode ->
+            FilterChip(options.executionMode==mode,{options=options.copy(executionMode=mode)},
+                enabled=mode==ChatExecutionMode.CHAT || options.canSelectAgentMode && !com.meshlit.BuildProfile.coreCandidate,
+                label={Text(mode.label)},modifier=Modifier.testTag("chat-settings-execution-${mode.name.lowercase()}"))
+        } }
+        Text("Chat answers without running tools. Agent can use your selected tools for each message and may answer without using one. Choose local tools or approved hosted web search to enable Agent. Save applies this choice only to this conversation; app and device grants remain separate.",style=MaterialTheme.typography.bodySmall)
         Text("Action approval",style=MaterialTheme.typography.titleSmall)
         FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ChatApprovalMode.entries.forEach { mode ->
             FilterChip(options.approvalMode==mode,{if(mode==ChatApprovalMode.SELECTED_TOOLS && options.approvalMode!=mode)confirmSelectedTools=true else options=options.copy(approvalMode=mode)},label={Text(mode.label)})
@@ -166,8 +176,20 @@ import kotlinx.coroutines.withContext
         if(com.meshlit.BuildProfile.coreCandidate) {
             Text("Tools are unavailable in the Core candidate build. This build supports local chat, models and files; use the Experimental app for agent tools.",modifier=Modifier.testTag("chat-tools-build-reason"))
         } else if(!options.supportsLocalToolSelection) {
-            Text("Chat tools currently run through a local or paired-cluster model. This conversation is using an online provider, model route or Colibri host. Saved service and device permissions remain separate.",modifier=Modifier.testTag("chat-tools-route-reason"))
-            OutlinedButton(onClick={options=options.copy(onlineProfileId=null,routeId=null,colibriMode="OFF")},modifier=Modifier.testTag("chat-tools-use-local")) {Text("Use local model for tools")}
+            Text("Phone, files, device and other local tools require an on-device model. Hosted mode offers only separately reviewed public web search.",modifier=Modifier.testTag("chat-tools-route-reason"))
+            val review=effortProfile?.reviewedHostedTools()
+            val available=effortProfile?.hostedToolsAllowed(review?.reviewId)==true
+            if(options.onlineProfileId!=null) {
+                Row { Text("Hosted web search in this chat",Modifier.weight(1f))
+                    Switch(options.hasHostedWebGrant,{enabled->
+                        options=if(enabled)options.copy(hostedToolReviewId=checkNotNull(review).reviewId)
+                            else options.copy(hostedToolReviewId=null,executionMode=ChatExecutionMode.CHAT)
+                    },enabled=available || options.hasHostedWebGrant,modifier=Modifier.testTag("chat-hosted-web-tools"))
+                }
+                Text(if(available)"Choose Agent and Save. Meshlit asks before each search, sends the approved query to your search service, then returns public snippets to the selected model. At most one search per turn. Private knowledge and phone tools are excluded."
+                    else "Enable agent access and review native tool calling for this exact direct API model in Online providers.",style=MaterialTheme.typography.bodySmall)
+            }
+            OutlinedButton(onClick={options=options.localRoute()},modifier=Modifier.testTag("chat-tools-use-local")) {Text("Use local model for tools")}
             Text("Save applies the route change. Load a capable local model before sending; switching here does not load one or grant tool access.",style=MaterialTheme.typography.bodySmall)
         } else {
             Text("Selected tools: ${options.toolCount}/10. Combine groups as needed; each action still requires its own saved grant.",style=MaterialTheme.typography.bodySmall,color=if(options.toolCount>10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -260,3 +282,11 @@ import kotlinx.coroutines.withContext
         reason?.let{Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
     }
 }
+
+private fun ChatOptions.localRoute()=copy(onlineProfileId=null,routeId=null,colibriMode="OFF",hostedToolReviewId=null,
+    executionMode=if(agentToolsActive)ChatExecutionMode.AGENT else ChatExecutionMode.CHAT)
+
+private fun ChatOptions.providerRoute(id:String)=copy(onlineProfileId=id,routeId=null,colibriMode="OFF",
+    webTools=false,phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,
+    gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,
+    hostedToolReviewId=null,executionMode=ChatExecutionMode.CHAT)

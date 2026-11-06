@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-11-06T06:41:09.991286+00:00",
+  "scope": "Read-only physical-device readiness check for Android Management navigation acceptance",
+  "device": {
+    "manufacturer": "Samsung",
+    "model": "SM-A207F",
+    "connection": "USB",
+    "adbState": "device",
+    "serialRecorded": false
+  },
+  "readiness": {
+    "adbAuthorized": true,
+    "keyguardShowing": true,
+    "keyguardOccluded": false,
+    "screenState": "OFF",
+    "interactiveState": "SLEEP",
+    "readyForUiAcceptance": false
+  },
+  "result": "blocked_by_device_keyguard",
+  "observed": {
+    "windowPolicy": [
+      "KeyguardServiceDelegate showing=true",
+      "mKeyguardOccluded=false",
+      "screenState=SCREEN_STATE_OFF",
+      "interactiveState=INTERACTIVE_STATE_SLEEP"
+    ],
+    "power": "Display Power: state=OFF",
+    "screenshotCaptured": true,
+    "screenshotPublished": false
+  },
+  "performed": [
+    "adb device inventory with serial omitted from reported output",
+    "read-only dumpsys window policy and power",
+    "read-only screencap"
+  ],
+  "notPerformed": [
+    "wake or unlock",
+    "keyguard dismissal or bypass",
+    "APK install or downgrade",
+    "app data clear",
+    "Management UI navigation",
+    "SSH or cloud connection",
+    "credential access",
+    "device administration changes"
+  ],
+  "buildObservation": {
+    "log": "/tmp/meshlit-management-android-build.log",
+    "statusAtReadinessCheck": "running; both app lint analysis tasks observed",
+    "newBuildPassClaimed": false
+  },
+  "acceptance": {
+    "managementCategories": "not tested",
+    "sshRoute": "not tested",
+    "cloudRoute": "not tested",
+    "settingsPersistence": "not tested"
+  },
+  "nextStep": "After the owner unlocks the device and final build/lint succeeds, install current V2 debug with adb install -r preserving app data; navigate Management and inspect routes without connecting services or revealing credentials.",
+  "limitations": [
+    "ADB authorization does not imply an unlocked user interface.",
+    "No UI acceptance or production readiness is inferred from this check."
+  ]
+}

@@ -489,8 +489,13 @@ class InferenceCoordinator(
 
     /** Explicit external backend: unload local weights before launching it.
      * Once selected, a failed external runtime never silently falls back locally. */
-    suspend fun loadExternalEngine(path: String, contextSize: Int,
+    suspend fun loadExternalEngine(path: String, contextSize: Int, expected: InferenceEngine? = null,
         factory: suspend () -> InferenceEngine): MeshlitResult<ModelInfo> = inferMutex.withLock {
+        if (expected != null && externalEngine !== expected) {
+            return@withLock MeshlitResult.Failure(
+                com.meshlit.core.common.MeshlitError.Invalid("Pipeline session changed before recovery")
+            )
+        }
         operationGate?.requireAllowed(com.meshlit.core.common.control.ManagedFeature.INFERENCE)
         _state.value = CoordinatorState.Loading(path)
         try {
@@ -633,16 +638,13 @@ class InferenceCoordinator(
         return noOpEngine
     }
 
-    suspend fun reportExternalFailure(expected: InferenceEngine, message: String) {
-        if(externalEngine !== expected) return
-        cancel()
-        inferMutex.withLock {
-            if(externalEngine !== expected) return@withLock
-            expected.unloadModel()
-            // Keep the failed selected backend until the user explicitly loads another model.
-            _state.value = CoordinatorState.Error(message)
-            _events.tryEmit(InferenceEvent.LoadFailed(message))
-        }
+    suspend fun reportExternalFailure(expected: InferenceEngine, message: String): Boolean = inferMutex.withLock {
+        if (externalEngine !== expected) return@withLock false
+        expected.unloadModel()
+        // Keep the failed identity so a conditional recovery cannot replace another session.
+        _state.value = CoordinatorState.Error(message)
+        _events.tryEmit(InferenceEvent.LoadFailed(message))
+        true
     }
 
     /** Cancel the current inference. No-op when nothing is running. */

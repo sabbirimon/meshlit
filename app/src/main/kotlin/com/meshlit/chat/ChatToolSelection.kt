@@ -32,7 +32,8 @@ enum class ChatToolGroup(val label:String,val count:Int,val restrictedInReview:B
     }
     fun update(options:ChatOptions,enabled:Boolean,review:Boolean=false):ChatOptions {
         if(enabled) require(unavailableReason(options,review)==null){unavailableReason(options,review).orEmpty()}
-        return changed(options,enabled)
+        val updated=changed(options,enabled)
+        return if(updated.usesLocalTools || updated.hasHostedWebGrant) updated else updated.copy(executionMode=ChatExecutionMode.CHAT)
     }
 }
 

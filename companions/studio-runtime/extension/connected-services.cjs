@@ -39,7 +39,7 @@ function register(context){
  async function open(){
   const folder=(vscode.workspace.workspaceFolders||[]).find(f=>f.uri.scheme==='file');if(!folder){vscode.window.showErrorMessage('Open a project folder first');return;}
   try{const root=await scope(folder.uri.fsPath);selected=root;if(panel){panel.reveal();await snapshot(root);return;}
-   panel=vscode.window.createWebviewPanel('meshlit.connectedCapabilities','Connected capabilities',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});context.subscriptions.push(panel);panel.webview.html=render();panel.onDidDispose(()=>panel=undefined);
+   panel=require('./shell.cjs').createPanel(vscode,'meshlit.connectedCapabilities','Connected capabilities',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});context.subscriptions.push(panel);panel.webview.html=render();panel.onDidDispose(()=>panel=undefined);
    panel.webview.onDidReceiveMessage(async message=>{
     const owned=panel;const root=selected;
     try{

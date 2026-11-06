@@ -1,6 +1,6 @@
 # Meshlit agent instructions
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 

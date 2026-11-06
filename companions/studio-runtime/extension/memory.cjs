@@ -29,7 +29,7 @@ function register(context){
   try{
    const chosen=await choose(root);if(!chosen)return;selected=chosen;
    if(panel){panel.reveal();await update();panel.webview.postMessage({type:'tab',tab});return;}
-   panel=vscode.window.createWebviewPanel('meshlit.memory','Project memory',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});
+   panel=require('./shell.cjs').createPanel(vscode,'meshlit.memory','Project memory',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});
    const owned=panel;context.subscriptions.push(owned);owned.webview.html=render(tab);owned.onDidDispose(()=>{if(panel===owned){panel=undefined;selected=undefined;}});
    owned.webview.onDidReceiveMessage(async message=>{
     try{

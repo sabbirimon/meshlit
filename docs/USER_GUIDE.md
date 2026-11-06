@@ -1,8 +1,26 @@
 # Meshlit full app guide and configuration tutorial
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Current Chat settings and remaining features — 2026-11-06
+
+The development main window separates General Chat from workspace IDE chats.
+Chat settings groups models/modes, reasoning, permissions, personality, read-aloud
+and live-voice setup; Bots is available in primary navigation. Message
+actions add Copy, Reply, Read aloud and explicit local chat export. Export saves
+a file selected by the user; it does not publish a public link.
+
+Local chat uses session usage without a passphrase by default. Local autonomous
+projects permit bounded reads/edits with Stop and unsaved review; protected work,
+credentials and external capabilities retain separate controls. Personality is a
+prompt preference, not model retraining or a grant of tools. Native Mac read-aloud
+is distinct from OpenLive's separate call/transcript UI. Native inline Studio
+subtitles, image/video/sound generation, persistent bot workers and actual RL
+remain open. Final packaged navigation and human-audio qualification are pending.
+
+[Current request/acceptance inventory](CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
 
 Current resource sharing, sync modes and health controls are described in the
 [detailed manual](USER_MANUAL.md#share-resources-with-external-clients) and
@@ -143,6 +161,19 @@ not an Android APK. No DevEco/NDK/HAP/device test has passed here. Advanced Andr
 services, agents, SSH/VM and federation are not automatically available in the new
 clients. See docs/MULTIPLATFORM_NEXT.md for setup and qualification gates.
 
+## Current Code OSS Studio chat and workspace — 2026-11-06
+
+General Chat opens in an empty Studio window. Workspaces requests a separate
+native IDE window for a trusted project. Use Models and the composer source
+picker for the bundled model, approved provider and device APIs, or an existing
+cluster coordinator. LLM settings covers local temperature, output length, and
+recent history. Explicit workspace agent modes retain local tool review.
+
+Use the coordinator to pair workers and verify native layer assignment. A
+Studio route selects its approved model API. See the [current desktop
+walkthrough](USER_MANUAL.md#start-a-desktop-conversation) and
+[layer execution evidence](layer-pipeline-and-recovery.md#use-a-coordinator-from-studio).
+
 ## Optional Ollama and LM Studio hosts — 2026-11-02
 
 Android Settings → Model connections now has **Connect Ollama host** and **Connect
@@ -227,15 +258,19 @@ flowchart LR
 
 **Mesh chat** in the drawer is a separate, foreground, one-peer text channel over an actually connected WebRTC path. Both sides enable P2P, manually exchange signed pairing information and approve the connection. A local agent may read/send only with saved grants and the chat's separate peer-tool switch. Incoming peer text is untrusted content. The channel confirms local queueing, not remote delivery. It does not yet provide multi-member rooms, persisted conversation history or offline message delivery; the membership relay does not carry these chat messages. Use **Network and pairing → Host relay / Join cluster** for membership, and **Mesh chat** for the separate live direct conversation.
 
-For experimental local tools, open **+ → Chat options and model routing** and separately enable **Allow web page tools** or **Allow phone tools**. Both default off. Web-page retrieval needs your configured HTTPS Crawl4AI companion and domain approval; no crawler or search account is created automatically. Phone tools need saved autonomy, app scope and Android Accessibility. The loop allows up to eight actions within five minutes when phone tools are selected, or three calls within 180 seconds otherwise; it rejects invalid model plans. The bundled Qwen2.5 0.5B starter is not qualified for reliable tool use. See [local tool setup and limits](LOCAL_MODEL_TOOLS.md).
+For experimental local tools, open **+ → Chat options and model routing** and separately enable **Allow web page tools** or **Allow phone tools**. Both default off. Choose **Agent** under Conversation mode and Save to run the selected tools. The composer shield menu can switch back to **Chat**, which answers without tool execution while retaining your selections. Old chats default to Chat; Agent routes short and non-English requests into the same bounded planner. Web-page retrieval needs your configured HTTPS Crawl4AI companion and domain approval; no crawler or search account is created automatically. Phone tools need saved autonomy, app scope and Android Accessibility. The loop allows up to eight actions within five minutes when phone tools are selected, or three calls within 180 seconds otherwise; it rejects invalid model plans. The bundled Qwen2.5 0.5B starter is not qualified for reliable tool use. See [local tool setup and limits](LOCAL_MODEL_TOOLS.md).
 
-**Built-in phone agent:** load a local model, open Settings → Phone agent and autonomy, enable autonomous delegation, add an installed browser to app scope and save it, then enable Meshlit Accessibility in Android settings. In the same Chat conversation, turn on Allow phone tools and ask for a task. This uses the phone model and the phone's Accessibility service; the optional OpenClaw gateway is not required. Chat shows each planning/action step and Stop cancels the run. Check the actual target app before trusting a completion message. The bundled starter model has not passed a Chrome/YouTube planning test; import a stronger compatible local model for experimental multi-step tasks if the phone has enough memory. More detail: [built-in agent design and acceptance](BUILT_IN_AGENT_DESIGN.md).
+**Built-in phone agent:** load a local model, open Settings → Phone agent and autonomy, enable autonomous delegation, add an installed browser to app scope and save it, then enable Meshlit Accessibility in Android settings. In the same Chat conversation, select phone tools, choose Agent mode, Save and ask for a task. This uses the phone model and the phone's Accessibility service; the optional OpenClaw gateway is not required. Chat shows each planning/action step and Stop cancels the run. Check the actual target app before trusting a completion message. The bundled starter model has not passed a Chrome/YouTube planning test; import a stronger compatible local model for experimental multi-step tasks if the phone has enough memory. More detail: [built-in agent design and acceptance](BUILT_IN_AGENT_DESIGN.md).
 
-In Settings → Agent management, create an agent assigned to the currently loaded local model and enable it. Chat → Conversation settings lists enabled local profiles; selecting one copies its instructions into that conversation. Then choose the tools that conversation may request. The Agent management **Run task** button runs a text generation job only, so use Chat for phone or web tool actions.
+In **Settings → Agent management**, create or edit an agent assigned to a loaded local model or an agent-approved hosted model. Enable the profile and select it under **Chat → Conversation settings** to copy its instructions. A model change disables the profile for review. Choose any chat tool permissions separately. **Run task** is a text generation job; use Chat for approved tool actions.
 
 The same chat can enable multi-node commands, GibberLink and other tool groups together while the combined list stays at or below ten tools. The settings screen shows the count and Save rejects an oversized combination. Each tool still checks its own saved permission and the receiving device's approval; enabling a switch alone does not authorize execution. Remote/online model routes do not currently host these on-device tools.
 
 Online providers support existing protocol adapters such as OpenAI/compatible, Anthropic and Gemini. Save API credentials encrypted, configure the actual endpoint/model and discover supported models when the provider offers discovery. Select whether the profile allows agents; do not assume every model accepts temperature or all modalities.
+
+For hosted **Agent web search**, review the exact OpenAI or compatible endpoint/model in **Online providers**, enable agent use, bind that reviewed connection in **Conversation settings**, and choose **Agent**. The model can propose one public query per turn. Meshlit asks before sending that query and returning search results to the same model. Phone, files and other local tools do not go to the hosted model.
+
+Use **Bots and connections** to configure your own AstrBot chat or Grok Bot routine endpoint and review each request. **Bot inbox** can also accept signed messages in the background while its notification is active. Accepted messages wait for review and can be saved as local Chat drafts. AstrBot returns a private chat reply. A Grok Bot trigger reports that it started the routine. The OpenClaw gateway and xAI model connections are separate. [Setup and limits](AGENT_CHAT_CHECKPOINT_2026-10-31.md#meshlit-continuation--2026-11-05).
 
 Online profiles can reference an API vault environment and variable name. The environment must match the endpoint origin and remain unexpired. A reference overrides a legacy saved key. Agent requests need both profile and environment approval; changing the API endpoint cannot redirect that bound secret.
 
@@ -286,8 +321,8 @@ For native layers, start the worker, enter its reachable LAN, hotspot or configu
 1. On **each worker**, open **Network and pairing → Layer pipeline**. Confirm the native runtime is packaged, permit inbound TCP **50551** in Network rules for the intended peers, then tap **Start worker**.
 2. In **Reachable host**, enter the address that the coordinator can actually reach. Use a LAN/hotspot IP for an air-gapped group, a preconfigured VPN/virtual-network IP, or a reachable DNS name. Tap **Show pairing QR**. The QR contains a private token; show it only to the coordinator owner.
 3. On the **coordinator**, open the same Layer pipeline panel, create or select a **Cluster group**, then use **Scan worker QR**. If scanning is unavailable, choose **Add approved worker** and enter the worker's address, full SHA-256 certificate fingerprint and token.
-4. Compare the **Identity check code** displayed on the worker and approval screen, then tap **Verify and approve**. Approval contacts the running worker and rejects an incorrect TLS pin, token, revision or permission. Repeat for at least two distinct workers in the group.
-5. Tap **Assess workers**. Read the device class, available memory/storage, thermal state, control RTT and admission warning. Select an installed GGUF, then **Negotiate and load cluster**. The coordinator keeps the whole model file and assigns layers by live memory headroom. Use **Stop pipeline** before changing groups.
+4. Compare the **Identity check code** displayed on the worker and approval screen, then tap **Verify and approve**. Approval contacts the running worker and rejects an incorrect TLS pin, token, revision or permission. Repeat for at least two distinct workers, or enable **Use this coordinator's CPU for model layers** with one approved worker in the group.
+5. Tap **Assess workers**. Read the device class, available memory/storage, thermal state, control RTT and admission warning. Select an installed GGUF, then **Negotiate and load cluster**. The coordinator keeps the whole model file and assigns layers by live memory headroom. Use **Stop pipeline** before changing groups. For this launch, optionally enable **Reload once if a worker drops**. If the native coordinator exits and an assigned worker is unreachable, Meshlit tries the same model once on the remaining approved devices, subject to fresh capacity and identity checks. When the model is ready, send the interrupted request again.
 6. If a QR/token is exposed, stop the worker and tap **Rotate pairing token**, then reapprove it on coordinators. A worker behind NAT cannot use the built-in membership relay for layers yet. A virtual network must be configured outside Meshlit; this control does not create a VLAN or VPN.
 
 ```mermaid

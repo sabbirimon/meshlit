@@ -4,7 +4,7 @@ function create(context,request){
  let panel,sampling=true;
  const controller={open(){
   if(panel){panel.reveal();request({op:'system_resources'});return;}
-  panel=vscode.window.createWebviewPanel('meshlit.systemMonitor','System resources',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});context.subscriptions.push(panel);panel.webview.html=render();panel.onDidDispose(()=>panel=undefined);
+  panel=require('./shell.cjs').createPanel(vscode,'meshlit.systemMonitor','System resources',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});context.subscriptions.push(panel);panel.webview.html=render();panel.onDidDispose(()=>panel=undefined);
   panel.webview.onDidReceiveMessage(message=>{try{
    if(message.op==='sampling'){if(typeof message.enabled!=='boolean')throw Error('Invalid sampling state');sampling=message.enabled;}
    else if(['ready','refresh'].includes(message.op))request({op:'system_resources'});

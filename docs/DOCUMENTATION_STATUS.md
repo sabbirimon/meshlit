@@ -1,6 +1,6 @@
 # Markdown documentation status and workstream tracking
 
-Reconciled 2026-11-03. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
+Reconciled 2026-11-06. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
 
 [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Milestone gates](../BUILD_MILESTONES.md) · [Desktop feature tracker](DESKTOP_FEATURE_TRACKER.md) · [Release evidence](RELEASE_EVIDENCE.md)
 
@@ -11,8 +11,8 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 | Workstream | Current qualification | Next gate |
 | --- | --- | --- |
 | Local core engine | Host/payload verified; Experimental | Clean-machine, lifecycle/stress, wider quality and hardware |
-| Shared sharding | 2026-11-03: physical Mac Metal/CPU plus Samsung CPU layer completion passed over Tailscale LTE | Managed Studio/HyperL mixed adapter, oversized model, cross-owner and distributed recovery proof |
-| Desktop management | 2026-11-02: portable Intel runtime and local streaming/usage qualified; GUI and broader controllers remain partial | Desktop visual approval, clean-target signing and physical paired-phone acceptance |
+| Shared sharding | 2026-11-06: Studio JVM Mac/Samsung USB native layer completion; earlier development WAN evidence retained | Managed Studio/HyperL mixed adapter, oversized model, cross-owner and distributed recovery proof |
+| Desktop management | 2026-11-06: dedicated main shell and separate project IDE source; live passwordless local identity test passed | Final package identity/navigation/settings, protected storage, human voice and clean-target signing |
 | Android reliability | 2026-11-02: 326 unit tests per flavor, both APKs and final lints passed; physical fast-reply service-race regression and Chat handler routing passed | Wider device, lifecycle/stress and provider acceptance |
 | Governed agents and fleet | 2026-11-02: real Samsung/Studio forward handoffs and actual Chat phone/web/device-read routing qualified; reverse workflows remain model-limited | Correct model-driven reverse workflows, physical cross-device A2A and configured approved device-command execution |
 | Platform and distribution | Intel Experimental release published; recovered payloads/hash verification pass | Clean-target signing/privacy and independent OS/device gates; CI remains separately observed |
@@ -20,10 +20,11 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 | Open resource participation | Scoped resource API, durable quotas and Studio inspector tested; no settlement | External client interoperability, measured capacity/leases, buyer adapter and verified settlement |
 | Local/WAN topology and smart communication | 2026-11-03: physical native TLS layer execution over Tailscale LTE passed; raw public-IP ingress failed | Web/API WAN enrollment, cross-owner access, Wi-Fi/cellular roaming and failover qualification |
 | Optional inference hosts | 2026-11-02: Android/Studio Ollama and LM Studio presets; real isolated Ollama API and Samsung client qualified over USB | Supported-host LM Studio execution, fair same-model benchmarks and remote host qualification |
+| Chat personality, voice, media and bots | 2026-11-06: personality, read-aloud and OpenLive tuning modules tested; final UI integration ongoing | Packaged message/bot/settings acceptance, live voice, actual media adapters, persistent workers and measured improvement pipeline |
 
 ## Coverage and maintenance
 
-168 active, 19 historical, 8 protected, 1 template, 6 third-party; 203 Markdown documents including this index.
+173 active, 19 historical, 8 protected, 1 template, 6 third-party; 208 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -89,11 +90,13 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/BUILT_IN_AGENT_DESIGN.md](BUILT_IN_AGENT_DESIGN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CHAT_EFFORT_AND_APPROVALS_2026-11-03.md](CHAT_EFFORT_AND_APPROVALS_2026-11-03.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CHAT_PRESENTATION.md](CHAT_PRESENTATION.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md](CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CHECKPOINT_2026-10-31.md](CHECKPOINT_2026-10-31.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CLIENT_HUB.md](CLIENT_HUB.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/COLIBRI.md](COLIBRI.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CONNECTED_CAPABILITIES_2026-11-02.md](CONNECTED_CAPABILITIES_2026-11-02.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/CONTINUATION_2026_10_08.md](CONTINUATION_2026_10_08.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/CROSS_PLATFORM_HOSTING_PLAN_2026-11-06.md](CROSS_PLATFORM_HOSTING_PLAN_2026-11-06.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/DESKTOP_BUILD_LOG.md](DESKTOP_BUILD_LOG.md) | desktop/server; individual acceptance gates apply |
 | [docs/DESKTOP_COMPANIONS.md](DESKTOP_COMPANIONS.md) | desktop/server; individual acceptance gates apply |
 | [docs/DESKTOP_EVOLUTION_PLAN.md](DESKTOP_EVOLUTION_PLAN.md) | desktop/server; individual acceptance gates apply |
@@ -135,6 +138,9 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/SMALL_MODEL_MAINTENANCE_GUIDE.md](SMALL_MODEL_MAINTENANCE_GUIDE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SSH_NODE.md](SSH_NODE.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/STITCH_GLASS_UI.md](STITCH_GLASS_UI.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/STUDIO_AGREEMENTS_PLAN_2026-11-06.md](STUDIO_AGREEMENTS_PLAN_2026-11-06.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/STUDIO_ANDROID_SETTINGS_PARITY_2026-11-06.md](STUDIO_ANDROID_SETTINGS_PARITY_2026-11-06.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/STUDIO_HYPERL_ENGINE_PLAN_2026-11-06.md](STUDIO_HYPERL_ENGINE_PLAN_2026-11-06.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/STUDIO_MOBILE_LTS_PLAN.md](STUDIO_MOBILE_LTS_PLAN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/TAILSCALE_AND_VPN.md](TAILSCALE_AND_VPN.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/UI_AUDIT.md](UI_AUDIT.md) | Android/shared reference; desktop ports have separate acceptance |

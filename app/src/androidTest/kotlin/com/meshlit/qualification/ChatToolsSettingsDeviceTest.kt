@@ -40,7 +40,7 @@ class ChatToolsSettingsDeviceTest {
         assertFalse("Finish the current generation first",controller.state.value.running)
         val baseline=original.options.copy(onlineProfileId=null,routeId=null,colibriMode="OFF",webTools=false,
             phoneTools=false,memoryTools=false,localSearchTools=false,nodeTools=false,cryptoTools=false,
-            gibberlinkTools=false,remoteTools=false,peerTools=false)
+            gibberlinkTools=false,remoteTools=false,peerTools=false,teamTools=false,connectionTools=false,executionMode=com.meshlit.chat.ChatExecutionMode.CHAT)
         fun stored():ChatOptions?=runCatching {
             Json{ignoreUnknownKeys=true}.decodeFromString<List<ChatConversation>>(File(context.filesDir,"conversations-v1.json").readText())
                 .first{it.id==original.id}.options
@@ -76,6 +76,18 @@ class ChatToolsSettingsDeviceTest {
             tool("chat-tool-phone").assertIsEnabled().performClick()
             compose.onNodeWithText("Cancel").performClick()
             assertEquals(saved,controller.state.value.current!!.options)
+            open()
+            tool("chat-settings-execution-agent").assertIsEnabled().performClick()
+            compose.onNodeWithText("Cancel").performClick()
+            assertEquals(saved,controller.state.value.current!!.options)
+            open()
+            tool("chat-settings-execution-agent").performClick()
+            compose.onNodeWithText("Save").performClick()
+            val agent=saved.copy(executionMode=com.meshlit.chat.ChatExecutionMode.AGENT)
+            compose.waitUntil(10_000){stored()==agent}
+            compose.onNodeWithTag("chat-access-indicator").performClick()
+            compose.onNodeWithTag("chat-execution-chat").performClick()
+            compose.waitUntil(10_000){stored()==saved}
             val researcher=com.meshlit.agent.AgentTaskPresets.presets.first{it.key=="research"}
             open()
             tool("chat-task-${researcher.key}").performClick()
@@ -92,7 +104,7 @@ class ChatToolsSettingsDeviceTest {
             assertEquals("Chat settings must not change app-wide agent control",originalPolicy,operations.gate.policy.value)
             val evidence=File(context.filesDir,"qualification/chat-tools-settings.txt")
             check(evidence.parentFile!!.mkdirs() || evidence.parentFile!!.isDirectory)
-            evidence.writeText("worker-group-cancel-preserved\nworker-group-save-applied\nlocal-tool-selection\nnode-counts-ten\nten-tool-limit-explained\nsave-persisted\nreopen-selected\nrevocation-frees-capacity\ncancel-keeps-saved-selection\ntask-preset-cancel-preserved\ntask-preset-save-persisted\napp-wide-search-unchanged\napp-wide-agent-control-unchanged\nno-tool-dispatch\n")
+            evidence.writeText("worker-group-cancel-preserved\nworker-group-save-applied\nlocal-tool-selection\nnode-counts-ten\nten-tool-limit-explained\nsave-persisted\nreopen-selected\nrevocation-frees-capacity\ncancel-keeps-saved-selection\ntask-preset-cancel-preserved\ntask-preset-save-persisted\nagent-mode-cancel-preserved\nagent-mode-save-persisted\ncomposer-chat-mode-applied\napp-wide-search-unchanged\napp-wide-agent-control-unchanged\nno-tool-dispatch\n")
         } finally {
             pipeline.setActiveGroup(originalGroup)
             controller.setOptions(original.options)

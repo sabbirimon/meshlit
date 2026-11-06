@@ -7,13 +7,15 @@ import java.util.concurrent.CancellationException
 
 /** Forward bounded native SSE chunks without waiting for the entire reply.
  * The caller admits usage before reading and settles it before publishing DONE. */
-internal fun readIdeCompletionStream(input: InputStream, onChunk: (JsonObject) -> Unit): JsonObject {
+internal fun readIdeCompletionStream(input: InputStream, allowedToolNames: Set<String> = emptySet(), onChunk: (JsonObject) -> Unit): JsonObject {
     val stream = input.buffered(8192)
     val line = ByteArrayOutputStream()
     val event = StringBuilder()
     var total = 0
     var ended = false
     var completedChoice = false
+    var hasFinalContent = false
+    val toolParts = mutableMapOf<Int, JsonObject>()
     var usage: JsonObject? = null
     val terminalChunks = mutableListOf<JsonObject>()
     fun dispatch() {
@@ -32,6 +34,26 @@ internal fun readIdeCompletionStream(input: InputStream, onChunk: (JsonObject) -
             usage = counts
         }
         chunk["choices"]?.jsonArray?.forEach {
+            if ((it.jsonObject["index"]?.jsonPrimitive?.intOrNull ?: 0) == 0 && it.jsonObject["delta"]?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull?.isNotBlank() == true) hasFinalContent = true
+            if ((it.jsonObject["index"]?.jsonPrimitive?.intOrNull ?: 0) == 0) {
+                (it.jsonObject["delta"]?.jsonObject?.get("tool_calls") as? JsonArray)?.forEach { fragment ->
+                    val part = fragment.jsonObject
+                    val index = part["index"]?.jsonPrimitive?.int ?: 0
+                    require(index in 0..31)
+                    val old = toolParts[index] ?: JsonObject(emptyMap())
+                    val function = part["function"] as? JsonObject
+                    val oldFunction = old["function"] as? JsonObject ?: JsonObject(emptyMap())
+                    toolParts[index] = buildJsonObject {
+                        for (field in listOf("id", "type")) (part[field] ?: old[field])?.let { put(field,it) }
+                        put("function",buildJsonObject {
+                            for(field in listOf("name","arguments")) {
+                                val value = (oldFunction[field]?.jsonPrimitive?.contentOrNull.orEmpty() + function?.get(field)?.jsonPrimitive?.contentOrNull.orEmpty())
+                                require(value.length <= 65536); put(field,value)
+                            }
+                        })
+                    }
+                }
+            }
             if (it.jsonObject["finish_reason"]?.let { reason -> reason != JsonNull } == true) completedChoice = true
         }
         // Do not expose completion or usage until the caller commits settlement.
@@ -56,7 +78,7 @@ internal fun readIdeCompletionStream(input: InputStream, onChunk: (JsonObject) -
     }
     require(completedChoice) { "Native completion did not finish a choice" }
     return buildJsonObject {
-        put("streamed", true); usage?.let { put("usage", it) }
+        put("streamed", true); put("hasFinalContent", hasFinalContent); put("hasValidToolCalls", studioValidToolCalls(JsonArray(toolParts.toSortedMap().values.toList()), allowedToolNames)); usage?.let { put("usage", it) }
         put("terminalChunks", JsonArray(terminalChunks))
     }
 }

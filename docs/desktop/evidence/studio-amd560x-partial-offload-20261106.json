@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-11-06T07:26:58.571919+00:00",
+  "status": "research_correctness_prototype_not_promoted",
+  "scope": "Desktop-only AMD560X partial matrix offload experiment; shipping source and app remain unchanged",
+  "source": {
+    "revision": "4df29be4f4c3673f428170fda944a5b19f743bb8",
+    "upstreamTrackedFilesUnchanged": true,
+    "researchPatch": "studio-amd560x-scalar-20261106.patch",
+    "researchPatchSha256": "fa2c8c024f35f0c7eb68270e58d302837a0b40d706488169ec11633e12a49aca",
+    "patchAppliesToPinnedSource": true,
+    "upstreamLicense": "MIT; preserved in isolated directory; no HyperL source copied"
+  },
+  "hardware": {
+    "device": "AMD Radeon Pro 560X",
+    "vramMiB": 4096,
+    "threadExecutionWidth": 64,
+    "host": "Intel x86_64 Mac; 16GiB system RAM"
+  },
+  "implementation": {
+    "path": "/Users/code/Documents/Codex/meshlit-gpu-experiment/scalar-probe",
+    "optInEnvironment": "MESHLIT_AMD_SCALAR_PROBE=1",
+    "defaultEnabled": false,
+    "originalSimdFeatureGateUnchanged": true,
+    "supported": [
+      "contiguous two-dimensional F32*F32",
+      "F16*F32",
+      "Q4_K*F32",
+      "Q6_K*F32"
+    ],
+    "strategy": "One scalar thread per matrix output; existing upstream quantized dequantization helpers; no SIMD-group width assumption. Only exact AMD560X enables candidate; unsupported operators stay CPU.",
+    "shippingEngineReplaced": false,
+    "modelOrAppResourceModified": false,
+    "mobileTouched": false
+  },
+  "matrixTests": {
+    "backend": "MTL0 (AMD Radeon Pro 560X)",
+    "reference": "upstream test-backend-ops CPU reference implementation",
+    "filter": "type_a=(f32|f16|q4_K|q6_K),type_b=f32,m=16,n=(1|16),k=256,bs=\\[1,1\\],nr=\\[1,1\\]",
+    "stock": {
+      "supported": 0,
+      "unsupported": 11,
+      "numericPassClaimed": false
+    },
+    "candidate": {
+      "passed": 11,
+      "failed": 0,
+      "summary": "11/11 tests passed",
+      "cases": [
+        "MUL_MAT(type_a=f32,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=f16,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=q4_K,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=q6_K,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=f32,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=f32,type_b=f32,m=16,n=16,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=f16,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=f16,type_b=f32,m=16,n=16,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=q4_K,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=q4_K,type_b=f32,m=16,n=16,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): OK",
+        "MUL_MAT(type_a=q6_K,type_b=f32,m=16,n=1,k=256,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1): ggml_metal_free: deallocating"
+      ]
+    },
+    "limitation": "Small selected matrix shapes, not complete backend/operator correctness coverage"
+  },
+  "model": {
+    "name": "Qwen2.5 1.5B Instruct Q4_K_M",
+    "sizeBytes": 1117320736,
+    "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "integrityVerified": true
+  },
+  "generation": {
+    "prompt": "The result of 2 + 2 is",
+    "seed": 42,
+    "temperature": 0,
+    "context": 512,
+    "batch": 32,
+    "microbatch": 32,
+    "cpuThreads": 4,
+    "requestedGeneratedTokens": 8,
+    "ignoreEos": true,
+    "warmupEnabled": true,
+    "flashAttention": false,
+    "kvOnCpu": true,
+    "cpuOutput": " 4. What is the result of\n\n",
+    "amdOutput": " 4. What is the result of\n\n",
+    "outputsByteIdentical": true,
+    "sanity": "Both begin with the correct arithmetic result 4.",
+    "offload": "4/29 layers: 3 repeating plus output",
+    "candidateGpuAllocatedMiB": 885,
+    "candidateGpuModelMiB": 866,
+    "candidateGpuComputeMiB": 18,
+    "cpu": {
+      "promptTokensPerSecond": 32.25,
+      "decodeTokensPerSecond": 11.23,
+      "promptEvalMs": 279.06,
+      "decodeEvalMs": 623.38,
+      "decodeRuns": 7
+    },
+    "amd": {
+      "promptTokensPerSecond": 3.42,
+      "decodeTokensPerSecond": 0.75,
+      "promptEvalMs": 2635.26,
+      "decodeEvalMs": 9285.6,
+      "decodeRuns": 7
+    },
+    "evidenceCpu": [
+      "0.00.974.697 I sched_reserve: graph splits = 114 (with bs=32), 1 (with bs=1)",
+      "0.03.505.310 I sched_reserve: graph splits = 114 (with bs=32), 1 (with bs=1)",
+      "0.04.566.571 I common_perf_print: prompt eval time =     279.06 ms /     9 tokens (   31.01 ms per token,    32.25 tokens per second)",
+      "0.04.566.573 I common_perf_print:        eval time =     623.38 ms /     7 runs   (   89.05 ms per token,    11.23 tokens per second)"
+    ],
+    "evidenceAmd": [
+      "0.01.071.112 I load_tensors: offloading output layer to GPU",
+      "0.01.071.113 I load_tensors: offloading 3 repeating layers to GPU",
+      "0.01.071.114 I load_tensors: offloaded 4/29 layers to GPU",
+      "0.01.208.142 I sched_reserve: graph splits = 146 (with bs=32), 38 (with bs=1)",
+      "0.01.208.362 I common_memory_breakdown_print: |   - MTL0 (Pro 560X)    |  4096 = 4095 + ( 280 =   261 +       0 +      18) +        -279 |",
+      "0.02.259.540 I load_tensors: offloading output layer to GPU",
+      "0.02.259.541 I load_tensors: offloading 3 repeating layers to GPU",
+      "0.02.259.542 I load_tensors: offloaded 4/29 layers to GPU",
+      "0.03.745.336 I sched_reserve: graph splits = 146 (with bs=32), 38 (with bs=1)",
+      "0.03.870.876 D ggml_metal_library_compile_pipeline: compiling pipeline: base = 'kernel_meshlit_scalar_matmul', name = 'kernel_meshlit_scalar_matmul'",
+      "0.03.874.729 D ggml_metal_library_compile_pipeline: loaded kernel_meshlit_scalar_matmul               0x7fe13b245600 | th_max = 1024 | th_width =   64",
+      "0.17.671.325 I common_perf_print: prompt eval time =    2635.26 ms /     9 tokens (  292.81 ms per token,     3.42 tokens per second)",
+      "0.17.671.327 I common_perf_print:        eval time =    9285.60 ms /     7 runs   ( 1326.51 ms per token,     0.75 tokens per second)",
+      "0.17.671.361 I common_memory_breakdown_print: |   - MTL0 (Pro 560X)    |  4096 = 3201 + ( 885 =   866 +       0 +      18) +           8 |"
+    ],
+    "limitation": "One short prompt and 8 output tokens, not a sustained/fair throughput benchmark or broad text-quality guarantee; decode timing excludes initial model/library setup."
+  },
+  "excludedPilot": {
+    "description": "Initial no-warmup ChatML pilot returned EOS immediately on both CPU and candidate; zero eval timing is invalid throughput evidence.",
+    "usedForPerformanceClaim": false,
+    "harnessCauseConfirmed": false
+  },
+  "build": {
+    "stockCompletedTargets": [
+      "test-backend-ops",
+      "llama-completion"
+    ],
+    "candidateCompletedTargets": [
+      "test-backend-ops",
+      "llama-completion"
+    ],
+    "serverUiBuild": "Stopped after required offline targets became available; no server/CLI build completion claimed",
+    "shippingCpuIntact": true
+  },
+  "reproduction": {
+    "instructions": [
+      "Create a separate checkout/worktree at the exact native revision; never apply this patch to shipping sources.",
+      "Apply studio-amd560x-scalar-20261106.patch to that isolated checkout.",
+      "Configure Release with GGML_METAL=ON GGML_METAL_EMBED_LIBRARY=ON GGML_NATIVE=OFF GGML_AVX=ON GGML_AVX2=ON GGML_FMA=ON GGML_F16C=ON GGML_OPENMP=OFF GGML_BLAS=ON GGML_BLAS_VENDOR=Apple BUILD_SHARED_LIBS=OFF LLAMA_BUILD_TESTS=ON LLAMA_BUILD_UI=OFF LLAMA_CURL=OFF LLAMA_OPENSSL=OFF.",
+      "Build test-backend-ops and llama-completion only with bounded parallelism.",
+      "Run MESHLIT_AMD_SCALAR_PROBE=1 test-backend-ops test -b MTL0 -o MUL_MAT -p <exact filter above>; require executed nonzero tests, not skipped output.",
+      "Run llama-completion with verified starter weights, the exact prompt above, -n 8 -c 512 -b 32 -ub 32 -t 4 --temp 0 --seed 42 --no-conversation --no-display-prompt --ignore-eos --verbose --no-kv-offload --flash-attn off. CPU adds -ngl 0 --device none --no-op-offload; candidate adds -ngl 4 --device MTL0 and the opt-in environment.",
+      "Keep default warmup enabled for the recorded reproducible positive test."
+    ],
+    "localScripts": [
+      "/Users/code/Documents/Codex/meshlit-gpu-experiment/scalar-probe/prepare.py",
+      "/Users/code/Documents/Codex/meshlit-gpu-experiment/scalar-probe/build.py",
+      "/Users/code/Documents/Codex/meshlit-gpu-experiment/scalar-probe/link.py",
+      "/Users/code/Documents/Codex/meshlit-gpu-experiment/run-generation-plain.py"
+    ]
+  },
+  "decision": "Do not promote: arithmetic sanity and selected numeric equality passed, but scalar AMD decode is about fifteen times slower in this short probe. CPU remains default. A useful AMD engine needs optimized wave64-safe kernels and fewer CPU/GPU transfers, followed by broader correctness, cancellation, memory/thermal and repeated workload measurements.",
+  "hyperlBoundary": "Meshlit embedded HyperL recipes are separate. Standalone HyperL-plan has CPU/RPC GGUF adapter proof; no AMD LLM acceleration qualification is inferred from it."
+}

@@ -18,12 +18,12 @@ class ChatOptionsTest {
         assertThrows(IllegalArgumentException::class.java){loaded.copy(onlineProfileId=null).validate()}
         assertThrows(IllegalArgumentException::class.java){ChatOptions(maxTokens=8192).validate()}
     }
-    @Test fun toolGrantsDoNotForceOrdinaryChatThroughPlanner() {
+    @Test fun toolGrantsCannotStartAnAgentInChatMode() {
         val tools=ChatOptions(webTools=true,phoneTools=true)
         assertFalse(shouldPlanToolCall("Hi",tools))
         assertFalse(shouldPlanToolCall("How are you?",tools))
-        assertTrue(shouldPlanToolCall("Search the web for the latest release",tools))
-        assertTrue(shouldPlanToolCall("Open Chrome and play a video",tools))
+        assertFalse(shouldPlanToolCall("Search the web for the latest release",tools))
+        assertFalse(shouldPlanToolCall("Open Chrome and play a video",tools))
         assertFalse(shouldPlanToolCall("Search the web",ChatOptions()))
     }
     @Test fun oldChatsDoNotSilentlyGainWebOrPhoneTools() {
@@ -57,11 +57,12 @@ class ChatOptionsTest {
             assertThrows(IllegalArgumentException::class.java) { invalid.validate() }
         }
     }
-    @Test fun teamToolsRequireAnExplicitLocalGrantAndRecognizeDelegation() {
+    @Test fun teamToolsRequireAnExplicitLocalGrantAndAgentMode() {
         val options=ChatOptions(teamTools=true)
         options.validate()
         assertEquals(3,options.toolCount)
-        assertTrue(shouldPlanToolCall("Coordinate agents for this task",options))
+        assertFalse(shouldPlanToolCall("Coordinate agents for this task",options))
+        assertTrue(shouldPlanToolCall("Coordinate agents for this task",options.copy(executionMode=ChatExecutionMode.AGENT)))
         assertFalse(shouldPlanToolCall("Hi",options))
         assertThrows(IllegalArgumentException::class.java) { ChatOptions(teamTools=true,onlineProfileId="remote").validate() }
     }

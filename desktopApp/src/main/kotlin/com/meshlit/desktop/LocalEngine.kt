@@ -44,7 +44,7 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
     fun available() = Files.isExecutable(resources.resolve("local/llama-server")) &&
         Files.isRegularFile(resources.resolve("models/${DesktopStarter.filename}"))
 
-    fun start(customModel: Path? = null, expectedModelSha256: String? = null, options: EngineOptions = EngineOptions()): LocalSession {
+    fun start(customModel: Path? = null, expectedModelSha256: String? = null, options: EngineOptions = EngineOptions(), thinkingTemplates: Boolean = false): LocalSession {
         options.validate()
         stop()
         val expectedRevision = synchronized(lock) { revision }
@@ -99,7 +99,8 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
             try {
                 val builder = ProcessBuilder(listOf(server.toString(), "--model", model.toString(),
                     "--host", "127.0.0.1", "--port", port.toString(), "--api-key-file", secret.toString(),
-                    "--alias", DesktopStarter.alias, "--parallel", "1") + options.nativeArgs())
+                    "--alias", DesktopStarter.alias, "--parallel", "1") + options.nativeArgs() +
+                    (if (thinkingTemplates) listOf("--jinja", "--reasoning-format", "deepseek") else emptyList()))
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD)
                 // Explicit app options win over inherited llama/ggml runtime variables.
                 builder.environment().keys.removeIf { it.startsWith("LLAMA_") || it.startsWith("GGML_") }

@@ -10,15 +10,25 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.meshlit.chat.*
 
-@Composable internal fun ChatAccessControl(options:ChatOptions,enabled:Boolean,onMode:(ChatApprovalMode)->Unit,onTools:()->Unit,modifier:Modifier=Modifier) {
+@Composable internal fun ChatAccessControl(options:ChatOptions,enabled:Boolean,onMode:(ChatApprovalMode)->Unit,onTools:()->Unit,onExecutionMode:(ChatExecutionMode)->Unit,modifier:Modifier=Modifier) {
     var menu by remember{mutableStateOf(false)}
     var confirm by remember{mutableStateOf(false)}
     Box(modifier) {
         TextButton(onClick={menu=true},enabled=enabled,modifier=Modifier.fillMaxWidth().testTag("chat-access-indicator"),contentPadding=PaddingValues(horizontal=4.dp)) {
             Icon(Icons.Default.Shield,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp))
-            Text(if(!options.usesLocalTools)"Tools off" else when(options.approvalMode){ChatApprovalMode.ASK->"Ask · ${options.toolCount} tools";ChatApprovalMode.AUTO_READS->"Auto reads · ${options.toolCount}";ChatApprovalMode.SELECTED_TOOLS->"Approved tools · ${options.toolCount}"},style=MaterialTheme.typography.labelMedium,maxLines=2)
+            Text(if(options.executionMode==ChatExecutionMode.CHAT)"Chat · tools off" else if(options.hostedAgentToolsActive)"Agent · ask" else when(options.approvalMode){ChatApprovalMode.ASK->"Agent · ask";ChatApprovalMode.AUTO_READS->"Agent · auto reads";ChatApprovalMode.SELECTED_TOOLS->"Agent · approved tools"},style=MaterialTheme.typography.labelMedium,maxLines=2)
         }
         DropdownMenu(menu,{menu=false}) {
+            ChatExecutionMode.entries.forEach { mode -> DropdownMenuItem(
+                text={Text(mode.label+when {
+                    options.executionMode==mode -> " ✓"
+                    mode==ChatExecutionMode.AGENT && !options.canSelectAgentMode -> " · choose tools first"
+                    else -> ""
+                })},
+                enabled=mode==ChatExecutionMode.CHAT || options.canSelectAgentMode && !com.meshlit.BuildProfile.coreCandidate,
+                modifier=Modifier.testTag("chat-execution-${mode.name.lowercase()}"),
+                onClick={menu=false;onExecutionMode(mode)}) }
+            HorizontalDivider()
             ChatApprovalMode.entries.forEach { mode -> DropdownMenuItem(text={Text(mode.label+(if(options.approvalMode==mode)" ✓" else ""))},
                 onClick={menu=false;if(mode==ChatApprovalMode.SELECTED_TOOLS && mode!=options.approvalMode)confirm=true else onMode(mode)}) }
             HorizontalDivider()

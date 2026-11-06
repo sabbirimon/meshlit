@@ -48,7 +48,7 @@ import java.util.UUID
     Scaffold(topBar={TopAppBar(title={Text("Phone agent and autonomy")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
             item{Text("Built-in phone agent",style=MaterialTheme.typography.titleLarge)
-                Text("Runs with a model loaded on this device. In Chat → Conversation settings, choose the local model and turn on Allow phone tools. Enable delegation and save an app scope below. No gateway, cloud account or other host is required for phone actions.")
+                Text("Runs with a model loaded on this device. In Chat → Conversation settings, choose the local model, select phone tools and choose Agent mode. Enable delegation and save an app scope below. No gateway, cloud account or other host is required for phone actions.")
                 Text("The agent can inspect and operate approved apps while this task runs. It stops after eight actions or five minutes, and Chat Stop cancels it. A small starter model may fail to plan a complex task; the app reports that failure instead of pretending it succeeded.",style=MaterialTheme.typography.bodySmall)}
             if(!com.meshlit.BuildConfig.PLAY_REVIEW){
             item{HorizontalDivider();Text("Agent app access",style=MaterialTheme.typography.titleLarge)

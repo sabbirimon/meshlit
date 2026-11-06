@@ -2,6 +2,18 @@ package com.meshlit.ui.modern
 import org.junit.Test
 import org.junit.Assert.*
 class SettingsDestinationsTest {
+    @Test fun managementUsesUniqueExistingPlatformDestinations(){
+        val sections=com.meshlit.workspace.DashboardDirectory.management
+        assertEquals(sections.size,sections.map{it.id}.distinct().size)
+        val routes=sections.flatMap{it.destinations}
+        assertEquals(routes.size,routes.distinct().size)
+        val visible=SettingsDestinations.all.map{it.id}.toSet()
+        routes.filter{com.meshlit.BuildProfile.routeAllowed(it)}.forEach {
+            assertTrue("Missing Management route: $it",it in visible)
+        }
+        assertTrue(routes.containsAll(listOf("ssh","cloud","device-dashboard","monitor","usage")))
+        assertEquals(SettingsGroup.MANAGEMENT,SettingsDestinations.all.first{it.id=="dashboards"}.group)
+    }
     @Test fun cloudVaultIsDiscoverableFromBasicSettings(){
         assertEquals(listOf("cloud"),SettingsDestinations.search("AWS credentials",false).map{it.id})
         assertEquals(listOf("cloud"),SettingsDestinations.search("GCP costs",false).map{it.id})

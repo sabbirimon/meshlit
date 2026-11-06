@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-31",
+  "updated": "2026-11-06",
   "operations": [
     "SETTINGS_READ",
     "SETTINGS_PATCH",
@@ -87,7 +87,9 @@
         "app/src/main/kotlin/com/meshlit/ui/modern/WorkspaceDashboards.kt",
         "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/DashboardDirectory.kt",
         "app/src/main/kotlin/com/meshlit/ui/modern/SettingsFeatureSection.kt",
-        "companions/studio-runtime/extension/settings.cjs"
+        "companions/studio-runtime/extension/settings.cjs",
+        "companions/studio-runtime/extension/management.cjs",
+        "companions/studio-runtime/extension/main-pages.cjs"
       ],
       "authority": [
         "SETTINGS"
@@ -1355,6 +1357,73 @@
       ],
       "limitations": [
         "Android supports pinned SSH status, paired HTTPS status and model catalogs; Studio supports model catalogs. MCP, nearby unverified peers and address-only records remain setup-only. Physical new-workflow acceptance and seamless roaming recovery are unqualified. See docs/MULTIDEVICE_TEAM_BUILD_2026-11-02.md."
+      ]
+    },
+    {
+      "id": "studio-main-shell",
+      "title": "Separate General Chat shell and project IDE windows",
+      "status": "native Intel Mac preview tested; final release acceptance open",
+      "sources": [
+        "companions/studio-runtime/extension/shell.cjs",
+        "companions/studio-runtime/extension/main-pages.cjs",
+        "companions/studio-runtime/extension/chat-actions.cjs"
+      ],
+      "authority": [],
+      "docs": [
+        "docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md"
+      ],
+      "limitations": [
+        "Transient sessions; no production signing, broad OS or complete durable-history qualification."
+      ]
+    },
+    {
+      "id": "studio-chat-personality",
+      "title": "Personality preferences, local read-aloud and OpenLive translation tuning",
+      "status": "contract-tested; packaged personality/copy/export passed; live human audio open",
+      "sources": [
+        "companions/studio-runtime/extension/chat-personality.cjs",
+        "companions/studio-runtime/extension/chat-voice.cjs",
+        "companions/studio-runtime/extension/live-voice-settings.cjs"
+      ],
+      "authority": [],
+      "docs": [
+        "docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md"
+      ],
+      "limitations": [
+        "Prompt styles are not training/RL; inline live voice and image/video/sound generation remain separate."
+      ]
+    },
+    {
+      "id": "studio-management-security",
+      "title": "Management overview, credentials and explicit SSH profiles",
+      "status": "contract-tested; native page/registration qualification in progress",
+      "sources": [
+        "companions/studio-runtime/extension/management.cjs",
+        "companions/studio-runtime/extension/credentials-dashboard.cjs",
+        "companions/studio-runtime/extension/ssh-dashboard.cjs",
+        "companions/studio-runtime/extension/project-security.cjs"
+      ],
+      "authority": [],
+      "docs": [
+        "docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md"
+      ],
+      "limitations": [
+        "No whole-app biometric lock or verified TPM policy; external SSH login and terminal integrations remain unqualified."
+      ]
+    },
+    {
+      "id": "studio-bot-dashboard",
+      "title": "Custom bot dashboard, model-source assignment and bot detail pages",
+      "status": "source implemented; separate native detail window qualification ongoing",
+      "sources": [
+        "companions/studio-runtime/extension/bots.cjs"
+      ],
+      "authority": [],
+      "docs": [
+        "docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md"
+      ],
+      "limitations": [
+        "Chat profiles do not imply persistent workers, browser agents, skill installation or reinforcement learning."
       ]
     }
   ],

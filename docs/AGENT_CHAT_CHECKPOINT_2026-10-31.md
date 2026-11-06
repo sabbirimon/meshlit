@@ -1,8 +1,82 @@
 # Agent and provider checkpoint — 2026-10-31
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+## Meshlit continuation — 2026-11-05
+
+1. **Managed devices and recovery.** In **Distributed layers**, optionally enable
+   **Use this coordinator's CPU for model layers** to admit the coordinator and
+   one approved worker. Without it, the existing two-worker minimum applies.
+   Placement uses fresh approved capacity and exact nonoverlapping layer ranges.
+   In **Replicated recovery**, review and publish up to four completed local
+   text turns (8 KiB max) to the configured signed three- or five-replica group.
+   Recovery requires a current quorum, a new ownership epoch and the same GGUF
+   bytes. It opens an idle Chat with tools off. It does not restore drafts,
+   attachments, model context caches, tool outcomes, or a running generation.
+2. **Hosted search and bots.** In **Online providers**, review the exact OpenAI
+   or compatible model and endpoint for Agent web search and allow agent use.
+   Then grant that review to one conversation and select **Agent**. The model
+   may propose one built-in public web search per turn. Meshlit reviews the
+   exact query with the owner and sends bounded results to the same endpoint.
+   Local phone/files/knowledge tools are excluded. Both requests count toward
+   usage. The protocol uses the
+   [OpenAI function calling contract](https://developers.openai.com/api/docs/guides/function-calling).
+   In **Bots and connections**, configure and review an
+   [AstrBot scoped chat API](https://docs.astrbot.app/en/dev/openapi.html) request
+   or a [Grok Bot routine trigger](https://docs.x.ai/grok-bot/skills-routines-and-automations).
+   AstrBot replies in a private session; the Grok trigger acknowledges that the
+   routine started. The xAI model connection is separate. Existing
+   [OpenClaw gateway](https://docs.openclaw.ai/gateway/openai-http-api) controls
+   are linked. These are connections to owner-configured services. Meshlit does
+   not run their messaging channels or install or execute bot-generated skills.
+   In **Agent management**, create or edit an instruction profile with an
+   approved local or hosted model and select it in Chat. The profile itself
+   confers no tool, device, or credential access.
+3. **Voice and vision.** In voice options, enable **Review transcript before
+   sending** to edit, send or discard recognized text. Stop and timeout discard
+   a pending turn. In **Camera, vision and audio**, import a matching vision GGUF
+   and projector. The photo composer defaults to **On-device photo** on builds
+   with the native runner. It checks RAM, uses an isolated loopback process,
+   and keeps the question and result out of subsequent model context. A hosted
+   vision route is available only when selected explicitly. The original image
+   is not retained in Chat history.
+4. **Studio workspace.** Open **Workspace changes** from a chat or the Meshlit
+   navigation. **Last turn** shows only applied edits from that chat, including
+   unsaved editor changes; **Working tree** compares current files against Git
+   HEAD. Use the filter and click a row for the native editor diff. Right-click
+   a row, Explorer file, or workspace reference in Chat to open, review, save a
+   copy, copy a path or text, or reveal the file. File links resolve in the
+   trusted workspace. Last-turn snapshots live in the current workbench
+   session. See the [native menu contract](https://code.visualstudio.com/api/extension-guides/webview#_context-menus).
+
+The managed recovery checkpoint passed both Android debug flavors, shared
+inference and federation tests, desktop engine tests, V2 instrumentation APK
+assembly and both lints. Hosted tools and bot protocol tests use a real local
+HTTP socket with controlled responses. All 112 Studio extension tests passed.
+An isolated native Code OSS 1.143.1 test loaded the updated extension, opened
+Workspace changes, opened a file and verified a real Git diff against HEAD.
+A native right-click on the changed row showed all seven file actions. Selecting
+Review file changes from that menu opened the working-tree diff. Physical
+multi-device recovery, phone voice/vision and live bot/provider acceptance remain
+separate gates.
+
+## Explicit Android agent mode continuation — 2026-11-04
+
+Source now replaces English-keyword activation with a saved per-conversation
+Chat / Agent choice in settings and the composer shield menu. Old chats keep
+their tool selections and default to Chat. Chat cannot execute selected chat
+tools, including offered device connections. Agent plans every nonblank message;
+short/non-English requests reach the planner, without claiming multilingual task
+success. Removing the last tool group returns to Chat. Provider/route/Colibri
+selection resets the mode to Chat. Existing operation, OS and exact-call approval
+gates remain; broader approval choices still reset to Ask on restart.
+
+The managed recovery checkpoint subsequently passed Android unit tests, debug
+builds and lint. Physical mode switching, tool dispatch/review and multilingual
+task quality remain open.
+
 
 Owner requested a quick checkpoint at 2% remaining weekly allowance, with no extra
 credits. This is a source checkpoint, not a claim of Codex-equivalent capability.
@@ -37,10 +111,11 @@ credits. This is a source checkpoint, not a claim of Codex-equivalent capability
 
 ## Limits and next work
 
-The chat tool planner remains **on-device only**, with three calls or eight for
-phone tools, and an English keyword heuristic. Ordinary cluster/hosted chat is
+The October 31 checkpoint used an English keyword heuristic; the November 4
+continuation above replaces it with explicit Agent mode. The chat tool planner
+remains **on-device only**, with three calls or eight for phone tools. Ordinary cluster/hosted chat is
 separate. A tiny starter model is not qualified for reliable agent planning.
-Next: replace keyword gating with an explicit agent-mode decision, add reviewed
+Next: qualify explicit mode switching on a phone, add reviewed
 hosted native tool-call adapters, evaluate capable models on task completion,
 verify actions before final answers, and qualify interruption/recovery on phone.
 Do not describe presets as independent autonomous teams or assume a role grants

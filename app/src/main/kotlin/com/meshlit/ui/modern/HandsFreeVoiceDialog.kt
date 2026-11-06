@@ -113,9 +113,10 @@ import org.koin.compose.koinInject
                     state.muted -> if(state.micNotice!=null) "Microphone paused. Retry when ready." else "Your microphone is muted."
                     state.phase=="Listening" -> if(state.speechDetected) "I hear you. Pause or tap Send voice." else "Speak naturally, then pause."
                     state.phase=="Thinking" -> "Your chat model is preparing a reply."
+                    state.phase=="Review transcript" -> "Check what was heard before sending it to your chat model."
                     state.phase=="Transcribing" -> "Turning your speech into text."
                     state.phase=="Preparing voice" -> "Preparing spoken audio."
-                    state.phase=="Speaking" -> "Tap Interrupt to speak again."
+                    state.phase=="Speaking" -> if(options.headsetInterruption) "Use your wired headset or tap Interrupt to speak again." else "Tap Interrupt to speak again."
                     !state.busy -> "Listen, talk, and hear a reply from your selected chat model."
                     else -> "Preparing this voice session."
                 }
@@ -128,6 +129,14 @@ import org.koin.compose.koinInject
             if(state.phase=="Listening" || state.phase=="Listening for a recognition test") {
                 LinearProgressIndicator(progress={state.inputLevel.coerceIn(0f,1f)},modifier=Modifier.fillMaxWidth().testTag("voice-input-level"))
                 Text(if(state.speechDetected) "Speech threshold reached" else if(state.inputLevel>0f) "Audio detected · below speech threshold" else "Waiting for microphone audio",style=MaterialTheme.typography.labelMedium)
+            }
+            state.transcript?.let{review->
+                var transcript by remember(review.id){mutableStateOf(review.text)}
+                OutlinedTextField(transcript,{transcript=it.take(12000)},Modifier.fillMaxWidth().testTag("voice-transcript-review"),label={Text("Review recognized text")},minLines=2,maxLines=5)
+                FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Button(enabled=transcript.isNotBlank(),onClick={voice.answerTranscript(review.id,transcript)},modifier=Modifier.testTag("voice-transcript-send")){Text("Send transcript")}
+                    OutlinedButton(onClick={voice.answerTranscript(review.id,null)}){Text("Discard")}
+                }
             }
             if(options.captions) {
                 state.lastHeard?.let{Text("You: $it",style=MaterialTheme.typography.bodyMedium,modifier=Modifier.testTag("voice-user-caption"))}
@@ -146,13 +155,20 @@ import org.koin.compose.koinInject
                 Text(replyProblem ?: "Voice setup needs attention. Choose an installed recognition pack and voice, or configure your speech connection.",color=MaterialTheme.colorScheme.error)
                 OutlinedButton(onClick={showSettings=true}) {Text("Set up voice")}
             }
-            Text("Live mode waits until each reply finishes before listening again. Automatic interruption by speaking is not available; use Interrupt.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Live mode listens again after a reply. Tap Interrupt to start sooner, or enable wired headset interruption in Voice settings.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
         SettingsFeatureSection("Speech connections") {
         Row(verticalAlignment=Alignment.CenterVertically){Text("Audio conversation captions",Modifier.weight(1f));Switch(options.captions,{options=options.copy(captions=it)},enabled=enabled)}
-        Text("Live mode listens again after each reply, for up to 10 replies or five minutes. Tap Interrupt to stop a reply and speak. Mute releases capture; End releases the session. Automatic acoustic interruption is not yet qualified.",style=MaterialTheme.typography.bodySmall)
+        Text("Live mode listens again after each reply, for up to 10 replies or five minutes. Tap Interrupt to stop a reply and speak. Mute releases capture and End releases the session.",style=MaterialTheme.typography.bodySmall)
         VoiceChoice("Recognition",options.input.name,SpeechInput.entries.map{it.name to it.label},enabled){options=options.copy(input=SpeechInput.valueOf(it))}
         VoiceChoice("Voice reply",options.output.name,SpeechOutput.entries.map{it.name to it.label},enabled){naturalEngines=emptyList();naturalVoices=emptyList();options=options.copy(output=SpeechOutput.valueOf(it),style=VoiceStyle.NATURAL,naturalVoice="",naturalEngine=if(it==SpeechOutput.ELEVENLABS.name) "eleven_multilingual_v2" else "kokoro-en-v0_19-int8")}
+        Row{Text("Review transcript before sending",Modifier.weight(1f));Switch(options.reviewTranscript,{options=options.copy(reviewTranscript=it)},enabled=enabled,modifier=Modifier.testTag("voice-review-before-send"))}
+        Row {
+            Text("Interrupt with a wired headset",Modifier.weight(1f))
+            Switch(options.headsetInterruption,{options=options.copy(headsetInterruption=it)},enabled=enabled)
+        }
+        Text("In Live mode, a verified wired headset microphone can stop playback. Its trigger audio is discarded. Speak your request when Listening resumes.",style=MaterialTheme.typography.bodySmall)
+        Text("Pause after recognition so you can correct or discard the text before the selected chat model receives it.",style=MaterialTheme.typography.bodySmall)
         Row{Text("Allow network audio",Modifier.weight(1f));Switch(options.network,{options=options.copy(network=it)},enabled=enabled,modifier=Modifier.testTag("voice-network"))}
         Text("Off means no online voice request or network Android voice. Android's guaranteed on-device recognizer needs supported Android 12+. On Android 11 or earlier, choose an installed offline recognition pack for offline input.")
         if(options.input==SpeechInput.OFFLINE_MODEL) VoiceChoice("Offline recognition pack",options.sttPack,packs.filter{it.kind==SpeechKind.WHISPER_STT}.map{it.id to "${it.name} · ${it.language}"},enabled){options=options.copy(sttPack=it)}

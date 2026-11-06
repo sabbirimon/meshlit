@@ -24,7 +24,7 @@ function create(context,request){
  const controller={
   open(){
    if(panel){panel.reveal();request({op:'team_status'});return;}
-   panel=vscode.window.createWebviewPanel('meshlit.agentTeams','Agent teams & roles',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});
+   panel=require('./shell.cjs').createPanel(vscode,'meshlit.agentTeams','Agent teams & roles',vscode.ViewColumn.Active,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});
    context.subscriptions.push(panel);panel.webview.html=render();panel.onDidDispose(()=>panel=undefined);
    panel.webview.onDidReceiveMessage(async message=>{
     try{

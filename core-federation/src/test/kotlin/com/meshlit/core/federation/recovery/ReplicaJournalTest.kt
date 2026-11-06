@@ -107,4 +107,26 @@ class ReplicaJournalTest {
         fails { c.client().append(snapshot("invalid").copy(content = JournalContent.JOB_METADATA)) }
         fails { c.client().append(snapshot("switch")) }
     }
+    @Test fun chatTakeoverBindsReviewedHeadAndFencesTheOldEpochAfterRestart() = runBlocking {
+        val c=Cluster();val journal=c.client()
+        fun chat(id:String,owner:String,epoch:Long,sequence:Long,head:String,text:String):JournalEntry {
+            val digest=java.security.MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString(""){"%02x".format(it)}
+            return JournalEntry(id,"task",owner,epoch,JournalAction.SNAPSHOT,sequence,"a".repeat(64),digest,text,
+                JournalContent.CHAT_TRANSCRIPT,expectedTaskHead=head)
+        }
+        journal.append(acquire())
+        journal.append(chat("s1","first",1,1,"a","completed turn one"))
+        journal.append(chat("s2","first",1,2,"s1","completed turn two"))
+        fails { journal.append(acquire("stale-review","second",2).copy(expectedTaskHead="s1")) }
+        fails { journal.append(acquire("no-review","second",2)) }
+        c.restart(0);c.restart(1);c.offline.add("n2")
+        val takeover=journal.append(acquire("takeover","second",2).copy(expectedTaskHead="s2"))
+        assertEquals(2,takeover.votes.size)
+        fails { journal.append(chat("old-owner","first",1,3,"takeover","old owner result")) }
+        fails { journal.append(chat("same-offset","second",2,2,"takeover","same sequence")) }
+        fails { journal.append(chat("bad-hash","second",2,3,"takeover","tampered text").copy(checkpointSha256="b".repeat(64))) }
+        journal.append(chat("new-owner","second",2,3,"takeover","approved continuation"))
+        assertEquals("approved continuation",c.client().read().last().value.entry.replayText)
+    }
+
 }

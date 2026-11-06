@@ -567,6 +567,8 @@ val coreModule = module {
     },get()) }
     single { com.meshlit.browser.BrowserSessionBroker(androidContext()) }
     single { com.meshlit.control.AgentBackend(androidContext(),get(),get(),get(),get(),get(),get(),get(),get(),get(),get()) }
+    single { com.meshlit.bots.BotConnections(androidContext()) }
+    single { com.meshlit.bots.BotInbox(androidContext()) }
     single { com.meshlit.openclaw.OpenClawHost(androidContext(),get()) }
     single { com.meshlit.openclaw.OpenClawNode(androidContext(),get(),get(),get()) }
     single { com.meshlit.openclaw.AndroidControl(androidContext(),get()) }
@@ -579,7 +581,7 @@ val coreModule = module {
     single { com.meshlit.security.LabPackages(androidContext(),get()) }
     single { com.meshlit.security.SecurityLab(androidContext(),get()) }
     single { com.meshlit.gateway.GatewayHost(androidContext(),get(),get(),get(),{get()}) }
-    single { com.meshlit.recovery.ReplicaHost(androidContext()) }
+    single { com.meshlit.recovery.ReplicaHost(androidContext(), get()) }
     single { com.meshlit.operations.OperationsControl.get(androidContext()) }
     single { com.meshlit.operations.ClusterControls.get(androidContext()) }
     single { com.meshlit.operations.StopCoordinator(androidContext()) }
@@ -604,7 +606,8 @@ val coreModule = module {
         }
     }) }
     single { com.meshlit.search.AppSearchService(androidContext(),get(),{get<com.meshlit.chat.ChatController>().state.value},{get<com.meshlit.models.ModelLibrary>().models.value},{get<com.meshlit.control.WebBridgeHost>().directory.read()},get<com.meshlit.operations.OperationsControl>().gate,{get<com.meshlit.settings.SettingsRepository>()},{get<com.meshlit.control.AgentBackend>().delegated(com.meshlit.control.AgentBackend.Scope.SETTINGS)},{get<com.meshlit.gateway.GatewayHost>().remoteRoutes}) }
-    single { com.meshlit.chat.ChatController(androidContext(), get(), get(),get(),get(),get(),get(),get(),get(),get(),get()) }
+    single { com.meshlit.media.LocalVisionHost(androidContext()) }
+    single { com.meshlit.chat.ChatController(androidContext(), get(), get(),get(),get(),get(),get(),get(),get(),get(),get(),get()) }
     single { com.meshlit.models.ModelLibrary(androidContext(), get(), get(), get()) }
     single { com.meshlit.sandbox.RuntimeHost(androidContext()) }
     single { com.meshlit.sandbox.RuntimeTerminal(androidContext(), get()) }

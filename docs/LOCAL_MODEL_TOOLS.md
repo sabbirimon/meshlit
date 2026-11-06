@@ -1,6 +1,6 @@
 # Local model internet tools and Android control
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -16,8 +16,14 @@ on-device model; choosing a local model never silently selects a hosted model.
 
 In Chat, open **+ → Chat options and model routing**, select the
 currently loaded local model, and independently enable **Allow web page tools**
-or **Allow phone tools**, then Save. Both options default off, including for old
-saved conversations. Routed and online conversations cannot use this local loop.
+or **Allow phone tools**. Select **Agent** under Conversation mode, then Save. The
+composer shield menu also switches between Chat and Agent after tools are selected.
+Chat answers without executing these tools, even when groups remain selected. Agent
+plans every nonblank message, including short and non-English requests; the model
+may answer without calling a tool. This routing choice does not establish model
+planning quality. The choice is saved per conversation. Old chats default to Chat
+and retain their existing tool selections; new tool groups start off. Routed and
+online conversations cannot use this local loop.
 
 The loop permits eight tool calls and nine model decisions within five minutes when phone tools are selected; otherwise it permits three calls and four decisions within 180 seconds.
 It checks cancellation and saved operation policy before/after each step, binds

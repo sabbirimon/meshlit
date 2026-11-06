@@ -10,19 +10,42 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.Closeable
 import java.io.IOException
+import java.net.Proxy
+import java.security.MessageDigest
+import java.security.cert.CertificateException
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLPeerUnverifiedException
+import javax.net.ssl.X509TrustManager
+import okio.BufferedSink
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** Explicitly approved path to the same enrolled replica, not another quorum member. */
-@Serializable data class ReplicaPath(val url: String, val token: String, val certificatePin: String = "") {
+@Serializable data class ReplicaPath(
+    val url: String,
+    val token: String,
+    val certificatePin: String = "",
+    val deviceCertificateSha256: String = "",
+) {
     fun validate() {
         val parsed = url.toHttpUrl()
         require(parsed.encodedUsername.isEmpty() && parsed.encodedPassword.isEmpty() && parsed.query == null && parsed.fragment == null)
         require(parsed.encodedPath == "/replica" && token.length in 32..4096 && token.none { it.isWhitespace() })
         val loopback = parsed.host in setOf("127.0.0.1", "::1")
         require(parsed.scheme == "https" || loopback && parsed.scheme == "http") { "Replica transport requires HTTPS or an explicit loopback tunnel" }
-        require(certificatePin.isEmpty() && loopback || certificatePin.matches(Regex("sha256/[A-Za-z0-9+/]{43}="))) { "Verify the remote TLS certificate pin" }
+        if (deviceCertificateSha256.isNotEmpty()) {
+            require(parsed.isHttps && (loopback || isPrivateReplicaIpv4(parsed.host)) && certificatePin.isEmpty() &&
+                deviceCertificateSha256.matches(Regex("[a-fA-F0-9]{64}"))) {
+                "A device certificate requires HTTPS on a private IPv4 or loopback address and its exact SHA-256"
+            }
+        } else {
+            require(certificatePin.isEmpty() && loopback || certificatePin.matches(Regex("sha256/[A-Za-z0-9+/]{43}="))) {
+                "Verify the remote TLS certificate pin"
+            }
+        }
     }
     override fun toString() = "ReplicaPath(url=REDACTED, token=REDACTED)"
 }
@@ -30,14 +53,64 @@ import kotlin.coroutines.resumeWithException
 @Serializable enum class ReplicaPathSelection { PRIORITY, ADAPTIVE }
 @Serializable data class ReplicaEndpoint(val member: String, val url: String, val token: String,
     val certificatePin: String = "", val alternatives: List<ReplicaPath> = emptyList(),
-    val selection: ReplicaPathSelection = ReplicaPathSelection.ADAPTIVE) {
-    fun paths() = listOf(ReplicaPath(url, token, certificatePin)) + alternatives
+    val selection: ReplicaPathSelection = ReplicaPathSelection.ADAPTIVE,
+    val deviceCertificateSha256: String = "",
+) {
+    fun paths() = listOf(ReplicaPath(url, token, certificatePin, deviceCertificateSha256)) + alternatives
     fun validate() {
         require(member.matches(Regex("[A-Za-z0-9_-]{1,80}")) && alternatives.size <= 2)
         val paths = paths(); paths.forEach { it.validate() }
         require(paths.map { it.url.toHttpUrl() }.distinct().size == paths.size) { "Duplicate replica path" }
     }
     override fun toString() = "ReplicaEndpoint(member=$member, paths=${1 + alternatives.size}, credentials=REDACTED)"
+}
+
+/** Literal RFC 1918 only. Never resolve a host name to decide whether to trust its certificate. */
+fun isPrivateReplicaIpv4(address: String): Boolean {
+    val parts = address.split('.')
+    if (parts.size != 4 || parts.any { !it.matches(Regex("0|[1-9][0-9]{0,2}")) }) return false
+    val octets = parts.map { it.toInt() }
+    return octets.all { it in 0..255 } && when (octets[0]) {
+        10 -> true
+        172 -> octets[1] in 16..31
+        192 -> octets[1] == 168
+        else -> false
+    }
+}
+
+private fun OkHttpClient.Builder.pinReplicaDevice(fingerprint: String): OkHttpClient.Builder {
+    val expected = fingerprint.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    fun matches(certificate: X509Certificate): Boolean = MessageDigest.isEqual(
+        expected, MessageDigest.getInstance("SHA-256").digest(certificate.encoded),
+    )
+    val trust = object : X509TrustManager {
+        override fun getAcceptedIssuers() = emptyArray<X509Certificate>()
+        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+            throw CertificateException("Client certificates are not used")
+        }
+        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+            val leaf = chain?.firstOrNull() ?: throw CertificateException("Missing replica device certificate")
+            leaf.checkValidity()
+            if (!matches(leaf)) throw CertificateException("Replica device certificate changed")
+        }
+    }
+    val tls = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trust), null) }
+    // Device certificates bind a paired device, whose LAN address can change.
+    // The transport still verifies the member and journal group before a write.
+    return sslSocketFactory(tls.socketFactory, trust).hostnameVerifier { host, session ->
+        (host in setOf("127.0.0.1", "::1") || isPrivateReplicaIpv4(host)) &&
+            runCatching { (session.peerCertificates.firstOrNull() as? X509Certificate)?.let(::matches) == true }.getOrDefault(false)
+    }
+}
+
+private fun String.replicaRequestBody(): RequestBody {
+    val body = toRequestBody("application/json".toMediaType())
+    return object : RequestBody() {
+        override fun contentType() = body.contentType()
+        override fun contentLength() = body.contentLength()
+        override fun isOneShot() = true
+        override fun writeTo(sink: BufferedSink) = body.writeTo(sink)
+    }
 }
 
 data class ReplicaPathStatus(val member: String, val pathIndex: Int, val lastSucceeded: Boolean?,
@@ -79,6 +152,10 @@ class ReplicaHttpTransport(endpoints: List<ReplicaEndpoint>,
                 .readTimeout(pathTimeoutMs, TimeUnit.MILLISECONDS).writeTimeout(pathTimeoutMs, TimeUnit.MILLISECONDS)
                 .callTimeout(pathTimeoutMs, TimeUnit.MILLISECONDS)
                 .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false)
+            if (path.url.toHttpUrl().host in setOf("127.0.0.1", "::1") || path.deviceCertificateSha256.isNotEmpty()) {
+                builder.proxy(Proxy.NO_PROXY)
+            }
+            if (path.deviceCertificateSha256.isNotEmpty()) builder.pinReplicaDevice(path.deviceCertificateSha256)
             if (path.certificatePin.isNotEmpty()) builder.certificatePinner(
                 CertificatePinner.Builder().add(path.url.toHttpUrl().host, path.certificatePin).build())
             PathKey(member, index) to builder.build()
@@ -145,7 +222,7 @@ class ReplicaHttpTransport(endpoints: List<ReplicaEndpoint>,
         try {
             val call = clients.getValue(key).newCall(Request.Builder().url(path.url)
                 .header("Authorization", "Bearer ${path.token}")
-                .post(json.encodeToString(request).toRequestBody("application/json".toMediaType())).build())
+                .post(json.encodeToString(request).replicaRequestBody()).build())
             val reply = suspendCancellableCoroutine<ReplicaReply> { cont ->
                 // Cancellation remains attached while the bounded response body is being read.
                 cont.invokeOnCancellation { call.cancel() }
@@ -156,7 +233,11 @@ class ReplicaHttpTransport(endpoints: List<ReplicaEndpoint>,
                     dispatched = true
                     call.enqueue(object : Callback {
                         override fun onFailure(call: Call, e: IOException) {
-                            if (cont.isActive) cont.resumeWithException(IOException("Replica path did not acknowledge the request"))
+                            if (cont.isActive) {
+                                val rejected = e is SSLPeerUnverifiedException ||
+                                    e is SSLHandshakeException && e.cause is CertificateException
+                                cont.resumeWithException(if (rejected) IdentityMismatch() else IOException("Replica path did not acknowledge the request"))
+                            }
                         }
                         override fun onResponse(call: Call, response: Response) {
                             try {

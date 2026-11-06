@@ -1,6 +1,6 @@
 # Layer execution, heterogeneous devices and recovery
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -47,6 +47,63 @@ layer tunnel is implemented and tested.
 Remote coordinator activation, shared election membership, leases, automatic
 peer discovery, hardware reservation and transparent failover are NOT implemented.
 Do not describe the current planner as a distributed consensus protocol.
+
+## Use a coordinator from Studio
+
+Studio's model source picker accepts the approved compatible completion API of
+an existing LAN or remote coordinator. Use authenticated HTTPS or a loopback
+endpoint reached through an authenticated tunnel. Manage worker pairing,
+runtime compatibility, and placement on the coordinator. Studio uses the
+selected endpoint for model replies and retains project tool approval in the
+local IDE.
+
+On one Intel Mac, Studio generated through a loopback coordinator with two
+pinned CPU RPC workers. The native coordinator log showed layer buffers on
+both workers. Studio returned `2 plus 2 equals 4.` and the encrypted usage
+ledger recorded one request. Studio JVM also generated through physical
+Mac and Samsung CPU workers over a scoped USB loopback forward. Qwen2.5
+0.5B Q4_K_M assigned layers 0–19 to the Mac and 20–24 to the phone. The
+phone held a 176.13 MiB model buffer, its CPU ticks rose during inference,
+and Studio recorded one Usage request for the answer `4`.
+
+The earlier physical development run used authenticated Tailscale/LTE.
+The managed Studio flow, larger-than-one-node memory admission, and managed
+WAN have separate tests. A cluster-backed coding session still needs a
+trusted-project edit and review acceptance test.
+[Studio USB evidence](desktop/evidence/studio-mac-samsung-usb-native-20261106.json) ·
+[Earlier physical WAN evidence](desktop/evidence/mixed-mac-samsung-wan-native-20261103.json) ·
+[Current gates](../TODO.md#studio-source-selection-and-device-acceptance--2026-11-06).
+
+## Reload an Android coordinator after worker loss
+
+Before loading, the owner can turn on **Reload once if a worker drops** in
+**Layer pipeline**. If the native coordinator process exits and an assigned
+worker is unreachable, Meshlit makes one attempt to reload the same GGUF
+with the remaining approved workers in the same group. Their TLS pins and
+tokens must verify and their fresh capacity must cover the placement. The
+saved group and coordinator CPU choice must still match. A failed certificate,
+token or capability response stops recovery rather than bypassing approval.
+
+During the attempt, use **Cancel recovery** to stop it. Once the model is ready,
+send the interrupted request again. This is a cold reload on the same Android
+coordinator. Moving ownership to another device, restoring live model context,
+and recovering from a stalled coordinator that stays alive require separate work.
+
+## Direct replica connections on a private LAN
+
+The recovery listener defaults to loopback. To connect three or five approved
+phones directly, set `lanAddress` in each phone's replica configuration to its
+assigned private IPv4 address, allow its configured TCP port in Network rules,
+and keep **Replicated recovery** open. Pair each member's journal public key,
+token and full device certificate SHA-256 independently. Configure endpoints
+as `https://PRIVATE-IP:PORT/replica` with `deviceCertificateSha256`.
+The existing public CA plus `certificatePin` option remains available for
+owner-operated HTTPS endpoints. Loopback SSH tunnels remain supported.
+
+Direct TLS authenticates the exact device certificate and each quorum response
+still binds the enrolled journal member and group. An owner can review and
+claim a completed chat checkpoint from a signed majority. Device-wide automatic
+takeover and live inference context transfer are separate features.
 
 ## Phone-first shared memory
 

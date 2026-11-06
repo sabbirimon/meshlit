@@ -4,6 +4,8 @@ import com.meshlit.core.common.MeshlitResult
 import com.meshlit.core.common.control.ManagedFeature
 import com.meshlit.core.common.control.OperationGate
 import com.meshlit.core.inference.*
+import com.meshlit.core.inference.models.HostedSearchCall
+import kotlinx.serialization.json.*
 import com.meshlit.core.mcp.*
 import com.meshlit.core.observability.LogSource
 import com.meshlit.observability.LogBuffer
@@ -16,12 +18,28 @@ import kotlinx.coroutines.ensureActive
 /** Chat grants expose a small tool list; each existing tool retains its own
  * saved delegation, OS permission and operation checks. No generic shell tool. */
 class LocalChatTools(private val inference:InferenceCoordinator,private val gate:OperationGate,private val registry:()->McpToolRegistry,private val search:()->com.meshlit.search.AppSearchService,private val logs:LogBuffer,private val libraryModelName:()->String?={null}) {
+    internal suspend fun reviewedHostedSearch(call:HostedSearchCall,authorize:suspend()->Unit,
+        review:suspend(McpToolRequest,McpToolSpec.Origin)->Boolean,onDispatch:()->Unit):JsonObject = gate.run(ManagedFeature.AUTOMATION,true) {
+        call.validate();authorize()
+        val selected=registry()
+        val tool=selected.list().singleOrNull{it.name=="web_search" && it.origin==McpToolSpec.Origin.BuiltIn}
+            ?: error("The public web search tool is unavailable")
+        val request=McpToolRequest(tool.name,buildJsonObject{put("query",call.query)})
+        check(review(request,tool.origin)){"Web search was denied or review expired; no query was sent"}
+        currentCoroutineContext().ensureActive();authorize();gate.requireAllowed(ManagedFeature.AUTOMATION,true)
+        onDispatch()
+        val result=selected.invoke(request,tool)
+        currentCoroutineContext().ensureActive();authorize()
+        hostedSearchEvidence(result)
+    }
+
     suspend fun run(prompt:String,options:ChatOptions,status:(String)->Unit,
         onToolEvent:(String,McpToolResult?)->Unit={_,_->},latestUserMessage:String?=null,conversationId:String?=null,connectionSelection:DeviceConnectionSelection?=null,
         reviewTool:suspend(McpToolRequest,McpToolSpec.Origin)->Boolean={_,_->true}):LocalToolAnswer=gate.run(ManagedFeature.AUTOMATION,true) {
         val parentTurn=currentCoroutineContext().job
         withContext(com.meshlit.control.LocalAgentTurn(parentTurn,conversationId)) {
         options.validate();com.meshlit.BuildProfile.requireChat(options)
+        check(options.agentToolsActive){"Choose Agent mode before running chat tools"}
         val names=buildSet {
             if(options.nodeTools) addAll(listOf("cyber_skills_list","cyber_skill_read","vm_status","vm_start","vm_wait","vm_stop","vm_exec","ssh_nodes","ssh_node_request","colibri_mode"))
             if(options.connectionTools)add("device_connection")

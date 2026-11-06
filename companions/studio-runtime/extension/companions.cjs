@@ -53,7 +53,7 @@ function register(context) {
   context.subscriptions.push({dispose() { for (const id of probes.keys()) stopProbe(id); }});
   context.subscriptions.push(vscode.commands.registerCommand('meshlit.companions', () => {
     if (panel) { panel.reveal(); return; }
-    const currentPanel = vscode.window.createWebviewPanel('meshlit.companions', 'Companion services', vscode.ViewColumn.One, {enableScripts: true, localResourceRoots: []});
+    const currentPanel = require('./shell.cjs').createPanel(vscode,'meshlit.companions', 'Companion services', vscode.ViewColumn.One, {enableScripts: true, localResourceRoots: []});
     panel = currentPanel;
     panel.webview.html = render();
     panel.onDidDispose(() => {

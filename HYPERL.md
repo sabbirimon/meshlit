@@ -1,6 +1,6 @@
 # HyperL experimental foundation
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-03: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -62,3 +62,7 @@ explicit skipped host check, not proof of another backend.
 The shared workbench now uses the separately licensed `core-hyperl` module for
 Kotlin/native C99 execution, precise sums and encrypted dataset operations. The
 old Apache `core-gpu` port is preserved. Read the [alpha.6 integration guide](docs/hyperl/ANDROID_ALPHA6.md) for licence opt-in, Android/API limits, safety boundaries and validation.
+
+## HyperL-owned model engine continuation — 2026-11-06
+
+See [Studio engine plan](docs/STUDIO_HYPERL_ENGINE_PLAN_2026-11-06.md). The engine belongs to standalone HyperL; Studio consumes its versioned interface. Expert accounting is implemented and tested in HyperL; expert paging and Studio integration remain planned. AMD partial offload is a correctness prototype with a measured slowdown, not a shipping performance feature. Desktop first-run agreements are deferred by the owner until engine work.

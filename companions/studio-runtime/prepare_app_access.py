@@ -1,7 +1,9 @@
 """Build the small native Accessibility helper inside a prepared Studio extension."""
 import argparse
+import os
 from pathlib import Path
 import plistlib
+import signal
 import subprocess
 import tempfile
 
@@ -12,7 +14,18 @@ def build(extension, identity='-'):
     source=Path(__file__).with_name('native')/'AppAccess.swift'
     # Keep compiler caches outside the signed application and user-global cache.
     with tempfile.TemporaryDirectory(prefix='meshlit-swift-') as cache:
-        subprocess.run(['xcrun','swiftc','-module-cache-path',cache,'-O',str(source),'-o',str(binary)],check=True,timeout=300)
+        command=['xcrun','swiftc','-module-cache-path',cache,'-O',str(source),'-o',str(binary)]
+        # Cold SDK modules on Intel can take several minutes. Own the compiler
+        # process group so timeout or cancellation also stops swift-frontend.
+        with subprocess.Popen(command,start_new_session=True) as compiler:
+            try:
+                status=compiler.wait(timeout=900)
+            except BaseException:
+                try: os.killpg(compiler.pid,signal.SIGKILL)
+                except ProcessLookupError: pass
+                compiler.wait()
+                raise
+            if status: raise subprocess.CalledProcessError(status,command)
     (bundle/'Contents/Info.plist').write_bytes(plistlib.dumps(dict(
         CFBundleIdentifier='com.meshlit.desktop.appaccess',CFBundleName='Meshlit App Access',
         CFBundleDisplayName='Meshlit App Access',CFBundleExecutable=binary.name,
