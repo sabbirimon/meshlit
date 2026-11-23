@@ -1,0 +1,76 @@
+name: Publish Intel Studio build 48
+on:
+  push:
+    branches: [release/studio-downloads]
+    paths: ['.github/workflows/intel-release.yml']
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+jobs:
+  intel:
+    runs-on: macos-15-intel
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 25ff596f9067b728b07471c929abc5f0d8518cf5
+          persist-credentials: false
+      - run: node --test companions/native-studio/extension/studio.test.cjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/checkout@v4
+        with:
+          repository: ggml-org/llama.cpp
+          ref: 4df29be4f4c3673f428170fda944a5b19f743bb8
+          path: vendored/runanywhere-llama
+          persist-credentials: false
+      - run: python scripts/stage-desktop-inference.py
+      - name: Assemble relocatable workbench and verify upstream payloads
+        run: GITHUB_SHA=$(git rev-parse HEAD) python scripts/package-studio-suite.py desktopApp/build/package-resources/common dist --cache archives
+      - name: Archive, re-extract and exercise the shipped suite
+        shell: python
+        run: |
+          import os, pathlib, subprocess, shutil
+          dist = pathlib.Path('dist')
+          suite = dist / 'Meshlit-Studio'
+          windows = os.name == 'nt'
+          name = 'Meshlit-Studio-' + os.environ['RUNNER_OS'] + '-' + os.environ['RUNNER_ARCH'] + ('.zip' if windows else '.tar.gz')
+          archive = dist / name
+          subprocess.run(['tar', '-a' if windows else '-z', '-cf', str(archive.resolve()), '-C', str(dist), suite.name], check=True)
+          # Windows app images contain read-only executables. Extract into a fresh directory.
+          extracted = dist / 'acceptance'
+          extracted.mkdir()
+          if not windows:
+              shutil.rmtree(suite)
+          subprocess.run(['tar','-xf',str(archive),'-C',str(extracted)],check=True)
+          suite = extracted / 'Meshlit-Studio'
+          if os.environ['RUNNER_OS'] == 'Linux':
+              installed = pathlib.Path('/opt/meshlit-studio')
+              subprocess.run(['sudo','mv',str(suite),str(installed)],check=True)
+              subprocess.run(['sudo','chown','-R','root:root',str(installed)],check=True)
+              subprocess.run(['sudo','apparmor_parser','-r',str(installed / 'meshlit-studio.apparmor')],check=True)
+              suite = installed
+          prefix = ['xvfb-run','-a'] if os.environ['RUNNER_OS']=='Linux' else []
+          subprocess.run(prefix + ['python','scripts/check-studio-suite.py',str(suite)],check=True)
+          shutil.copy2(suite / 'STUDIO-CONTENTS.json', dist)
+          import hashlib
+          with archive.open('rb') as stream:
+              digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+          (dist/'SHA256SUMS.txt').write_text(digest + '  ' + name + '\n')
+          with open(os.environ['GITHUB_ENV'],'a') as env:
+              print('SUITE_ARCHIVE=' + archive.as_posix(),file=env)
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ env.SUITE_ARCHIVE }}
+      - name: Verify and attach the Intel archive to the matching release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          test "$(git rev-parse HEAD)" = "25ff596f9067b728b07471c929abc5f0d8518cf5"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v2.0.48-studio.1" --jq .object.sha)" = "$(git rev-parse HEAD)"
+          gh attestation verify "$SUITE_ARCHIVE" -R "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/intel-release.yml" --source-digest "$GITHUB_SHA"
+          gh release upload v2.0.48-studio.1 "$SUITE_ARCHIVE" -R "$GITHUB_REPOSITORY"
