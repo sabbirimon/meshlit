@@ -54,17 +54,33 @@ jobs:
         shell: python
         run: |
           import os, pathlib, subprocess, tempfile
-          root = pathlib.Path('desktopApp/build/compose/binaries/main/app')
-          os_name = os.environ['RUNNER_OS']
-          launcher = {'Windows': 'Meshlit/Meshlit.exe', 'Linux': 'Meshlit/bin/Meshlit',
-                      'macOS': 'Meshlit.app/Contents/MacOS/Meshlit'}[os_name]
-          command = [str((root / launcher).resolve()), '--render-check']
+          root = pathlib.Path('desktopApp/build/compose/binaries/main')
+          platform = os.environ['RUNNER_OS']
           with tempfile.TemporaryDirectory() as temp:
-              image = pathlib.Path(temp) / 'workspace.png'
-              if os_name == 'Linux':
-                  command = ['xvfb-run', '-a'] + command
-              subprocess.run(command + [str(image)], check=True, timeout=90)
-              assert image.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n', 'Packaged client did not render'
+              stage = pathlib.Path(temp) / 'stage'
+              stage.mkdir()
+              if platform == 'Windows':
+                  [msi] = root.glob('**/*.msi')
+                  subprocess.run(['msiexec.exe', '/a', str(msi.resolve()), '/qn', 'TARGETDIR=' + str(stage)], check=True, timeout=120)
+                  [launcher] = [p for p in stage.rglob('*.exe') if p.name.lower() == 'meshlit.exe']
+              elif platform == 'Linux':
+                  [deb] = root.glob('**/*.deb')
+                  subprocess.run(['dpkg-deb', '-x', str(deb), str(stage)], check=True)
+                  [launcher] = [p for p in stage.rglob('*') if p.name.lower() == 'meshlit' and p.parent.name == 'bin' and p.is_file()]
+              else:
+                  [dmg] = root.glob('**/*.dmg')
+                  subprocess.run(['hdiutil', 'attach', '-readonly', '-nobrowse', '-mountpoint', str(stage), str(dmg)], check=True)
+                  [launcher] = stage.glob('*.app/Contents/MacOS/Meshlit')
+              try:
+                  image = pathlib.Path(temp) / 'workspace.png'
+                  command = [str(launcher.resolve()), '--render-check', str(image)]
+                  if platform == 'Linux':
+                      command = ['xvfb-run', '-a'] + command
+                  subprocess.run(command, check=True, timeout=90)
+                  assert image.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n', 'Packaged client did not render'
+              finally:
+                  if platform == 'macOS':
+                      subprocess.run(['hdiutil', 'detach', str(stage)], check=True)
       - name: Installer checksums and scope
         shell: python
         run: |
