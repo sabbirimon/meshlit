@@ -16,8 +16,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SOURCE: a5af59ab16e3569c8df57c92ea26536b3a750f25
-      RUN: '45283668801'
+      SOURCE: 179539abea9573fe7363ef9389e503b75283950a
+      RUN: '45287100796'
       TAG: v2.0.49-studio.1
     steps:
       - name: Verify all tested packages before publishing
@@ -51,7 +51,7 @@ jobs:
 
           This Studio preview adds nearby device discovery, device-ID pairing, per-device GGUF sharing and streamed remote replies. Internet pairing requires a configured HTTPS relay and an access token. The Mac and HP ran the installed IDE checks and the bundled offline model. A Samsung LTE protocol client paired through a private relay and received real model output. The Android 2.0.48 application is a separate download on the v2.0.48-studio.1 release.
 
-          General Chat, the IDE sidebar and welcome screen, and the desktop launchers use the ringed branch symbol. The archives were exercised after extraction. The Windows installer was installed, launched and uninstalled in CI. SHA256SUMS.txt covers all five downloads. GitHub attestations bind them to commit a5af59ab16e3569c8df57c92ea26536b3a750f25. The macOS preview uses ad-hoc signing. Windows publisher signing and Apple notarization are pending.
+          General Chat distinguishes speakers, identifies the model on replies and groups attachment, access, model, microphone and send/stop controls in the composer. General Chat, the IDE sidebar and welcome screen, and the desktop launchers use the ringed branch symbol. The archives were exercised after extraction. The Windows installer was installed, launched and uninstalled in CI. SHA256SUMS.txt covers all five downloads. GitHub attestations bind them to commit 179539abea9573fe7363ef9389e503b75283950a. The macOS preview uses ad-hoc signing. Windows publisher signing and Apple notarization are pending.
           NOTES
           gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.49-studio.1" --notes-file notes.md assets/*
           gh release edit "$TAG" -R "$REPO" --draft=false
