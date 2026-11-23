@@ -38,7 +38,7 @@ internal fun localCheck(output: String) {
             put("endToEndTokensPerSecond", checkNotNull(usage.tokensPerSecond))
             put("generationWithoutTokenRejected", true); put("loopbackModelMetadataPublic", true)
             put("unloadStoppedListener", true)
-            put("scope", "Real bundled model generation on Intel Mac; no cloud, GPU, other-device or broad quality benchmark")
+            put("scope", "Real bundled model generation on the packaged host; no cloud, GPU, other-device or broad quality benchmark")
         }
         Files.writeString(Path.of(output), Json { prettyPrint = true }.encodeToString(JsonObject.serializer(), result) + "\n")
         println("Real local model generation, authentication and unload checks passed.")

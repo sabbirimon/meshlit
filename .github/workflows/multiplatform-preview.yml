@@ -1,6 +1,11 @@
 name: Multiplatform client preview
 on:
   workflow_dispatch:
+    inputs:
+      local_inference:
+        type: boolean
+        default: true
+        description: Bundle and qualify the offline Qwen model
   pull_request:
   push:
     branches: [main, dev, plan/studio-mobile-lts]
@@ -19,7 +24,7 @@ jobs:
       attestations: write
     name: Host client contracts (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 105
     strategy:
       fail-fast: false
       matrix:
@@ -42,19 +47,32 @@ jobs:
       - name: NEXT static project boundaries (not a HAP build)
         shell: bash
         run: python3 scripts/check-next-preview.py
+      - name: Check out reviewed llama.cpp
+        if: inputs.local_inference
+        uses: actions/checkout@v4
+        with:
+          repository: ggml-org/llama.cpp
+          ref: 4df29be4f4c3673f428170fda944a5b19f743bb8
+          path: vendored/runanywhere-llama
+          persist-credentials: false
+      - name: Build offline runtime and stage verified starter
+        if: inputs.local_inference
+        run: python scripts/stage-desktop-inference.py
       - name: Build experimental Windows installer
         if: runner.os == 'Windows'
         shell: bash
-        run: ./gradlew :desktopApp:packageMsi --no-daemon --max-workers=2
+        run: ./gradlew :desktopApp:packageMsi -Pmeshlit.bundleResources=build/package-resources --no-daemon --max-workers=2
       - name: Build experimental Linux installer
         if: runner.os == 'Linux'
         shell: bash
-        run: ./gradlew :desktopApp:packageDeb --no-daemon --max-workers=2
+        run: ./gradlew :desktopApp:packageDeb -Pmeshlit.bundleResources=build/package-resources --no-daemon --max-workers=2
       - name: Build experimental macOS installer
         if: runner.os == 'macOS'
         shell: bash
-        run: ./gradlew :desktopApp:packageDmg --no-daemon --max-workers=2
+        run: ./gradlew :desktopApp:packageDmg -Pmeshlit.bundleResources=build/package-resources --no-daemon --max-workers=2
       - name: Launch the packaged client and render its workspace
+        env:
+          FULL_BUILD: ${{ inputs.local_inference }}
         shell: python
         run: |
           import os, pathlib, subprocess, tempfile
@@ -82,6 +100,13 @@ jobs:
                       command = ['xvfb-run', '-a'] + command
                   subprocess.run(command, check=True, timeout=90)
                   assert image.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n', 'Packaged client did not render'
+                  if os.environ.get('FULL_BUILD') == 'true':
+                      receipt = pathlib.Path.cwd() / 'local-inference.json'
+                      command[-2:] = ['--local-check', str(receipt)]
+                      subprocess.run(command, check=True, timeout=360)
+                      import json
+                      proof = json.loads(receipt.read_text(encoding='utf-8'))
+                      assert proof['outputTokens'] > 0 and proof['generationWithoutTokenRejected'] and proof['unloadStoppedListener']
               finally:
                   if platform == 'macOS':
                       subprocess.run(['hdiutil', 'detach', str(stage)], check=True)
@@ -105,8 +130,10 @@ jobs:
           (output / 'BUILD.json').write_text(json.dumps({
               'commit': os.environ['GITHUB_SHA'], 'os': os.environ['RUNNER_OS'],
               'architecture': os.environ['RUNNER_ARCH'], 'publisherSigned': False,
-              'bundledLocalInference': False, 'installedAppQualification': False
+              'bundledLocalInference': pathlib.Path('local-inference.json').exists(), 'installedAppQualification': False
           }, indent=2) + '\n')
+          if pathlib.Path("local-inference.json").exists():
+              shutil.copy2("local-inference.json", output / "local-inference.json")
           checksums = []
           for item in sorted(output.iterdir()):
               checksums.append(hashlib.sha256(item.read_bytes()).hexdigest() + '  ' + item.name)

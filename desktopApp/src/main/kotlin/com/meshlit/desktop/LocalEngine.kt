@@ -7,7 +7,6 @@ import java.net.InetAddress
 import java.net.ServerSocket
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -34,17 +33,17 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
     private var process: Process? = null
     @Volatile var appliedCpuThreads:Int?=null
         private set
-    private var privateDirectory: Path? = null
+    private val exeSuffix = if (System.getProperty("os.name").startsWith("Windows")) ".exe" else ""
     private val hook = Thread({ stop() }, "meshlit-local-shutdown")
     init { if (registerShutdownHook) Runtime.getRuntime().addShutdownHook(hook) }
-    fun available() = Files.isExecutable(resources.resolve("local/llama-server")) &&
+    fun available() = Files.isExecutable(resources.resolve("local/llama-server$exeSuffix")) &&
         Files.isRegularFile(resources.resolve("models/${DesktopStarter.filename}"))
 
     fun start(customModel: Path? = null, expectedModelSha256: String? = null, options: EngineOptions = EngineOptions(), thinkingTemplates: Boolean = false): LocalSession {
         options.validate()
         stop()
         val expectedRevision = synchronized(lock) { revision }
-        var server = resources.resolve("local/llama-server").toAbsolutePath()
+        var server = resources.resolve("local/llama-server$exeSuffix").toAbsolutePath()
         check(Files.isExecutable(server)) { "Packaged local engine is unavailable" }
         val model = (customModel ?: resources.resolve("models/${DesktopStarter.filename}")).toAbsolutePath()
         validateModel(model, customModel == null) { checkCurrent(expectedRevision) }
@@ -74,32 +73,27 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
         }
         val variant=selectCpuVariant(options.cpuMode,features,fast!=null)
         if (variant=="llama-server-avx2") {
-            server=resources.resolve("local/$variant").toAbsolutePath()
+            server=resources.resolve("local/$variant$exeSuffix").toAbsolutePath()
             val fastHash=fast!!["sha256"]?.jsonPrimitive?.content ?: error("Optimized engine checksum missing")
             check(Files.isExecutable(server) && hash(server) {checkCurrent(expectedRevision)}==fastHash) {"Optimized engine integrity failed"}
         }
         checkCurrent(expectedRevision)
-        val backend=if(variant=="llama-server-avx2") "CPU AVX2/FMA/F16C" else "CPU SSE4.2"
+        val backend=if(variant=="llama-server-avx2") "CPU AVX2/FMA/F16C" else "CPU baseline (" + System.getProperty("os.arch") + ")"
         val token = ByteArray(32).also { SecureRandom().nextBytes(it) }
             .let { Base64.getUrlEncoder().withoutPadding().encodeToString(it) }
         val port = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { it.localPort }
         val host = HostEndpoint.parse("http://127.0.0.1:$port/v1")
         synchronized(lock) {
             checkCurrent(expectedRevision)
-            val directory = Files.createTempDirectory("meshlit-local-",
-                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
-            privateDirectory = directory
-            val secret = Files.createFile(directory.resolve("access-key"),
-                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
-            Files.writeString(secret, token + "\n")
             try {
                 val builder = ProcessBuilder(listOf(server.toString(), "--model", model.toString(),
-                    "--host", "127.0.0.1", "--port", port.toString(), "--api-key-file", secret.toString(),
+                    "--host", "127.0.0.1", "--port", port.toString(),
                     "--alias", DesktopStarter.alias, "--parallel", "1") + options.nativeArgs() +
                     (if (thinkingTemplates) listOf("--jinja", "--reasoning-format", "deepseek") else emptyList()))
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD)
                 // Explicit app options win over inherited llama/ggml runtime variables.
                 builder.environment().keys.removeIf { it.startsWith("LLAMA_") || it.startsWith("GGML_") }
+                builder.environment()["LLAMA_API_KEY"] = token
                 process = builder.start()
             } catch (error: Exception) { stop(); throw error }
         }
@@ -135,15 +129,12 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
     fun stop() {
         val owned = synchronized(lock) {
             revision++
-            val result = process to privateDirectory
-            process = null; privateDirectory = null;appliedCpuThreads=null
+            val result = process
+            process = null; appliedCpuThreads = null
             result
         }
-        owned.first?.destroy()
-        owned.second?.let { directory ->
-            runCatching { Files.deleteIfExists(directory.resolve("access-key")); Files.deleteIfExists(directory) }
-        }
-        owned.first?.let { child -> Thread({
+        owned?.destroy()
+        owned?.let { child -> Thread({
             if (!child.waitFor(2, TimeUnit.SECONDS)) { child.destroyForcibly(); child.waitFor(2, TimeUnit.SECONDS) }
         }, "meshlit-local-stop").apply { isDaemon = true; start() } }
     }
