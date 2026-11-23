@@ -24,7 +24,7 @@ exports.run=async()=>{
         const s=api.homeStatus();
         if(s.home && s.ready && s.visible && s.folders===0){
             fs.writeFileSync(path.join(__dirname,'home.json'),JSON.stringify(s));
-            await vscode.commands.executeCommand('meshlit.studio.models');
+            for(const id of ['settings','tools','management','models'])await vscode.commands.executeCommand('meshlit.studio.'+id);
             await vscode.commands.executeCommand('meshlit.studio.chat');
             return;
         }

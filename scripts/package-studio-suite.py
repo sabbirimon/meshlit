@@ -56,6 +56,9 @@ def package_extension(suite):
         for file in sorted(src.iterdir()):
             if file.suffix in (".cjs", ".json") and ".test." not in file.name:
                 bundle.write(file, "extension/" + file.name)
+        legacy = ROOT / "companions/studio-runtime/extension"
+        for module in ["ssh-dashboard.cjs", "shell.cjs", "memory.cjs", "memory-store.cjs"]:
+            bundle.write(legacy / module, "extension/legacy/" + module)
         bundle.write(ROOT / "LICENSE", "extension/LICENSE")
     (suite / "extension.sha256").write_text(hashlib.sha256((suite / name).read_bytes()).hexdigest())
 
@@ -114,6 +117,7 @@ def main():
         unpack(specs["zig"], raw / "compiler", args.cache)
         [zig] = [p for p in (raw / "compiler").rglob("zig.exe" if SYSTEM == "Windows" else "zig") if p.is_file()]
         zig.parent.rename(suite / "toolchain")
+    __import__("runpy").run_path(str(ROOT / "scripts/brand-studio.py"))["configure"](suite / "editor", SYSTEM == "Darwin")
     automation = suite / "automation"
     automation.mkdir()
     if SYSTEM == "Darwin":

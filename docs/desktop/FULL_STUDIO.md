@@ -57,6 +57,12 @@ The offline acceptance test opens an Extension Development Host with a disposabl
 
 Launch **Meshlit** with no arguments to open **General chat**. The welcome screen has a message composer, a model selector and a navigation rail for models, devices, app control and settings. Recent chats are available within this running session and model route. Switching provider clears the previous conversations from that route.
 
-Choose **Open coding IDE** and select a folder to open a separate project window with Explorer, editor tabs and a terminal. The Home window stays available. The launcher opens a dedicated, empty Studio workspace for Home so reopening the app after coding returns to chat. Home and the project IDE share the bundled workbench runtime and use separate window layouts. This restores the CS-01 window contract in the [older Studio design](../CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+Choose **Open coding IDE** and select a folder to open a separate project window with Explorer, editor tabs and a terminal. The Home window stays available. Home opens as an empty window. The launcher supplies its packaged toolchain environment directly at startup. Project trust applies when you choose a project. Home and the project IDE share the bundled workbench runtime and use separate window layouts. This restores the CS-01 window contract in the [older Studio design](../CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
 
 The package check launches Home first and requires a visible, initialized chat view with zero project folders. A second isolated test opens the IDE and compiles a C program. An **Extension Development Host** title and a workspace containing `hello.c` identify that test.
+
+## Studio menu, Tools and Management
+
+Use the **Studio** application menu or the **Management** and **Tools** entries in the chat rail. **Settings** is at the top right of General Chat. On macOS, **Meshlit → Meshlit Settings…** opens the same controls. The distributed workbench is a Meshlit-branded derivative of the pinned VSCodium release. The macOS development build uses a local ad-hoc signature after branding.
+
+Management covers model registrations, local serving, CPU policy, verified devices, SSH profiles, MCP server configuration, reply filtering and host resources. Tools includes local app control and Stop, the bundled compiler check, component inventory, registered model tools and project memory. Project memory requires a trusted project window. Some legacy bot, voice, team and gateway pages depend on their separate runtime and remain outside this native package.

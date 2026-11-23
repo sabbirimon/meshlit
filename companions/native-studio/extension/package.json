@@ -1,16 +1,75 @@
 {
-  "name": "native-studio", "publisher": "meshlit", "displayName": "Meshlit Studio",
-  "version": "2.0.48", "engines": { "vscode": "^1.95.0" }, "main": "./studio.cjs",
-  "activationEvents": ["onStartupFinished"], "license": "Apache-2.0",
-  "capabilities": {"untrustedWorkspaces": {"supported": true}},
-  "contributes": {"commands": [
-    {"command":"meshlit.studio.chat","title":"Meshlit: General Chat"},
-    {"command":"meshlit.studio.models","title":"Meshlit: Models and Connections"},
-    {"command":"meshlit.studio.control","title":"Meshlit: Control a Local App"},
-    {"command":"meshlit.studio.stopControl","title":"Meshlit: Stop App Control"},
-    {"command":"meshlit.studio.pair","title":"Meshlit: Pair and Manage Devices"},
-    {"command":"meshlit.studio.guardrails","title":"Meshlit: Output Guardrails"},
-    {"command":"meshlit.studio.cpu","title":"Meshlit: Local CPU Thread Limit"},
-    {"command":"meshlit.studio.ide","title":"Meshlit: Open Project in New IDE Window"}
-  ]}
+  "name": "native-studio",
+  "publisher": "meshlit",
+  "displayName": "Meshlit Studio",
+  "version": "2.0.48",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "main": "./studio.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "license": "Apache-2.0",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "meshlit.studio.chat",
+        "title": "Meshlit: General Chat"
+      },
+      {
+        "command": "meshlit.studio.models",
+        "title": "Meshlit: Models and Connections"
+      },
+      {
+        "command": "meshlit.studio.control",
+        "title": "Meshlit: Control a Local App"
+      },
+      {
+        "command": "meshlit.studio.stopControl",
+        "title": "Meshlit: Stop App Control"
+      },
+      {
+        "command": "meshlit.studio.pair",
+        "title": "Meshlit: Pair and Manage Devices"
+      },
+      {
+        "command": "meshlit.studio.guardrails",
+        "title": "Meshlit: Output Guardrails"
+      },
+      {
+        "command": "meshlit.studio.cpu",
+        "title": "Meshlit: Local CPU Thread Limit"
+      },
+      {
+        "command": "meshlit.studio.ide",
+        "title": "Meshlit: Open Project in New IDE Window"
+      },
+      {
+        "command": "meshlit.studio.management",
+        "title": "Meshlit: Management"
+      },
+      {
+        "command": "meshlit.studio.tools",
+        "title": "Meshlit: Tools"
+      },
+      {
+        "command": "meshlit.studio.settings",
+        "title": "Meshlit: Settings"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "meshlit.studio.settings",
+        "key": "ctrl+,",
+        "mac": "cmd+,",
+        "when": "meshlitStudioHome"
+      }
+    ]
+  }
 }

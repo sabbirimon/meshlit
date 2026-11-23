@@ -106,21 +106,21 @@ def configure_chat_shell(resources):
     css = out / 'vs/workbench/workbench.desktop.main.css'
     native = out / 'mainImpl.js'
     # Validate every pinned anchor before changing any file.
-    boot_source = _replace_pinned(bootstrap.read_text(), BOOTSTRAP_ORIGINAL,
+    boot_source = _replace_pinned(bootstrap.read_text(encoding="utf-8"), BOOTSTRAP_ORIGINAL,
                                   BOOTSTRAP_REPLACEMENT, bootstrap.name)
-    main_source = _replace_pinned(workbench.read_text(), ZEN_ORIGINAL,
+    main_source = _replace_pinned(workbench.read_text(encoding="utf-8"), ZEN_ORIGINAL,
                                   ZEN_REPLACEMENT, workbench.name)
     main_source = _insert_pinned(main_source, MENU_RENDERER_ANCHOR,
                                  MENU_RENDERER_PATCH, workbench.name)
-    native_source = _insert_pinned(native.read_text(), MENU_NATIVE_ANCHOR,
+    native_source = _insert_pinned(native.read_text(encoding="utf-8"), MENU_NATIVE_ANCHOR,
                                    MENU_NATIVE_PATCH, native.name)
-    css_source = css.read_text()
+    css_source = css.read_text(encoding="utf-8")
     if STYLE_MARKER in css_source:
         if css_source.count(SHELL_STYLE) != 1:
             raise ValueError('Unexpected existing Meshlit shell style')
     else:
         css_source += SHELL_STYLE
-    bootstrap.write_text(boot_source)
-    workbench.write_text(main_source)
-    native.write_text(native_source)
-    css.write_text(css_source)
+    bootstrap.write_text(boot_source,encoding="utf-8")
+    workbench.write_text(main_source,encoding="utf-8")
+    native.write_text(native_source,encoding="utf-8")
+    css.write_text(css_source,encoding="utf-8")

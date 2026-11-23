@@ -62,19 +62,10 @@ fn launch() -> io::Result<()> {
         Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
         Err(e) => return Err(e),
     }
-    // An explicit empty workspace makes Home deterministic even after a coding session.
-    let home_file = profile.join("Meshlit Studio.code-workspace");
-    if home {
-        let content = include_bytes!("home.code-workspace");
-        if fs::read(&home_file).ok().as_deref() != Some(content.as_slice()) {
-            fs::write(&home_file, content)?;
-        }
-    }
     let make = || {
         let mut cmd = Command::new(&editor);
         cmd.env_remove("ELECTRON_RUN_AS_NODE");
         cmd.env("MESHLIT_SUITE_ROOT", root);
-        cmd.env("MESHLIT_HOME_WORKSPACE", &home_file);
 
         cmd.env(
             "PATH",
@@ -119,6 +110,9 @@ fn launch() -> io::Result<()> {
         .arg("--extensions-dir")
         .arg(extensions)
         .arg("--new-window");
+    if home {
+        gui.arg("--force-disable-user-env");
+    }
     if let Some(path) = probe {
         // A disposable extension test profile must never request credentials from the operator.
         gui.arg("--use-inmemory-secretstorage");
@@ -132,16 +126,15 @@ fn launch() -> io::Result<()> {
                 "--extensionTestsPath={}",
                 path.join("test.js").display()
             ));
-        let status = gui
-            .arg(if home { home_file } else { folder.unwrap() })
-            .status()?;
+        if let Some(dir) = folder {
+            gui.arg(dir);
+        }
+        let status = gui.status()?;
         if !status.success() {
             return Err(io::Error::other("Studio self-test failed"));
         }
     } else {
-        if home {
-            gui.arg(home_file);
-        } else if let Some(dir) = folder {
+        if let Some(dir) = folder {
             gui.arg(dir);
         }
         gui.spawn()?;

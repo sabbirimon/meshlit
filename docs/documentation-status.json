@@ -1059,7 +1059,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit Native Studio",
-      "contentSha256WithoutTrackingBlock": "c7943373f292c5bb72db60d78e6e62a5467ed29266b1237bacb7bd703852c649"
+      "contentSha256WithoutTrackingBlock": "cb985eba0defd8c2b90e423546f14e031bf3f92cf9a3fae10ecab5b93d104f41"
     },
     {
       "path": "docs/desktop/INFERENCE_PROFILES.md",

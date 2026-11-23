@@ -8,6 +8,10 @@ on:
       - 'scripts/*studio-suite.py'
       - 'desktopApp/distribution/studio-tools.json'
       - 'companions/native-studio/**'
+      - 'scripts/brand-studio.py'
+      - 'companions/studio-runtime/prepare_shell.py'
+      - 'companions/studio-runtime/extension/ssh-dashboard.cjs'
+      - 'companions/studio-runtime/extension/memory*.cjs'
       - 'scripts/*desktop-inference.py'
 permissions:
   contents: read

@@ -9,9 +9,10 @@ async function activate(context) {
     const root = process.env.MESHLIT_SUITE_ROOT;
     if (!root) throw Error('Launch the extracted Meshlit Studio application');
     local = new LocalServer(root);
-    const hostPath = require('node:path');
-    const homeWorkspace = process.env.MESHLIT_HOME_WORKSPACE || hostPath.join(require('node:os').homedir(),'.meshlit','native-studio','Meshlit Studio.code-workspace');
-    const home = vscode.workspace.workspaceFile?.scheme==='file' && hostPath.relative(homeWorkspace,vscode.workspace.workspaceFile.fsPath)==='' && !vscode.workspace.workspaceFolders?.length;
+    const empty = !vscode.workspace.workspaceFolders?.length;
+    const oldHome = require('node:path').join(require('node:os').homedir(),'.meshlit','native-studio','Meshlit Studio.code-workspace');
+    const home = empty && (!vscode.workspace.workspaceFile || vscode.workspace.workspaceFile.fsPath===oldHome);
+    await vscode.commands.executeCommand('setContext','meshlitStudioHome',home);
     let ready=false;
     const settings = () => context.globalState.get('route', {kind:'local', model:'meshlit-local'});
     const pair = require('./pairing.cjs').register(vscode,context);
@@ -145,6 +146,11 @@ async function activate(context) {
     }
     const management=require('./management.cjs').dashboard(vscode,dashboardState,action);
     context.subscriptions.push({dispose:management.dispose});
+    require('./legacy/ssh-dashboard.cjs').register(context,vscode);
+    require('./legacy/memory.cjs').register(context);
+    const dashboards=require('./operations.cjs').operations(vscode,context,root,{
+        models:management.open,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
+    });
     function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':current.kind+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
     async function generate(prompt) {
         if (typeof prompt !== 'string' || !prompt.trim() || prompt.length>16000) throw Error('Enter a prompt of up to 16,000 characters');
@@ -182,10 +188,7 @@ async function activate(context) {
                 if(msg.op==='ready') {ready=true;status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
                 if(msg.op==='new'&&!active){history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:history});threadList();}
-                if(msg.op==='settings'&&!active){
-                    const item=await vscode.window.showQuickPick(['Local CPU threads','Reply filtering'],{title:'Studio settings'});
-                    if(item==='Local CPU threads')await cpu();else if(item==='Reply filtering')await guardrails();
-                }
+                if(['tools','management','settings'].includes(msg.op))dashboards.open(msg.op);
                 if(msg.op==='models') await management.open();
                 if(msg.op==='pair') await pair();
                 if(msg.op==='control') await control();
@@ -199,7 +202,7 @@ async function activate(context) {
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.message}); }
         });
     }
-    for(const [cmd,fn] of Object.entries({chat,models:management.open,ide,cpu,pair,guardrails,control})) {
+    for(const [cmd,fn] of Object.entries({chat,management:()=>dashboards.open('management'),tools:()=>dashboards.open('tools'),settings:()=>dashboards.open('settings'),models:management.open,ide,cpu,pair,guardrails,control})) {
         context.subscriptions.push(vscode.commands.registerCommand('meshlit.studio.'+cmd,async()=>{try {return await fn();} catch(err){vscode.window.showErrorMessage(err.message);}}));
     }
     context.subscriptions.push({dispose:()=>{active?.abort();local.stop();}});
