@@ -24,16 +24,24 @@ def main():
 const vscode = require('vscode'), fs = require('node:fs'), path = require('node:path');
 exports.run = async () => {
     const folder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+    const mark = text => { fs.appendFileSync(path.join(folder,'progress.txt'), text+'\\n'); console.log('[studio-check]',text); };
+    mark('test entered');
     const win = process.platform === 'win32';
     const term = vscode.window.createTerminal({name:'Native Studio acceptance',cwd:folder,
         shellPath:win?process.env.ComSpec:'/bin/sh',shellArgs:win?['/d','/q']:[]});
-    const api = await vscode.extensions.getExtension('meshlit.native-studio').activate();
+    let api;
     try {
         term.show();
         term.sendText(win ? 'zig cc -target x86_64-windows-gnu hello.c -o hello.exe && hello.exe > result.txt' : 'zig cc hello.c -o hello && ./hello > result.txt');
+        mark('terminal submitted');
+        const extension = vscode.extensions.getExtension('meshlit.native-studio');
+        if (!extension) throw Error('Bundled extension was not installed');
+        api = await extension.activate();
+        mark('Meshlit activated');
         const prompt = 'Reply to this greeting in one short sentence: Hello!';
         const answer = await api.generate(prompt);
         if (!answer || !answer.trim()) throw Error('Missing offline reply');
+        mark('local reply received');
         fs.writeFileSync(path.join(folder,'reply.txt'),answer);
         const until = Date.now()+120000;
         while(Date.now()<until) {
@@ -42,11 +50,17 @@ exports.run = async () => {
             await new Promise(r=>setTimeout(r,300));
         }
         throw Error('Bundled C compiler and IDE terminal did not produce expected result');
-    } finally { term.dispose(); api.unload(); }
+    } finally { term.dispose(); api?.unload(); }
 };
 """)
         env = {k:v for k,v in os.environ.items() if k not in {"JAVA_HOME","JDK_HOME","CLASSPATH","JDK_JAVA_OPTIONS","ELECTRON_RUN_AS_NODE"}}
-        subprocess.run([client,"--self-test",work],env=env,check=True,timeout=480)
+        try:
+            subprocess.run([client,"--self-test",work],env=env,check=True,timeout=480)
+        except (subprocess.SubprocessError, OSError):
+            for item in [project/"progress.txt", *sorted((work/"profile/settings/logs").rglob("exthost.log"))]:
+                if item.is_file():
+                    print(item.name, item.read_text(errors="replace")[-2500:], flush=True)
+            raise
         assert (project / "result.txt").read_text().strip() == "studio-terminal-ok"
         answer = (project / "reply.txt").read_text().strip()
         assert answer

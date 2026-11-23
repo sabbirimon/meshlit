@@ -1,8 +1,7 @@
-#![cfg_attr(windows, windows_subsystem = "windows")]
 use std::{env, fs, io, path::PathBuf, process::Command};
 
 fn launch() -> io::Result<()> {
-    let executable = env::current_exe()?.canonicalize()?;
+    let executable = env::current_exe()?;
     let mut root = executable.parent().unwrap();
     if cfg!(target_os = "macos") {
         root = root
@@ -30,9 +29,9 @@ fn launch() -> io::Result<()> {
     let mut probe = None;
     match args.as_slice() {
         [] => (),
-        [option, dir] if option == "--workspace" => folder = Some(fs::canonicalize(dir)?),
+        [option, dir] if option == "--workspace" => folder = Some(std::path::absolute(dir)?),
         [option, dir] if option == "--self-test" => {
-            let dir = fs::canonicalize(dir)?;
+            let dir = std::path::absolute(dir)?;
             profile = dir.join("profile");
             folder = Some(dir.join("workspace"));
             probe = Some(dir.join("probe"));
@@ -63,7 +62,7 @@ fn launch() -> io::Result<()> {
         let mut cmd = Command::new(&editor);
         cmd.env_remove("ELECTRON_RUN_AS_NODE");
         cmd.env("MESHLIT_SUITE_ROOT", root);
-        cmd.env("VSCODE_CLI", "1");
+
         cmd.env(
             "PATH",
             env::join_paths(
