@@ -53,6 +53,13 @@ def main():
     suite.mkdir()
     [app] = [p for p in args.image.iterdir() if p.is_dir() and p.name.lower() in ("meshlit", "meshlit.app")]
     shutil.copytree(app, suite / ("Meshlit.app" if SYSTEM == "Darwin" else "Meshlit"), symlinks=True)
+    # Check the notice inside the image that will ship.
+    [model_notice] = list((suite / ("Meshlit.app" if SYSTEM == "Darwin" else "Meshlit")).rglob("QWEN-MODEL-LICENSE.txt"))
+    license_text = (ROOT / "desktopApp/distribution/notices/QWEN-MODEL-LICENSE.txt").read_bytes()
+    if b"END OF TERMS AND CONDITIONS" not in license_text:
+        raise ValueError("Bundled model license text is incomplete")
+    if model_notice.read_bytes() != license_text:
+        raise ValueError("Rebuild the app image with the reviewed model notice")
     with tempfile.TemporaryDirectory(dir=output) as temp:
         raw = Path(temp)
         unpack(specs["editor"], raw / "editor", args.cache)
