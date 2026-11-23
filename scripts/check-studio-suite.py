@@ -1,80 +1,58 @@
-"""Exercise the extracted Studio client and its integrated terminal on the native host."""
-import argparse
+"""Run a compiled C program in the IDE terminal and generate an offline reply from the installed extension."""
 import json
 import os
 from pathlib import Path
 import platform
 import subprocess
+import sys
 import tempfile
-
-SYSTEM = platform.system()
-PATHS = {
-    "Darwin": ("Meshlit.app/Contents/MacOS/Meshlit", "editor/VSCodium.app/Contents/MacOS/VSCodium"),
-    "Windows": ("Meshlit/Meshlit.exe", "editor/VSCodium.exe"),
-    "Linux": ("Meshlit/bin/Meshlit", "editor/codium"),
-}
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("suite", type=Path)
-    args = parser.parse_args()
-    root = args.suite.resolve()
-    client, cli = [root / name for name in PATHS[SYSTEM]]
-    if SYSTEM == "Linux" and not client.is_file():
-        client = root / "Meshlit/bin/meshlit"
+    root = Path(sys.argv[1]).resolve()
+    client = root / {"Linux":"Meshlit","Darwin":"Meshlit.app/Contents/MacOS/Meshlit","Windows":"Meshlit.exe"}[platform.system()]
     with tempfile.TemporaryDirectory() as temp:
-        temp = Path(temp)
-        project = temp / "test workspace"
+        work = Path(temp)
+        project = work / "workspace"
         project.mkdir()
-        (project / "Hello.java").write_text('class Hello { public static void main(String[] args) throws Exception { System.out.println(java.nio.file.Path.of(System.getProperty("java.home")).toRealPath().equals(java.nio.file.Path.of(System.getenv("JAVA_HOME")).toRealPath()) ? "studio-terminal-ok" : "wrong-java-home"); } }')
-        ext = temp / "probe"
-        ext.mkdir()
-        (ext / "package.json").write_text(json.dumps({"name": "studio-smoke", "publisher": "meshlit-test",
-            "version": "0.0.1", "engines": {"vscode": "^1.90.0"}, "main": "./extension.js"}))
-        (ext / "extension.js").write_text("exports.activate = () => {};")
-        (ext / "test.js").write_text("""
+        (project / "hello.c").write_text('#include <stdio.h>\nint main(void) { puts("studio-terminal-ok"); return 0; }\n')
+        probe = work / "probe"
+        probe.mkdir()
+        (probe / "package.json").write_text(json.dumps({"name":"studio-acceptance","publisher":"meshlit-test","version":"1.0.0","engines":{"vscode":"^1.95.0"},"main":"./extension.js"}))
+        (probe / "extension.js").write_text("exports.activate = () => {};")
+        (probe / "test.js").write_text("""
 const vscode = require('vscode'), fs = require('node:fs'), path = require('node:path');
 exports.run = async () => {
     const folder = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const win = process.platform === 'win32';
-    const terminal = vscode.window.createTerminal({name: 'Studio acceptance', cwd: folder,
-        shellPath: win ? process.env.ComSpec : '/bin/sh', shellArgs: win ? ['/d','/q'] : []});
+    const term = vscode.window.createTerminal({name:'Native Studio acceptance',cwd:folder,
+        shellPath:win?process.env.ComSpec:'/bin/sh',shellArgs:win?['/d','/q']:[]});
+    const api = await vscode.extensions.getExtension('meshlit.native-studio').activate();
     try {
-        terminal.show();
-        terminal.sendText('javac Hello.java && java Hello > result.txt');
-        const deadline = Date.now() + 90000;
-        while (Date.now() < deadline) {
-            const file = path.join(folder, 'result.txt');
-            if (fs.existsSync(file)) {
-                const output = fs.readFileSync(file, 'utf8').trim();
-                if (output === 'studio-terminal-ok') return;
-                if (output) throw Error('Unexpected toolchain result: ' + output);
-            }
-            await new Promise(resolve => setTimeout(resolve, 300));
+        term.show();
+        term.sendText(win ? 'zig cc -target x86_64-windows-gnu hello.c -o hello.exe && hello.exe > result.txt' : 'zig cc hello.c -o hello && ./hello > result.txt');
+        const prompt = 'Reply to this greeting in one short sentence: Hello!';
+        const answer = await api.generate(prompt);
+        if (!answer || !answer.trim()) throw Error('Missing offline reply');
+        fs.writeFileSync(path.join(folder,'reply.txt'),answer);
+        const until = Date.now()+120000;
+        while(Date.now()<until) {
+            const file=path.join(folder,'result.txt');
+            if (fs.existsSync(file) && fs.readFileSync(file,'utf8').trim()==='studio-terminal-ok') return;
+            await new Promise(r=>setTimeout(r,300));
         }
-        throw Error('Bundled editor terminal did not compile and run Hello.java');
-    } finally { terminal.dispose(); }
+        throw Error('Bundled C compiler and IDE terminal did not produce expected result');
+    } finally { term.dispose(); api.unload(); }
 };
 """)
-        jdk = root / "toolchain"
-        # Read the launch environment from the same packaged client method used by Full IDE.
-        receipt = temp / "tools.txt"
-        subprocess.run([client, "--studio-tools-check", receipt], check=True, timeout=60)
-        home = Path(receipt.read_text(encoding="utf-8").strip())
-        assert home.samefile(jdk)
-        env = dict(os.environ, JAVA_HOME=str(home), PATH=str(home / "bin") + os.pathsep + os.environ["PATH"])
-        settings = temp / "profile/User"
-        settings.mkdir(parents=True)
-        (settings / "settings.json").write_text(json.dumps({"terminal.integrated.inheritEnv": True,
-            "terminal.integrated.enablePersistentSessions": False, "update.mode": "none", "extensions.autoCheckUpdates": False}))
-        subprocess.run([str(cli), "--new-window", "--disable-gpu", "--disable-workspace-trust",
-            "--user-data-dir", str(settings.parent), "--extensions-dir", str(temp / "extensions"),
-            "--extensionDevelopmentPath=" + str(ext), "--extensionTestsPath=" + str(ext / "test.js"), str(project)],
-            env=env, check=True, timeout=240)
+        env = {k:v for k,v in os.environ.items() if k not in {"JAVA_HOME","JDK_HOME","CLASSPATH","JDK_JAVA_OPTIONS","ELECTRON_RUN_AS_NODE"}}
+        subprocess.run([client,"--self-test",work],env=env,check=True,timeout=480)
         assert (project / "result.txt").read_text().strip() == "studio-terminal-ok"
+        answer = (project / "reply.txt").read_text().strip()
+        assert answer
         info = json.loads((root / "STUDIO-CONTENTS.json").read_text())
-        print(f"Verified integrated terminal, offline compiler and Java runtime on {SYSTEM}. Model-free bytes: {info['installedModelFreeBytes']}")
+        assert info["jvmFiles"] == 0 and info["installedModelFreeBytes"] > 500_000_000
+        print(json.dumps({"platform":info["platform"],"installedModelFreeBytes":info["installedModelFreeBytes"],"terminal":"passed","offlineReply":answer}))
 
 
 if __name__ == "__main__":

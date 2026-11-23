@@ -1,10 +1,10 @@
-# Meshlit Full Studio
+# Meshlit Native Studio
 
-Extract the entire archive to a writable folder. On macOS unpack with Archive Utility or tar to preserve the application bundles. Open Meshlit.exe in the Meshlit folder on Windows, Meshlit/bin/Meshlit on Linux, or Meshlit.app on macOS. Keep the editor and toolchain directories beside the application.
+Extract the complete directory. Run Meshlit.exe on Windows, Meshlit on Linux, or Meshlit.app on macOS. Keep the editor, models, inference and toolchain folders beside the launcher. First launch installs the bundled Meshlit extension into a dedicated local editor profile. General Chat opens in an empty window. Choose **Open coding IDE** to open a project in a separate window. Open a terminal with **Terminal → New Terminal**. The bundled Zig toolchain supplies the C and C++ drivers. Try `zig version`, `zig cc hello.c -o hello` or `zig c++ hello.cpp -o hello`.
 
-Open Coding IDE, choose a folder, then select **Full IDE**. The separate VSCodium window has the file explorer, editor, source control UI, task runner, debugger interface and integrated terminal. Use Terminal → New Terminal to start the host shell. The Studio launcher sets JAVA_HOME and puts the included Eclipse Temurin 21 JDK first on PATH. Try `javac -version`, `jshell` or `jdb`. Project-specific debuggers, Git command-line tools and third-party extensions may require separate installation. The general chat dashboard stays available in Meshlit. An offline starter model ships separately inside the full distribution under the application's resources.
+The Rust launcher and bundled VSCodium workbench run without Java. The native llama.cpp server starts on demand for the included Qwen model. Models & connections can select an Ollama, LM Studio or another compatible server. Tokens are stored with the editor's secret storage. The inference service binds to loopback with a per-process API key. Chats in this edition are held in memory.
 
-STUDIO-CONTENTS.json lists upstream hashes and installed byte counts for the client, editor and JDK. Model files, symbolic links and the distribution archive are excluded from the 500,000,000-byte acceptance threshold. The compressed download can be smaller. The standalone native installers and the portable Full Studio archive are different editions.
+STUDIO-CONTENTS.json lists installed model-free bytes and upstream hashes. Release qualification checks for JVM executables, libraries, modules and JARs. It runs the packaged extension, generates a local reply and compiles and executes C in the editor terminal. Earlier Compose installers and the Android Kotlin application are separate distributions. Advanced legacy management features have separate porting and qualification work.
 
 ## Processor qualification plan
 
