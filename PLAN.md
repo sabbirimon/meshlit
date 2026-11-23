@@ -4,6 +4,9 @@ Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+The first Studio priority is a model format support layer, followed by runnable adapters and extracted-build checks for each desktop platform. [Studio model format milestones](docs/DESKTOP_STUDIO_PLAN.md#studio-model-format-support--2026-11-24)
+
+
 [Native Studio model management](docs/desktop/FULL_STUDIO.md#managing-models-in-native-studio) covers local GGUF discovery and import, providers, authenticated local serving and device pairing. HyperL owns accelerator translation.
 
 

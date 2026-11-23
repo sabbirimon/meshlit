@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
-      - run: node --test companions/native-studio/extension/studio.test.cjs
+      - run: node --test companions/native-studio/extension/studio.test.cjs companions/native-studio/extension/model-adapters.test.cjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -72,6 +72,28 @@ jobs:
           (dist/'SHA256SUMS.txt').write_text(digest + '  ' + name + '\n')
           with open(os.environ['GITHUB_ENV'],'a') as env:
               print('SUITE_ARCHIVE=' + archive.as_posix(),file=env)
+      - name: Build and exercise the single-file Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
+          & $iscc companions/native-studio/windows/studio.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $setup = (Resolve-Path dist/Meshlit-Studio-Windows-X64-Setup.exe).Path
+          $installed = Join-Path $env:RUNNER_TEMP 'Installed Meshlit Studio'
+          $p = Start-Process $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="' + $installed + '"')) -Wait -PassThru
+          if ($p.ExitCode) { exit $p.ExitCode }
+          python scripts/check-studio-suite.py "$installed" --home-only
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $p = Start-Process (Join-Path $installed 'unins000.exe') -ArgumentList '/VERYSILENT','/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -or (Test-Path (Join-Path $installed 'Meshlit.exe'))) { throw 'Uninstall failed' }
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          Add-Content dist/SHA256SUMS.txt "$hash  Meshlit-Studio-Windows-X64-Setup.exe" -Encoding utf8
+      - name: Attest the Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: dist/Meshlit-Studio-Windows-X64-Setup.exe
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
           subject-path: ${{ env.SUITE_ARCHIVE }}
@@ -81,6 +103,7 @@ jobs:
           compression-level: 0
           path: |
             ${{ env.SUITE_ARCHIVE }}
+            dist/*-Setup.exe
             dist/STUDIO-CONTENTS.json
             dist/SHA256SUMS.txt
           retention-days: 14

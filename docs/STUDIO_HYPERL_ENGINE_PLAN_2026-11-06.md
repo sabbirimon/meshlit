@@ -4,6 +4,9 @@ Tracking reconciled 2026-11-23: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+Studio owns format identification, model selection and adapter status. HyperL owns engine capabilities, placement and execution evidence. [Studio model format milestones](DESKTOP_STUDIO_PLAN.md#studio-model-format-support--2026-11-24)
+
+
 Owner direction, 2026-11-06: the custom model execution/sharding engine belongs
 primarily to standalone HyperL. Meshlit Studio consumes that engine through an
 explicit, versioned adapter; it does not absorb newly restricted HyperL source

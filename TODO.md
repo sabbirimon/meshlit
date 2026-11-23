@@ -4,6 +4,9 @@ Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+Deliver the format layer first, then qualify local adapters and vendor endpoints against real text-generation fixtures. Record missing runtimes and hardware per target. [Studio model format milestones](docs/DESKTOP_STUDIO_PLAN.md#studio-model-format-support--2026-11-24)
+
+
 ## HyperL engine priority — 2026-11-06
 
 The owner moved the custom model engine into standalone HyperL; Studio will be

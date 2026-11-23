@@ -52,9 +52,9 @@ def package_extension(suite):
     <Assets><Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true"/></Assets></PackageManifest>"""
     with zipfile.ZipFile(suite / name, "w", zipfile.ZIP_DEFLATED) as bundle:
         bundle.writestr("extension.vsixmanifest", manifest)
-        bundle.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="json" ContentType="application/json"/><Default Extension="cjs" ContentType="application/javascript"/><Default Extension="vsixmanifest" ContentType="text/xml"/></Types>')
+        bundle.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="py" ContentType="text/x-python"/><Default Extension="json" ContentType="application/json"/><Default Extension="cjs" ContentType="application/javascript"/><Default Extension="vsixmanifest" ContentType="text/xml"/></Types>')
         for file in sorted(src.iterdir()):
-            if file.suffix in (".cjs", ".json") and ".test." not in file.name:
+            if (file.suffix in (".cjs", ".json") or file.name == "model_worker.py") and ".test." not in file.name:
                 bundle.write(file, "extension/" + file.name)
         legacy = ROOT / "companions/studio-runtime/extension"
         for module in ["ssh-dashboard.cjs", "shell.cjs", "memory.cjs", "memory-store.cjs"]:

@@ -20,8 +20,8 @@
     },
     {
       "name": "Desktop management",
-      "state": "Native Studio model library, provider connections, local server controls and pairing implemented. See docs/desktop/FULL_STUDIO.md for use and scope.",
-      "nextGate": "Verify extracted native packages across the three hosted OS targets and additional physical devices."
+      "state": "2026-11-24 development branch: shared format registry and optional local runtime workers, with SafeTensors and ONNX fixtures generated on Intel macOS. See docs/desktop/FULL_STUDIO.md.",
+      "nextGate": "Exercise Windows setup, chat controls and attachments, then qualify remaining runtimes and Android parity per the desktop plan."
     },
     {
       "name": "Android reliability",

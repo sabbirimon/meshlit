@@ -1,6 +1,7 @@
 """Apply the Meshlit menu and product identity to the verified, pinned workbench."""
 import json
 import plistlib
+import re
 import shutil
 import subprocess
 import sys
@@ -64,7 +65,22 @@ def configure(editor, mac):
     shell.configure_chat_shell(resources)
     renderer=out/"vs/workbench/workbench.desktop.main.js"
     patch=shell.MENU_RENDERER_PATCH.replace(json.dumps(shell.STUDIO_MENU_ITEMS,ensure_ascii=True),json.dumps(MENU,ensure_ascii=True))
-    renderer.write_text(renderer.read_text(encoding="utf-8").replace(shell.MENU_RENDERER_PATCH,patch),encoding="utf-8")
+    source = renderer.read_text(encoding="utf-8").replace(shell.MENU_RENDERER_PATCH, patch)
+    if not mac:
+        # Keep project menus in IDE windows. The Studio menu is always available.
+        pattern = r"(De\.appendMenuItem\(F\.MenubarMainMenu,\{submenu:F\.Menubar\w+Menu,title:\{[^}]+\},)([^}]+)(\}\);)"
+        def project_menu(match):
+            options = match[2]
+            predicate = 'D.not("meshlitStudioHome")'
+            if "when:" in options:
+                options = re.sub(r"when:([^,]+)", lambda m: "when:D.and(" + predicate + "," + m[1] + ")", options)
+            else:
+                options += ",when:" + predicate
+            return match[1] + options + match[3]
+        source, count = re.subn(pattern, project_menu, source)
+        if count != 9:
+            raise ValueError(f"Unexpected pinned workbench menu count: {count}")
+    renderer.write_text(source, encoding="utf-8")
     native=out/"mainImpl.js"
     source=native.read_text(encoding="utf-8")
     marker='f=[t];f.push(...r),o&&f.push(Bo(),o)'

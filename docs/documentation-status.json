@@ -128,14 +128,14 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit implementation and qualification plan",
-      "contentSha256WithoutTrackingBlock": "9c74d641e9d35df2edf574439bdc5a1eb75dc24ceeb287b0a9284b7401b3f342"
+      "contentSha256WithoutTrackingBlock": "a569497355abb290a3b6a5763c0a6013ade23259866a2a609bb0be76fefb4bf1"
     },
     {
       "path": "PROGRESS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "685ebbc1a7a857af94c1f7c62df2dcd075ea8b7dc6e0ce4fc0ce92dda980fdd8"
+      "contentSha256WithoutTrackingBlock": "ce68e97121182a4703aafbc43908e4fdcf29c6c2ea2db1c0cf8f42981a8ca130"
     },
     {
       "path": "README.md",
@@ -149,7 +149,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Current user requests and implementation tracking",
-      "contentSha256WithoutTrackingBlock": "ee8b739cad4462ff244bada12935165b62aade759eebf47807de1497c01d1743"
+      "contentSha256WithoutTrackingBlock": "ffdfb7cfdc65db2de7b3324d49ec5f7e4862de123fa3dbf81ba38e2dddbb88f1"
     },
     {
       "path": "SECURITY.md",
@@ -170,7 +170,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit current implementation and acceptance queue",
-      "contentSha256WithoutTrackingBlock": "abf06b5b6a99f9dff3e81ddaeb0d139f0597f203e3446242033d6790f43dc0a5"
+      "contentSha256WithoutTrackingBlock": "aefff8f024e63a1cfae9857661c1274969342c5ca690e50b740b5a47e6aab29f"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -534,7 +534,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit desktop Studio implementation plan",
-      "contentSha256WithoutTrackingBlock": "23efe214f0feda44fc40907a523dfbb41d54c2fbc6fb92dbb536e86e5704766c"
+      "contentSha256WithoutTrackingBlock": "33a468540431e001a8d8b5c69cfa63774261a314f9a0d51a516e0a376ee17b85"
     },
     {
       "path": "docs/DEVICE_COMPATIBILITY.md",
@@ -835,7 +835,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Studio client of the HyperL model engine",
-      "contentSha256WithoutTrackingBlock": "884d979e04c8fd024e14afea3548788466b0f583485e4d83125461debc6b1259"
+      "contentSha256WithoutTrackingBlock": "c53fddb2e2d5696d8d43f822c8fce8cb24d628900a1586de4d26b89db26e891b"
     },
     {
       "path": "docs/STUDIO_MOBILE_LTS_PLAN.md",
@@ -1059,7 +1059,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit Native Studio",
-      "contentSha256WithoutTrackingBlock": "f4653d9104f64cd9fe910e1a854c30ec65c19e49b5e4e8c880aca4f111b541f2"
+      "contentSha256WithoutTrackingBlock": "4d2e41ab48d25963b2269804f9a4110b980f6b6f0ca64da45a1a2c1bce68320b"
     },
     {
       "path": "docs/desktop/INFERENCE_PROFILES.md",

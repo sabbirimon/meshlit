@@ -4,6 +4,35 @@ Tracking reconciled 2026-11-23: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Studio model format support — 2026-11-24
+
+**First delivery.** General Chat opens by default. Models & providers is the entry point for registering a file or model directory, inspecting its format and choosing how to run it. The native desktop shell owns this workflow on Windows, Linux, Intel Mac and Apple Silicon. HyperL supplies optional execution capabilities. This priority supersedes the earlier Compose shell proposal below.
+
+| Milestone | Deliverable | Acceptance |
+| --- | --- | --- |
+| 1. Format support layer | Record the artifact path, container or package, declared quantization, required sidecars and compatible adapters. Retain existing GGUF and provider registrations. | Cover every family below. Reject incomplete required parts, report ambiguous binary inputs, keep inactive entries out of chat routing and preserve source files. |
+| 2. Runtime adapters | Keep bundled GGUF generation. Add explicit local conversion or generation where a supported runtime is installed. Use the provider's own inventory for models already served elsewhere. | For each adapter record the runtime version, architecture, device, model fixture and a real generation result. Cover missing dependencies, incompatible models and cancellation. |
+| 3. Cross-platform delivery | Exercise the model picker, import, switching, restart persistence and chat in extracted Studio builds. | Track Windows x64, Linux x64, Intel macOS and Apple Silicon individually. Add vendor device checks for each accelerated path. Android has a separate acceptance queue. |
+
+| Model family | Coverage requested | Execution work |
+| --- | --- | --- |
+| Raw weights | SafeTensors including indexed shards, PyTorch PT/PTH/BIN, Flax MessagePack, TensorFlow SavedModel/PB, Keras H5 and NumPy NPY/NPZ | Start with complete SafeTensors checkpoints. Raw research arrays need an architecture and tokenizer. Keep pickle-backed weights inert during inspection. |
+| Quantization and kernels | AWQ, GPTQ, EXL2, EXL3, HQQ, AQLM, QuIP#, bitsandbytes NF4/INT8, FP8, NVFP4, Marlin | Read explicit configuration or tensor metadata. Track the container, numerical representation and kernel requirement separately. Prove each model/runtime/device combination. |
+| CPU and hybrid | GGUF, legacy GGML, llamafile, RWKV and other runtime-specific binaries | Direct execution for supported GGUF. Require an identified runtime for legacy binaries. Keep self-executing packages inert on registration. |
+| Accelerator packages | MLX, TensorRT-LLM, ONNX, OpenVINO IR, Core ML, LiteRT, ExecuTorch, MLC-LLM/TVM, RKLLM, QNN/SNPE | Check package markers and required companions. Prioritize installed runtimes with text-generation interfaces. For deployed engines, select a real model ID from a configured endpoint. |
+
+### Windows home and Android feature parity
+
+| Android reference | Studio development work | Remaining qualification |
+| --- | --- | --- |
+| Chat output actions and sharing | Right-aligned user messages, copy, quote and save replies. Attach selected text or images to a draft. | Test keyboard use, narrow windows and sending images to a real vision model on Windows. OS share sheets remain open. |
+| Voice screen and speech adapters | On-demand Windows dictation with transcript review. | Test microphone approval, missing language packs and recognition on a physical Windows host. Continuous conversation and read-aloud are separate ports. |
+| Web search and permission helper | Review a Wikipedia query before it leaves the device. Show the destination before sending attachments to a provider. Group tool access in Permissions. | Qualify general web search providers and additional permission controls. |
+| Devices, jobs and recovery | Studio links model management, device pairing, SSH, local control and host resources. | Port job history, recovery views and device capability telemetry using actual backend data. |
+| Desktop shell and distribution | Scope editor menus to the project window. Exercise install, launch and uninstall for the single-file Windows installer in CI. | Verify first launch on the HP and record model, startup stage, latency and any runtime error. |
+
+**Research follow-up.** After the catalog can preserve a reproducible model identity, evaluate model-proposed weight edits on a separate, writable checkpoint. Retain the original, tokenizer, evaluation split, latency and quality baseline. Only promote a variant after held-out evaluation on the target runtime. Hosted chat models can participate in evaluation through their published interfaces. [Research paper](https://arxiv.org/abs/2611.21885)
+
 ## Current request reconciliation — 2026-11-06
 
 The [Chat/Studio request inventory](CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md)

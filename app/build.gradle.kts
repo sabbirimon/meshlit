@@ -407,8 +407,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 // Restricted build environments may choose a writable Robolectric dependency home.
+val placementTestLibraries = project(":core-inference").layout.buildDirectory.dir("host-placement/lib")
 val meshlitTestHome = providers.gradleProperty("meshlit.testHome")
 tasks.withType<Test>().configureEach {
+    dependsOn(":core-inference:buildHostPlacement")
+    systemProperty("java.library.path", placementTestLibraries.get().asFile.absolutePath)
     if (meshlitTestHome.isPresent) systemProperty("user.home", meshlitTestHome.get())
 }
 

@@ -34,19 +34,19 @@ async function request(base, route, token, body, signal) {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-async function digest(file) {
+async function digest(file,signal) {
     const hash = crypto.createHash('sha256');
-    for await (const block of fs.createReadStream(file)) hash.update(block);
+    for await (const block of fs.createReadStream(file,{signal})) hash.update(block);
     return hash.digest('hex');
 }
 
 class LocalServer {
     constructor(root) { this.root = root; }
-    async start(signal, configuredThreads = 0, imported) {
+    async start(signal, configuredThreads = 0, imported, progress=()=>{}) {
         if (!this.pending) {
             const startup = new AbortController();
             this.startup = startup;
-            this.pending = this.launch(AbortSignal.any([signal,startup.signal]), configuredThreads, imported).then(route=>{
+            this.pending = this.launch(AbortSignal.any([signal,startup.signal]), configuredThreads, imported, progress).then(route=>{
                 startup.signal.throwIfAborted();
                 this.route=route;
                 return route;
@@ -54,7 +54,7 @@ class LocalServer {
         }
         return this.pending;
     }
-    async launch(signal, configuredThreads, imported) {
+    async launch(signal, configuredThreads, imported, progress) {
         const available = os.availableParallelism();
         if (!Number.isInteger(configuredThreads) || configuredThreads < 0 || configuredThreads > Math.min(64, available)) {
             throw Error('CPU thread limit exceeds available processors');
@@ -65,7 +65,8 @@ class LocalServer {
         const server = path.join(this.root, 'inference', process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
         if (path.basename(model.filename) !== model.filename) throw Error('Invalid model manifest');
         const weights = imported ? imported.file : path.join(this.root, 'models', model.filename);
-        if (await digest(server) !== meta.sha256 || await digest(weights) !== (imported?.sha256 || model.sha256)) throw Error('Installed inference files failed verification');
+        progress('Verifying local model and engine…');
+        if (await digest(server,signal) !== meta.sha256 || await digest(weights,signal) !== (imported?.sha256 || model.sha256)) throw Error('Installed inference files failed verification');
         signal.throwIfAborted();
         const reservation = net.createServer();
         reservation.listen(0, '127.0.0.1');
@@ -77,6 +78,7 @@ class LocalServer {
         const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(LLAMA_|GGML_)/i.test(k)));
         env.LLAMA_API_KEY = token;
         signal.throwIfAborted();
+        progress('Loading model into memory…');
         const child = spawn(server, ['--host','127.0.0.1','--port',String(port),'--model',weights,'--alias','meshlit-local','--ctx-size','4096','--parallel','1','--threads',threads,'--threads-batch',threads,
             '--fit','off','--device','none','--n-gpu-layers','0','--no-warmup','--no-agent','--no-webui','--offline'], {env,stdio:'ignore', windowsHide:true});
         this.child = child;
@@ -86,7 +88,7 @@ class LocalServer {
         const deadline = Date.now() + 180000;
         while (Date.now() < deadline) {
             signal.throwIfAborted();
-            if (failed || child.exitCode !== null || child.signalCode) throw Error('Local model server stopped during startup');
+            if (failed || child.exitCode !== null || child.signalCode) throw Error('Local model server stopped during startup'+(failed?' · '+failed.message:' · exit '+child.exitCode)+'. Check available RAM and extract the full Studio package.');
             try {
                 const inventory = await request(base, '/models', token, null, AbortSignal.any([signal,AbortSignal.timeout(1000)]));
                 if (inventory.data?.some(m => m.id === 'meshlit-local')) return {base, token, model:'meshlit-local'};
