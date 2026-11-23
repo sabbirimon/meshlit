@@ -60,7 +60,7 @@ test('chat webview contains one target for each action and the generated script 
     const page=require('./welcome.cjs').page('testnonce');
     const vm=require('node:vm');
     new vm.Script(page.match(/<script nonce="testnonce">([\s\S]*?)<\/script>/)[1]);
-    for(const id of ['back','permissions','web','voice','attach','guard','stop','send','feedback','metrics','prompt']){
+    for(const id of ['back','permissions','web','voice','attach','guard','stop','send','feedback','metrics','prompt','addMenu','accessMenu','addPanel','accessPanel','toolAccess','model','tuneChat']){
         assert.equal(page.split('id="'+id+'"').length,2,id);
     }
 });

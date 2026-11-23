@@ -4,6 +4,10 @@ Tracking reconciled 2026-11-23: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Current Studio pairing and chat delivery
+
+The November 24 preview covers the Mac/HP upgrade, first-run model selection, LAN discovery and approval, per-peer model grants, streamed remote chat, authenticated relay and cross-platform packaging. The physical Windows and Intel Mac installations each passed General Chat, IDE launch, native compilation and a real offline reply. A Samsung LTE client received streamed replies by device ID from both hosts through a private relay. The Android application and cellular protocol client were tested separately. Public service availability, publisher signing, physical microphone and third-party runtime qualification each require their own evidence. See the [Studio guide and test results](desktop/FULL_STUDIO.md#november-24-qualification-and-chat-changes).
+
 ## Desktop parity and release qualification, 2026-11-24
 
 The native extension packages the legacy Voice and vision dashboard. Validate capture and playback with physical devices per OS. Team, bot and gateway workflows, remote app-control permissions and native Android parity still require end-to-end tests. Publisher signing awaits Apple and Windows identities. Keep preview artifacts labeled accordingly.

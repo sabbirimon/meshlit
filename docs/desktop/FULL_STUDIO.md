@@ -16,7 +16,7 @@ STUDIO-CONTENTS.json lists installed model-free bytes and upstream hashes. Relea
 
 **Find a model** shows search results by publisher on the left and details for the selected repository on the right. The detail view lists reported architecture, parameter count and task when the repository supplies them. The GGUF variant selector shows the download size. Sort by relevance, likes, downloads or update date. The RAM filter uses an estimate and can be cleared to inspect larger files.
 
-On November 24 the two installed pairing modules exchanged fresh P-256 challenges between a physical Intel Mac and Windows HP. The HP reached the Mac's advertised Wi-Fi endpoint. A direct request to the HP's temporary listener timed out. Both directions verified when the Mac used a local SSH forward to that listener. The HP also verified a fresh challenge from the running Mac Studio window. This protocol test used temporary peer identities for the bidirectional check. Saving both peers in the ordinary desktop profiles requires completing **Devices → Pair using a link** on each host. Each shared listener expires after ten minutes.
+For current pairing, open **Devices** on both computers, enable nearby pairing, select the receiving machine and approve the request there. The ten-minute invite link also works for existing installations. The receiving owner separately chooses which models to share.
 
 ## Voice and vision in the native workbench
 
@@ -100,3 +100,9 @@ The private [Studio relay](../../companions/studio-relay/README.md) supports out
 The Mac and Windows HP exchanged signed identities in both installed Studio profiles on November 24. A subsequent test of the new transport found the HP through LAN discovery, listed the explicitly shared bundled Qwen model, and streamed its answer to the Mac over direct Wi-Fi. This test used temporary identities and the packaged Windows Electron executable. The HP runtime reported 10 completion tokens across nine text updates. Remote inference runs on the host that owns the selected model.
 
 New profiles open a Get started screen, show a model recommendation based on available RAM, and offer optional startup settings. Model management includes on-demand loading, idle unload, and model server activity. Startup at login is opt-in and uses the current user's launch or startup directory. The bundled inference engine runs on CPU. The discovery view links to the publisher's model card and shows declared capabilities when available.
+
+## November 24 qualification and chat changes
+
+On the physical Samsung SM-A207F, a test client reached the private Studio relay over LTE with Wi-Fi disabled. The Mac and HP each hosted the bundled Qwen. The phone paired by device ID, listed the shared model and received the correct sum of four and three from each host in nine text updates and ten reported completion tokens. The HP connected outbound to the relay on the Mac. Neither ADB forwarding nor ADB reverse carried model traffic. The test used temporary identities, mutual TLS and a private VPN. The separately installed Android 2.0.48 full application launched its own General Chat. Its Android pairing protocol has separate compatibility requirements.
+
+In desktop General Chat, your messages appear in right-aligned bubbles. Meshlit replies on the left with the model name. The composer includes an add menu, chat access, model selector, microphone and send or stop control. Open chat access to inspect actions available under your permissions. The local model indicator tracks loading, readiness and unload. For a remote provider, Studio shows the selected model and host. The model receives chat messages and user-approved attachments. Search, dictation and other composer actions are user-operated.

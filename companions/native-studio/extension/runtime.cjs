@@ -41,16 +41,17 @@ async function digest(file,signal) {
 }
 
 class LocalServer {
-    constructor(root) { this.root = root; }
+    constructor(root, onStateChange = () => {}) { this.root = root; this.onStateChange = onStateChange; }
     async start(signal, configuredThreads = 0, imported, progress=()=>{}) {
         if (!this.pending) {
             const startup = new AbortController();
             this.startup = startup;
             this.pending = this.launch(AbortSignal.any([signal,startup.signal]), configuredThreads, imported, progress).then(route=>{
                 startup.signal.throwIfAborted();
-                this.route=route;
+                this.route=route; this.onStateChange();
                 return route;
             }).catch(err => { if(this.startup===startup)this.stop(); throw err; });
+            this.onStateChange();
         }
         return this.pending;
     }
@@ -84,7 +85,7 @@ class LocalServer {
         this.child = child;
         let failed;
         child.once('error', err => { failed = err; });
-        child.once('exit', () => { if (this.child === child) { this.child = undefined; this.pending = undefined; this.route = undefined; } });
+        child.once('exit', () => { if (this.child === child) { this.child = undefined; this.pending = undefined; this.route = undefined; this.onStateChange(); } });
         const deadline = Date.now() + 180000;
         while (Date.now() < deadline) {
             signal.throwIfAborted();
@@ -97,6 +98,6 @@ class LocalServer {
         }
         throw Error('Local model did not become ready');
     }
-    stop() { this.startup?.abort(); this.startup=undefined; this.route=undefined; this.child?.kill(); this.child = undefined; this.pending = undefined; }
+    stop() { this.startup?.abort(); this.startup=undefined; this.route=undefined; this.child?.kill(); this.child = undefined; this.pending = undefined; this.onStateChange(); }
 }
 module.exports = {LocalServer, endpoint, request, digest};

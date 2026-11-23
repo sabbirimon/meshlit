@@ -11,7 +11,7 @@ async function activate(context) {
     const brand = require('./legacy/brand.cjs');
     const root = process.env.MESHLIT_SUITE_ROOT;
     if (!root) throw Error('Launch the extracted Meshlit Studio application');
-    local = new LocalServer(root);
+    local = new LocalServer(root, status);
     const empty = !vscode.workspace.workspaceFolders?.length;
     const oldHome = require('node:path').join(require('node:os').homedir(),'.meshlit','native-studio','Meshlit Studio.code-workspace');
     const home = empty && (!vscode.workspace.workspaceFile || vscode.workspace.workspaceFile.fsPath===oldHome);
@@ -265,6 +265,7 @@ async function activate(context) {
         await context.globalState.update('chat-permissions',{...permissions(),[id]:selected.value});
         if(!selected.value&&id==='files'){pendingFile=undefined;sendUI('attachment',{name:''});}
         if(!selected.value&&id==='speech')speech?.abort();
+        status();
     }
     async function chooseAttachment(){
         requirePermission('files');
@@ -305,7 +306,19 @@ async function activate(context) {
         brand,
         models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);sendUI('restartSetup',{});},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
-    function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':(current.hostName||current.adapter||current.kind)+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
+    function modelName(route) {
+        return route.kind==='local' ? manifest.id : route.model;
+    }
+    function status() {
+        if(!panel)return;
+        const route=settings();
+        const native=['local','import'].includes(route.kind);
+        const state=native ? local.route?'Loaded':local.pending?'Loading':'Selected · unloaded'
+            :route.kind==='asset'?'Local runtime · loads per request':'Remote · '+(route.hostName || new URL(route.base).host);
+        sendUI('status',{text:modelName(route)+' · '+state, model:modelName(route),
+            actions:{attach:allowed('files'),web:allowed('internet'),voice:process.platform==='win32'&&allowed('microphone'),speak:allowed('speech')},
+            filter:context.globalState.get('filter-output',true)});
+    }
     async function generate(prompt,file) {
         if (typeof prompt !== 'string' || !prompt.trim() || prompt.length>16000) throw Error('Enter a prompt of up to 16,000 characters');
         if (active||changing) throw Error('A model operation is already running');
@@ -314,7 +327,7 @@ async function activate(context) {
         const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(240000)]);
         try {
             const selected=settings(),options=generationSettings(selected);
-            const messages=[...history,{role:'user',content:prompt}];
+            const messages=[...history.map(({role,content})=>({role,content})),{role:'user',content:prompt}];
             const started=performance.now();
             const progress=text=>sendUI('progress',{text});
             let answer,count,rate;
@@ -353,7 +366,7 @@ async function activate(context) {
             if(Number.isFinite(rate)&&rate>0)sendUI('metrics',{text:rate.toFixed(1)+' tokens/s · decode'});
             else if(Number.isSafeInteger(count)&&count>0)sendUI('metrics',{text:count+' tokens · '+(count/seconds).toFixed(1)+' tokens/s including startup'});
             else sendUI('metrics',{text:seconds.toFixed(1)+' s · runtime did not report token count'});
-            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',content:output}].slice(-8);
+            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',content:output,model:modelName(selected)}].slice(-8);
             recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
@@ -420,6 +433,8 @@ async function activate(context) {
                     if(dest)await vscode.workspace.fs.writeFile(dest,Buffer.from(msg.text.slice(0,128000)));
                 }
                 if(msg.op==='models')go('models');
+                if(msg.op==='pickModel'&&!active)await select();
+                if(msg.op==='tuneChat'&&!active)await tuneModel();
                 if(msg.op==='pair') await pair();
                 if(msg.op==='control') await control();
                 if(msg.op==='guard' && !active) await guardrails();
@@ -434,7 +449,7 @@ async function activate(context) {
                     if(file&&(route.base||route.device))requirePermission('share');
                     if(file&&(route.base||route.device)&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+(route.hostName||new URL(route.base).host)+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
                     const answer=await generate(msg.text,file);
-                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer});
+                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model});
                 }
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.name==='AbortError'?'Generation stopped.':err.name==='TimeoutError'?'The model timed out. Check Models & providers, then retry.':err.message}); }
         });
