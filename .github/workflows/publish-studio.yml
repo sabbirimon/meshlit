@@ -16,8 +16,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SOURCE: 64abba149841e63af3da3e615156c2cd94b09e4f
-      RUN: '45265983766'
+      SOURCE: ca974c8b9f5fd37b2e5ac78bb3656f317b61216f
+      RUN: '45266599674'
       TAG: v2.0.48-studio.4
     steps:
       - name: Verify all tested packages before publishing
