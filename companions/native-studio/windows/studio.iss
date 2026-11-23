@@ -11,6 +11,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+SetupIconFile=..\..\..\desktopApp\distribution\icons\meshlit.ico
 UninstallDisplayIcon={app}\Meshlit.exe
 OutputDir=..\..\..\dist
 OutputBaseFilename=Meshlit-Studio-Windows-X64-Setup
@@ -23,7 +24,7 @@ CloseApplications=yes
 Source: "{#SuiteSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Meshlit Studio"; Filename: "{app}\Meshlit.exe"
+Name: "{group}\Meshlit Studio"; Filename: "{app}\Meshlit.exe"; AppUserModelID: "IMON.Meshlit.Studio"
 
 [Run]
 Filename: "{app}\Meshlit.exe"; Description: "Open Meshlit Studio"; Flags: nowait postinstall skipifsilent

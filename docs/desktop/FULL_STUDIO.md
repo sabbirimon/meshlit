@@ -1,4 +1,6 @@
 # Meshlit Native Studio
+
+Studio uses a blue branching icon with a circular rim joined to the trunk at its base for its launcher, running app and Windows installer. Artwork credits are in [NOTICE](../../NOTICE).
 <!-- meshlit-document-tracking:start -->
 Tracking reconciled 2026-11-23: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.

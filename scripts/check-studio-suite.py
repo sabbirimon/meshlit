@@ -75,6 +75,9 @@ exports.run = async () => {
         if (!extension) throw Error('Bundled extension was not installed');
         api = await extension.activate();
         mark('Meshlit activated');
+        await vscode.commands.executeCommand('meshlit.studio.navigation.focus');
+        const logo=vscode.Uri.joinPath(extension.extensionUri,'legacy','media','meshlit.svg').fsPath;
+        if(!fs.existsSync(logo))throw Error('IDE sidebar artwork missing from installed extension');
         if(api.homeStatus().home)throw Error('Project opened in the Home layout');
         const prompt = 'Reply to this greeting in one short sentence: Hello!';
         const answer = await api.generate(prompt);

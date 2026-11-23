@@ -15,7 +15,7 @@ function recommended(models, capacity) {
 }
 const size = bytes => (bytes / GiB).toFixed(2) + ' GiB';
 
-function render(nonce) {
+function render(nonce, brand="") {
     return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}'">
 <style nonce="${nonce}">
 *{box-sizing:border-box}
@@ -35,8 +35,8 @@ input[type=search]{flex:1;min-width:10em}.filters{margin-top:12px}.filters label
 .resultDetail{display:block}.results [aria-pressed=true] .resultDetail{color:inherit}
 #facts{display:flex;flex-wrap:wrap;gap:6px}#facts span{padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;font-size:12px}
 h3{margin:24px 0 8px;font-size:16px}#variant{max-width:100%;width:100%}#download{background:var(--vscode-button-background);color:var(--vscode-button-foreground);font-weight:600}button:disabled{opacity:.55;cursor:default}
-@media(max-width:660px){body{padding:12px}.layout{grid-template-columns:1fr;min-height:0}.browser{border-inline-end:0;border-bottom:1px solid var(--vscode-panel-border)}.results{max-height:24vh}.browser,.detailPane{padding:14px}}</style>
-<header><button id="back">← Back</button><h1>Find a model</h1></header>
+@media(max-width:660px){body{padding:12px}.layout{grid-template-columns:1fr;min-height:0}.browser{border-inline-end:0;border-bottom:1px solid var(--vscode-panel-border)}.results{max-height:24vh}.browser,.detailPane{padding:14px}}h1{display:flex;align-items:center;gap:10px}h1 svg{width:28px;height:28px}</style>
+<header><button id="back">← Back</button><h1>${brand}Find a model</h1></header>
 <main class="layout"><section class="browser" aria-label="Model search">
 <form><input id="q" type="search" aria-label="Search Hugging Face by model or author" placeholder="Model or author on Hugging Face" maxlength="120"><button>Search</button></form>
 <div class="filters"><label>Sort <select id="sort"><option value="">Best match</option><option value="likes">Most likes</option><option value="downloads">Most downloads</option><option value="lastModified">Recently updated</option></select></label><label><input id="fit" type="checkbox" checked>Within estimated RAM budget</label></div>
@@ -57,7 +57,7 @@ window.addEventListener('message',({data:m})=>{if(m.op==='ready'){capacity=m.cap
 </script></html>`;
 }
 
-function chooseFile(vscode, metadata, files) {
+function chooseFile(vscode, metadata, files, brand) {
     const panel = vscode.window.createWebviewPanel('meshlit.discovery','Meshlit · Find a model',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[]});
     return new Promise(resolve => {
         let request, version, repos = new Set(), choices = [];
@@ -109,7 +109,8 @@ function chooseFile(vscode, metadata, files) {
                 }
             } catch (error) {await post({op:'error',message:error.message});}
         });
-        panel.webview.html = render(crypto.randomBytes(20).toString('hex'));
+        if (brand) panel.iconPath = vscode.Uri.file(brand.file);
+        panel.webview.html = render(crypto.randomBytes(20).toString('hex'), brand?.markup);
     });
 }
 module.exports = {budget,recommended,size,render,chooseFile};

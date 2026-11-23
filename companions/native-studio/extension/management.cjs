@@ -1,6 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
-function dashboard(vscode, snapshot, act) {
+function dashboard(vscode, snapshot, act, brand) {
     let panel, busy=false;
     async function refresh() {
         if(panel)await panel.webview.postMessage({type:'state',...snapshot(),busy});
@@ -9,7 +9,8 @@ function dashboard(vscode, snapshot, act) {
         if(panel){panel.reveal();return refresh();}
         panel=vscode.window.createWebviewPanel('meshlit.models','Meshlit · Model management',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[]});
         const nonce=crypto.randomBytes(20).toString('hex');
-        panel.webview.html=html(nonce);
+        if(brand)panel.iconPath=vscode.Uri.file(brand.file);
+        panel.webview.html=html(nonce,brand?.markup);
         panel.onDidDispose(()=>{panel=undefined;});
         panel.webview.onDidReceiveMessage(async m=>{
             if(m?.op==='ready')return refresh();
@@ -23,10 +24,10 @@ function dashboard(vscode, snapshot, act) {
     }
     return {open,refresh,dispose:()=>panel?.dispose()};
 }
-function html(n) {
+function html(n, brand="") {
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${n}'; style-src 'nonce-${n}'"><style nonce="${n}">
-body{max-width:1000px;margin:40px auto;padding:0 24px;font:14px/1.55 var(--vscode-font-family);color:var(--vscode-foreground)}h1{font-weight:600;font-size:28px}h2{font-size:18px;margin:0}header,.bar,.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}header,.row{justify-content:space-between}section{border-top:1px solid var(--vscode-panel-border);padding:18px 0;margin-top:22px}.row{padding:10px 0}.detail,#server{color:var(--vscode-descriptionForeground);overflow-wrap:anywhere}button{font:inherit;padding:5px 11px;border:1px solid var(--vscode-panel-border);border-radius:4px;color:var(--vscode-button-secondaryForeground);background:var(--vscode-button-secondaryBackground);cursor:pointer}button:focus-visible{outline:2px solid var(--vscode-focusBorder)}button:disabled{opacity:.6;cursor:default}#chat{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}
-</style></head><body><header><button id="back">← Back</button><h1>Model management</h1><button id="chat">General chat</button></header>
+body{max-width:1000px;margin:40px auto;padding:0 24px;font:14px/1.55 var(--vscode-font-family);color:var(--vscode-foreground)}h1 svg{width:28px;height:28px}h1{display:flex;align-items:center;gap:10px;font-weight:600;font-size:28px}h2{font-size:18px;margin:0}header,.bar,.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}header,.row{justify-content:space-between}section{border-top:1px solid var(--vscode-panel-border);padding:18px 0;margin-top:22px}.row{padding:10px 0}.detail,#server{color:var(--vscode-descriptionForeground);overflow-wrap:anywhere}button{font:inherit;padding:5px 11px;border:1px solid var(--vscode-panel-border);border-radius:4px;color:var(--vscode-button-secondaryForeground);background:var(--vscode-button-secondaryBackground);cursor:pointer}button:focus-visible{outline:2px solid var(--vscode-focusBorder)}button:disabled{opacity:.6;cursor:default}#chat{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}
+</style></head><body><header><button id="back">← Back</button><h1>${brand}Model management</h1><button id="chat">General chat</button></header>
 <section><div class="bar"><h2>Model library</h2><button id="discover">Discover models</button><button id="import">Import model file</button><button id="folder">Import model folder</button></div><label>Find a model <input id="find" type="search" placeholder="Name, format or runtime"></label><div id="library"></div><button id="tune">Selected model reply settings</button></section>
 <section><div class="bar"><h2>Provider connections</h2><button id="connect">Connect provider</button><button id="pair">Pair device</button></div><div id="providers"></div><button id="lmManage" hidden>Manage selected LM Studio model instances</button></section>
 <section><h2>Local API server</h2><button id="serverSettings">Server settings</button><p id="server" role="status"></p><div class="bar"><button id="load">Load selected model</button><button id="unload">Unload</button><button id="endpoint">Copy endpoint</button><button id="key">Copy API key</button></div><h3>Endpoint and authentication</h3><p>Loopback API · bearer key required. Share selected models from Devices.</p><h3>Server activity</h3><pre id="events"></pre></section>

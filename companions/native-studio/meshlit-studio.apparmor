@@ -1,6 +1,6 @@
 abi <abi/4.0>,
 include <tunables/global>
 
-profile meshlit-studio /opt/meshlit-studio/editor/codium flags=(unconfined) {
+profile meshlit-studio /opt/meshlit-studio/editor/meshlit flags=(unconfined) {
   userns,
 }

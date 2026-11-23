@@ -168,6 +168,21 @@ def reseal_engines(resources):
         hyperl.write_text(json.dumps(metadata,indent=2)+'\n')
 
 
+def brand_workbench_icons(resources, source_file):
+    out = resources / "out"
+    source = source_file.read_text(encoding="utf-8")
+    for icon in (*out.rglob("code-icon.svg"), *out.rglob("vscode-icon.svg")):
+        icon.write_text(source, encoding="utf-8")
+    shades = {"light": ("#555555", ".16"), "dark": ("#b2b2b2", ".23"),
+              "hcLight": ("#767676", "1"), "hcDark": ("#888888", "1")}
+    for icon in out.rglob("letterpress-*.svg"):
+        shade = shades.get(icon.stem.rsplit("-", 1)[-1])
+        if shade:
+            color, opacity = shade
+            icon.write_text(source.replace('fill="url(#blue)"', f'fill="{color}" opacity="{opacity}"'),
+                            encoding="utf-8")
+
+
 def refresh_workbench_checksums(resources):
     """Seal the branded workbench using Code OSS's existing integrity contract.
 
@@ -292,6 +307,7 @@ def main():
         product_path.write_text(json.dumps(product,indent=2)+'\n')
         configure_workbench_defaults(app_resources,args.session_secrets)
         configure_chat_shell(app_resources)
+        brand_workbench_icons(app_resources, repo/"ohosApp/AppScope/resources/base/media/app_icon.svg")
         plist_path=content/'Info.plist'; plist=plistlib.loads(plist_path.read_bytes())
         plist.update(CFBundleName='Meshlit',CFBundleDisplayName='Meshlit',CFBundleIdentifier='com.meshlit.desktop')
         icon=repo/'desktopApp/distribution/icons/meshlit.icns'

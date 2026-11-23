@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// Requires sharp. Reuses the existing Meshlit vector mark; no new artwork.
+// Requires sharp. Builds all desktop sizes from the shared Meshlit Studio vector artwork.
 const fs = require('node:fs');
 const path = require('node:path');
 const sharp = require('sharp');
 const root = path.resolve(__dirname, '..');
 async function main() {
   const source = fs.readFileSync(path.join(root, 'ohosApp/AppScope/resources/base/media/app_icon.svg'));
+  for (const name of ['companions/studio-runtime/extension/media/meshlit.svg', 'app/src/main/assets/web/favicon.svg']) {
+    fs.writeFileSync(path.join(root, name), source);
+  }
   const sizes = [16, 32, 48, 64, 128, 256, 512, 1024];
   const png = new Map();
   for (const size of sizes) png.set(size, await sharp(source, { density: 768 }).resize(size, size).png().toBuffer());

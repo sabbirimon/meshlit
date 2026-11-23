@@ -10,14 +10,14 @@ fn launch() -> io::Result<()> {
             .ok_or(io::Error::other("Incomplete app bundle"))?;
     }
     let editor = root.join(if cfg!(windows) {
-        "editor/VSCodium.exe"
+        "editor/Meshlit.exe"
     } else if cfg!(target_os = "macos") {
-        "editor/VSCodium.app/Contents/MacOS/VSCodium"
+        "editor/Meshlit Studio.app/Contents/MacOS/Meshlit"
     } else {
-        "editor/codium"
+        "editor/meshlit"
     });
     let cli = root.join(if cfg!(target_os = "macos") {
-        "editor/VSCodium.app/Contents/Resources/app/out/cli.js"
+        "editor/Meshlit Studio.app/Contents/Resources/app/out/cli.js"
     } else {
         "editor/resources/app/out/cli.js"
     });

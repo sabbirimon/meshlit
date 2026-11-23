@@ -52,19 +52,32 @@ def package_extension(suite):
     <Assets><Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true"/></Assets></PackageManifest>"""
     with zipfile.ZipFile(suite / name, "w", zipfile.ZIP_DEFLATED) as bundle:
         bundle.writestr("extension.vsixmanifest", manifest)
-        bundle.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="py" ContentType="text/x-python"/><Default Extension="json" ContentType="application/json"/><Default Extension="cjs" ContentType="application/javascript"/><Default Extension="vsixmanifest" ContentType="text/xml"/></Types>')
+        bundle.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="svg" ContentType="image/svg+xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="py" ContentType="text/x-python"/><Default Extension="json" ContentType="application/json"/><Default Extension="cjs" ContentType="application/javascript"/><Default Extension="vsixmanifest" ContentType="text/xml"/></Types>')
         for file in sorted(src.iterdir()):
             if (file.suffix in (".cjs", ".json") or file.name == "model_worker.py") and ".test." not in file.name:
                 bundle.write(file, "extension/" + file.name)
         legacy = ROOT / "companions/studio-runtime/extension"
-        for module in ["ssh-dashboard.cjs", "shell.cjs", "memory.cjs", "memory-store.cjs",
+        bundle.write(legacy / "media/meshlit.svg", "extension/legacy/media/meshlit.svg")
+        bundle.write(ROOT / "desktopApp/src/main/resources/icons/meshlit.png", "extension/media/meshlit.png")
+        bundle.write(ROOT / "NOTICE", "extension/NOTICE")
+        for module in ["brand.cjs", "ssh-dashboard.cjs", "shell.cjs", "memory.cjs", "memory-store.cjs",
                        "voice.cjs", "voice-runtime.cjs", "live-voice-settings.cjs", "natural-audio.cjs"]:
             bundle.write(legacy / module, "extension/legacy/" + module)
         bundle.write(ROOT / "LICENSE", "extension/LICENSE")
     (suite / "extension.sha256").write_text(hashlib.sha256((suite / name).read_bytes()).hexdigest())
 
 
-def launcher(suite):
+def windows_resource_editor(cache):
+    tool = cache / "rcedit-x64-2.0.0.exe"
+    if not tool.is_file():
+        subprocess.run(["curl", "--fail", "--location", "--retry", "3", "--output", tool,
+                        "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe"], check=True)
+    if hashlib.sha256(tool.read_bytes()).hexdigest() != "3e7801db1a5edbec91b49a24a094aad776cb4515488ea5a4ca2289c400eade2a":
+        raise ValueError("Windows resource editor failed verification")
+    return tool
+
+
+def launcher(suite, rcedit=None):
     target = suite / ("Meshlit.exe" if SYSTEM == "Windows" else "Meshlit")
     if SYSTEM == "Darwin":
         contents = suite / "Meshlit.app/Contents"
@@ -74,9 +87,19 @@ def launcher(suite):
         shutil.copy2(ROOT / "desktopApp/distribution/icons/meshlit.icns", contents / "Resources/meshlit.icns")
         (contents / "Info.plist").write_bytes(plistlib.dumps({
             "CFBundleExecutable": "Meshlit", "CFBundleName": "Meshlit",
-            "CFBundleDisplayName": "Meshlit", "CFBundleIconFile": "meshlit.icns", "CFBundlePackageType": "APPL",
+            "CFBundleDisplayName": "Meshlit Studio", "CFBundleIconFile": "meshlit.icns", "CFBundlePackageType": "APPL",
             "CFBundleIdentifier": "bd.com.imon.meshlit.studio", "CFBundleShortVersionString": "2.0.49", "CFBundleVersion": "49"}))
-    subprocess.run(["rustc", "--edition=2021", "-C", "opt-level=3", str(ROOT / "companions/native-studio/launcher.rs"), "-o", target], check=True)
+    flags = []
+    with tempfile.TemporaryDirectory() as temporary:
+        if SYSTEM == "Windows":
+            resource = Path(temporary) / "launcher.res"
+            subprocess.run([suite / "toolchain/zig.exe", "rc", "/fo", resource,
+                            ROOT / "companions/native-studio/windows/launcher.rc"], check=True)
+            flags.extend(["-C", f"link-arg={resource}"])
+        subprocess.run(["rustc", "--edition=2021", "-C", "opt-level=3", *flags,
+                        ROOT / "companions/native-studio/launcher.rs", "-o", target], check=True)
+    if SYSTEM == "Windows":
+        __import__("runpy").run_path(str(ROOT / "scripts/brand-studio.py"))["brand_windows_binary"](target, rcedit)
     if SYSTEM == "Darwin":
         subprocess.run(["codesign", "--force", "--sign", "-", suite / "Meshlit.app"], check=True)
 
@@ -122,7 +145,8 @@ def main():
         unpack(specs["zig"], raw / "compiler", args.cache)
         [zig] = [p for p in (raw / "compiler").rglob("zig.exe" if SYSTEM == "Windows" else "zig") if p.is_file()]
         zig.parent.rename(suite / "toolchain")
-    __import__("runpy").run_path(str(ROOT / "scripts/brand-studio.py"))["configure"](suite / "editor", SYSTEM == "Darwin")
+    rcedit = windows_resource_editor(args.cache) if SYSTEM == "Windows" else None
+    __import__("runpy").run_path(str(ROOT / "scripts/brand-studio.py"))["configure"](suite / "editor", SYSTEM, rcedit)
     automation = suite / "automation"
     automation.mkdir()
     if SYSTEM == "Darwin":
@@ -132,7 +156,7 @@ def main():
         helper = "windows.ps1" if SYSTEM == "Windows" else "linux.py"
         shutil.copy2(ROOT/"companions/native-studio/automation"/helper, automation)
     package_extension(suite)
-    launcher(suite)
+    launcher(suite, rcedit)
     if SYSTEM == "Linux":
         shutil.copy2(ROOT / "companions/native-studio/meshlit-studio.apparmor", suite)
     shutil.copy2(ROOT / "docs/desktop/FULL_STUDIO.md", suite / "START.md")

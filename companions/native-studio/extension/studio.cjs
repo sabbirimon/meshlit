@@ -8,6 +8,7 @@ const {LocalServer, endpoint, request} = require('./runtime.cjs');
 let local, active, panel;
 
 async function activate(context) {
+    const brand = require('./legacy/brand.cjs');
     const root = process.env.MESHLIT_SUITE_ROOT;
     if (!root) throw Error('Launch the extracted Meshlit Studio application');
     local = new LocalServer(root);
@@ -90,7 +91,7 @@ async function activate(context) {
             let route;
             if(choice==='Discover models'){
                 const hub=require('./hub.cjs'),dir=path.join(context.globalStorageUri.fsPath,'models');
-                route=forced?.item?await hub.install(vscode,dir,forced.item):await hub.discover(vscode,dir);
+                route=forced?.item?await hub.install(vscode,dir,forced.item):await hub.discover(vscode,dir,brand);
                 if(!route)return;
             } else {
                 const folder=choice==='Import model folder…';
@@ -295,12 +296,13 @@ async function activate(context) {
         try{sendUI('draft',{text:await tools.dictate()});}
         catch(e){sendUI('notice',{text:'Dictation unavailable. Focus the message box and press Windows + H. '+e.message.slice(0,180)});}
     }
-    const management=require('./management.cjs').dashboard(vscode,dashboardState,action);
+    const management=require('./management.cjs').dashboard(vscode,dashboardState,action,brand);
     context.subscriptions.push({dispose:management.dispose});
     require('./legacy/ssh-dashboard.cjs').register(context,vscode);
     require('./legacy/memory.cjs').register(context);
     require('./legacy/voice.cjs').register(context, { requirePermission });
     const dashboards=require('./operations.cjs').operations(vscode,context,root,{
+        brand,
         models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);sendUI('restartSetup',{});},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
     function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':(current.hostName||current.adapter||current.kind)+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
@@ -364,7 +366,8 @@ async function activate(context) {
         if(panel) { panel.reveal(); return; }
         panel=vscode.window.createWebviewPanel('meshlit.chat','Meshlit · General Chat',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[],retainContextWhenHidden:true});
         const nonce=crypto.randomBytes(20).toString('hex');
-        panel.webview.html=page(nonce,firstRun());
+        panel.iconPath=vscode.Uri.file(brand.file);
+        panel.webview.html=page(nonce,firstRun(),brand.markup);
         panel.onDidDispose(()=>{active?.abort();panel=undefined;ready=false;});
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
@@ -440,6 +443,21 @@ async function activate(context) {
         context.subscriptions.push(vscode.commands.registerCommand('meshlit.studio.'+cmd,async()=>{try {return await fn();} catch(err){vscode.window.showErrorMessage(err.message);}}));
     }
     context.subscriptions.push({dispose:()=>{active?.abort();local.stop();}});
+    if (!home) {
+        const links = [
+            ['General chat', 'chat', 'comment-discussion'], ['Models', 'models', 'library'],
+            ['Devices', 'pair', 'device-desktop'], ['Settings', 'settings', 'settings-gear']
+        ];
+        context.subscriptions.push(vscode.window.registerTreeDataProvider('meshlit.studio.navigation', {
+            getChildren: item => item ? [] : links,
+            getTreeItem: ([label, command, icon]) => {
+                const item = new vscode.TreeItem(label);
+                item.command = { command: 'meshlit.studio.' + command, title: label };
+                item.iconPath = new vscode.ThemeIcon(icon);
+                return item;
+            }
+        }));
+    }
     if (home) {
         if(context.globalState.get('start-at-login',false)&&['local','import'].includes(settings().kind)){
             local.start(AbortSignal.timeout(180000),context.globalState.get('threads',0),settings().kind==='import'?settings():undefined).then(()=>{serverLog('Loaded local model at startup');scheduleUnload();}).catch(e=>serverLog('Startup load failed · '+e.message));

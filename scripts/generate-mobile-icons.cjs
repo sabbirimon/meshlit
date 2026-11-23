@@ -9,7 +9,7 @@ async function main() {
   for (const [density, size] of Object.entries({mdpi:48, hdpi:72, xhdpi:96, xxhdpi:144, xxxhdpi:192})) {
     const directory = path.join(root, `app/src/main/res/mipmap-${density}`);
     for (const round of [false, true]) {
-      const svg = Buffer.from(round ? source.replace('rx="30"', 'rx="64"') : source);
+      const svg = Buffer.from(source);
       await sharp(svg, {density:216}).resize(size,size).webp({lossless:true})
         .toFile(path.join(directory, `ic_launcher${round ? '_round' : ''}.webp`));
     }

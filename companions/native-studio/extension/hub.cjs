@@ -50,8 +50,8 @@ async function download(item, dir, signal, progress, fetcher=fetch) {
         await fs.rm(temp,{force:true});
     }
 }
-async function discover(vscode, directory) {
-    const item=await require('./discovery.cjs').chooseFile(vscode,metadata,files);
+async function discover(vscode, directory, brand) {
+    const item=await require('./discovery.cjs').chooseFile(vscode,metadata,files,brand);
     if(!item)return;
     return install(vscode,directory,item);
 }

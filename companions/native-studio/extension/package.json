@@ -2,6 +2,7 @@
   "name": "native-studio",
   "publisher": "meshlit",
   "displayName": "Meshlit Studio",
+  "icon": "media/meshlit.png",
   "version": "2.0.49",
   "engines": {
     "vscode": "^1.95.0"
@@ -70,6 +71,24 @@
         "mac": "cmd+,",
         "when": "meshlitStudioHome"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "meshlit-studio",
+          "title": "Meshlit Studio",
+          "icon": "legacy/media/meshlit.svg"
+        }
+      ]
+    },
+    "views": {
+      "meshlit-studio": [
+        {
+          "id": "meshlit.studio.navigation",
+          "name": "Meshlit Studio",
+          "when": "!meshlitStudioHome"
+        }
+      ]
+    }
   }
 }
