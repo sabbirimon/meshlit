@@ -114,6 +114,14 @@ def main():
         unpack(specs["zig"], raw / "compiler", args.cache)
         [zig] = [p for p in (raw / "compiler").rglob("zig.exe" if SYSTEM == "Windows" else "zig") if p.is_file()]
         zig.parent.rename(suite / "toolchain")
+    automation = suite / "automation"
+    automation.mkdir()
+    if SYSTEM == "Darwin":
+        subprocess.run([__import__("sys").executable, ROOT/"companions/studio-runtime/prepare_app_access.py",
+                        "--extension", automation], check=True)
+    else:
+        helper = "windows.ps1" if SYSTEM == "Windows" else "linux.py"
+        shutil.copy2(ROOT/"companions/native-studio/automation"/helper, automation)
     package_extension(suite)
     launcher(suite)
     if SYSTEM == "Linux":

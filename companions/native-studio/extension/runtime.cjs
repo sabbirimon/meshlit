@@ -42,13 +42,13 @@ async function digest(file) {
 
 class LocalServer {
     constructor(root) { this.root = root; }
-    async start(signal, configuredThreads = 0) {
+    async start(signal, configuredThreads = 0, imported) {
         if (!this.pending) {
-            this.pending = this.launch(signal, configuredThreads).catch(err => { this.stop(); throw err; });
+            this.pending = this.launch(signal, configuredThreads, imported).catch(err => { this.stop(); throw err; });
         }
         return this.pending;
     }
-    async launch(signal, configuredThreads) {
+    async launch(signal, configuredThreads, imported) {
         const available = os.availableParallelism();
         if (!Number.isInteger(configuredThreads) || configuredThreads < 0 || configuredThreads > Math.min(64, available)) {
             throw Error('CPU thread limit exceeds available processors');
@@ -58,8 +58,8 @@ class LocalServer {
         const model = JSON.parse(fs.readFileSync(path.join(this.root, 'inference/model.json')));
         const server = path.join(this.root, 'inference', process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
         if (path.basename(model.filename) !== model.filename) throw Error('Invalid model manifest');
-        const weights = path.join(this.root, 'models', model.filename);
-        if (await digest(server) !== meta.sha256 || await digest(weights) !== model.sha256) throw Error('Installed inference files failed verification');
+        const weights = imported ? imported.file : path.join(this.root, 'models', model.filename);
+        if (await digest(server) !== meta.sha256 || await digest(weights) !== (imported?.sha256 || model.sha256)) throw Error('Installed inference files failed verification');
         signal.throwIfAborted();
         const reservation = net.createServer();
         reservation.listen(0, '127.0.0.1');
@@ -90,4 +90,4 @@ class LocalServer {
     }
     stop() { this.child?.kill(); this.child = undefined; this.pending = undefined; }
 }
-module.exports = {LocalServer, endpoint, request};
+module.exports = {LocalServer, endpoint, request, digest};
