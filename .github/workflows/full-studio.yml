@@ -77,6 +77,15 @@ jobs:
         shell: pwsh
         run: |
           $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
+          if (!(Test-Path $iscc)) {
+            $compilerSetup = Join-Path $env:RUNNER_TEMP 'innosetup-6.4.3.exe'
+            curl.exe -fLsS --retry 3 --retry-all-errors -o $compilerSetup https://github.com/jrsoftware/issrc/releases/download/is-6_4_3/innosetup-6.4.3.exe
+            if ($LASTEXITCODE -or (Get-FileHash $compilerSetup).Hash.ToLowerInvariant() -ne 'f3c42116542c4cc57263c5ba6c4feabfc49fe771f2f98a79d2f7628b8762723b') { throw 'Inno Setup download failed verification' }
+            $compilerDir = Join-Path $env:RUNNER_TEMP 'Inno Setup'
+            $p = Start-Process $compilerSetup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="' + $compilerDir + '"') -Wait -PassThru
+            if ($p.ExitCode) { exit $p.ExitCode }
+            $iscc = Join-Path $compilerDir 'ISCC.exe'
+          }
           & $iscc companions/native-studio/windows/studio.iss
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $setup = (Resolve-Path dist/Meshlit-Studio-Windows-X64-Setup.exe).Path

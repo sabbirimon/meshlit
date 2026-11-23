@@ -28,7 +28,7 @@ def main():
     models.mkdir(exist_ok=True)
     target = models / spec["filename"]
     partial = target.with_suffix(".partial")
-    subprocess.run(["curl", "--fail", "--location", "--retry", "3", "--max-time", "1800",
+    subprocess.run(["curl", "--fail", "--location", "--http1.1", "--retry", "3", "--retry-all-errors", "--retry-max-time", "900", "--max-time", "1800",
                     "--max-filesize", str(spec["sizeBytes"]), "--output", str(partial), spec["url"]], check=True)
     verify_model(partial, spec)
     partial.replace(target)
