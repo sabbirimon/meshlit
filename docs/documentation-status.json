@@ -534,7 +534,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit desktop Studio implementation plan",
-      "contentSha256WithoutTrackingBlock": "ac4bfe504f24b07db92fe46c5b7372eb41bacd1a47970285bc90bbb72c8a3a2d"
+      "contentSha256WithoutTrackingBlock": "0452a7dd44ed4954589ddfd413f3f1d4527971c06a5035efb625c544ed0355da"
     },
     {
       "path": "docs/DEVICE_COMPATIBILITY.md",
