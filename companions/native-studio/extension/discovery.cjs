@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
+const viewHelp=require('./view-help.cjs');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const GiB = 1024 ** 3;
@@ -45,7 +46,7 @@ input[type=search]{flex:1;min-width:10em}.filters{margin-top:12px}.filters label
 .resultDetail{display:block}.results [aria-pressed=true] .resultDetail{color:inherit}
 #facts{display:flex;flex-wrap:wrap;gap:6px}#facts span{padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;font-size:12px}
 h3{margin:24px 0 8px;font-size:16px}#variant{max-width:100%;width:100%}#download{background:var(--vscode-button-background);color:var(--vscode-button-foreground);font-weight:600}button:disabled{opacity:.55;cursor:default}
-@media(max-width:660px){body{padding:12px}.layout{grid-template-columns:1fr;min-height:0}.browser{border-inline-end:0;border-bottom:1px solid var(--vscode-panel-border)}.results{max-height:24vh}.browser,.detailPane{padding:14px}}h1{display:flex;align-items:center;gap:10px}h1 svg{width:28px;height:28px}</style>
+@media(max-width:660px){body{padding:12px}.layout{grid-template-columns:1fr;min-height:0}.browser{border-inline-end:0;border-bottom:1px solid var(--vscode-panel-border)}.results{max-height:24vh}.browser,.detailPane{padding:14px}}h1{display:flex;align-items:center;gap:10px}h1 svg{width:28px;height:28px}${viewHelp.styles}</style>
 <header><button id="back">← Back</button><h1>${brand}Import from Hugging Face</h1></header>
 <main class="layout"><section class="browser" aria-label="Model search">
 <form><input id="q" type="search" aria-label="Search Hugging Face by model or author" placeholder="Model name, author/model or repository URL" maxlength="220"><button>Search</button></form>
@@ -54,11 +55,11 @@ h3{margin:24px 0 8px;font-size:16px}#variant{max-width:100%;width:100%}#download
 <div class="detailPane"><p id="empty">Search by model or author to compare available downloads.</p>
 <section id="details" hidden><h2 id="name"></h2><p id="summary"></p><div id="facts"></div>
 <h3>Download options</h3><label>GGUF file <select id="variant"></select></label><p id="hint"></p><button id="download" disabled>Download selected file</button><p><button id="card">Read publisher model card ↗</button></p></section></div></main>
-<script nonce="${nonce}">
+<script nonce="${nonce}">${viewHelp.script}
 const api=acquireVsCodeApi(),el=id=>document.getElementById(id);
 let seq=0,items=[],picked,files=[],capacity=0,loading=false;
 function search(){seq++;picked=null;items=[];files=[];el('results').replaceChildren();el('details').hidden=true;el('empty').hidden=false;el('status').textContent='Searching Hugging Face…';api.postMessage({op:'search',q:el('q').value.trim(),sort:el('sort').value,seq})}
-function variants(){const displayed=files.filter(f=>!el('fit').checked||f.bytes<=capacity);el('variant').replaceChildren(...displayed.map(f=>new Option(f.name+' · '+f.size,f.sha)));el('download').disabled=loading||!displayed.length;updateDownload();el('hint').textContent=loading?'Reading available files…':displayed.length?'Download size is the size on disk. Runtime memory also depends on context.':files.length?'No variant fits the estimate. Clear the RAM filter to see all files.':'No supported single-file GGUF with a published checksum.'}
+function variants(){const displayed=files.filter(f=>!el('fit').checked||f.bytes<=capacity);el('variant').replaceChildren(...displayed.map(f=>new Option(f.name+' · '+f.size,f.sha)));setAvailability(el('download'),loading?'Fetching variants. Wait for the file list.':displayed.length?'':files.length?'Clear the RAM filter or choose a smaller model to see downloadable files.':'Choose a repository with a supported single-file GGUF and published checksum.');updateDownload();el('hint').textContent=loading?'Reading available files…':displayed.length?'Download size is the size on disk. Runtime memory also depends on context.':files.length?'No variant fits the estimate. Clear the RAM filter to see all files.':'No supported single-file GGUF with a published checksum.'}
 function choose(item){seq++;picked=item;files=[];loading=true;el('details').hidden=false;el('empty').hidden=true;el('facts').replaceChildren();el('name').textContent=item.id;el('summary').textContent=item.summary;for(const b of el('results').children)b.setAttribute('aria-pressed',String(b.dataset.repo===item.id));variants();api.postMessage({op:'details',repo:item.id,seq})}
 function updateDownload(){const file=files.find(f=>f.sha===el('variant').value);el('download').textContent=file?'Download · '+file.size:'Download selected file'}
 el('card').onclick=()=>api.postMessage({op:'card',repo:picked?.id});el('variant').onchange=updateDownload;

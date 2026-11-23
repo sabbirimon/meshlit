@@ -1,4 +1,5 @@
 'use strict';
+const viewHelp=require('./view-help.cjs');
 const os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
 const fs=require('node:fs/promises'),{execFile}=require('node:child_process'),{promisify}=require('node:util');
 const run=promisify(execFile);
@@ -45,9 +46,15 @@ function operations(vscode,context,root,hooks){
   return data;
  }
  async function showData(title,pairs){detail=true;await panel?.webview.postMessage({type:'details',title,pairs});}
+ function unavailable(id){
+  if(id==='memory'&&(!vscode.workspace.workspaceFolders?.length||!vscode.workspace.isTrusted))return 'Choose Open coding IDE, open your project folder and review its workspace trust to use Project memory.';
+  if(id==='voice'&&process.platform!=='win32')return 'Built-in speech recognition is available on Windows. Use system dictation in the chat message box on this device.';
+  const permission={search:'internet',attach:'files',voice:'microphone'}[id];
+  return permission&&!hooks.allowed(permission)?'Open Permissions and allow '+hooks.permissionLabels[permission]+'.':'';
+ }
  function render(){
   const data=items();
-  return panel?.webview.postMessage({type:'render',title:titles[section],groups:groups[section].map(([title,ids])=>({title,items:ids.map(id=>({id,label:data[id][0],detail:data[id][1],disabled:id==='memory'&&(!vscode.workspace.workspaceFolders?.length||!vscode.workspace.isTrusted)}))}))});
+  return panel?.webview.postMessage({type:'render',title:titles[section],groups:groups[section].map(([title,ids])=>({title,items:ids.map(id=>({id,label:data[id][0],detail:data[id][1],reason:unavailable(id)}))}))});
  }
  function open(target){
   if(!Object.hasOwn(groups,target))throw Error('Unknown Studio dashboard');
@@ -62,13 +69,13 @@ function operations(vscode,context,root,hooks){
    if(m?.op==='back')return detail?(detail=false,render()):hooks.back();
    if(m?.op==='section'&&Object.hasOwn(groups,m.target))return hooks.go(m.target);
    if(running||m?.op!=='action'||!groups[section].some(([,ids])=>ids.includes(m.id)))return;
-   if(m.id==='memory'&&(!vscode.workspace.workspaceFolders?.length||!vscode.workspace.isTrusted))return;
+   if(unavailable(m.id))return;
    const version=token;running=true;
    try{await items()[m.id][2]();}catch(e){vscode.window.showErrorMessage(e.message);}finally{running=false;if(version===token&&!detail)render();}
   });
   const n=crypto.randomBytes(18).toString('hex');
   panel.iconPath=vscode.Uri.file(hooks.brand.file);
-  panel.webview.html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'nonce-${n}';script-src 'nonce-${n}'"><style nonce="${n}">body{max-width:940px;margin:24px auto;padding:0 24px;font:14px/1.5 var(--vscode-font-family);color:var(--vscode-foreground)}nav{display:flex;gap:9px;flex-wrap:wrap}button{font:inherit;color:inherit;background:var(--vscode-button-secondaryBackground);border:1px solid var(--vscode-panel-border);border-radius:7px;padding:6px 12px;cursor:pointer}button:disabled{opacity:.6}button:focus-visible{outline:2px solid var(--vscode-focusBorder)}h1{margin:32px 0 16px}h2{font-size:16px}section{border-top:1px solid var(--vscode-panel-border);padding:8px 0 20px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.card{text-align:left;display:grid;gap:4px;padding:12px}.card span,dt{color:var(--vscode-descriptionForeground);font-size:12px}dd{margin:0 0 8px}nav svg{width:26px;height:26px;vertical-align:middle}</style></head><body><nav>${hooks.brand.markup}<button id="back">← Back</button><button id="chat">General chat</button><button data-page="management">Management</button><button data-page="tools">Tools</button><button data-page="settings">Settings</button></nav><h1></h1><main></main><script nonce="${n}">const a=acquireVsCodeApi(),main=document.querySelector('main'),title=document.querySelector('h1'),tag=(name,text)=>{const e=document.createElement(name);e.textContent=text;return e};document.querySelector('#back').onclick=()=>a.postMessage({op:'back'});document.querySelector('#chat').onclick=()=>a.postMessage({op:'chat'});for(const b of document.querySelectorAll('[data-page]'))b.onclick=()=>a.postMessage({op:'section',target:b.dataset.page});window.addEventListener('message',({data:m})=>{title.textContent=m.title;main.replaceChildren();if(m.type==='details'){const dl=tag('dl','');for(const [k,v]of m.pairs)dl.append(tag('dt',k),tag('dd',v));main.append(dl);return;}for(const g of m.groups){const section=tag('section',''),cards=tag('div','');cards.className='cards';section.append(tag('h2',g.title),cards);for(const i of g.items){const b=tag('button','');b.className='card';b.disabled=i.disabled;b.append(tag('strong',i.label),tag('span',i.detail));b.onclick=()=>a.postMessage({op:'action',id:i.id});cards.append(b);}main.append(section);}});a.postMessage({op:'ready'});</script></body></html>`;
+  panel.webview.html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'nonce-${n}';script-src 'nonce-${n}'"><style nonce="${n}">body{max-width:940px;margin:24px auto;padding:0 24px;font:14px/1.5 var(--vscode-font-family);color:var(--vscode-foreground)}nav{display:flex;gap:9px;flex-wrap:wrap}button{font:inherit;color:inherit;background:var(--vscode-button-secondaryBackground);border:1px solid var(--vscode-panel-border);border-radius:7px;padding:6px 12px;cursor:pointer}button:disabled{opacity:.6}button:focus-visible{outline:2px solid var(--vscode-focusBorder)}h1{margin:32px 0 16px}h2{font-size:16px}section{border-top:1px solid var(--vscode-panel-border);padding:8px 0 20px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.card{text-align:left;display:grid;gap:4px;padding:12px}.card span,dt{color:var(--vscode-descriptionForeground);font-size:12px}dd{margin:0 0 8px}nav svg{width:26px;height:26px;vertical-align:middle}${viewHelp.styles}</style></head><body><nav>${hooks.brand.markup}<button id="back">← Back</button><button id="chat">General chat</button><button data-page="management">Management</button><button data-page="tools">Tools</button><button data-page="settings">Settings</button></nav><h1></h1><main></main><script nonce="${n}">${viewHelp.script}const a=acquireVsCodeApi(),main=document.querySelector('main'),title=document.querySelector('h1'),tag=(name,text)=>{const e=document.createElement(name);e.textContent=text;return e};document.querySelector('#back').onclick=()=>a.postMessage({op:'back'});document.querySelector('#chat').onclick=()=>a.postMessage({op:'chat'});for(const b of document.querySelectorAll('[data-page]'))b.onclick=()=>a.postMessage({op:'section',target:b.dataset.page});window.addEventListener('message',({data:m})=>{title.textContent=m.title;main.replaceChildren();if(m.type==='details'){const dl=tag('dl','');for(const [k,v]of m.pairs)dl.append(tag('dt',k),tag('dd',v));main.append(dl);return;}for(const g of m.groups){const section=tag('section',''),cards=tag('div','');cards.className='cards';section.append(tag('h2',g.title),cards);for(const i of g.items){const b=tag('button','');b.className='card';setAvailability(b,i.reason);b.append(tag('strong',i.label),tag('span',i.detail));b.onclick=()=>a.postMessage({op:'action',id:i.id});cards.append(b);}main.append(section);}});a.postMessage({op:'ready'});</script></body></html>`;
  }
  context.subscriptions.push({dispose:()=>panel?.dispose()});
  return {open};

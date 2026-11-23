@@ -339,6 +339,7 @@ async function activate(context) {
         const state=native ? local.route?'Loaded':local.pending?'Loading':'Selected · unloaded'
             :route.kind==='asset'?'Local runtime · loads per request':'Remote · '+(route.hostName || new URL(route.base).host);
         sendUI('status',{text:modelName(route)+' · '+state, model:modelName(route),
+            voiceHelp:process.platform==='win32'?'Open Permissions and allow Voice input.':'Built-in speech recognition is available on Windows. Use system dictation in the message box here.',
             actions:{attach:allowed('files'),web:allowed('internet'),voice:process.platform==='win32'&&allowed('microphone'),speak:allowed('speech')},
             filter:context.globalState.get('filter-output',true)});
     }
