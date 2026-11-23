@@ -21,6 +21,11 @@ async function activate(context) {
     const control = require('./control.cjs').register(vscode,context,root);
     const {imported, displayOutput} = require('./catalog.cjs');
     const saved = () => context.globalState.get('model-catalog', []);
+    const firstRun=()=>!context.globalState.get('welcome-complete',false)&&!context.globalState.get('route')&&!saved().length;
+    const updateWelcome=visible=>sendUI('setup',{visible,host:require('node:os').availableParallelism()+' logical CPUs · '+(require('node:os').totalmem()/1024**3).toFixed(1)+' GiB RAM installed'});
+    async function finishWelcome(){
+        await context.globalState.update('welcome-complete',true);updateWelcome(false);
+    }
     async function guardrails() {
         const enabled = context.globalState.get('filter-output',true);
         const choice = await vscode.window.showQuickPick([
@@ -138,13 +143,27 @@ async function activate(context) {
     const packaged={kind:'local',model:'meshlit-local'};
     const manifest=JSON.parse(require('node:fs').readFileSync(require('node:path').join(root,'inference','model.json'),'utf8'));
     const modelId=r=>crypto.createHash('sha256').update(JSON.stringify([r.kind,r.base||'',r.file||'',r.model])).digest('hex');
+    function generationSettings(route=settings()){
+        return context.globalState.get('generation:'+modelId(route),{maxTokens:128,temperature:0});
+    }
+    async function tuneModel(){
+        const route=settings(),current=generationSettings(route);
+        const raw=await vscode.window.showInputBox({title:'Maximum new tokens · '+route.model,value:String(current.maxTokens),validateInput:v=>/^\d+$/.test(v)&&Number(v)>=1&&Number(v)<=128?undefined:'Choose 1 to 128 tokens'});
+        if(raw===undefined)return;
+        let temperature=0;
+        if(route.kind!=='asset'){
+            const value=await vscode.window.showInputBox({title:'Temperature · '+route.model,value:String(current.temperature),validateInput:v=>v.trim()!==''&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=2?undefined:'Choose a number between 0 and 2'});
+            if(value===undefined)return;temperature=Number(value);
+        }
+        await context.globalState.update('generation:'+modelId(route),{maxTokens:Number(raw),temperature});
+    }
     const routes=()=>[packaged,...saved()];
     function dashboardState(){
         const selected=settings(), rows=routes().map(r=>({
             id:modelId(r),name:r.kind==='local'?manifest.filename:r.model,bundled:r.kind==='local',
             selected:modelId(r)===modelId(selected),local:!r.base,
             canSelect:r.kind!=='asset'||!!r.info?.adapters?.length,
-            detail:r.kind==='asset'?[r.info.label,...r.info.quantization,r.info.evidence,r.info.adapters.length?'Requires local '+r.info.adapters.join(' or '):'External runtime required: '+r.info.runtime,r.file].join(' · '):r.base?r.kind+' · '+r.base:r.kind==='local'?'Bundled GGUF':((r.bytes||0)/1024**3).toFixed(2)+' GiB · '+r.file
+            detail:r.kind==='asset'?[r.info.label,...r.info.quantization,r.info.evidence,r.info.adapters.length?'Requires local '+r.info.adapters.join(' or '):'External runtime required: '+r.info.runtime,r.file].join(' · '):r.base?r.kind+' · '+r.base:r.kind==='local'?'Bundled GGUF':((r.bytes||0)/1024**3).toFixed(2)+' GiB weights · '+(require('node:os').freemem()/1024**3).toFixed(1)+' GiB RAM free now · '+r.file
         }));
         return {library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:['local','import'].includes(selected.kind),
             running:!!local.route,server:local.route?'Running · '+local.route.base:local.pending?'Loading local model…':'Stopped'};
@@ -156,7 +175,8 @@ async function activate(context) {
         if(active||changing)throw Error('Finish the current model operation first');
         changing=true;
         try{
-            if(op==='connect'){
+            if(op==='tune')await tuneModel();
+            else if(op==='connect'){
                 const label=await vscode.window.showQuickPick(['Ollama','LM Studio','Other OpenAI-compatible server'],{title:'Connect a model server'});
                 if(label)await select({label});
             }else if(['import','folder','discover'].includes(op))await select({label:{import:'Import model file…',folder:'Import model folder…',discover:'Discover models'}[op]});
@@ -231,7 +251,7 @@ async function activate(context) {
     require('./legacy/ssh-dashboard.cjs').register(context,vscode);
     require('./legacy/memory.cjs').register(context);
     const dashboards=require('./operations.cjs').operations(vscode,context,root,{
-        models:()=>go('models'),go,back,webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
+        models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
     function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':(current.adapter||current.kind)+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
     async function generate(prompt,file) {
@@ -241,7 +261,7 @@ async function activate(context) {
         active=controller;
         const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(240000)]);
         try {
-            const selected=settings();
+            const selected=settings(),options=generationSettings(selected);
             const messages=[...history,{role:'user',content:prompt}];
             const started=performance.now();
             const progress=text=>sendUI('progress',{text});
@@ -255,11 +275,11 @@ async function activate(context) {
             }
             if(selected.kind==='asset'){
                 progress('Loading local runtime and generating…');
-                answer=(await adapters.worker(selected.python,selected.adapter,selected.file,messages,signal)).text;
+                answer=(await adapters.worker(selected.python,selected.adapter,selected.file,messages,signal,options.maxTokens)).text;
             }else{
                 const route = ['local','import'].includes(selected.kind) ? await local.start(signal, context.globalState.get('threads',0), selected.kind==='import'?selected:undefined,progress) : {...selected,token:await context.secrets.get('token:'+selected.base)};
                 progress('Waiting for '+(selected.base?new URL(route.base).host:'the local model')+' to reply…');
-                const result=await request(route.base,'/chat/completions',route.token,{model:route.model,messages,max_tokens:128,temperature:0},signal);
+                const result=await request(route.base,'/chat/completions',route.token,{model:route.model,messages,max_tokens:options.maxTokens,temperature:options.temperature},signal);
                 count=result.usage?.completion_tokens;rate=result.timings?.predicted_per_second;
                 answer=result.choices?.[0]?.message?.content;
             }
@@ -283,14 +303,21 @@ async function activate(context) {
         if(panel) { panel.reveal(); return; }
         panel=vscode.window.createWebviewPanel('meshlit.chat','Meshlit · General Chat',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[],retainContextWhenHidden:true});
         const nonce=crypto.randomBytes(20).toString('hex');
-        panel.webview.html=page(nonce);
+        panel.webview.html=page(nonce,firstRun());
         panel.onDidDispose(()=>{active?.abort();panel=undefined;ready=false;});
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
             try {
-                if(msg.op==='ready') {ready=true;sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
-                if(msg.op==='new'&&!active){pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
+                if(msg.op==='ready') {ready=true;updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='new'&&!active){await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){pendingFile=undefined;sendUI('attachment',{name:''});currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='skipSetup'||msg.op==='startLocal'){if(msg.op==='startLocal'&&settings().kind!=='local')await select({label:'Bundled offline model'});await finishWelcome();return;}
+                if(msg.op==='startLibrary'){await finishWelcome();go('models');return;}
+                if(msg.op==='startProvider'){
+                    await action('connect');
+                    if(settings().base)await finishWelcome();
+                    return;
+                }
                 if(msg.op==='back')back();
                 if(['tools','management','settings','permissions'].includes(msg.op))go(msg.op);
                 if(msg.op==='web'&&!active)await webSearch();

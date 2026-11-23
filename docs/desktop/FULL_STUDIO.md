@@ -76,3 +76,5 @@ Use **Back** to return from model management, permissions or tools. Open a proje
 Optional local workers are Transformers with SafeTensors, ONNX Runtime GenAI, OpenVINO GenAI and MLX-LM. Provide a trusted model folder and an environment with the corresponding libraries. The current worker loads the model per request. Raw arrays, pickle checkpoints and compiled binaries require the architecture, tokenizer and matching runtime shown in the catalog. [Model format milestones](../DESKTOP_STUDIO_PLAN.md#studio-model-format-support--2026-11-24)
 
 The Windows build workflow produces a per-user Setup.exe alongside the portable ZIP and exercises installation, General Chat startup and uninstall. Check the asset list for the particular release you download.
+
+On the development branch, first launch offers the bundled offline model, provider connection and model library. Open Settings → Welcome and setup to view it again. The library search filters entries by name or displayed format/runtime. **Selected model reply settings** saves the output token limit and, for GGUF or provider routes, temperature per model. Optional Python workers retain their own sampling behavior.

@@ -154,3 +154,18 @@ Current addition is its explicit authenticated models/chat API route, not a clai
 its whole Python/Svelte server, RAG index or multi-user system is bundled.
 See [API reference](https://docs.openwebui.com/reference/api-endpoints/) and
 [current licence](https://github.com/open-webui/open-webui/blob/main/LICENSE).
+
+## LM Studio and Bionic workflow review — 2026-11-24
+
+The Windows host reported LM Studio 0.4.28.0 and Bionic 1.2.2.0. The capabilities below come from the vendor guides. The exact first-run Windows screen still needs a visual comparison. Meshlit uses its own assets, UI and runtime adapters.
+
+| Workflow | Meshlit development state | Next acceptance gate |
+| --- | --- | --- |
+| First run | Choose bundled offline chat, an existing provider or the local library. Show installed RAM and CPU count. Skip, remember completion and reopen from Settings. | Exercise all choices on Windows, including cancelled connection and a second launch. |
+| Discover and manage models | Search the registered library by name, format or runtime. Discover pinned GGUF downloads, import in place, select providers, and save output length and temperature per model where supported. | Resumable download queue, format/variant filters in discovery, destination device choice and measured load-time memory estimates. |
+| Model routing | Bundled CPU, optional local runtimes and an endpoint chosen from its own inventory. | Preserve independent per-session selections, choose a default for new sessions and show which paired devices currently serve a model. |
+| Voice and chat | Windows speech-to-text and draft review, local read-aloud, attachments, copy, quote and save. | Dedicated multilingual transcription models, microphone and language picker, hold-to-talk, optional model preload and durable project conversations. |
+| Documents and tools | Direct text attachments, image-capable provider requests, explicit internet tools and installed MCP inventory. | Offline document ingestion and retrieval with citations, per-session MCP execution grants and tested context budgets. |
+| Developer workflows | Local authenticated API controls, separate IDE, compiler, terminal and provider routes. | Runtime manager, portable configuration presets, prompt templates, embeddings, parallel requests, speculative decoding and headless lifecycle controls. |
+
+Sources include the [LM Studio application guide](https://lmstudio.ai/docs/app), [Bionic model picker](https://lmstudio.ai/docs/bionic/models), [local model library](https://lmstudio.ai/docs/bionic/models/download-local-models) and [voice settings](https://lmstudio.ai/docs/bionic/voice-input).

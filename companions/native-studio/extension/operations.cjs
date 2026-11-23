@@ -6,7 +6,7 @@ const groups={
  permissions:[['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
  management:[['Chat and permissions',['permissions','voice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
  tools:[['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
- settings:[['Chat and inference',['models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
+ settings:[['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
 };
 const titles={permissions:'Permissions',management:'Management',tools:'Tools',settings:'Meshlit Settings'};
 function operations(vscode,context,root,hooks){
@@ -14,6 +14,7 @@ function operations(vscode,context,root,hooks){
  function items(){
   const cpu=context.globalState.get('threads',0);
   const data={
+   welcome:['Welcome and setup','Choose how to start chatting',hooks.welcome],
    permissions:['Permissions','Review access by tool',()=>hooks.go('permissions')],
    voice:['Voice input','Dictate a message and review the draft',hooks.voice],
    attach:['Attach a file or image','Choose a file for the next message',hooks.attach],

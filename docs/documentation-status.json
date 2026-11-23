@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "ce68e97121182a4703aafbc43908e4fdcf29c6c2ea2db1c0cf8f42981a8ca130"
+      "contentSha256WithoutTrackingBlock": "1a2588a4dc0d00d8353081c8caf11b2fca839ee98ac40f0689894ed2c493dba2"
     },
     {
       "path": "README.md",
@@ -534,7 +534,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit desktop Studio implementation plan",
-      "contentSha256WithoutTrackingBlock": "053d67de241d07a3d4a1fead3901dbf97fdaaac4abe1d58bebccbf8a85688997"
+      "contentSha256WithoutTrackingBlock": "94c0259ee57747796a42a4a0b64e8432d2b38c51cefdefbee50a96dac1722a72"
     },
     {
       "path": "docs/DEVICE_COMPATIBILITY.md",
@@ -1059,7 +1059,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit Native Studio",
-      "contentSha256WithoutTrackingBlock": "5ea8f8b7154d0d3dc9a94d7ebe18da0ad2966b05edcafd802733783c160db10c"
+      "contentSha256WithoutTrackingBlock": "7d02c028aaf39a0ad29b0ad64795381f32593463773d02935e99382699e6acb9"
     },
     {
       "path": "docs/desktop/INFERENCE_PROFILES.md",
