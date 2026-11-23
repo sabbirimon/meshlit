@@ -50,6 +50,21 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: ./gradlew :desktopApp:packageDmg --no-daemon --max-workers=2
+      - name: Launch the packaged client and render its workspace
+        shell: python
+        run: |
+          import os, pathlib, subprocess, tempfile
+          root = pathlib.Path('desktopApp/build/compose/binaries/main/app')
+          os_name = os.environ['RUNNER_OS']
+          launcher = {'Windows': 'Meshlit/Meshlit.exe', 'Linux': 'Meshlit/bin/Meshlit',
+                      'macOS': 'Meshlit.app/Contents/MacOS/Meshlit'}[os_name]
+          command = [str((root / launcher).resolve()), '--render-check']
+          with tempfile.TemporaryDirectory() as temp:
+              image = pathlib.Path(temp) / 'workspace.png'
+              if os_name == 'Linux':
+                  command = ['xvfb-run', '-a'] + command
+              subprocess.run(command + [str(image)], check=True, timeout=90)
+              assert image.read_bytes()[:8] == b'\x89PNG\r\n\x1a\n', 'Packaged client did not render'
       - name: Installer checksums and scope
         shell: python
         run: |

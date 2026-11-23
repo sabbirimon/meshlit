@@ -14,8 +14,9 @@ class StudioInstanceTest {
                 assertNull(StudioInstance.acquire(root, "second build"))
                 assertTrue(first.consumeActivation())
                 assertFalse(first.consumeActivation())
-                assertTrue(Files.readString(root.resolve("instance.lock")).contains("test build"))
             }
+            // Windows enforces the exclusive lock even for a separate reader in this JVM.
+            assertTrue(Files.readString(root.resolve("instance.lock")).contains("test build"))
             assertNotNull(StudioInstance.acquire(root, "next build")).close()
         } finally { root.toFile().deleteRecursively() }
     }

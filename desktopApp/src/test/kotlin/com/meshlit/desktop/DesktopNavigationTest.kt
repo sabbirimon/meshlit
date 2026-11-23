@@ -29,7 +29,7 @@ class DesktopNavigationTest {
             val uri = vscodeFolderUri(folder)
             assertEquals("vscode", uri.scheme)
             assertEquals("file", uri.host)
-            assertEquals(folder.toRealPath().toString(), uri.path)
+            assertEquals(folder.toRealPath().toUri().path.trimEnd('/'), uri.path)
             assertNull(uri.query); assertNull(uri.fragment)
             assertTrue(uri.toASCIIString().contains("%23"))
         } finally { Files.delete(folder) }
