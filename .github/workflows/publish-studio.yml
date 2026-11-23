@@ -16,9 +16,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SOURCE: cbcfa7af1a33552e4fd9502d75664fa08ae035f3
-      RUN: '45247265309'
-      TAG: v2.0.48-studio.2
+      SOURCE: 0f852ba8d9aa2cd760962895394e20da5f2065c4
+      RUN: '45251440337'
+      TAG: v2.0.48-studio.3
     steps:
       - name: Verify all tested packages before publishing
         shell: bash
@@ -49,9 +49,9 @@ jobs:
           cat > notes.md <<'NOTES'
           On Windows x64, download Meshlit-Studio-Windows-X64-Setup.exe to install Studio for your Windows account. A portable ZIP is also available. On Linux, Intel Mac and Apple Silicon, extract the complete archive.
 
-          Studio opens in General Chat. This preview adds reply actions, attachments, internet search, voice input, persistent tool permissions, model loading feedback, and a shared model format catalog with optional local runtime adapters. Compatible models and runtimes must be installed for optional adapters. The bundled Qwen GGUF runs offline.
+          First launch offers the bundled offline model, a provider connection, or the model library. Settings can reopen the welcome screen. The library includes search and per-model reply settings. General Chat includes reply actions, attachments, internet search, voice input, persistent tool permissions, model loading feedback, and a shared model format catalog with optional local runtime adapters. Compatible models and runtimes must be installed for optional adapters. The bundled Qwen GGUF runs offline.
 
           Each archive was tested after extraction. Windows Setup was installed, launched and uninstalled in CI. SHA256SUMS.txt covers the five downloads. GitHub build attestations identify the workflow and source commit. This preview has no Windows publisher signature or Apple notarization. Android build 48 APKs are on the earlier v2.0.48-studio.1 release.
           NOTES
-          gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.48-studio.2" --notes-file notes.md assets/*
+          gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.48-studio.3" --notes-file notes.md assets/*
           gh release edit "$TAG" -R "$REPO" --draft=false
