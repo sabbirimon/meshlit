@@ -18,12 +18,13 @@ def check_home(client):
         (probe / "test.js").write_text("""
 const vscode=require('vscode'),fs=require('node:fs'),path=require('node:path');
 exports.run=async()=>{
+    if(!vscode.env.appName.startsWith('Meshlit')) throw Error('Unexpected workbench identity '+vscode.env.appName);
     const api=await vscode.extensions.getExtension('meshlit.native-studio').activate();
     const deadline=Date.now()+45000;
     while(Date.now()<deadline){
         const s=api.homeStatus();
         if(s.home && s.ready && s.visible && s.folders===0){
-            fs.writeFileSync(path.join(__dirname,'home.json'),JSON.stringify(s));
+            fs.writeFileSync(path.join(__dirname,'home.json'),JSON.stringify({...s,appName:vscode.env.appName}));
             for(const id of ['settings','tools','management','models'])await vscode.commands.executeCommand('meshlit.studio.'+id);
             await vscode.commands.executeCommand('meshlit.studio.chat');
             return;

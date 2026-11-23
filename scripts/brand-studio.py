@@ -19,6 +19,33 @@ MENU = [
 ]
 
 
+def brand_mac_helpers(bundle):
+    frameworks = bundle / "Contents/Frameworks"
+    helpers = sorted(frameworks.glob("VSCodium Helper*.app"))
+    if not any(helper.stem == "VSCodium Helper" for helper in helpers):
+        raise ValueError("Pinned Electron helper bundle is missing")
+    for helper in helpers:
+        name = helper.stem.replace("VSCodium", "Meshlit", 1)
+        info = helper / "Contents/Info.plist"
+        plist = plistlib.loads(info.read_bytes())
+        executable = helper / "Contents/MacOS" / plist.get("CFBundleExecutable", helper.stem)
+        executable.rename(executable.with_name(name))
+        suffix = helper.stem.removeprefix("VSCodium Helper").strip().strip("()").lower()
+        identifier = "bd.com.imon.meshlit.workbench.helper" + ("." + suffix if suffix else "")
+        plist.update(CFBundleExecutable=name, CFBundleName=name, CFBundleDisplayName=name,
+                     CFBundleIdentifier=identifier)
+        info.write_bytes(plistlib.dumps(plist))
+        renamed = helper.rename(helper.with_name(name + ".app"))
+        subprocess.run(["codesign", "--force", "--sign", "-", str(renamed)], check=True)
+
+
+def sign_mac_bundle(bundle):
+    # Electron locates its helpers using the parent application's bundle name.
+    brand_mac_helpers(bundle)
+    subprocess.run(["codesign", "--force", "--sign", "-", str(bundle)], check=True)
+    subprocess.run(["codesign", "--verify", "--deep", "--strict", str(bundle)], check=True)
+
+
 def configure(editor, mac):
     bundle = editor / "VSCodium.app"
     resources = bundle / "Contents/Resources/app" if mac else editor / "resources/app"
@@ -52,5 +79,4 @@ def configure(editor, mac):
         plist.pop("CFBundleIconName",None)
         info.write_bytes(plistlib.dumps(plist))
         shutil.copy2(ROOT/"desktopApp/distribution/icons/meshlit.icns",bundle/"Contents/Resources/meshlit.icns")
-        subprocess.run(["codesign","--force","--sign","-","--preserve-metadata=entitlements,flags",str(bundle)],check=True)
-        subprocess.run(["codesign","--verify","--deep","--strict",str(bundle)],check=True)
+        sign_mac_bundle(bundle)

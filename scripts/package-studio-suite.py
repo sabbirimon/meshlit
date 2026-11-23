@@ -69,8 +69,11 @@ def launcher(suite):
         contents = suite / "Meshlit.app/Contents"
         (contents / "MacOS").mkdir(parents=True)
         target = contents / "MacOS/Meshlit"
+        (contents / "Resources").mkdir()
+        shutil.copy2(ROOT / "desktopApp/distribution/icons/meshlit.icns", contents / "Resources/meshlit.icns")
         (contents / "Info.plist").write_bytes(plistlib.dumps({
-            "CFBundleExecutable": "Meshlit", "CFBundleName": "Meshlit", "CFBundlePackageType": "APPL",
+            "CFBundleExecutable": "Meshlit", "CFBundleName": "Meshlit",
+            "CFBundleDisplayName": "Meshlit", "CFBundleIconFile": "meshlit.icns", "CFBundlePackageType": "APPL",
             "CFBundleIdentifier": "bd.com.imon.meshlit.studio", "CFBundleShortVersionString": "2.0.48", "CFBundleVersion": "48"}))
     subprocess.run(["rustc", "--edition=2021", "-C", "opt-level=3", str(ROOT / "companions/native-studio/launcher.rs"), "-o", target], check=True)
     if SYSTEM == "Darwin":

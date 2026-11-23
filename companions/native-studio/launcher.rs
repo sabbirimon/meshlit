@@ -119,8 +119,10 @@ fn launch() -> io::Result<()> {
         if cfg!(target_os = "macos") {
             gui.arg("--use-mock-keychain");
         }
+        if !home {
+            gui.arg("--disable-workspace-trust");
+        }
         gui.arg("--disable-gpu")
-            .arg("--disable-workspace-trust")
             .arg(format!("--extensionDevelopmentPath={}", path.display()))
             .arg(format!(
                 "--extensionTestsPath={}",
