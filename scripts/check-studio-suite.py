@@ -9,9 +9,9 @@ import tempfile
 
 SYSTEM = platform.system()
 PATHS = {
-    "Darwin": ("Meshlit.app/Contents/MacOS/Meshlit", "editor/VSCodium.app/Contents/Resources/app/bin/codium"),
-    "Windows": ("Meshlit/Meshlit.exe", "editor/bin/codium.cmd"),
-    "Linux": ("Meshlit/bin/Meshlit", "editor/bin/codium"),
+    "Darwin": ("Meshlit.app/Contents/MacOS/Meshlit", "editor/VSCodium.app/Contents/MacOS/VSCodium"),
+    "Windows": ("Meshlit/Meshlit.exe", "editor/VSCodium.exe"),
+    "Linux": ("Meshlit/bin/Meshlit", "editor/codium"),
 }
 
 
@@ -27,7 +27,7 @@ def main():
         temp = Path(temp)
         project = temp / "test workspace"
         project.mkdir()
-        (project / "Hello.java").write_text('class Hello { public static void main(String[] args) { System.out.println("studio-terminal-ok"); } }')
+        (project / "Hello.java").write_text('class Hello { public static void main(String[] args) throws Exception { System.out.println(java.nio.file.Path.of(System.getProperty("java.home")).toRealPath().equals(java.nio.file.Path.of(System.getenv("JAVA_HOME")).toRealPath()) ? "studio-terminal-ok" : "wrong-java-home"); } }')
         ext = temp / "probe"
         ext.mkdir()
         (ext / "package.json").write_text(json.dumps({"name": "studio-smoke", "publisher": "meshlit-test",
@@ -46,7 +46,11 @@ exports.run = async () => {
         const deadline = Date.now() + 90000;
         while (Date.now() < deadline) {
             const file = path.join(folder, 'result.txt');
-            if (fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim() === 'studio-terminal-ok') return;
+            if (fs.existsSync(file)) {
+                const output = fs.readFileSync(file, 'utf8').trim();
+                if (output === 'studio-terminal-ok') return;
+                if (output) throw Error('Unexpected toolchain result: ' + output);
+            }
             await new Promise(resolve => setTimeout(resolve, 300));
         }
         throw Error('Bundled editor terminal did not compile and run Hello.java');
@@ -67,7 +71,7 @@ exports.run = async () => {
         subprocess.run([str(cli), "--new-window", "--disable-gpu", "--disable-workspace-trust",
             "--user-data-dir", str(settings.parent), "--extensions-dir", str(temp / "extensions"),
             "--extensionDevelopmentPath=" + str(ext), "--extensionTestsPath=" + str(ext / "test.js"), str(project)],
-            env=env, check=True, timeout=180)
+            env=env, check=True, timeout=240)
         assert (project / "result.txt").read_text().strip() == "studio-terminal-ok"
         info = json.loads((root / "STUDIO-CONTENTS.json").read_text())
         print(f"Verified integrated terminal, offline compiler and Java runtime on {SYSTEM}. Model-free bytes: {info['installedModelFreeBytes']}")

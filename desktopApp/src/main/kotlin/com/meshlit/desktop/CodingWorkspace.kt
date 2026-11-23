@@ -104,7 +104,7 @@ import javax.swing.JFileChooser
                 }
             }
         }
-        if (terminal) Column(Modifier.fillMaxWidth().heightIn(max = 250.dp).background(colors.surface).verticalScroll(rememberScrollState()).padding(12.dp)) { TerminalPanel() }
+        if (terminal) Column(Modifier.fillMaxWidth().heightIn(max = 250.dp).background(colors.surface).verticalScroll(rememberScrollState()).padding(12.dp)) { TerminalPanel(workspace?.root) }
         Divider(color = colors.onSurface.copy(alpha = .08f))
         Text(workspace?.root?.toString() ?: "No folder open", Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.caption,
             color = colors.onSurface.copy(alpha = .55f), maxLines = 1, overflow = TextOverflow.Ellipsis)

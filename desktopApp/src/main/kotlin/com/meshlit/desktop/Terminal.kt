@@ -23,7 +23,9 @@ internal class HumanCommandRunner : AutoCloseable {
             else listOf(shell.toString(), "-c", command)
         val process = synchronized(lock) {
             check(!closed && child == null)
-            ProcessBuilder(argv).directory(directory.toFile()).start().also { child = it }
+            val builder = ProcessBuilder(argv).directory(directory.toFile())
+            BundledWorkbench.installed()?.configure(builder)
+            builder.start().also { child = it }
         }
         try {
             process.outputStream.close() // No passwords or interactive input through this batch runner.
@@ -64,11 +66,11 @@ internal class HumanCommandRunner : AutoCloseable {
     override fun close() { synchronized(lock) { closed = true; stop() } }
 }
 
-@Composable internal fun TerminalPanel() {
+@Composable internal fun TerminalPanel(workspace: Path? = null) {
     val runner = remember { HumanCommandRunner() }; val scope = rememberCoroutineScope()
     var job by remember { mutableStateOf<Job?>(null) }; var busy by remember { mutableStateOf(false) }
     var command by remember { mutableStateOf("") }; var output by remember { mutableStateOf("") }
-    var directory by remember { mutableStateOf(System.getProperty("user.home")) }
+    var directory by remember(workspace) { mutableStateOf(workspace?.toString() ?: System.getProperty("user.home")) }
     var shell by remember { mutableStateOf(if (System.getProperty("os.name").contains("Mac")) "/bin/zsh" else if (System.getProperty("os.name").contains("Windows")) "" else "/bin/sh") }
     DisposableEffect(Unit) { onDispose { job?.cancel(); runner.close() } }
     Text("Terminal · human commands", style = MaterialTheme.typography.h6)

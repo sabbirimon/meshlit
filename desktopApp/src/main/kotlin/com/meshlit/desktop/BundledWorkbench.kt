@@ -6,14 +6,16 @@ import java.nio.file.Path
 
 /** Resolve resources relative to the installed launcher, independent of the workspace and cwd. */
 internal class BundledWorkbench(private val root: Path, private val editor: Path) {
-    fun command(arguments: List<String>): ProcessBuilder {
+    fun configure(process: ProcessBuilder): ProcessBuilder {
         val java = root.resolve("toolchain")
         check(Files.isDirectory(java.resolve("bin"))) { "Studio development kit is incomplete. Extract the entire archive." }
-        return ProcessBuilder(listOf(editor.toString()) + arguments).apply {
+        return process.apply {
             environment()["JAVA_HOME"] = java.toString()
             environment()["PATH"] = java.resolve("bin").toString() + File.pathSeparator + environment()["PATH"].orEmpty()
         }
     }
+
+    fun command(arguments: List<String>) = configure(ProcessBuilder(listOf(editor.toString()) + arguments))
 
     fun open(folder: Path) {
         val profile = Path.of(System.getProperty("user.home"), ".meshlit", "workbench")
