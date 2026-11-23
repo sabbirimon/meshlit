@@ -188,6 +188,24 @@ async function openChat(context,coding,profileId,options={}) {
   panel.webview.html=require('./chat-view.cjs').render(title,mode,id,{bot:!!bot,general:chat.general});
   panel.webview.onDidReceiveMessage(async message => {
     try {
+      if(message.op==='studioSetup'){
+        if(!chat.general || chat.bot || chat.closed || chat.busy || chat.configuring || !vscode.workspace.isTrusted)return;
+        const action=message.action;
+        if(!Object.hasOwn(require('./chat-setup.cjs').actions,action))return;
+        chat.configuring=true;
+        try {
+          if(action==='management' || action==='ide'){
+            await vscode.commands.executeCommand(action==='ide'?'meshlit.openIde':'meshlit.management');
+          }else if(action==='local'){
+            if(chat.route.kind==='local')loadLocal(localModels.id(chat.route));
+            else await openChat(context,false,undefined,{general:true});
+          }else{
+            const profile=await connections.addModelSource(context,action==='device'?'remote-device':action);
+            if(profile && !chat.closed)await openChat(context,false,profile.id,{general:true});
+          }
+        }finally{chat.configuring=false;}
+        return;
+      }
       if(message.op==='ready'){update();readiness();if(chat.route.kind==='local')loadLocal(localModels.id(chat.route));return;}
       if(['copyMessage','exportChat','readAloud','stopSpeech'].includes(message.op)){await require('./chat-actions.cjs').handle(message,{vscode,voice:chatVoice,owner:id,speechState:chat,post:event=>panel.webview.postMessage(event),active:()=>chats.has(id)});return;}
       if(message.op==='loadLocal'){loadLocal(localModels.id(chat.route));return;}
@@ -430,7 +448,7 @@ function activate(context) {
     }),vscode.commands.registerCommand('meshlit.usage',()=>{boot(context);usagePage.open();}));
   const button=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right,100);
   button.text='$(comment-discussion) Meshlit · New chat';button.command='meshlit.chat';button.show();context.subscriptions.push(button);
-  const startup=vscode.workspace.getConfiguration?.('meshlit').get('startupView','welcome')||'welcome';
+  const startup=vscode.workspace.getConfiguration?.('meshlit').get('startupView','chat')||'chat';
   if(startup!=='editor'&&!vscode.workspace.workspaceFolders?.length&&vscode.workspace.isTrusted){
     void (async()=>{
       await vscode.commands.executeCommand('workbench.action.exitZenMode');

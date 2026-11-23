@@ -424,7 +424,7 @@
             "welcome",
             "editor"
           ],
-          "default": "welcome",
+          "default": "chat",
           "scope": "application",
           "description": "Choose the first screen for a Studio window without an open workspace.",
           "enumDescriptions": [

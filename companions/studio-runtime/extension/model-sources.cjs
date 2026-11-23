@@ -1,6 +1,7 @@
 // Source labels describe the configured endpoint, never inferred compute capabilities.
 const sources = [
  {id:'ollama',label:'Ollama',detail:'Use an installed Ollama server. Local CPU/GPU support depends on its host; phone access needs authenticated HTTPS or a loopback tunnel.'},
+ {id:'bionic',label:'LM Studio Bionic',detail:'Connect the OpenAI-compatible local model API used by Bionic. Enter the address shown by your server.'},
  {id:'lmstudio',label:'LM Studio',detail:'Use a running LM Studio API on a supported computer. Apple Silicon Macs, Windows or Linux; current Intel Mac builds are unsupported.'},
  {id:'strata',label:'Strata inference host',detail:'Connect a running Strata OpenAI-compatible API. Engine, model downloads and GPU offload stay on its host.'},
  {id:'local-server',label:'Local model server',detail:'One model server on this computer; select its reported model ID.'},
@@ -11,7 +12,7 @@ const sources = [
  {id:'cloud',label:'Cloud / third-party provider',detail:'Choose a vendor or your hosted OpenAI-compatible service.'}
 ];
 const clusterKinds=new Set(['group-cluster','local-cluster','remote-cluster']);
-const deviceKinds=new Set(['ollama','lmstudio','strata','local-server','multi-local','remote-device']);
+const deviceKinds=new Set(['ollama','lmstudio','bionic','strata','local-server','multi-local','remote-device']);
 const label = profile => sources.find(s=>s.id===profile.sourceKind)?.label || (profile.sourceKind==='group-cluster'?'Cluster coordinator':profile.service);
 const category=profile=>clusterKinds.has(profile.sourceKind)?'Cluster coordinators':deviceKinds.has(profile.sourceKind)?'Model servers and devices':'Online providers and gateways';
 module.exports={sources,label,category,clusterKinds};

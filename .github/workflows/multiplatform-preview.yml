@@ -13,6 +13,10 @@ permissions:
   contents: read
 jobs:
   clients:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     name: Host client contracts (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -23,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Test Studio dashboard, settings, project windows and chat
-        run: node --test companions/studio-runtime/extension/navigation.test.cjs companions/studio-runtime/extension/management.test.cjs companions/studio-runtime/extension/settings.test.cjs companions/studio-runtime/extension/shell.test.cjs companions/studio-runtime/extension/main-pages.test.cjs
+        run: node --test companions/studio-runtime/extension/chat-setup.test.cjs companions/studio-runtime/extension/navigation.test.cjs companions/studio-runtime/extension/management.test.cjs companions/studio-runtime/extension/settings.test.cjs companions/studio-runtime/extension/shell.test.cjs companions/studio-runtime/extension/main-pages.test.cjs
       - uses: actions/setup-java@v6.0.1
         with:
           distribution: temurin
@@ -81,17 +85,20 @@ jobs:
               finally:
                   if platform == 'macOS':
                       subprocess.run(['hdiutil', 'detach', str(stage)], check=True)
-      - name: Installer checksums and scope
+      - id: stage
+        name: Installer checksums and scope
         shell: python
         run: |
           import hashlib, json, pathlib, shutil, os
           root = pathlib.Path('desktopApp/build/compose/binaries/main')
           files = sorted(root.glob('**/*.msi')) + sorted(root.glob('**/*.deb')) + sorted(root.glob('**/*.dmg'))
-          assert files, 'Missing installer'
+          assert len(files) == 1, 'Missing installer'
           output = pathlib.Path('preview-assets')
           output.mkdir()
           for item in files:
               shutil.copy2(item, output / item.name)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as metadata:
+              print('installer=' + str((output / files[0].name).as_posix()), file=metadata)
           for name in ['LICENSE', 'NOTICE']:
               shutil.copy2(name, output / name)
           shutil.copy2('docs/desktop/CROSS_PLATFORM_PRERELEASE.md', output / 'INSTALL.md')
@@ -104,6 +111,19 @@ jobs:
           for item in sorted(output.iterdir()):
               checksums.append(hashlib.sha256(item.read_bytes()).hexdigest() + '  ' + item.name)
           (output / 'SHA256SUMS.txt').write_text('\n'.join(checksums) + '\n')
+      - name: Attest build provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: "${{ steps.stage.outputs.installer }}"
+      - name: Verify published provenance against this build
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          INSTALLER: ${{ steps.stage.outputs.installer }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify "$INSTALLER" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/multiplatform-preview.yml" --source-digest "$GITHUB_SHA"
       - name: Retain experimental installers for release review
         uses: actions/upload-artifact@v4
         with:

@@ -58,7 +58,7 @@ function register(context){
   }),
   vscode.commands.registerCommand('meshlit.startupView',async()=>{
    const setting=vscode.workspace.getConfiguration('meshlit');
-   const current=setting.get('startupView','welcome');
+   const current=setting.get('startupView','chat');
    const views=[{id:'chat',label:'General Chat'},{id:'welcome',label:'Studio dashboard'},{id:'editor',label:'Editor'}];
    const choice=await vscode.window.showQuickPick(views.map(view=>({...view,description:view.id===current?'Current default':undefined})),
     {title:'Startup view for windows without a workspace'});

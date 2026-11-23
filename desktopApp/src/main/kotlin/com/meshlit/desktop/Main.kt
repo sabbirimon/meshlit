@@ -129,7 +129,7 @@ fun main(args: Array<String>) {
     var settings by remember { mutableStateOf(false) }
     var section by remember { mutableStateOf("models") }
     var vendorDashboard by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var dashboard by remember { mutableStateOf(true) }
+    var dashboard by remember { mutableStateOf(false) }
     var ideFocus by remember { mutableStateOf(0) }
     var coding by remember { mutableStateOf(false) }
     var codeCommand by remember { mutableStateOf(0 to "") }
@@ -329,7 +329,35 @@ fun main(args: Array<String>) {
             if (localSession != null) send()
         }
     }
+    fun openChatSetup(action: String) {
+        when (action) {
+            "local" -> {
+                if (!localMode) { stop(true); localMode = true; network = false; messages = emptyList() }
+                if (localEngine.available() && localSession == null) loadLocal() else openSection("models")
+            }
+            "ollama", "lmstudio", "bionic" -> {
+                stop(true)
+                localMode = false; gateway = false; colibriHost = false; pricedRoute = ""
+                onlineService = chatSetupLabels.getValue(action)
+                hostProtocol = HostProtocol.OPENAI
+                endpoint = when (action) {
+                    "ollama" -> "http://127.0.0.1:11434/v1"
+                    "lmstudio" -> "http://127.0.0.1:1234/v1"
+                    else -> ""
+                }
+                network = false; token = ""; activeCredential = null; messages = emptyList()
+                observedAt = null; failure = false
+                openSection("models")
+            }
+            "device" -> openSection("device-dashboard")
+            "cloud" -> openSection("providers")
+            "management", "ide" -> openSection(action)
+        }
+    }
     fun requestSend() {
+        if (!dashboard && !busy) {
+            chatSetupIntent(prompt)?.let { prompt = ""; openChatSetup(it); return }
+        }
         if (localMode && localSession == null && !busy && prompt.isNotBlank()) { loadLocal(); sendAfterLoad = true }
         else send()
     }
@@ -375,12 +403,17 @@ fun main(args: Array<String>) {
                             loadLabel = if(localSession == null) "Load" else "Unload", busy = busy,
                             onNew = { stop(); messages = emptyList(); usage = GenerationUsage() },
                             onSearch = { openSection("search") }, onManage = { openSection("management") })
+                        if (!dashboard) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+                            chatSetupLabels.forEach { (id, label) ->
+                                TextButton({ openChatSetup(id) }, enabled = !busy) { Text(label) }
+                            }
+                        }
                         if (messages.isNotEmpty()) OutlinedTextField(query, { query = it.take(256) }, label = { Text(t("Search this chat", "搜索当前对话")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), singleLine = true)
                         navigationError?.let { Text(it, Modifier.padding(16.dp), color = colors.error) }
                         usageFailure?.let { Text(it, Modifier.padding(horizontal = 24.dp), color = colors.error) }
                         if (failure) Text(if (localMode) t("Local model failed. Check available memory, GGUF compatibility and packaged engine/model integrity. Try Unload and Load; partial replies are excluded from future requests.", "本地模型失败。请检查可用内存、GGUF 兼容性及引擎和模型完整性。尝试卸载再加载；未完成回复不会用于后续请求。") else t("Request failed. Check the host, trusted TLS, client token and context size. A partial reply is excluded from the next request.", "请求失败。请检查主机、可信 TLS、客户端令牌和上下文长度。未完成的回复不会发送至下一次请求。"), Modifier.padding(24.dp), color = colors.error)
                         if (messages.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            ChatWelcome(coding, onPrompt = { prompt = it }, onCode = { openSection("code") })
+                            ChatWelcome(dashboard && coding, onPrompt = { prompt = it }, onCode = { openSection("code") })
                         } else LazyColumn(Modifier.weight(1f).widthIn(max = 780.dp).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                             itemsIndexed(messages.filter { query.isBlank() || it.text.contains(query, true) }) { _, message ->
                                 if (message.role == "user") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -407,7 +440,7 @@ fun main(args: Array<String>) {
                                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     TextField(prompt, { prompt = it.take(131072) }, placeholder = { Text(t("Ask anything", "向 Meshlit 提问")) }, modifier = Modifier.weight(1f), maxLines = 6,
                                         colors = TextFieldDefaults.textFieldColors(backgroundColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
-                                    Button(if (busy) { { stop() } } else ::requestSend, enabled = busy || (prompt.isNotBlank() && (localMode && localEngine.available() || requestsAllowed() && hostAllowed() && model.isNotBlank())), shape = RoundedCornerShape(22.dp)) { Text(if (busy) t("Stop", "停止") else t("Send ↑", "发送 ↑")) }
+                                    Button(if (busy) { { stop() } } else ::requestSend, enabled = busy || (!dashboard && chatSetupIntent(prompt) != null) || (prompt.isNotBlank() && (localMode && localEngine.available() || requestsAllowed() && hostAllowed() && model.isNotBlank())), shape = RoundedCornerShape(22.dp)) { Text(if (busy) t("Stop", "停止") else t("Send ↑", "发送 ↑")) }
                                 }
                         Row(Modifier.widthIn(max = 780.dp).fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             var modelMenu by remember { mutableStateOf(false) }

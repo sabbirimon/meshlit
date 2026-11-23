@@ -55,7 +55,7 @@ async function addModelSource(context, source) {
  if(source==='cloud')return addConnection(context,undefined,'cloud');
  const selected=sources.sources.find(item=>item.id===source);
  if(!selected)return;
- const service={strata:'Strata',ollama:'Ollama',lmstudio:'LM Studio'}[source]||'Local/distributed server';
+ const service={strata:'Strata',ollama:'Ollama',lmstudio:'LM Studio',bionic:'LM Studio Bionic'}[source]||'Local/distributed server';
  return addConnection(context,service,source);
 }
 async function chooseConnection(context, preferredId, {launchActions=false}={}) {

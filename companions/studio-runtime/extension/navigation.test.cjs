@@ -18,7 +18,7 @@ test('opening a workspace keeps the chat window and exposes model settings',asyn
     {module,require:name=>name==='vscode'?vscode:require(name)});
   module.exports.register({subscriptions:[],globalState:{get:(key,fallback)=>values.get(key)||fallback,
     update:async(key,value)=>values.set(key,value)}});
-  assert.equal(require('./package.json').contributes.configuration.properties['meshlit.startupView'].default,'welcome');
+  assert.equal(require('./package.json').contributes.configuration.properties['meshlit.startupView'].default,'chat');
   await commands.get('meshlit.home')();
   assert.deepEqual(calls.pop(),['meshlit.management']);
   picks.push({action:'browse'});
