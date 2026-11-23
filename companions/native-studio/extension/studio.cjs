@@ -60,7 +60,7 @@ async function activate(context) {
     async function select(forced) {
         if(active) throw Error("Stop the current reply before switching models");
         const selection = forced || await vscode.window.showQuickPick([
-            ...['Bundled offline model','Import model file…','Import model folder…','Ollama','LM Studio','Bionic','Other OpenAI-compatible server','Remove saved model…'].map(label=>({label})),
+            ...['Bundled offline model','Import from Hugging Face…','Import from LM Studio or Bionic…','Import model file…','Import model folder…','Ollama','LM Studio','Bionic','Other OpenAI-compatible server','Remove saved model…'].map(label=>({label})),
             ...saved().map(route=>({label:route.model,description:route.base||route.file,route}))
         ], {title:'Models & providers'});
         const choice=selection?.label;
@@ -87,12 +87,16 @@ async function activate(context) {
                 route={...route,adapter,python};
             }
             await context.globalState.update('route',route);
-        } else if(['Import model file…','Import model folder…','Discover models'].includes(choice)) {
+        } else if(['Import model file…','Import model folder…','Import from LM Studio or Bionic…','Import from Hugging Face…'].includes(choice)) {
             let route;
-            if(choice==='Discover models'){
+            if(choice==='Import from Hugging Face…'){
                 const hub=require('./hub.cjs'),dir=path.join(context.globalStorageUri.fsPath,'models');
                 route=forced?.item?await hub.install(vscode,dir,forced.item):await hub.discover(vscode,dir,brand);
                 if(!route)return;
+            } else if(choice==='Import from LM Studio or Bionic…'){
+                const file=await require('./catalog.cjs').pickLibraryFile(vscode);
+                if(!file)return;
+                route=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Verifying local library model'},()=>imported(file));
             } else {
                 const folder=choice==='Import model folder…';
                 const files=await vscode.window.showOpenDialog({canSelectMany:false,canSelectFolders:folder,canSelectFiles:!folder,openLabel:'Register model'});
@@ -166,6 +170,25 @@ async function activate(context) {
         }
     }
     const threads=new Map();
+    const replyIds=new Set();
+    const savedVotes=()=>context.globalState.get('reply-votes',{});
+    async function rateReply(id,value){
+        if(!replyIds.has(id)||!['up','down'].includes(value))return;
+        const votes=savedVotes(),next={...votes};
+        delete next[id];
+        if(votes[id]!==value)next[id]=value;
+        const retained=Object.fromEntries(Object.entries(next).slice(-256));
+        await context.globalState.update('reply-votes',retained);
+        sendUI('rated',{id,vote:retained[id]||''});
+    }
+    async function replyPreference(){
+        const value=await vscode.window.showInputBox({title:'Local reply preference',prompt:'Describe how you like replies, for example “use short steps”. Saved on this device for local chats. Clear the field to forget it.',value:context.globalState.get('local-reply-preference',''),validateInput:text=>text.length>400?'Use up to 400 characters':undefined});
+        if(value!==undefined)await context.globalState.update('local-reply-preference',value.trim()||undefined);
+    }
+    function restoredHistory(){
+        const votes=savedVotes();
+        return history.map(message=>message.id?{...message,vote:votes[message.id]}:message);
+    }
     function threadList(){
         const items=Array.from(threads,([id,t])=>({id,title:t.title})).reverse();
         panel?.webview.postMessage({type:'threads',items,current:currentThread});
@@ -228,7 +251,7 @@ async function activate(context) {
             else if(op==='connect'){
                 const label=await vscode.window.showQuickPick(['Ollama','LM Studio','Bionic','Other OpenAI-compatible server'],{title:'Connect a model server'});
                 if(label)await select({label});
-            }else if(['import','folder','discover'].includes(op))await select({label:{import:'Import model file…',folder:'Import model folder…',discover:'Discover models'}[op]});
+            }else if(['import','folder','discover','lmLibrary'].includes(op))await select({label:{import:'Import model file…',folder:'Import model folder…',discover:'Import from Hugging Face…',lmLibrary:'Import from LM Studio or Bionic…'}[op]});
             else if(op==='select'||op==='remove'){
                 const route=routes().find(r=>modelId(r)===id);
                 if(!route)throw Error('Model registration has changed');
@@ -328,6 +351,10 @@ async function activate(context) {
         try {
             const selected=settings(),options=generationSettings(selected);
             const messages=[...history.map(({role,content})=>({role,content})),{role:'user',content:prompt}];
+            if(['local','import'].includes(selected.kind)){
+                const preference=context.globalState.get('local-reply-preference','');
+                if(preference)messages.unshift({role:'system',content:'The user prefers these response styles: '+preference});
+            }
             const started=performance.now();
             const progress=text=>sendUI('progress',{text});
             let answer,count,rate;
@@ -366,7 +393,8 @@ async function activate(context) {
             if(Number.isFinite(rate)&&rate>0)sendUI('metrics',{text:rate.toFixed(1)+' tokens/s · decode'});
             else if(Number.isSafeInteger(count)&&count>0)sendUI('metrics',{text:count+' tokens · '+(count/seconds).toFixed(1)+' tokens/s including startup'});
             else sendUI('metrics',{text:seconds.toFixed(1)+' s · runtime did not report token count'});
-            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',content:output,model:modelName(selected)}].slice(-8);
+            const id=crypto.randomUUID();replyIds.add(id);if(replyIds.size>512)replyIds.delete(replyIds.values().next().value);
+            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,content:output,model:modelName(selected)}].slice(-8);
             recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
@@ -385,9 +413,12 @@ async function activate(context) {
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
             try {
-                if(msg.op==='ready') {ready=true;updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='rateReply')await rateReply(msg.id,msg.vote);
+                if(msg.op==='replyPreference')await replyPreference();
+                if(msg.op==='sidebar'&&typeof msg.compact==='boolean')await context.globalState.update('compact-sidebar',msg.compact);
+                if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();}
                 if(msg.op==='new'&&!active){await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
-                if(msg.op==='thread'&&!active&&threads.has(msg.id)){pendingFile=undefined;sendUI('attachment',{name:''});currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='thread'&&!active&&threads.has(msg.id)){pendingFile=undefined;sendUI('attachment',{name:''});currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();}
                 if(msg.op==='useSuggestion'){
                     if(active||changing)return;
                     const model=suggestion;
@@ -395,7 +426,7 @@ async function activate(context) {
                     changing=true;
                     try{
                         const done=model.filename===manifest.filename?await select({label:'Bundled offline model'}):
-                            await select({label:'Discover models',item:{name:model.filename,sha:model.sha256,bytes:model.sizeBytes,url:model.url,repo:model.repository}});
+                            await select({label:'Import from Hugging Face…',item:{name:model.filename,sha:model.sha256,bytes:model.sizeBytes,url:model.url,repo:model.repository}});
                         if(done)advancedSetup();
                     }finally{changing=false;}
                     return;
@@ -449,7 +480,7 @@ async function activate(context) {
                     if(file&&(route.base||route.device))requirePermission('share');
                     if(file&&(route.base||route.device)&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+(route.hostName||new URL(route.base).host)+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
                     const answer=await generate(msg.text,file);
-                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model});
+                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model,id:history.at(-1)?.id});
                 }
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.name==='AbortError'?'Generation stopped.':err.name==='TimeoutError'?'The model timed out. Check Models & providers, then retry.':err.message}); }
         });

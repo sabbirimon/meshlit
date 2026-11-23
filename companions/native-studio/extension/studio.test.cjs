@@ -114,3 +114,16 @@ test('LM Studio inventory uses native v1 and unloads the selected instance',asyn
     await manage(vscode,{kind:'LM Studio',base:'http://127.0.0.1:'+server.address().port+'/v1',model:'org/demo'},'test-only');
     assert.deepEqual(seen,[['GET','/api/v1/models','Bearer test-only',''],['POST','/api/v1/models/unload','Bearer test-only','{"instance_id":"instance-2"}']]);
 });
+test('import sources accept public Hugging Face repository links and list single-file library models',async()=>{
+ const {repoInput}=require('./discovery.cjs'),{libraryFiles}=require('./catalog.cjs');
+ assert.equal(repoInput('https://huggingface.co/owner/model/'),'owner/model');
+ assert.equal(repoInput('owner/model'),'owner/model');
+ assert.equal(repoInput('model name'),undefined);
+ assert.throws(()=>repoInput('https://example.org/owner/model'));
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'studio-library-')),repo=path.join(dir,'owner','model');
+ try{
+  await fs.mkdir(repo,{recursive:true});
+  for(const name of ['Q4.gguf','mmproj-model.gguf','large-00001-of-00002.gguf','notes.txt'])await fs.writeFile(path.join(repo,name),'');
+  assert.deepEqual(await libraryFiles(dir),[path.join(repo,'Q4.gguf')]);
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});

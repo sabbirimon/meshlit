@@ -15,6 +15,16 @@ function recommended(models, capacity) {
 }
 const size = bytes => (bytes / GiB).toFixed(2) + ' GiB';
 
+function repoInput(query){
+    const id=/^[\w-][\w.-]*\/[\w-][\w.-]*$/;
+    if(id.test(query))return query;
+    if(!/^https?:\/\//i.test(query))return;
+    const url=new URL(query),repo=url.pathname.replace(/^\/|\/$/g,'');
+    if(url.protocol!=='https:'||!['huggingface.co','hf.co'].includes(url.hostname)||url.username||url.password||url.port||!id.test(repo))
+        throw Error('Paste a Hugging Face repository link, such as https://huggingface.co/author/model.');
+    return repo;
+}
+
 function render(nonce, brand="") {
     return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}'">
 <style nonce="${nonce}">
@@ -36,9 +46,9 @@ input[type=search]{flex:1;min-width:10em}.filters{margin-top:12px}.filters label
 #facts{display:flex;flex-wrap:wrap;gap:6px}#facts span{padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;font-size:12px}
 h3{margin:24px 0 8px;font-size:16px}#variant{max-width:100%;width:100%}#download{background:var(--vscode-button-background);color:var(--vscode-button-foreground);font-weight:600}button:disabled{opacity:.55;cursor:default}
 @media(max-width:660px){body{padding:12px}.layout{grid-template-columns:1fr;min-height:0}.browser{border-inline-end:0;border-bottom:1px solid var(--vscode-panel-border)}.results{max-height:24vh}.browser,.detailPane{padding:14px}}h1{display:flex;align-items:center;gap:10px}h1 svg{width:28px;height:28px}</style>
-<header><button id="back">← Back</button><h1>${brand}Find a model</h1></header>
+<header><button id="back">← Back</button><h1>${brand}Import from Hugging Face</h1></header>
 <main class="layout"><section class="browser" aria-label="Model search">
-<form><input id="q" type="search" aria-label="Search Hugging Face by model or author" placeholder="Model or author on Hugging Face" maxlength="120"><button>Search</button></form>
+<form><input id="q" type="search" aria-label="Search Hugging Face by model or author" placeholder="Model name, author/model or repository URL" maxlength="220"><button>Search</button></form>
 <div class="filters"><label>Sort <select id="sort"><option value="">Best match</option><option value="likes">Most likes</option><option value="downloads">Most downloads</option><option value="lastModified">Recently updated</option></select></label><label><input id="fit" type="checkbox" checked>Within estimated RAM budget</label></div>
 <p id="capacity"></p><div role="status" id="status"></div><div class="results" id="results"></div></section>
 <div class="detailPane"><p id="empty">Search by model or author to compare available downloads.</p>
@@ -83,7 +93,9 @@ function chooseFile(vscode, metadata, files, brand) {
             try {
                 if (msg.op === 'search') {
                     repos = new Set();
-                    if (typeof msg.q !== 'string' || msg.q.length > 120 || !['','likes','downloads','lastModified'].includes(msg.sort)) throw Error('Invalid search');
+                    if (typeof msg.q !== 'string' || msg.q.length > 220 || !['','likes','downloads','lastModified'].includes(msg.sort)) throw Error('Invalid search');
+                    const exact=repoInput(msg.q);
+                    if(exact){repos.add(exact);await post({op:'results',items:[{id:exact,summary:'Hugging Face repository'}]});return;}
                     const params = new URLSearchParams({filter:'gguf',limit:'30',search:msg.q});
                     if (msg.sort) {params.set('sort',msg.sort);params.set('direction','-1');}
                     const rows = await metadata('https://huggingface.co/api/models?'+params,signal);
@@ -113,4 +125,4 @@ function chooseFile(vscode, metadata, files, brand) {
         panel.webview.html = render(crypto.randomBytes(20).toString('hex'), brand?.markup);
     });
 }
-module.exports = {budget,recommended,size,render,chooseFile};
+module.exports = {budget,recommended,size,render,chooseFile,repoInput};

@@ -1,7 +1,6 @@
 """Apply the Meshlit menu and product identity to the verified, pinned workbench."""
 import json
 import plistlib
-import re
 import shutil
 import subprocess
 import sys
@@ -14,6 +13,7 @@ from prepare_workbench import brand_workbench_icons, refresh_workbench_checksums
 
 MENU = [
     ("1_home","General chat","meshlit.studio.chat"), ("1_home","Open coding IDE…","meshlit.studio.ide"),
+    ("1_terminal","New Terminal","workbench.action.terminal.new"),
     ("2_manage","Management","meshlit.studio.management"), ("2_manage","Tools","meshlit.studio.tools"),
     ("2_manage","Models and providers","meshlit.studio.models"), ("2_manage","Devices","meshlit.studio.pair"),
     ("3_settings","Meshlit Settings…","meshlit.studio.settings"),
@@ -109,6 +109,31 @@ def brand_windows_binary(program, rcedit):
     subprocess.run(command, check=True)
 
 
+def studio_renderer(source):
+    patch = shell.MENU_RENDERER_PATCH.replace(json.dumps(shell.STUDIO_MENU_ITEMS, ensure_ascii=True),
+                                              json.dumps(MENU, ensure_ascii=True))
+    patch = patch.replace('value:"Studio",original:"Studio",mnemonicTitle:"&&Studio"', 'value:"Meshlit",original:"Meshlit",mnemonicTitle:"&&Meshlit"').replace('order:7.5','order:0.5')
+    start=source.index('/* Meshlit native Studio menu */')
+    end=source.index('})();',start)+len('})();')
+    source=source[:start]+patch+source[end:]
+    # Both Electron and the custom Windows title bar consume this window's menu list.
+    anchor='for(let t of e)t instanceof lu&&typeof t.item.title!="string"&&'
+    if source.count(anchor)!=1:
+        raise ValueError("Pinned renderer menu builder changed")
+    return source.replace(anchor,anchor+'(!globalThis.__MESHLIT_CHAT_SHELL||["Meshlit","Terminal","Help"].includes(t.item.title.original))&&')
+
+
+def studio_native(source,mac):
+    anchor='if(this.shouldDrawMenu("File"))'
+    if source.count(anchor)!=1 or source.count(shell.MENU_NATIVE_PATCH)!=1:
+        raise ValueError("Pinned native Studio menu changed")
+    menu=shell.MENU_NATIVE_PATCH.replace('"Studio"','"Meshlit"').replace('"&&Studio"','"&&Meshlit"')
+    if mac:
+        # The standard macOS application menu already bears the product name.
+        menu=menu.replace('"&&Meshlit"','"Studio"')
+    return source.replace(shell.MENU_NATIVE_PATCH,'').replace(anchor,menu+anchor)
+
+
 def configure(editor, system, rcedit=None):
     mac = system == "Darwin"
     bundle = editor / "VSCodium.app"
@@ -127,25 +152,9 @@ def configure(editor, system, rcedit=None):
     package_file.write_text(json.dumps(pkg,indent=2)+"\n")
     shell.configure_chat_shell(resources)
     renderer=out/"vs/workbench/workbench.desktop.main.js"
-    patch=shell.MENU_RENDERER_PATCH.replace(json.dumps(shell.STUDIO_MENU_ITEMS,ensure_ascii=True),json.dumps(MENU,ensure_ascii=True))
-    source = renderer.read_text(encoding="utf-8").replace(shell.MENU_RENDERER_PATCH, patch)
-    if not mac:
-        # Keep project menus in IDE windows. The Studio menu is always available.
-        pattern = r"(De\.appendMenuItem\(F\.MenubarMainMenu,\{submenu:F\.Menubar\w+Menu,title:\{[^}]+\},)([^}]+)(\}\);)"
-        def project_menu(match):
-            options = match[2]
-            predicate = 'D.not("meshlitStudioHome")'
-            if "when:" in options:
-                options = re.sub(r"when:([^,]+)", lambda m: "when:D.and(" + predicate + "," + m[1] + ")", options)
-            else:
-                options += ",when:" + predicate
-            return match[1] + options + match[3]
-        source, count = re.subn(pattern, project_menu, source)
-        if count != 9:
-            raise ValueError(f"Unexpected pinned workbench menu count: {count}")
-    renderer.write_text(source, encoding="utf-8")
+    renderer.write_text(studio_renderer(renderer.read_text(encoding="utf-8")), encoding="utf-8")
     native=out/"mainImpl.js"
-    source=native.read_text(encoding="utf-8")
+    source=studio_native(native.read_text(encoding="utf-8"),mac)
     marker='f=[t];f.push(...r),o&&f.push(Bo(),o)'
     if source.count(marker)!=1:
         raise ValueError("Pinned macOS application menu changed")
