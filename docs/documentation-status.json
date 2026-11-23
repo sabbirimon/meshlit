@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-11-06",
+  "updated": "2026-11-23",
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 173,
+    "active": 177,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -121,28 +121,28 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "HyperL experimental foundation",
-      "contentSha256WithoutTrackingBlock": "b83ba8493d151e198b447c54f7ca6a03df8ab7bbea0cc5d68293dc3208bd0a77"
+      "contentSha256WithoutTrackingBlock": "0ff7f4b8e20b278a6d52daa23d0f3369b0981c32c85cc82ed915ae6feab7422f"
     },
     {
       "path": "PLAN.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit implementation and qualification plan",
-      "contentSha256WithoutTrackingBlock": "b1c635a330ed92f9917ea4e50204d6bb132c46e73e7689ca4feadc7676dab562"
+      "contentSha256WithoutTrackingBlock": "9c74d641e9d35df2edf574439bdc5a1eb75dc24ceeb287b0a9284b7401b3f342"
     },
     {
       "path": "PROGRESS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "fc48c8d4bbe4817cc4f3b41c992100aa5a4030999475223b8df56f32e5fcbd53"
+      "contentSha256WithoutTrackingBlock": "685ebbc1a7a857af94c1f7c62df2dcd075ea8b7dc6e0ce4fc0ce92dda980fdd8"
     },
     {
       "path": "README.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 Many devices. One mind.",
-      "contentSha256WithoutTrackingBlock": "8c0fe25799984eb1f7972349e25b3d7c788ab8bfd7718c50b58b91c9608443ad"
+      "contentSha256WithoutTrackingBlock": "5ade9c28d14aa241619d723125e1caa273a35c3647458c57fda8979c3d3b67f1"
     },
     {
       "path": "REQUESTS.md",
@@ -289,7 +289,7 @@
       "class": "active",
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Native host worker without the Android app",
-      "contentSha256WithoutTrackingBlock": "a2b646752f4d8ea1a9eee2a07cccf126089931110c8682b2c286d7f0d4b68ffd"
+      "contentSha256WithoutTrackingBlock": "0763f414c59dd971a89796cb7c10ba4725b1fb93e957619b879c5bb5f3d5b06d"
     },
     {
       "path": "companions/search/README.md",
@@ -1038,7 +1038,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Four-platform experimental prerelease",
-      "contentSha256WithoutTrackingBlock": "0cf17f478c40e283de3cb3da75a72aceb7f1d151c92c87c30c79b45244ec03a6"
+      "contentSha256WithoutTrackingBlock": "6284a5e8058b33beb2193133c8a5459bf044dd1bda72daa2f1b41e6328228d85"
     },
     {
       "path": "docs/desktop/DOLPHIN.md",
@@ -1053,6 +1053,27 @@
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Desktop engine and shared sharding admission",
       "contentSha256WithoutTrackingBlock": "f708f8a23782ceaf0e92ca47c32553ce724ec2bc3a2655960d534637f5d0fce2"
+    },
+    {
+      "path": "docs/desktop/FULL_STUDIO.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Meshlit Native Studio",
+      "contentSha256WithoutTrackingBlock": "727e8a3aff11c9e6b8ad99cdf5dd3aaf3a5082543aca922628f03b6f1e2c31d2"
+    },
+    {
+      "path": "docs/desktop/INFERENCE_PROFILES.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Inference settings in Studio 2.0.46 preview",
+      "contentSha256WithoutTrackingBlock": "67290a94829c8fe9bff56174f027664ec112834cec5611df68a1ea5cc226bb33"
+    },
+    {
+      "path": "docs/desktop/NATIVE_MIGRATION.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "JVM dependency migration",
+      "contentSha256WithoutTrackingBlock": "9a3eb5ac060b5514eef160542478de2a5fcd53628bec3358dcfdbfd04a6bdb02"
     },
     {
       "path": "docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md",
@@ -1109,6 +1130,13 @@
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Studio baseline and first dashboard increment",
       "contentSha256WithoutTrackingBlock": "b87b38cf67263b59d3fbb6b036fba8e2bb26d3fff5980fb8722bee7d5974db16"
+    },
+    {
+      "path": "docs/desktop/STUDIO_DASHBOARD.md",
+      "class": "active",
+      "scope": "desktop/server; individual acceptance gates apply",
+      "title": "Studio home",
+      "contentSha256WithoutTrackingBlock": "95003d4a97334f1d91c5550da0e3fe16b2e04647dd6165d86d6d4a67b90d20c1"
     },
     {
       "path": "docs/desktop/TERMINAL.md",

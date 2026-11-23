@@ -21,16 +21,16 @@ async function activate(context) {
         ],{title:'Output guardrails · currently '+(enabled?'on':'off')});
         if(choice) {await context.globalState.update('filter-output',choice.enabled);history=[];panel?.webview.postMessage({type:'clear'});status();}
     }
-    async function select() {
+    async function select(forced) {
         if(active) throw Error("Stop the current reply before switching models");
-        const selection = await vscode.window.showQuickPick([
+        const selection = forced || await vscode.window.showQuickPick([
             ...['Bundled offline model','Import local GGUF…','Ollama','LM Studio','Other OpenAI-compatible server','Remove saved model…'].map(label=>({label})),
             ...saved().map(route=>({label:route.model,description:route.base||route.file,route}))
         ], {title:'Models & providers'});
         const choice=selection?.label;
         if (!choice) return;
         if (choice==='Remove saved model…') {
-            const item=await vscode.window.showQuickPick(saved().map(route=>({label:route.model,description:route.base||route.file,route})),{title:'Remove registration (model files stay on disk)'});
+            const item=selection.route ? selection : await vscode.window.showQuickPick(saved().map(route=>({label:route.model,description:route.base||route.file,route})),{title:'Remove registration (model files stay on disk)'});
             if(!item)return;
             const retained=saved().filter(r=>r.file!==item.route.file || r.base!==item.route.base || r.model!==item.route.model);
             await context.globalState.update('model-catalog',retained);
@@ -38,10 +38,16 @@ async function activate(context) {
             if(JSON.stringify(settings())===JSON.stringify(item.route))await context.globalState.update('route',{kind:'local',model:'meshlit-local'});
         } else if(selection.route) {
             await context.globalState.update('route',selection.route);
-        } else if(choice==='Import local GGUF…') {
+        } else if(choice==='Import local GGUF…'||choice==='Discover models') {
+            let route;
+            if(choice==='Discover models'){
+                route=await require('./hub.cjs').discover(vscode,require('node:path').join(context.globalStorageUri.fsPath,'models'));
+                if(!route)return;
+            } else {
             const files=await vscode.window.showOpenDialog({canSelectMany:false,filters:{'GGUF models':['gguf']},openLabel:'Register local model'});
             if(!files?.length)return;
-            const route=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Verifying GGUF'},()=>imported(files[0].fsPath));
+            route=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Verifying GGUF'},()=>imported(files[0].fsPath));
+            }
             const others=saved().filter(r=>r.file!==route.file);
             if(others.length>=128)throw Error('Remove a saved model first');
             await context.globalState.update('model-catalog',[...others,route]);
@@ -60,10 +66,10 @@ async function activate(context) {
             const model = await vscode.window.showQuickPick(models,{title:'Use model from ' + new URL(base).host});
             if (!model) return;
             const key = 'token:' + base;
-            if (token) await context.secrets.store(key,token); else await context.secrets.delete(key);
             const route={kind:choice,base,model};
             const others=saved().filter(r=>r.base!==base||r.model!==model);
             if(others.length>=128)throw Error('Remove a saved model first');
+            if (token) await context.secrets.store(key,token); else await context.secrets.delete(key);
             await context.globalState.update('model-catalog',[...others,route]);
             await context.globalState.update('route',route);
         }
@@ -74,17 +80,55 @@ async function activate(context) {
         status();
     }
     async function cpu() {
-        if (active) throw Error('Stop the current reply before changing CPU threads');
+        if (active||changing) throw Error('Finish the current model operation first');
         const max = Math.min(64, require('node:os').availableParallelism());
         const text = await vscode.window.showInputBox({title:'Local CPU threads',prompt:'0 selects automatic. Maximum on this host: '+max,
             value:String(context.globalState.get('threads',0)),validateInput:v=>/^\d+$/.test(v) && Number(v)<=max ? undefined : 'Enter an integer from 0 to '+max});
-        if (text !== undefined) { await context.globalState.update('threads', Number(text)); local.stop(); }
+        if (text !== undefined) { await context.globalState.update('threads', Number(text)); local.stop(); management.refresh(); }
     }
-    let history = [];
-    function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:current.kind==='local'?'On this device · Qwen2.5 1.5B':current.kind+' · '+current.model}); }
+    let history = [], changing=false;
+    const packaged={kind:'local',model:'meshlit-local'};
+    const manifest=JSON.parse(require('node:fs').readFileSync(require('node:path').join(root,'inference','model.json'),'utf8'));
+    const modelId=r=>crypto.createHash('sha256').update(JSON.stringify([r.kind,r.base||'',r.file||'',r.model])).digest('hex');
+    const routes=()=>[packaged,...saved()];
+    function dashboardState(){
+        const selected=settings(), rows=routes().map(r=>({
+            id:modelId(r),name:r.kind==='local'?manifest.filename:r.model,bundled:r.kind==='local',
+            selected:modelId(r)===modelId(selected),local:!r.base,
+            detail:r.base?r.kind+' · '+r.base:r.kind==='local'?'Bundled GGUF':((r.bytes||0)/1024**3).toFixed(2)+' GiB · '+r.file
+        }));
+        return {library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:!selected.base,
+            running:!!local.route,server:local.route?'Running · '+local.route.base:local.pending?'Loading local model…':'Stopped'};
+    }
+    async function action(op,id){
+        if(op==='chat')return chat();
+        if(op==='pair')return pair();
+        if(active||changing)throw Error('Finish the current model operation first');
+        changing=true;
+        try{
+            if(op==='connect'){
+                const label=await vscode.window.showQuickPick(['Ollama','LM Studio','Other OpenAI-compatible server'],{title:'Connect a model server'});
+                if(label)await select({label});
+            }else if(op==='import'||op==='discover')await select({label:op==='import'?'Import local GGUF…':'Discover models'});
+            else if(op==='select'||op==='remove'){
+                const route=routes().find(r=>modelId(r)===id);
+                if(!route)throw Error('Model registration has changed');
+                if(op==='select')await select({label:route.model,route});
+                else if(route.kind!=='local')await select({label:'Remove saved model…',route});
+            }else if(op==='load'){
+                const r=settings();if(r.base)throw Error('Select a local GGUF first');
+                await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Loading '+(r.kind==='local'?manifest.filename:r.model)},()=>local.start(AbortSignal.timeout(180000),context.globalState.get('threads',0),r.kind==='import'?r:undefined));
+            }else if(op==='unload')local.stop();
+            else if(op==='endpoint'&&local.route)await vscode.env.clipboard.writeText(local.route.base);
+            else if(op==='key'&&local.route&&await vscode.window.showInformationMessage('Copy the local server API key to the system clipboard?',{modal:true},'Copy key'))await vscode.env.clipboard.writeText(local.route.token);
+        }finally{changing=false;}
+    }
+    const management=require('./management.cjs').dashboard(vscode,dashboardState,action);
+    context.subscriptions.push({dispose:management.dispose});
+    function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':current.kind+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
     async function generate(prompt) {
         if (typeof prompt !== 'string' || !prompt.trim() || prompt.length>16000) throw Error('Enter a prompt of up to 16,000 characters');
-        if (active) throw Error('A reply is already running');
+        if (active||changing) throw Error('A model operation is already running');
         const controller = new AbortController();
         active=controller;
         const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(240000)]);
@@ -99,7 +143,7 @@ async function activate(context) {
             const output=displayOutput(answer,context.globalState.get('filter-output',true));
             history=[...messages,{role:'assistant',content:output}].slice(-8);
             return output;
-        } finally { if(active===controller) active=undefined; }
+        } finally { if(active===controller) active=undefined; management.refresh(); }
     }
     async function ide() {
         const selected=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,openLabel:'Open coding workspace'});
@@ -115,7 +159,7 @@ async function activate(context) {
             if(!msg || typeof msg!=='object') return;
             try {
                 if(msg.op==='ready') status();
-                if(msg.op==='models' && !active) await select();
+                if(msg.op==='models') await management.open();
                 if(msg.op==='pair') await pair();
                 if(msg.op==='control') await control();
                 if(msg.op==='guard' && !active) await guardrails();
@@ -128,7 +172,7 @@ async function activate(context) {
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.message}); }
         });
     }
-    for(const [cmd,fn] of Object.entries({chat,models:select,ide,cpu,pair,guardrails,control})) {
+    for(const [cmd,fn] of Object.entries({chat,models:management.open,ide,cpu,pair,guardrails,control})) {
         context.subscriptions.push(vscode.commands.registerCommand('meshlit.studio.'+cmd,async()=>{try {return await fn();} catch(err){vscode.window.showErrorMessage(err.message);}}));
     }
     context.subscriptions.push({dispose:()=>{active?.abort();local.stop();}});

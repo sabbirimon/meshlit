@@ -1,4 +1,8 @@
 # Inference settings in Studio 2.0.46 preview
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-11-23: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 In the packaged desktop client, open Engine and select Low memory, Balanced, or Long context. The profile proposes generation and prompt worker counts using the processors available to Studio. Advanced settings expose context length, both thread counts, batch sizes, key-cache precision and CPU backend. Choose the idle timeout separately. Apply once to save all edits, unload the current local model and end the current chat. Discard returns to the saved values. Loading a model still checks its context limit and estimated memory requirement.
 

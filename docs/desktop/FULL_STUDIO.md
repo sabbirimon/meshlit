@@ -1,4 +1,8 @@
 # Meshlit Native Studio
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-11-23: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 Extract the complete directory. Run Meshlit.exe on Windows, Meshlit on Linux, or Meshlit.app on macOS. Keep the editor, models, inference and toolchain folders beside the launcher. First launch installs the bundled Meshlit extension into a dedicated local editor profile. General Chat opens in an empty window. Choose **Open coding IDE** to open a project in a separate window. Open a terminal with **Terminal → New Terminal**. The bundled Zig toolchain supplies the C and C++ drivers. Try `zig version`, `zig cc hello.c -o hello` or `zig c++ hello.cpp -o hello`.
 
@@ -36,3 +40,13 @@ Open **Devices** to share a ten-minute identity link on the selected LAN or VPN 
 **Control an app** or `/control` opens a local accessibility review. Choose an app, choose an observed button or editable field, inspect the action, then allow it once. macOS uses the existing Meshlit Accessibility helper with an OS permission prompt. Windows supports accessible controls in Notepad, WordPad and Paint through UI Automation. Linux supports selected AT-SPI editors including gedit, GNOME Text Editor, Kate and Mousepad. Linux requires Python 3 with PyGObject and the Atspi 2.0 typelib. Some compositors and editors expose fewer controls. On Android, open Settings → Android automation in the full application and select an allowed app. Android Core candidates exclude the accessibility service. Desktop app observations stay local in this flow.
 
 **Models & connections** registers existing single-file GGUFs in place, checks their SHA-256 on load, lists models from an authenticated provider, and lets you switch or remove saved registrations. Provider keys use the host secret store. Switching models clears the current conversation. **Output guardrails** switches recognition of email addresses and common API token patterns on or off for displayed replies. Other sensitive text may remain visible. Model capabilities and provider policies still apply.
+
+## Managing models in native Studio
+
+Open **Models & connections** from General chat. **Model library** lists bundled and imported GGUFs. **Import GGUF** verifies the file in place. **Discover models** searches Hugging Face after you enter a query, shows available single-file quantizations and sizes, and asks before downloading. Studio pins the repository revision, checks the download size and SHA-256, and keeps successful downloads in Studio storage. Forgetting a registration leaves its model file on disk.
+
+Under **Provider connections**, choose Ollama, LM Studio or another OpenAI-compatible endpoint, then select a model returned by its inventory. Start the vendor server first. Select a saved route to start a fresh chat on that model. Keys use the editor's secret storage.
+
+Select a local model and use **Load selected model** to start the bundled CPU server. **Copy endpoint** and **Copy API key** supply credentials for a loopback API client. **Unload** stops the server. Pair devices from this dashboard or type `/pair` in chat. A verified device identity and authorization for app control are separate settings. Open the coding IDE from General chat when you need a project window.
+
+The workflow follows model import, selection, loading and local serving in [LM Studio's model guide](https://lmstudio.ai/docs/cli/local-models/import) and [developer server guide](https://lmstudio.ai/docs/developer/core/server). CUDA migration and accelerator qualification belong to [HyperL](https://github.com/sabbirimon/HyperL/tree/feature/native-mlir-engine/docs/CUDA_MIGRATION.md).

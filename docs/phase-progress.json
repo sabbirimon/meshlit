@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-11-06",
+  "updated": "2026-11-23",
   "applicationSourceCommit": "12bd20a",
   "sourceEvidenceCheckpoint": "630cba2",
   "review": "https://github.com/sabbirimon/meshlit-v2/pull/2",
@@ -20,8 +20,8 @@
     },
     {
       "name": "Desktop management",
-      "state": "2026-11-06: dedicated main shell and separate project IDE source; live passwordless local identity test passed",
-      "nextGate": "Final package identity/navigation/settings, protected storage, human voice and clean-target signing"
+      "state": "Native Studio model library, provider connections, local server controls and pairing implemented. See docs/desktop/FULL_STUDIO.md for use and scope.",
+      "nextGate": "Verify extracted native packages across the three hosted OS targets and additional physical devices."
     },
     {
       "name": "Android reliability",
@@ -84,7 +84,7 @@
       "S6": "planned"
     },
     "releaseDecisions": [
-      "Local desktop preview after S0\u2013S4 and package/clean-target acceptance",
+      "Local desktop preview after S0–S4 and package/clean-target acceptance",
       "Cluster Experimental preview additionally requires S5 physical-device evidence"
     ]
   },

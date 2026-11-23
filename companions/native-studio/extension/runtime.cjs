@@ -44,7 +44,13 @@ class LocalServer {
     constructor(root) { this.root = root; }
     async start(signal, configuredThreads = 0, imported) {
         if (!this.pending) {
-            this.pending = this.launch(signal, configuredThreads, imported).catch(err => { this.stop(); throw err; });
+            const startup = new AbortController();
+            this.startup = startup;
+            this.pending = this.launch(AbortSignal.any([signal,startup.signal]), configuredThreads, imported).then(route=>{
+                startup.signal.throwIfAborted();
+                this.route=route;
+                return route;
+            }).catch(err => { if(this.startup===startup)this.stop(); throw err; });
         }
         return this.pending;
     }
@@ -70,12 +76,13 @@ class LocalServer {
         const base = 'http://127.0.0.1:' + port + '/v1';
         const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(LLAMA_|GGML_)/i.test(k)));
         env.LLAMA_API_KEY = token;
+        signal.throwIfAborted();
         const child = spawn(server, ['--host','127.0.0.1','--port',String(port),'--model',weights,'--alias','meshlit-local','--ctx-size','4096','--parallel','1','--threads',threads,'--threads-batch',threads,
             '--fit','off','--device','none','--n-gpu-layers','0','--no-warmup','--no-agent','--no-webui','--offline'], {env,stdio:'ignore', windowsHide:true});
         this.child = child;
         let failed;
         child.once('error', err => { failed = err; });
-        child.once('exit', () => { if (this.child === child) { this.child = undefined; this.pending = undefined; } });
+        child.once('exit', () => { if (this.child === child) { this.child = undefined; this.pending = undefined; this.route = undefined; } });
         const deadline = Date.now() + 180000;
         while (Date.now() < deadline) {
             signal.throwIfAborted();
@@ -88,6 +95,6 @@ class LocalServer {
         }
         throw Error('Local model did not become ready');
     }
-    stop() { this.child?.kill(); this.child = undefined; this.pending = undefined; }
+    stop() { this.startup?.abort(); this.startup=undefined; this.route=undefined; this.child?.kill(); this.child = undefined; this.pending = undefined; }
 }
 module.exports = {LocalServer, endpoint, request, digest};

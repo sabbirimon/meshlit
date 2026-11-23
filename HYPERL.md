@@ -1,8 +1,11 @@
 # HyperL experimental foundation
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+[Native Studio model management](docs/desktop/FULL_STUDIO.md#managing-models-in-native-studio) covers local GGUF discovery and import, providers, authenticated local serving and device pairing. HyperL owns accelerator translation.
+
 
 HyperL began in source commit `cdb06b6`, and the owner merged it into
 `main` through [PR #1](https://github.com/sabbirimon/meshlit-v2/pull/1), merge

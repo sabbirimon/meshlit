@@ -1,6 +1,6 @@
 # Markdown documentation status and workstream tracking
 
-Reconciled 2026-11-06. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
+Reconciled 2026-11-23. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
 
 [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Milestone gates](../BUILD_MILESTONES.md) · [Desktop feature tracker](DESKTOP_FEATURE_TRACKER.md) · [Release evidence](RELEASE_EVIDENCE.md)
 
@@ -12,7 +12,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 | --- | --- | --- |
 | Local core engine | Host/payload verified; Experimental | Clean-machine, lifecycle/stress, wider quality and hardware |
 | Shared sharding | 2026-11-06: Studio JVM Mac/Samsung USB native layer completion; earlier development WAN evidence retained | Managed Studio/HyperL mixed adapter, oversized model, cross-owner and distributed recovery proof |
-| Desktop management | 2026-11-06: dedicated main shell and separate project IDE source; live passwordless local identity test passed | Final package identity/navigation/settings, protected storage, human voice and clean-target signing |
+| Desktop management | Native Studio model library, provider connections, local server controls and pairing implemented. See docs/desktop/FULL_STUDIO.md for use and scope. | Verify extracted native packages across the three hosted OS targets and additional physical devices. |
 | Android reliability | 2026-11-02: 326 unit tests per flavor, both APKs and final lints passed; physical fast-reply service-race regression and Chat handler routing passed | Wider device, lifecycle/stress and provider acceptance |
 | Governed agents and fleet | 2026-11-02: real Samsung/Studio forward handoffs and actual Chat phone/web/device-read routing qualified; reverse workflows remain model-limited | Correct model-driven reverse workflows, physical cross-device A2A and configured approved device-command execution |
 | Platform and distribution | Intel Experimental release published; recovered payloads/hash verification pass | Clean-target signing/privacy and independent OS/device gates; CI remains separately observed |
@@ -24,7 +24,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-173 active, 19 historical, 8 protected, 1 template, 6 third-party; 208 Markdown documents including this index.
+177 active, 19 historical, 8 protected, 1 template, 6 third-party; 212 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -166,6 +166,9 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/desktop/CROSS_PLATFORM_PRERELEASE.md](desktop/CROSS_PLATFORM_PRERELEASE.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/DOLPHIN.md](desktop/DOLPHIN.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/ENGINE_AND_SHARDING.md](desktop/ENGINE_AND_SHARDING.md) | desktop/server; individual acceptance gates apply |
+| [docs/desktop/FULL_STUDIO.md](desktop/FULL_STUDIO.md) | desktop/server; individual acceptance gates apply |
+| [docs/desktop/INFERENCE_PROFILES.md](desktop/INFERENCE_PROFILES.md) | desktop/server; individual acceptance gates apply |
+| [docs/desktop/NATIVE_MIGRATION.md](desktop/NATIVE_MIGRATION.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md](desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/RECOVERY.md](desktop/RECOVERY.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/SEARCH_AND_MANAGEMENT.md](desktop/SEARCH_AND_MANAGEMENT.md) | desktop/server; individual acceptance gates apply |
@@ -174,6 +177,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/desktop/STABILIZATION_NEXT.md](desktop/STABILIZATION_NEXT.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/STABILIZATION_PLAN.md](desktop/STABILIZATION_PLAN.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/STUDIO_BASELINE_2026-10-26.md](desktop/STUDIO_BASELINE_2026-10-26.md) | desktop/server; individual acceptance gates apply |
+| [docs/desktop/STUDIO_DASHBOARD.md](desktop/STUDIO_DASHBOARD.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/TERMINAL.md](desktop/TERMINAL.md) | desktop/server; individual acceptance gates apply |
 | [docs/device-aware-model-runtime.md](device-aware-model-runtime.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/hugging-face-integration.md](hugging-face-integration.md) | Android/shared reference; desktop ports have separate acceptance |

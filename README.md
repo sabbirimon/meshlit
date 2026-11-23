@@ -6,9 +6,12 @@
 
 # Meshlit — Many devices. One mind.
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-06: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+[Native Studio model management](docs/desktop/FULL_STUDIO.md#managing-models-in-native-studio) covers local GGUF discovery and import, providers, authenticated local serving and device pairing. HyperL owns accelerator translation.
+
 
 **Native Studio development build.** The Full Studio workflow packages a Rust launcher, VSCodium, llama.cpp and an offline C/C++ toolchain for Windows, macOS and Linux. The desktop suite has no JDK or Gradle build step. The Android and legacy Compose applications have a separate migration scope. [Installation](docs/desktop/FULL_STUDIO.md) · [Dependency replacements](docs/desktop/NATIVE_MIGRATION.md) · [Native builds](https://github.com/sabbirimon/meshlit/actions/workflows/full-studio.yml)
 
