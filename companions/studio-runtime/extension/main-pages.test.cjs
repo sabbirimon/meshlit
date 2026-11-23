@@ -112,3 +112,14 @@ test('observed runtime identity is used only on its matching bundled model card'
   assert.match(cards[1],/Observed reasoning model/);assert.match(cards[1],/role="status">Loading/);
  }finally{models.accept(previous);}
 });
+
+test('chat profiles stage validated limits and require the normal save action',()=>{
+ const html=render('settings');
+ const buttons=[...html.matchAll(/<button type="button" data-chat-profile="(\d+)"[^>]*>([^<]+)<\/button>/g)];
+ assert.deepEqual(buttons.map(match=>match[2]),['Quick reply','Balanced','Extended reply']);
+ const values=JSON.parse(html.match(/const chatProfiles=(\[.*?\]);/)[1]);
+ assert.equal(values.length,buttons.length);
+ for(const {label,...profile} of values)assert.deepEqual(validateSettings(profile),profile);
+ assert(values[0].maxOutputTokens<values[1].maxOutputTokens);
+ assert(values[0].historyTurns<values[1].historyTurns);
+});

@@ -5,15 +5,11 @@ import kotlinx.serialization.json.*
 import oshi.SystemInfo
 import java.net.InetAddress
 import java.net.ServerSocket
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.time.Duration
 import java.util.Base64
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
@@ -24,7 +20,7 @@ internal object DesktopStarter {
     const val sha256 = "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
     const val label = "Qwen2.5 1.5B Instruct · Q4_K_M"
     const val alias = "meshlit-local"
-    const val prompt = "You are Meshlit, a helpful assistant running locally on the user's Mac. " +
+    const val prompt = "You are Meshlit, a helpful assistant running locally on the user's computer. " +
         "Give clear, accurate answers with useful detail. Use Markdown headings, lists and code blocks " +
         "where helpful. Say when you do not know. You cannot access the Internet or execute tools."
 }
@@ -107,22 +103,15 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
                 process = builder.start()
             } catch (error: Exception) { stop(); throw error }
         }
-        val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2))
-            .followRedirects(HttpClient.Redirect.NEVER).build()
+        val client = HostClient(host, token)
         try {
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120)
             while (System.nanoTime() < deadline) {
                 checkCurrent(expectedRevision)
                 check(synchronized(lock) { process?.isAlive == true }) { "Local process stopped during loading" }
-                val ready = runCatching {
-                    val request = HttpRequest.newBuilder(host.route("models")).timeout(Duration.ofSeconds(2))
-                        .header("Authorization", "Bearer $token").GET().build()
-                    val response = http.send(request, HttpResponse.BodyHandlers.ofString())
-                    response.statusCode() == 200 && response.body().length <= 262144 &&
-                        HostClient(host, token).use { DesktopStarter.alias in it.models() }
-                }.getOrDefault(false)
-                if (ready) {
-                    val props = HostClient(host, token).use { it.localProperties() }
+                val inventory = client.health()
+                if (inventory is HostConnectionResult.Ready && DesktopStarter.alias in inventory.models) {
+                    val props = client.localProperties()
                     val effectiveContext = props["default_generation_settings"]?.jsonObject?.get("n_ctx")?.jsonPrimitive?.intOrNull
                     check(effectiveContext == options.context) { "Native context differs from configured capacity" }
                     val effectiveModel = props["model_path"]?.jsonPrimitive?.content ?: error("Native model identity missing")
@@ -135,7 +124,7 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
         } catch (error: Exception) {
             synchronized(lock) { if (revision == expectedRevision) stop() }
             throw error
-        } finally { http.shutdownNow() }
+        } finally { client.close() }
     }
 
     private fun checkCurrent(expected: Long) {
