@@ -53,8 +53,13 @@ jobs:
           name = 'Meshlit-Studio-' + os.environ['RUNNER_OS'] + '-' + os.environ['RUNNER_ARCH'] + ('.zip' if windows else '.tar.gz')
           archive = dist / name
           subprocess.run(['tar', '-a' if windows else '-z', '-cf', str(archive.resolve()), '-C', str(dist), suite.name], check=True)
-          shutil.rmtree(suite)
-          subprocess.run(['tar','-xf',str(archive),'-C',str(dist)],check=True)
+          # Windows app images contain read-only executables. Extract into a fresh directory.
+          extracted = dist / 'acceptance'
+          extracted.mkdir()
+          if not windows:
+              shutil.rmtree(suite)
+          subprocess.run(['tar','-xf',str(archive),'-C',str(extracted)],check=True)
+          suite = extracted / 'Meshlit-Studio'
           prefix = ['xvfb-run','-a'] if os.environ['RUNNER_OS']=='Linux' else []
           subprocess.run(prefix + ['python','scripts/check-studio-suite.py',str(suite)],check=True)
           shutil.copy2(suite / 'STUDIO-CONTENTS.json', dist)
