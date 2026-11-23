@@ -60,6 +60,8 @@ test('SafeTensors shard references must be local files and a single shard is not
     assert.deepEqual((await inspect(dir)).adapters,['transformers']);
     await fs.writeFile(config,'{"quantization":{"bits":4,"group_size":64}}');
     assert.deepEqual((await inspect(dir)).adapters,['mlx-lm']);
+    await fs.writeFile(config,JSON.stringify({quantization:{bits:4,group_size:64},model_file:'custom.py'}));
+    assert.deepEqual((await inspect(dir)).adapters,[]);
     await fs.writeFile(config,'{"model_type":"rwkv6","auto_map":{"AutoModel":"pkg.custom"}}');
     assert.equal((await inspect(dir)).format,'rwkv');
     assert.deepEqual((await inspect(dir)).adapters,[]);

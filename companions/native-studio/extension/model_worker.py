@@ -56,6 +56,10 @@ def generate(adapter, root, messages, limit):
         return tokenizer.decode(result[0, ids.shape[-1]:], skip_special_tokens=True)
     if adapter == "mlx-lm":
         from mlx_lm import generate as mlx_generate, load
+        with (root / "config.json").open("rb") as config:
+            contents = config.read(8 * 1024 * 1024 + 1)
+        if len(contents) > 8 * 1024 * 1024 or json.loads(contents).get("model_file") is not None:
+            raise ValueError("MLX generation requires a built-in model architecture")
         model, tokenizer = load(str(root), tokenizer_config={"trust_remote_code": False})
         if tokenizer.chat_template:
             prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)

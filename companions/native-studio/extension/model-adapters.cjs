@@ -175,7 +175,7 @@ async function inspect(source,hint) {
     if(weights.length){
         const mlx=!!(config.quantization?.group_size && config.quantization?.bits && !config.quantization_config);
         const rwkv=/^rwkv/i.test(config.model_type||'');
-        const prep=!indexed && configured;
+        const prep=!indexed && configured && (!mlx || config.model_file == null);
         return result(input,mlx?'mlx':rwkv?'rwkv':'safetensors','weight filenames and package metadata',{...data,adapters:prep?[mlx?'mlx-lm':'transformers']:[]});
     }
     if(entries.has('flax_model.msgpack')){
