@@ -83,7 +83,7 @@ fn launch() -> io::Result<()> {
     let marker = profile.join("installed-extension");
     if fs::read_to_string(&marker).ok().as_deref() != Some(revision.as_str())
         || !extensions
-            .join("meshlit.native-studio-2.0.48/package.json")
+            .join("meshlit.native-studio-2.0.49/package.json")
             .is_file()
     {
         let result = make()

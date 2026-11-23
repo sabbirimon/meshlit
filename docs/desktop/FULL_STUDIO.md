@@ -88,3 +88,13 @@ Optional local workers are Transformers with SafeTensors, ONNX Runtime GenAI, Op
 The Windows build workflow produces a per-user Setup.exe alongside the portable ZIP and exercises installation, General Chat startup and uninstall. Check the asset list for the particular release you download.
 
 On the development branch, first launch offers the bundled offline model, provider connection and model library. Open Settings → Welcome and setup to view it again. The library search filters entries by name or displayed format/runtime. **Selected model reply settings** saves the output token limit and, for GGUF or provider routes, temperature per model. Optional Python workers retain their own sampling behavior.
+
+## Studio 2.0.49 device and model preview
+
+Enable device networking in **Devices** on both computers. Choose a nearby computer or enter its device ID. The receiving user opens Devices and approves the requesting computer. Both peers retain the Studio identity key. Select the saved peer and choose **Share models** to authorize specific bundled or imported GGUF models for that computer. On the other device choose **Use a shared model**. Device networking is opt-in. Owners can stop sharing and forget a device. Previously saved link identities remain available.
+
+The private [Studio relay](../../companions/studio-relay/README.md) supports outbound connections on separate networks. Studio first uses a fresh LAN advertisement when available. Relay traffic carries the same key-pinned mutual TLS session. A relay deployment and access token are required for internet use.
+
+The Mac and Windows HP exchanged signed identities in both installed Studio profiles on November 24. A subsequent test of the new transport found the HP through LAN discovery, listed the explicitly shared bundled Qwen model, and streamed its answer to the Mac over direct Wi-Fi. This test used temporary identities and the packaged Windows Electron executable. The HP runtime reported 10 completion tokens across nine text updates. Remote inference runs on the host that owns the selected model.
+
+New profiles open a Get started screen, show a model recommendation based on available RAM, and offer optional startup settings. Model management includes on-demand loading, idle unload, and model server activity. Startup at login is opt-in and uses the current user's launch or startup directory. The bundled inference engine runs on CPU. The discovery view links to the publisher's model card and shows declared capabilities when available.

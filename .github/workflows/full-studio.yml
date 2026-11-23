@@ -2,12 +2,13 @@ name: Full Studio offline development suite
 on:
   workflow_dispatch:
   push:
-    branches: [feature/desktop-inference-profiles]
+    branches: [feature/desktop-inference-profiles, studio/device-pairing-and-model-sharing]
     paths:
       - '.github/workflows/full-studio.yml'
       - 'scripts/*studio-suite.py'
       - 'desktopApp/distribution/studio-tools.json'
       - 'companions/native-studio/**'
+      - 'companions/studio-relay/**'
       - 'scripts/brand-studio.py'
       - 'companions/studio-runtime/prepare_shell.py'
       - 'companions/studio-runtime/extension/ssh-dashboard.cjs'
@@ -27,7 +28,13 @@ jobs:
     timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
-      - run: node --test companions/native-studio/extension/studio.test.cjs companions/native-studio/extension/model-adapters.test.cjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix companions/studio-relay --ignore-scripts
+      - run: node --test companions/native-studio/extension/studio.test.cjs companions/native-studio/extension/model-adapters.test.cjs companions/native-studio/extension/device.test.cjs
+        env:
+          MESHLIT_RELAY_TEST: '1'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

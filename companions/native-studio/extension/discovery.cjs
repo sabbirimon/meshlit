@@ -43,7 +43,7 @@ h3{margin:24px 0 8px;font-size:16px}#variant{max-width:100%;width:100%}#download
 <p id="capacity"></p><div role="status" id="status"></div><div class="results" id="results"></div></section>
 <div class="detailPane"><p id="empty">Search by model or author to compare available downloads.</p>
 <section id="details" hidden><h2 id="name"></h2><p id="summary"></p><div id="facts"></div>
-<h3>Download options</h3><label>GGUF file <select id="variant"></select></label><p id="hint"></p><button id="download" disabled>Download selected file</button></section></div></main>
+<h3>Download options</h3><label>GGUF file <select id="variant"></select></label><p id="hint"></p><button id="download" disabled>Download selected file</button><p><button id="card">Read publisher model card ↗</button></p></section></div></main>
 <script nonce="${nonce}">
 const api=acquireVsCodeApi(),el=id=>document.getElementById(id);
 let seq=0,items=[],picked,files=[],capacity=0,loading=false;
@@ -51,7 +51,7 @@ function search(){seq++;picked=null;items=[];files=[];el('results').replaceChild
 function variants(){const displayed=files.filter(f=>!el('fit').checked||f.bytes<=capacity);el('variant').replaceChildren(...displayed.map(f=>new Option(f.name+' · '+f.size,f.sha)));el('download').disabled=loading||!displayed.length;updateDownload();el('hint').textContent=loading?'Reading available files…':displayed.length?'Download size is the size on disk. Runtime memory also depends on context.':files.length?'No variant fits the estimate. Clear the RAM filter to see all files.':'No supported single-file GGUF with a published checksum.'}
 function choose(item){seq++;picked=item;files=[];loading=true;el('details').hidden=false;el('empty').hidden=true;el('facts').replaceChildren();el('name').textContent=item.id;el('summary').textContent=item.summary;for(const b of el('results').children)b.setAttribute('aria-pressed',String(b.dataset.repo===item.id));variants();api.postMessage({op:'details',repo:item.id,seq})}
 function updateDownload(){const file=files.find(f=>f.sha===el('variant').value);el('download').textContent=file?'Download · '+file.size:'Download selected file'}
-el('variant').onchange=updateDownload;
+el('card').onclick=()=>api.postMessage({op:'card',repo:picked?.id});el('variant').onchange=updateDownload;
 el('back').onclick=()=>api.postMessage({op:'close'});document.querySelector('form').onsubmit=e=>{e.preventDefault();search()};el('sort').onchange=search;el('fit').onchange=variants;el('download').onclick=()=>api.postMessage({op:'download',sha:el('variant').value,seq});
 window.addEventListener('message',({data:m})=>{if(m.op==='ready'){capacity=m.capacity;el('capacity').textContent=m.caption;return}if(m.seq!==seq)return;if(m.op==='error'){loading=false;el('status').textContent=m.message;variants();return}if(m.op==='results'){items=m.items;el('status').textContent=items.length?items.length+' repositories':'No matching repositories.';for(const item of items){const b=document.createElement('button');b.dataset.repo=item.id;const title=document.createElement('strong');title.textContent=item.id.split('/').pop();const detail=document.createElement('small');detail.className='resultDetail';detail.textContent=item.id.split('/')[0];b.append(title,detail);b.onclick=()=>choose(item);el('results').append(b)}if(items.length)choose(items[0])}if(m.op==='files'){loading=false;files=m.files;el('facts').replaceChildren(...(m.facts||[]).map(value=>{const tag=document.createElement('span');tag.textContent=value;return tag}));variants()}});api.postMessage({op:'ready'});el('q').focus();
 </script></html>`;
@@ -64,6 +64,7 @@ function chooseFile(vscode, metadata, files) {
         const capacity = budget();
         panel.onDidDispose(() => {request?.abort();resolve(undefined);});
         panel.webview.onDidReceiveMessage(async msg => {
+            if(msg?.op==='card'&&repos.has(msg.repo))return vscode.env.openExternal(vscode.Uri.parse('https://huggingface.co/'+msg.repo));
             if (msg?.op === 'close') return panel.dispose();
             if (msg?.op === 'ready') return panel.webview.postMessage({op:'ready',capacity,caption:'Estimated CPU weight budget now: '+size(capacity)+'. Includes a reserve for runtime memory.'});
             if (msg?.op === 'download') {
@@ -97,7 +98,8 @@ function chooseFile(vscode, metadata, files) {
                     const data = await metadata('https://huggingface.co/api/models/'+msg.repo+'?blobs=true',signal);
                     if (controller.signal.aborted) return;
                     choices = files(msg.repo,data).map(item=>({...item,repo:msg.repo}));
-                    const facts = ['GGUF'];
+                    const facts = ['GGUF','Bundled runtime: CPU'];
+                    for(const capability of ['vision','image-text-to-text','tool-use','reasoning'])if(data.tags?.includes(capability))facts.push(capability);
                     if (typeof data.gguf?.architecture === 'string') facts.push(data.gguf.architecture);
                     if (Number.isSafeInteger(data.gguf?.total) && data.gguf.total > 0) {
                         facts.push(new Intl.NumberFormat('en', {notation:'compact'}).format(data.gguf.total) + ' parameters');

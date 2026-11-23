@@ -2,7 +2,7 @@
 [Setup]
 AppId={{BCDB8A08-D414-4D52-B3BA-A786BD6933A6}
 AppName=Meshlit Studio
-AppVersion=2.0.48
+AppVersion=2.0.49
 AppPublisher=IMON
 AppPublisherURL=https://imon.com.bd/meshlit/
 DefaultDirName={localappdata}\Programs\Meshlit Studio

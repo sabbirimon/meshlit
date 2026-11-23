@@ -17,7 +17,19 @@ async function activate(context) {
     await vscode.commands.executeCommand('setContext','meshlitStudioHome',home);
     let ready=false;
     const settings = () => context.globalState.get('route', {kind:'local', model:'meshlit-local'});
-    const pair = require('./pairing.cjs').register(vscode,context);
+    const serverEvents=[];
+    function serverLog(message){serverEvents.push(new Date().toLocaleTimeString()+' · '+message);if(serverEvents.length>50)serverEvents.shift();management.refresh();}
+    const pair=require('./pairing.cjs').register(vscode,context,{
+        root,threads:()=>context.globalState.get('threads',0),log:serverLog,
+        models:()=>routes().filter(r=>['local','import'].includes(r.kind)).map(route=>({route,id:modelId(route),name:route.kind==='local'?manifest.filename:route.model})),
+        select:async route=>{
+            if(active||changing)throw Error('Finish the current model operation first');
+            const others=saved().filter(r=>modelId(r)!==modelId(route));
+            if(others.length>=128)throw Error('Remove a saved model first');
+            await context.globalState.update('model-catalog',[...others,route]);
+            await select({label:route.model,route});go('chat');
+        }
+    });
     const control = require('./control.cjs').register(vscode,context,root);
     const {imported, displayOutput} = require('./catalog.cjs');
     const saved = () => context.globalState.get('model-catalog', []);
@@ -32,6 +44,7 @@ async function activate(context) {
             {name:suggestion.label||suggestion.filename,detail:discovery.size(suggestion.sizeBytes)+' · '+(suggestion.filename===manifest.filename?'Included for offline chat':'Download from '+suggestion.publisher)} :
             {name:'Connect a provider',detail:'Free memory is low for the starter models.'}});
     }
+    function advancedSetup(){sendUI('advancedSetup',{login:context.globalState.get('start-at-login',false)});}
     async function finishWelcome(){
         await context.globalState.update('welcome-complete',true);updateWelcome(false);
     }
@@ -46,7 +59,7 @@ async function activate(context) {
     async function select(forced) {
         if(active) throw Error("Stop the current reply before switching models");
         const selection = forced || await vscode.window.showQuickPick([
-            ...['Bundled offline model','Import model file…','Import model folder…','Ollama','LM Studio','Other OpenAI-compatible server','Remove saved model…'].map(label=>({label})),
+            ...['Bundled offline model','Import model file…','Import model folder…','Ollama','LM Studio','Bionic','Other OpenAI-compatible server','Remove saved model…'].map(label=>({label})),
             ...saved().map(route=>({label:route.model,description:route.base||route.file,route}))
         ], {title:'Models & providers'});
         const choice=selection?.label;
@@ -54,7 +67,7 @@ async function activate(context) {
         if (choice==='Remove saved model…') {
             const item=selection.route ? selection : await vscode.window.showQuickPick(saved().map(route=>({label:route.model,description:route.base||route.file,route})),{title:'Remove registration (model files stay on disk)'});
             if(!item)return;
-            const retained=saved().filter(r=>r.file!==item.route.file || r.base!==item.route.base || r.model!==item.route.model);
+            const retained=saved().filter(r=>modelId(r)!==modelId(item.route));
             await context.globalState.update('model-catalog',retained);
             if(item.route.base&&!retained.some(r=>r.base===item.route.base))await context.secrets.delete('token:'+item.route.base);
             if(modelId(settings())===modelId(item.route))await context.globalState.update('route',{kind:'local',model:'meshlit-local'});
@@ -103,7 +116,7 @@ async function activate(context) {
         } else if (choice === 'Bundled offline model') {
             await context.globalState.update('route', {kind:'local', model:'meshlit-local'});
         } else {
-            const input = await vscode.window.showInputBox({title:'Model server base URL',value:choice === 'Ollama'?'http://127.0.0.1:11434/v1':choice === 'LM Studio'?'http://127.0.0.1:1234/v1':'https://',ignoreFocusOut:true});
+            const input = await vscode.window.showInputBox({title:'Model server base URL',value:choice === 'Ollama'?'http://127.0.0.1:11434/v1':choice === 'LM Studio'?'http://127.0.0.1:1234/v1':choice==='Bionic'?'http://127.0.0.1:':'https://',ignoreFocusOut:true});
             if (!input) return;
             const base = endpoint(input);
             const token = await vscode.window.showInputBox({title:'API key (leave empty for a server without authentication)',password:true,ignoreFocusOut:true});
@@ -134,7 +147,23 @@ async function activate(context) {
             value:String(context.globalState.get('threads',0)),validateInput:v=>/^\d+$/.test(v) && Number(v)<=max ? undefined : 'Enter an integer from 0 to '+max});
         if (text !== undefined) { await context.globalState.update('threads', Number(text)); local.stop(); management.refresh(); }
     }
-    let history = [], changing=false, currentThread;
+    let history = [], changing=false, currentThread,idleTimer;
+    function scheduleUnload(){
+        clearTimeout(idleTimer);
+        const minutes=context.globalState.get('idle-minutes',0);
+        if(minutes>0&&local.route)idleTimer=setTimeout(()=>{if(!active&&!changing){local.stop();serverLog('Unloaded after '+minutes+' idle minutes');}else scheduleUnload();},minutes*60000);
+    }
+    async function serverSettings(){
+        const key=await vscode.window.showQuickPick(['On-demand loading','Idle unload','Start at login'],{title:'Local server settings'});
+        if(key==='Idle unload'){
+            const input=await vscode.window.showInputBox({title:'Minutes before unloading (0 keeps the model loaded)',value:String(context.globalState.get('idle-minutes',0)),validateInput:v=>/^\d+$/.test(v)&&Number(v)<=1440?undefined:'Enter 0 to 1440 minutes'});
+            if(input!==undefined){await context.globalState.update('idle-minutes',Number(input));scheduleUnload();}
+        }else if(key){
+            const setting=key==='Start at login'?'start-at-login':'on-demand';
+            const enabled=await vscode.window.showQuickPick(['Enable','Disable'],{title:key+' · currently '+(context.globalState.get(setting,key==='On-demand loading')?'on':'off')});
+            if(enabled){if(key==='Start at login')await require('./login-service.cjs').setLogin(root,enabled==='Enable');await context.globalState.update(setting,enabled==='Enable');}
+        }
+    }
     const threads=new Map();
     function threadList(){
         const items=Array.from(threads,([id,t])=>({id,title:t.title})).reverse();
@@ -155,7 +184,7 @@ async function activate(context) {
     const manifest=JSON.parse(require('node:fs').readFileSync(require('node:path').join(root,'inference','model.json'),'utf8'));
     const catalogPath=path.join(root,'inference','studio-models.json');
     const starters=require('node:fs').existsSync(catalogPath)?JSON.parse(require('node:fs').readFileSync(catalogPath,'utf8')).models:[manifest];
-    const modelId=r=>crypto.createHash('sha256').update(JSON.stringify([r.kind,r.base||'',r.file||'',r.model])).digest('hex');
+    const modelId=r=>crypto.createHash('sha256').update(JSON.stringify([r.kind,r.device||r.base||'',r.remoteModel||r.file||'',r.model])).digest('hex');
     function generationSettings(route=settings()){
         return context.globalState.get('generation:'+modelId(route),{maxTokens:128,temperature:0});
     }
@@ -174,11 +203,11 @@ async function activate(context) {
     function dashboardState(){
         const selected=settings(), rows=routes().map(r=>({
             id:modelId(r),name:r.kind==='local'?manifest.filename:r.model,bundled:r.kind==='local',
-            selected:modelId(r)===modelId(selected),local:!r.base,
+            selected:modelId(r)===modelId(selected),local:!r.base&&r.kind!=='peer',
             canSelect:r.kind!=='asset'||!!r.info?.adapters?.length,
-            detail:r.kind==='asset'?[r.info.label,...r.info.quantization,r.info.evidence,r.info.adapters.length?'Requires local '+r.info.adapters.join(' or '):'External runtime required: '+r.info.runtime,r.file].join(' · '):r.base?r.kind+' · '+r.base:r.kind==='local'?'Bundled GGUF':((r.bytes||0)/1024**3).toFixed(2)+' GiB weights · '+(require('node:os').freemem()/1024**3).toFixed(1)+' GiB RAM free now · '+r.file
+            detail:r.kind==='peer'?'Shared by '+r.hostName:r.kind==='asset'?[r.info.label,...r.info.quantization,r.info.evidence,r.info.adapters.length?'Requires local '+r.info.adapters.join(' or '):'External runtime required: '+r.info.runtime,r.file].join(' · '):r.base?r.kind+' · '+r.base:r.kind==='local'?'Bundled GGUF':((r.bytes||0)/1024**3).toFixed(2)+' GiB weights · '+(require('node:os').freemem()/1024**3).toFixed(1)+' GiB RAM free now · '+r.file
         }));
-        return {isLmStudio:selected.kind==='LM Studio',library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:['local','import'].includes(selected.kind),
+        return {events:serverEvents.slice(-12),isLmStudio:selected.kind==='LM Studio',library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:['local','import'].includes(selected.kind),
             running:!!local.route,server:local.route?'Running · '+local.route.base:local.pending?'Loading local model…':'Stopped'};
     }
     async function action(op,id){
@@ -188,14 +217,15 @@ async function activate(context) {
         if(active||changing)throw Error('Finish the current model operation first');
         changing=true;
         try{
-            if(op==='tune')await tuneModel();
+            if(op==='serverSettings')await serverSettings();
+            else if(op==='tune')await tuneModel();
             else if(op==='lmManage'){
                 const route=settings();
                 if(route.kind!=='LM Studio')throw Error('Select an LM Studio connection first');
                 await require('./lm-studio.cjs').manage(vscode,route,await context.secrets.get('token:'+route.base));
             }
             else if(op==='connect'){
-                const label=await vscode.window.showQuickPick(['Ollama','LM Studio','Other OpenAI-compatible server'],{title:'Connect a model server'});
+                const label=await vscode.window.showQuickPick(['Ollama','LM Studio','Bionic','Other OpenAI-compatible server'],{title:'Connect a model server'});
                 if(label)await select({label});
             }else if(['import','folder','discover'].includes(op))await select({label:{import:'Import model file…',folder:'Import model folder…',discover:'Discover models'}[op]});
             else if(op==='select'||op==='remove'){
@@ -206,7 +236,8 @@ async function activate(context) {
             }else if(op==='load'){
                 const r=settings();if(!['local','import'].includes(r.kind))throw Error('Select a local GGUF first');
                 await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Loading '+(r.kind==='local'?manifest.filename:r.model)},()=>local.start(AbortSignal.timeout(180000),context.globalState.get('threads',0),r.kind==='import'?r:undefined));
-            }else if(op==='unload')local.stop();
+                serverLog('Loaded '+r.model);scheduleUnload();
+            }else if(op==='unload'){local.stop();serverLog('Local model unloaded');}
             else if(op==='endpoint'&&local.route)await vscode.env.clipboard.writeText(local.route.base);
             else if(op==='key'&&local.route&&await vscode.window.showInformationMessage('Copy the local server API key to the system clipboard?',{modal:true},'Copy key'))await vscode.env.clipboard.writeText(local.route.token);
         }finally{changing=false;}
@@ -270,9 +301,9 @@ async function activate(context) {
     require('./legacy/memory.cjs').register(context);
     require('./legacy/voice.cjs').register(context, { requirePermission });
     const dashboards=require('./operations.cjs').operations(vscode,context,root,{
-        models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
+        models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);sendUI('restartSetup',{});},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
-    function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':(current.adapter||current.kind)+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
+    function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':(current.hostName||current.adapter||current.kind)+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
     async function generate(prompt,file) {
         if (typeof prompt !== 'string' || !prompt.trim() || prompt.length>16000) throw Error('Enter a prompt of up to 16,000 characters');
         if (active||changing) throw Error('A model operation is already running');
@@ -292,10 +323,21 @@ async function activate(context) {
                     messages[last]={role:'user',content:[{type:'text',text:prompt},{type:'image_url',image_url:{url:file.url}}]};
                 }else messages[last]={role:'user',content:prompt+'\n\nAttached file: '+file.name+'\n'+file.text};
             }
-            if(selected.kind==='asset'){
+            if(selected.kind==='peer'){
+                progress('Connecting to '+selected.hostName+'…');answer='';
+                const result=await pair.chat(selected,messages,options,signal,delta=>{
+                    answer+=delta;
+                    if(answer.length>128000)throw Error('Response exceeds the Studio limit');
+                    // Keep the unfinished word private until email/token filtering can see its end.
+                    const safe=context.globalState.get('filter-output',true)?answer.replace(/\S+$/,''):answer;
+                    sendUI('partial',{text:displayOutput(safe,context.globalState.get('filter-output',true))});
+                });
+                count=result.count;rate=result.rate;
+            }else if(selected.kind==='asset'){
                 progress('Loading local runtime and generating…');
                 answer=(await adapters.worker(selected.python,selected.adapter,selected.file,messages,signal,options.maxTokens)).text;
             }else{
+                if(['local','import'].includes(selected.kind)&&!local.route&&!context.globalState.get('on-demand',true))throw Error('Open Models & providers and load the selected model first.');
                 const route = ['local','import'].includes(selected.kind) ? await local.start(signal, context.globalState.get('threads',0), selected.kind==='import'?selected:undefined,progress) : {...selected,token:await context.secrets.get('token:'+selected.base)};
                 progress('Waiting for '+(selected.base?new URL(route.base).host:'the local model')+' to reply…');
                 const result=await request(route.base,'/chat/completions',route.token,{model:route.model,messages,max_tokens:options.maxTokens,temperature:options.temperature},signal);
@@ -312,7 +354,7 @@ async function activate(context) {
             history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',content:output}].slice(-8);
             recordChat(history);
             return output;
-        } finally { if(active===controller) active=undefined; management.refresh(); }
+        } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
     }
     async function ide() {
         const selected=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,openLabel:'Open coding workspace'});
@@ -338,11 +380,19 @@ async function activate(context) {
                     try{
                         const done=model.filename===manifest.filename?await select({label:'Bundled offline model'}):
                             await select({label:'Discover models',item:{name:model.filename,sha:model.sha256,bytes:model.sizeBytes,url:model.url,repo:model.repository}});
-                        if(done)await finishWelcome();
+                        if(done)advancedSetup();
                     }finally{changing=false;}
                     return;
                 }
-                if(msg.op==='skipSetup'||msg.op==='startLocal'){if(msg.op==='startLocal'&&settings().kind!=='local')await select({label:'Bundled offline model'});await finishWelcome();return;}
+                if(msg.op==='skipSetup'||msg.op==='startLocal'){if(msg.op==='startLocal'&&settings().kind!=='local')await select({label:'Bundled offline model'});advancedSetup();return;}
+                if(msg.op==='finishSetup'){
+                    if(typeof msg.login!=='boolean'||typeof msg.server!=='boolean')return;
+                    if(msg.login!==context.globalState.get('start-at-login',false)){
+                        await require('./login-service.cjs').setLogin(root,msg.login);
+                        await context.globalState.update('start-at-login',msg.login);
+                    }
+                    await finishWelcome();if(msg.server)go('models');return;
+                }
                 if(msg.op==='startLibrary'){await finishWelcome();go('models');return;}
                 if(msg.op==='startProvider'){
                     await action('connect');
@@ -378,8 +428,8 @@ async function activate(context) {
                 if(msg.op==='send') {
                     const file=pendingFile,route=settings();
                     if(file)requirePermission('files');
-                    if(file&&route.base)requirePermission('share');
-                    if(file&&route.base&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+new URL(route.base).host+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
+                    if(file&&(route.base||route.device))requirePermission('share');
+                    if(file&&(route.base||route.device)&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+(route.hostName||new URL(route.base).host)+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
                     const answer=await generate(msg.text,file);
                     pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer});
                 }
@@ -391,6 +441,10 @@ async function activate(context) {
     }
     context.subscriptions.push({dispose:()=>{active?.abort();local.stop();}});
     if (home) {
+        if(context.globalState.get('start-at-login',false)&&['local','import'].includes(settings().kind)){
+            local.start(AbortSignal.timeout(180000),context.globalState.get('threads',0),settings().kind==='import'?settings():undefined).then(()=>{serverLog('Loaded local model at startup');scheduleUnload();}).catch(e=>serverLog('Startup load failed · '+e.message));
+        }
+        pair.restore().catch(e=>vscode.window.showWarningMessage('Device networking unavailable: '+e.message));
         // The dedicated workspace has no project contents. Its layout choices are window-scoped.
         for(const cmd of ['workbench.action.closePanel','workbench.action.closeAuxiliaryBar','workbench.action.closeSidebar']){
             await vscode.commands.executeCommand(cmd);

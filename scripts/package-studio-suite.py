@@ -45,7 +45,7 @@ def package_extension(suite):
     src = ROOT / "companions/native-studio/extension"
     name = "meshlit-native.vsix"
     manifest = """<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
-    <Metadata><Identity Language="en-US" Id="native-studio" Version="2.0.48" Publisher="meshlit"/>
+    <Metadata><Identity Language="en-US" Id="native-studio" Version="2.0.49" Publisher="meshlit"/>
     <DisplayName>Meshlit Studio</DisplayName><Description>Offline model studio</Description>
     <Properties><Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.95.0"/></Properties></Metadata>
     <Installation><InstallationTarget Id="Microsoft.VisualStudio.Code"/></Installation><Dependencies/>
@@ -75,7 +75,7 @@ def launcher(suite):
         (contents / "Info.plist").write_bytes(plistlib.dumps({
             "CFBundleExecutable": "Meshlit", "CFBundleName": "Meshlit",
             "CFBundleDisplayName": "Meshlit", "CFBundleIconFile": "meshlit.icns", "CFBundlePackageType": "APPL",
-            "CFBundleIdentifier": "bd.com.imon.meshlit.studio", "CFBundleShortVersionString": "2.0.48", "CFBundleVersion": "48"}))
+            "CFBundleIdentifier": "bd.com.imon.meshlit.studio", "CFBundleShortVersionString": "2.0.49", "CFBundleVersion": "49"}))
     subprocess.run(["rustc", "--edition=2021", "-C", "opt-level=3", str(ROOT / "companions/native-studio/launcher.rs"), "-o", target], check=True)
     if SYSTEM == "Darwin":
         subprocess.run(["codesign", "--force", "--sign", "-", suite / "Meshlit.app"], check=True)

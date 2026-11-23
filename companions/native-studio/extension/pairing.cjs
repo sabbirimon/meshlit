@@ -64,29 +64,114 @@ async function invite(identity,ip,name) {
     const q=new URLSearchParams({name,url:base,node:identity.node,key:identity.key,tier:'DESKTOP',exp:String(expires)});
     return {link:'meshlit://pair?'+q.toString(),stop};
 }
-function register(vscode,context) {
+function register(vscode,context,hooks) {
     let hosting,identityPromise;
     async function identity() {
         if(!identityPromise)identityPromise=(async()=>{const saved=await context.secrets.get('pair-identity');if(saved)return JSON.parse(saved);const value=newIdentity();await context.secrets.store('pair-identity',JSON.stringify(value));return value;})().catch(e=>{identityPromise=undefined;throw e;});
         return identityPromise;
     }
     const peers=()=>context.globalState.get('verified-peers',[]);
+    const {Devices}=require('./device-service.cjs'),{deviceId}=require('./device-tls.cjs');
+    let service,starting,acceptUntil=0;
+    const grants=key=>context.globalState.get('model-access:'+deviceId(key),[]);
+    const serving=require('./remote-models.cjs').serving(hooks.root,hooks.models,grants,hooks.threads,hooks.log);
+    let writes=Promise.resolve();
+    function save(peer) {
+        const work=writes.then(async()=>{
+            const list=peers(),previous=list.find(p=>p.node===peer.node||p.key===peer.key);
+            if(previous&&previous.key!==peer.key)throw Error('Device identity changed');
+            if(!previous&&list.length>=64)throw Error('Forget a device before pairing another');
+            const entry={...previous,...peer,fingerprint:crypto.createHash('sha256').update(Buffer.from(peer.key,'hex')).digest('hex'),verifiedAt:Date.now(),expires:null};
+            await context.globalState.update('verified-peers',[...list.filter(p=>p!==previous),entry]);
+        });
+        writes=work.catch(()=>{});return work;
+    }
+    async function start() {
+        if(service)return service;
+        if(!starting)starting=(async()=>{
+            const id=await identity();
+            const next=new Devices(id,{peers,save,accepting:()=>Date.now()<acceptUntil,
+                approve:async(name,code)=>await vscode.window.showInformationMessage('Pair with '+name+'? Device ID '+code,{modal:true},'Pair device')==='Pair device',
+                inventory:serving.inventory,generate:serving.generate});
+            await next.start();service=next;
+            const url=context.globalState.get('device-relay');
+            if(url){
+                const token=await context.secrets.get('device-relay-token');
+                if(token){next.relay=new (require('./device-relay.cjs').Relay)(url,token,id,next.port);next.relay.start().catch(()=>next.relay?.retry());}
+            }
+            return next;
+        })().finally(()=>{starting=undefined;});
+        return starting;
+    }
+    function stop(){service?.stop();service=undefined;serving.stop();}
+    async function connect(item) {
+        const svc=await start(), signal=AbortSignal.timeout(90000);
+        const reply=await svc.call(item,{op:'pair',node:svc.node,name:svc.name},signal);
+        if(reply.ok!==true||typeof reply.name!=='string'||reply.name.length>128||!/^[a-f0-9-]{36}$/i.test(reply.node))throw Error('Invalid device response');
+        await save({name:reply.name,key:reply.key,node:reply.node});
+        vscode.window.showInformationMessage('Paired with '+reply.name);
+    }
+    async function nearby(svc) {
+        const picker=vscode.window.createQuickPick();picker.title='Nearby devices · choose one to pair';
+        picker.placeholder='Open Devices and enable nearby pairing on the other computer';
+        const refresh=()=>{
+            const candidates=[...svc.nearby.values()].filter(p=>Date.now()-p.seen<15000);
+            picker.items=candidates.map(p=>({label:p.name,description:p.id,device:p}));picker.busy=!candidates.length;
+        };
+        const selected=await new Promise(resolve=>{
+            const timer=setInterval(refresh,1000);refresh();
+            picker.onDidAccept(()=>{if(picker.selectedItems[0]){resolve(picker.selectedItems[0].device);picker.hide();}});
+            picker.onDidHide(()=>{clearInterval(timer);resolve(undefined);picker.dispose();});picker.show();
+        });
+        if(selected)await connect(selected);
+    }
+    async function chooseRemote(peer){
+        const svc=await start();
+        const {models}=await svc.call(svc.locate(peer),{op:'models'},AbortSignal.timeout(15000));
+        if(!Array.isArray(models)||!models.length)throw Error('No models shared. On '+peer.name+', open Devices, choose this computer and select Share models.');
+        const choice=await vscode.window.showQuickPick(models.filter(m=>typeof m.name==='string'&&typeof m.id==='string').slice(0,128).map(m=>({label:m.name,id:m.id})),{title:'Use a model on '+peer.name});
+        if(choice)await hooks.select({kind:'peer',device:deviceId(peer.key),hostName:peer.name,model:choice.label,remoteModel:choice.id});
+    }
     async function receive(link) {
         if(!link)return;
         const peer=parseInvite(link),previous=peers().find(p=>p.node===peer.node);
         if(previous&&previous.key!==peer.key)throw Error('This device has changed its identity key. Verify with the owner before forgetting the former identity.');
         if(await vscode.window.showWarningMessage(peer.name+'\n'+peer.base+'\nSHA-256 '+peer.fingerprint,{modal:true},'Verify device')!=='Verify device')return;
         await contact(peer);
-        const current=peers(),old=current.find(p=>p.node===peer.node);
-        if(old&&old.key!==peer.key)throw Error('Saved identity changed during verification');
-        if(!old&&current.length>=64)throw Error('Forget a saved device before adding another');
-        await context.globalState.update('verified-peers',[...current.filter(p=>p.node!==peer.node),{...peer,expires:null,verifiedAt:Date.now()}]);
+        await save(peer);
         vscode.window.showInformationMessage(peer.name+' proved its identity. No remote-control permission was granted.');
     }
     async function manage(link) {
         if(link)return receive(link);
-        const pick=await vscode.window.showQuickPick([{label:'Pair using a link',op:'receive'},{label:'Share this device for 10 minutes',op:'share'},...(hosting?[{label:'Stop sharing identity',op:'stop'}]:[]),...peers().map(peer=>({label:peer.name,description:peer.base,peer}))],{title:'Paired devices'});
+        if(service)acceptUntil=Date.now()+120000;
+        const options=service?[
+            {label:'Find nearby devices',op:'nearby'},
+            {label:'Pair by device ID',op:'dial'},
+            {label:'Copy my device ID',description:service.id,op:'copy'},
+            {label:'Configure internet relay',description:context.globalState.get('device-relay',''),op:'relay'},
+            {label:'Turn off device networking',op:'disable'}
+        ]:[{label:'Enable nearby pairing',description:'Make this computer visible on the LAN',op:'enable'}];
+        const pick=await vscode.window.showQuickPick([...options,{label:'Pair using a link',op:'receive'},{label:'Share this device for 10 minutes',op:'share'},...(hosting?[{label:'Stop sharing identity',op:'stop'}]:[]),...peers().map(peer=>({label:peer.name,description:deviceId(peer.key),peer}))],{title:'Devices'});
         if(!pick)return;
+        if(pick.op==='enable'){await start();await context.globalState.update('device-network',true);return manage();}
+        if(pick.op==='disable'){stop();await context.globalState.update('device-network',false);return;}
+        if(pick.op==='copy')return vscode.env.clipboard.writeText(service.id);
+        if(pick.op==='nearby')return nearby(service);
+        if(pick.op==='dial'){
+            const input=await vscode.window.showInputBox({title:'Meshlit device ID',validateInput:v=>/^[a-f0-9]{20}$/i.test(v.trim())?undefined:'Enter the 20-character device ID'});
+            if(input){const id=input.trim().toLowerCase();await connect(service.nearby.get(id)||{id});}return;
+        }
+        if(pick.op==='relay'){
+            const url=await vscode.window.showInputBox({title:'Internet relay HTTPS origin (clear to disconnect)',value:context.globalState.get('device-relay','')});
+            if(url===undefined)return;
+            if(url){
+                const {Relay,relayURL}=require('./device-relay.cjs');relayURL(url);
+                const token=await vscode.window.showInputBox({title:'Relay access token',password:true});if(!token)return;
+                const relay=new Relay(url,token,await identity(),service.port);
+                await relay.start();service.relay?.stop();service.relay=relay;await context.secrets.store('device-relay-token',token);
+            }else{service.relay?.stop();service.relay=undefined;await context.secrets.delete('device-relay-token');}
+            await context.globalState.update('device-relay',url||undefined);return;
+        }
         if(pick.op==='stop'){hosting?.stop();hosting=undefined;return;}
         if(pick.op==='receive')return receive(await vscode.window.showInputBox({title:'Pairing link from the other device',ignoreFocusOut:true}));
         if(pick.op==='share'){
@@ -96,10 +181,29 @@ function register(vscode,context) {
             hosting?.stop();hosting=await invite(await identity(),choice.ip,os.hostname().slice(0,128));
             await vscode.env.clipboard.writeText(hosting.link);vscode.window.showInformationMessage('Pairing link copied. Paste it on the other device within 10 minutes.');return;
         }
-        const action=await vscode.window.showQuickPick(['Verify again','Forget device'],{title:pick.peer.name});
-        if(action==='Verify again'){await contact(pick.peer);vscode.window.showInformationMessage('Identity verified: '+pick.peer.name);}
-        if(action==='Forget device')await context.globalState.update('verified-peers',peers().filter(p=>p.node!==pick.peer.node));
+        const action=await vscode.window.showQuickPick([...(service?['Use a shared model','Share models']:[]),'Verify again','Forget device'],{title:pick.peer.name});
+        if(action==='Use a shared model')return chooseRemote(pick.peer);
+        if(action==='Share models'){
+            const key=pick.peer.key,choices=hooks.models().map(m=>({label:m.name,id:m.id,picked:grants(key).includes(m.id)}));
+            const selected=await vscode.window.showQuickPick(choices,{title:'Models '+pick.peer.name+' may use on this computer',canPickMany:true});
+            if(selected){serving.stop();await context.globalState.update('model-access:'+deviceId(key),selected.map(m=>m.id));}return;
+        }
+        if(action==='Verify again'){
+            if(service)await service.call(service.locate(pick.peer),{op:'models'},AbortSignal.timeout(15000));
+            else if(pick.peer.base)await contact(pick.peer);else throw Error('Enable device networking to verify this device');
+            vscode.window.showInformationMessage('Identity verified: '+pick.peer.name);
+        }
+        if(action==='Forget device'){
+            serving.stop();await context.globalState.update('model-access:'+deviceId(pick.peer.key),undefined);
+            await context.globalState.update('verified-peers',peers().filter(p=>p.key!==pick.peer.key));
+        }
     }
-    context.subscriptions.push({dispose:()=>hosting?.stop()});return manage;
+    manage.chat=async(route,messages,options,signal,onDelta)=>{
+        const peer=peers().find(p=>deviceId(p.key)===route.device);
+        if(!peer||!service)throw Error('Open Devices and enable the paired connection');
+        return service.call(service.locate(peer),{op:'chat',model:route.remoteModel,messages,...options},signal,onDelta);
+    };
+    manage.restore=()=>context.globalState.get('device-network',false)?start():Promise.resolve();
+    context.subscriptions.push({dispose:()=>{hosting?.stop();stop();}});return manage;
 }
 module.exports={parseInvite,verify,contact,newIdentity,invite,register};
