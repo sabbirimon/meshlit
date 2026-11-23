@@ -1,0 +1,46 @@
+name: Publish verified Studio archives
+on:
+  push:
+    branches: [release/studio-downloads]
+    paths: ['.github/workflows/publish-studio.yml']
+permissions:
+  actions: read
+  attestations: read
+  contents: write
+concurrency:
+  group: publish-studio-downloads
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SOURCE: 25ff596f9067b728b07471c929abc5f0d8518cf5
+      RUN: '45225787204'
+      TAG: v2.0.48-studio.1
+    steps:
+      - name: Verify all tested packages before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh run view "$RUN" -R "$REPO" --json conclusion,headSha --jq '[.conclusion,.headSha]|join(" ")')" = "success $SOURCE"
+          mkdir assets
+          for platform in Windows-X64 Linux-X64 macOS-ARM64; do
+            gh run download "$RUN" -R "$REPO" -D "$platform" -n "Meshlit-Full-Studio-$platform"
+            filename="Meshlit-Studio-$platform.tar.gz"
+            if [[ "$platform" == Windows-X64 ]]; then filename="Meshlit-Studio-$platform.zip"; fi
+            archive="$platform/$filename"
+            (cd "$platform" && sha256sum -c SHA256SUMS.txt)
+            gh attestation verify "$archive" --repo "$REPO" --signer-workflow "$REPO/.github/workflows/full-studio.yml" --source-digest "$SOURCE"
+            mv "$archive" "assets/$filename"
+            rm -r "$platform"
+          done
+          (cd assets && sha256sum * > SHA256SUMS.txt)
+          cat > notes.md <<'NOTES'
+          Windows x64: download the ZIP, extract the entire Meshlit-Studio folder, and open Meshlit.exe. Keep the toolchain, editor, models and inference folders beside the launcher. General Chat opens first. The coding IDE opens from Home.
+
+          Platform archives were tested after extraction. Verify downloads with SHA256SUMS.txt or GitHub artifact attestations. This is a preview build. OS publisher signing and notarization remain outstanding.
+          NOTES
+          gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.48-studio.1" --notes-file notes.md assets/*
+          gh release edit "$TAG" -R "$REPO" --draft=false
