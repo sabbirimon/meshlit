@@ -7,7 +7,12 @@ on:
       - '.github/workflows/mobile-candidate.yml'
       - 'core-inference/src/main/cpp/**'
       - 'core-inference/build.gradle.kts'
+      - 'app/src/productionCandidate/**'
+      - 'scripts/check-core-candidate.py'
       - 'core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/LayerPlacement.kt'
+concurrency:
+  group: android-native-candidate-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
   id-token: write
@@ -22,6 +27,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
       - uses: android-actions/setup-android@v4.0.4
         with:
           packages: platform-tools
