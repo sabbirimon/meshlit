@@ -43,7 +43,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Meshlit"
-            packageVersion = providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.46")
+            packageVersion = providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.47")
             modules("jdk.jfr", "jdk.xml.dom", "jdk.httpserver", "jdk.jsobject", "java.scripting", "java.xml", "jdk.unsupported.desktop", "java.instrument", "java.logging", "java.net.http", "java.prefs", "java.rmi", "java.security.jgss", "java.management", "jdk.management", "jdk.crypto.ec", "jdk.unsupported")
             description = "Experimental Meshlit Studio; runtime availability depends on the installed package"
             vendor = "Sabbir Hassan Imon"
@@ -110,7 +110,7 @@ val generateStudioIdentity by tasks.registering {
         val file = studioBuildMetadata.get().file("studio-build.properties").asFile
         file.parentFile.mkdirs()
         val metadata = Properties().apply {
-            setProperty("version", providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.46") + "-" + providers.gradleProperty("meshlit.channel").getOrElse("dev"))
+            setProperty("version", providers.gradleProperty("meshlit.packageVersion").getOrElse("2.0.47") + "-" + providers.gradleProperty("meshlit.channel").getOrElse("dev"))
             setProperty("revision", git("rev-parse", "HEAD"))
             setProperty("dirty", git("status", "--porcelain", "--untracked-files=normal").isNotEmpty().toString())
             setProperty("builtAt", Instant.now().toString())

@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
         Spacer(Modifier.height(12.dp))
         Button(onNewChat, Modifier.fillMaxWidth().heightIn(min = 44.dp), colors = ButtonDefaults.buttonColors(backgroundColor = colors.primary.copy(alpha = .14f), contentColor = colors.primary), elevation = null, shape = RoundedCornerShape(24.dp)) { Text("＋  New chat") }
         Spacer(Modifier.height(10.dp))
-        listOf("chat" to "Chat", "code" to "Workspace", "models" to "Models", "management" to "Dashboards", "device-dashboard" to "Devices").forEach { (id, title) ->
+        listOf("management" to "Dashboard", "chat" to "Chat", "code" to "Coding IDE", "models" to "Models", "device-dashboard" to "Devices").forEach { (id, title) ->
             Surface(Modifier.fillMaxWidth().clickable { onSelect(id) }, shape = RoundedCornerShape(12.dp),
                 color = if (current == id) colors.primary.copy(alpha = .15f) else Color.Transparent,
                 border = null) {

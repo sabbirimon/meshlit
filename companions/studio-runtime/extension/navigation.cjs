@@ -1,9 +1,8 @@
 const vscode=require('vscode');
-const crypto=require('node:crypto');
 const entries=[['New chat','chat','add'],['General chat','generalChat','comment-discussion'],
  ['Workspaces','workspaces','folder-opened'],['Workspace agents','workspaceAgents','code'],
  ['Bots','bots','hubot'],['Models','models','server'],['LLM settings','llmSettings','settings-gear'],
- ['Welcome','home','home'],['Open IDE','openIde','window'],
+ ['Studio dashboard','home','home'],['Open IDE','openIde','window'],
  ['Tools',undefined,'tools',[['Workspace changes','workspaceChanges','diff'],
   ['Connected capabilities','connectedCapabilities','plug'],['System resources','systemMonitor','dashboard'],
   ['Voice and vision','voice','mic'],['Project memory','memory','book'],
@@ -13,7 +12,6 @@ const command=id=>id.startsWith('workbench.')?id:'meshlit.'+id;
 const workspaceKey='meshlit.recentWorkspaces';
 const localFolder=()=>vscode.workspace.workspaceFolders?.find(folder=>folder.uri.scheme==='file');
 function register(context){
- let home;
  context.subscriptions.push(vscode.window.registerTreeDataProvider('meshlit.navigation',{
   getChildren:item=>item?item[3]||[]:entries,
   getTreeItem:([label,id,icon,children])=>{
@@ -60,24 +58,15 @@ function register(context){
   }),
   vscode.commands.registerCommand('meshlit.startupView',async()=>{
    const setting=vscode.workspace.getConfiguration('meshlit');
-   const current=setting.get('startupView','chat');
-   const views=[{id:'chat',label:'General Chat'},{id:'welcome',label:'Welcome'},{id:'editor',label:'Editor'}];
+   const current=setting.get('startupView','welcome');
+   const views=[{id:'chat',label:'General Chat'},{id:'welcome',label:'Studio dashboard'},{id:'editor',label:'Editor'}];
    const choice=await vscode.window.showQuickPick(views.map(view=>({...view,description:view.id===current?'Current default':undefined})),
     {title:'Startup view for windows without a workspace'});
    if(!choice)return;
    await setting.update('startupView',choice.id,vscode.ConfigurationTarget.Global);
    await vscode.commands.executeCommand({chat:'meshlit.generalChat',welcome:'meshlit.home',editor:'workbench.view.explorer'}[choice.id]);
   }));
- context.subscriptions.push(vscode.commands.registerCommand('meshlit.home',()=>{
-  if(home){home.reveal(vscode.ViewColumn.One);return;}
-  home=require('./shell.cjs').createPanel(vscode,'meshlit.home','Welcome to Meshlit',vscode.ViewColumn.One,{enableScripts:true,localResourceRoots:[]});
-  home.webview.html=render();
-  home.webview.onDidReceiveMessage(async({action})=>{
-   const allowed={folder:'meshlit.workspaces',chat:'meshlit.generalChat',agent:'meshlit.workspaceAgents',bots:'meshlit.bots',ide:'meshlit.openIde',models:'meshlit.models',usage:'meshlit.usage',startup:'meshlit.startupView',settings:'meshlit.settings',unlock:'meshlit.unlockUsage'};
-   if(Object.hasOwn(allowed,action))await vscode.commands.executeCommand(allowed[action]);
-  });
-  home.onDidDispose(()=>home=undefined);
- }));
+ context.subscriptions.push(vscode.commands.registerCommand('meshlit.home',()=>vscode.commands.executeCommand('meshlit.management')));
  context.subscriptions.push(vscode.commands.registerCommand('meshlit.models',()=>vscode.commands.executeCommand('meshlit.mainModels')));
  context.subscriptions.push(vscode.commands.registerCommand('meshlit.modelPicker',async()=>{
   const profiles=context.globalState.get('meshlit.connections',[]);
@@ -94,7 +83,4 @@ function register(context){
   if(choice)await vscode.window.showInformationMessage('This connector is available when starting an Edit or Autopilot agent. Tool calls require approval.');
  }));
 }
-function render(){const nonce=crypto.randomBytes(24).toString('hex');return `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><style nonce="${nonce}">
-*{box-sizing:border-box}body{margin:0;background:var(--vscode-editor-background);color:var(--vscode-foreground);font:14px var(--vscode-font-family)}main{max-width:640px;margin:auto;padding:clamp(40px,12vh,140px) 32px 30px}.mark{display:block;margin:0 auto 22px;width:56px;height:56px}h1{text-align:center;font-size:24px;font-weight:500;letter-spacing:-.6px;margin:0 0 8px}.subtitle{text-align:center;color:var(--vscode-descriptionForeground);margin-bottom:40px}button{font:inherit;cursor:pointer;color:inherit;background:transparent;border:0}button:focus-visible{outline:2px solid var(--vscode-focusBorder);outline-offset:3px}.primary,.secondary{display:block;width:100%;padding:13px;margin:10px 0;border-radius:5px;background:var(--vscode-button-background);color:var(--vscode-button-foreground)}.secondary{background:var(--vscode-input-background);color:var(--vscode-foreground)}h2{font-size:13px;font-weight:500;margin:30px 0 12px;color:var(--vscode-descriptionForeground)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{text-align:left;padding:16px;border:1px solid var(--vscode-panel-border);border-radius:8px}.card:hover{background:var(--vscode-list-hoverBackground)}.card span{display:block;color:var(--vscode-descriptionForeground);font-size:12px;line-height:1.5;margin-top:6px}footer{display:flex;gap:20px;flex-wrap:wrap;margin-top:28px;color:var(--vscode-textLink-foreground)}.note{font-size:12px;line-height:1.6;color:var(--vscode-descriptionForeground);margin-top:28px}@media(max-width:450px){main{padding:32px 20px}.grid{grid-template-columns:1fr}}
-</style></head><body><main><svg class="mark" viewBox="0 0 56 56" aria-label="Meshlit"><path d="M8 44V12L28 32L48 12V44" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>Welcome to Meshlit</h1><p class="subtitle">Chat with a model, choose a bot, or open a project.</p><button class="primary" data-action="chat">Start general chat</button><h2>Explore Studio</h2><div class="grid"><button class="card" data-action="folder">Workspaces<span>Open a project folder or return to a recent project.</span></button><button class="card" data-action="agent">Workspace agents<span>Plan, review edits, and run agent teams in your project.</span></button><button class="card" data-action="bots">Bots<span>Create a reusable assistant with your own instructions and model.</span></button><button class="card" data-action="ide">Open IDE<span>Browse files and use the full editor and terminal.</span></button></div><footer><button data-action="startup">Startup view</button><button data-action="models">Models</button><button data-action="usage">Usage</button><button data-action="settings">Settings</button></footer></main><script nonce="${nonce}">const api=acquireVsCodeApi();document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>api.postMessage({action:button.dataset.action}));</script></body></html>`;}
-module.exports={register,render};
+module.exports={register,render:require('./management.cjs').render};

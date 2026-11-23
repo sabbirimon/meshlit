@@ -424,12 +424,12 @@
             "welcome",
             "editor"
           ],
-          "default": "chat",
+          "default": "welcome",
           "scope": "application",
           "description": "Choose the first screen for a Studio window without an open workspace.",
           "enumDescriptions": [
             "Open a general conversation with the bundled local model.",
-            "Open the Meshlit welcome page.",
+            "Open the Studio management dashboard.",
             "Open the native editor workbench."
           ]
         },

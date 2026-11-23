@@ -430,7 +430,7 @@ function activate(context) {
     }),vscode.commands.registerCommand('meshlit.usage',()=>{boot(context);usagePage.open();}));
   const button=vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right,100);
   button.text='$(comment-discussion) Meshlit · New chat';button.command='meshlit.chat';button.show();context.subscriptions.push(button);
-  const startup=vscode.workspace.getConfiguration?.('meshlit').get('startupView','chat')||'chat';
+  const startup=vscode.workspace.getConfiguration?.('meshlit').get('startupView','welcome')||'welcome';
   if(startup!=='editor'&&!vscode.workspace.workspaceFolders?.length&&vscode.workspace.isTrusted){
     void (async()=>{
       await vscode.commands.executeCommand('workbench.action.exitZenMode');

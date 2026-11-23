@@ -129,12 +129,29 @@ fun main(args: Array<String>) {
     var settings by remember { mutableStateOf(false) }
     var section by remember { mutableStateOf("models") }
     var vendorDashboard by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var dashboard by remember { mutableStateOf(true) }
+    var ideFocus by remember { mutableStateOf(0) }
     var coding by remember { mutableStateOf(false) }
     var codeCommand by remember { mutableStateOf(0 to "") }
     LaunchedEffect(coding) { if(!coding) codeCommand = 0 to "" }
     var responsePolicy by remember { mutableStateOf(ResponsePolicy.ASSISTANT) }
     var instructions by remember { mutableStateOf(DesktopStarter.prompt) }
-    fun openSection(id: String) { if(id == "code") { coding = true; settings = false } else { section = id; settings = true } }
+    fun openSection(id: String) {
+        settings = false
+        when (id) {
+            "management" -> dashboard = true
+            "chat" -> dashboard = false
+            "code", "ide" -> {
+                dashboard = true
+                coding = true
+                ideFocus++
+            }
+            else -> {
+                section = id
+                settings = true
+            }
+        }
+    }
     var studioMode by remember { mutableStateOf(StudioMode.CHAT) }
     var studioApproval by remember { mutableStateOf(StudioApproval.ASK) }
     var assistantFolder by remember { mutableStateOf<java.nio.file.Path?>(null) }
@@ -321,12 +338,12 @@ fun main(args: Array<String>) {
     LaunchedEffect(command) {
         runCatching {
             when(command.second) {
-                "new-chat" -> { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false }
-                "assistant-controls" -> { assistantControls = true }
+                "new-chat" -> { stop(); messages = emptyList(); usage = GenerationUsage(); openSection("chat") }
+                "assistant-controls" -> { if (!coding) dashboard = false; assistantControls = true }
                 "paste-draft" -> { prompt = (prompt + (clipboard.getText()?.text ?: "")).take(131072) }
                 "copy-draft" -> clipboard.setText(AnnotatedString(prompt))
                 "clear-draft" -> { prompt = "" }
-                "open-folder", "terminal" -> { codeCommand = command; coding = true; settings = false }
+                "open-folder", "terminal" -> { codeCommand = command; openSection("code") }
                 "save-file", "focus-editor", "show-files" -> if(coding) { codeCommand = command }
                 "vscode" -> if(coding) { codeCommand = command } else openVsCode()
                 "guide" -> java.awt.Desktop.getDesktop().browse(java.net.URI("https://github.com/sabbirimon/meshlit/blob/plan/studio-mobile-lts/docs/USER_GUIDE.md"))
@@ -337,18 +354,18 @@ fun main(args: Array<String>) {
     }
     val colors = desktopColors(look)
     DesktopTheme(look, scale) {
+        if(assistantControls) StudioControlDialog(studioMode, studioApproval, assistantFolder?.toString(), busy,
+            onMode = { studioMode = it }, onApproval = { studioApproval = it }, onClose = { assistantControls = false },
+            onFolder = {
+                val picker = javax.swing.JFileChooser().apply { fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY }
+                if(picker.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) runCatching {
+                    assistantFolder = CodeFiles(picker.selectedFile.toPath()).root; studioApproval = StudioApproval.ASK
+                }.onFailure { navigationError = "Could not open the assistant workspace" }
+            })
+        pendingAction?.let { pending -> StudioActionDialog(pending, if(localMode) "On device" else "$onlineService · $model") { pending.answer.complete(it) } }
+
         val chatContent: @Composable RowScope.() -> Unit = {
                     Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        if(assistantControls) StudioControlDialog(studioMode, studioApproval, assistantFolder?.toString(), busy,
-                            onMode = { studioMode = it }, onApproval = { studioApproval = it }, onClose = { assistantControls = false },
-                            onFolder = {
-                                val picker = javax.swing.JFileChooser().apply { fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY }
-                                if(picker.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) runCatching {
-                                    assistantFolder = CodeFiles(picker.selectedFile.toPath()).root; studioApproval = StudioApproval.ASK
-                                }.onFailure { navigationError = "Could not open the assistant workspace" }
-                            })
-                        pendingAction?.let { pending -> StudioActionDialog(pending, if(localMode) "On device" else "$onlineService · $model") { pending.answer.complete(it) } }
-
                         WorkspaceHeader(
                             title = if (localMode) customModel?.fileName?.toString() ?: DesktopStarter.label else model.ifBlank { "Meshlit" },
                             status = if (localMode) if (localSession != null) "Offline · ${localSession?.backend} · ready" else if (localLoading) "Verifying and loading local model…" else "Offline model · load when ready"
@@ -421,12 +438,17 @@ fun main(args: Array<String>) {
             BoxWithConstraints {
                 val wide = maxWidth > 860.dp
                 Row(Modifier.fillMaxSize()) {
-                    if (wide) WorkspaceRail(if(settings) section else "chat", onSelect = { id ->
-                        if (id == "chat") settings = false else openSection(id)
-                    }, onNewChat = { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false })
-                    if (!coding) chatContent() else Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        Text("Coding workspace is open", color = colors.onSurface.copy(alpha = .6f))
-                    }
+                    if (wide) WorkspaceRail(if (settings) section else if (dashboard) "management" else "chat", onSelect = ::openSection, onNewChat = { stop(); messages = emptyList(); usage = GenerationUsage(); openSection("chat") })
+                    if (dashboard) {
+                        Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(if (wide) 28.dp else 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            DashboardHub(modelStatus = when {
+                                localLoading -> "Loading model"
+                                localSession != null -> "Local model loaded"
+                                else -> "No local session"
+                            }, onNavigate = ::openSection)
+                        }
+                    } else chatContent()
                 }
             }
             vendorDashboard?.let { (name, url) ->
@@ -434,7 +456,7 @@ fun main(args: Array<String>) {
                     icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1280.dp, height = 860.dp)) {
                     StudioMenus(onCommand, onQuit)
                     Surface(Modifier.fillMaxSize(), color = colors.background) {
-                        EmbeddedDashboard(name, url, onDraft = { prompt = listOf(prompt, it).filter { draft -> draft.isNotBlank() }.joinToString("\n\n"); vendorDashboard = null; settings = false }, onClose = { vendorDashboard = null })
+                        EmbeddedDashboard(name, url, onDraft = { prompt = listOf(prompt, it).filter { draft -> draft.isNotBlank() }.joinToString("\n\n"); vendorDashboard = null; openSection("chat") }, onClose = { vendorDashboard = null })
                     }
                 }
             }
@@ -443,14 +465,17 @@ fun main(args: Array<String>) {
                 var closeCode by remember { mutableStateOf(false) }
                 Window(onCloseRequest = { if (codeDirty) closeCode = true else coding = false },
                     title = "Meshlit · Coding workspace", icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1420.dp, height = 860.dp)) {
+                    LaunchedEffect(ideFocus) { window.toFront(); window.requestFocus() }
                     StudioMenus(onCommand, onQuit, coding = true)
                     Surface(Modifier.fillMaxSize(), color = colors.background) {
                         Row(Modifier.fillMaxSize()) {
-                            CodingWorkspace(Modifier.weight(1.6f).fillMaxHeight(), onDraft = { prompt = it }, onClose = { coding = false },
+                            CodingWorkspace(Modifier.weight(1.6f).fillMaxHeight(), onDraft = { prompt = it; dashboard = true }, onClose = { coding = false },
                                 onDirty = { codeDirty = it; editorDirty = it; onCodeDirty(it) }, command = codeCommand,
                                 onWorkspace = { folder -> if(assistantFolder != folder) { stop(); assistantFolder = folder; studioApproval = StudioApproval.ASK } })
-                            Divider(Modifier.width(1.dp).fillMaxHeight(), color = colors.onSurface.copy(alpha = .10f))
-                            chatContent()
+                            if (dashboard) {
+                                Divider(Modifier.width(1.dp).fillMaxHeight(), color = colors.onSurface.copy(alpha = .10f))
+                                chatContent()
+                            }
                         }
                         if (closeCode) AlertDialog(onDismissRequest = { closeCode = false }, title = { Text("Unsaved changes") },
                             text = { Text("Save your file first, or discard edits before closing the workspace.") },
@@ -459,7 +484,7 @@ fun main(args: Array<String>) {
                     }
                 }
             }
-            if (settings) Window(onCloseRequest = { settings = false }, title = t("Meshlit Studio · workspace", "Meshlit Studio · 工作区"), icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1060.dp, height = 800.dp)) {
+            if (settings) Window(onCloseRequest = { settings = false }, title = t("Meshlit Studio · Settings", "Meshlit Studio · 设置"), icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1060.dp, height = 800.dp)) {
                 StudioMenus(onCommand, onQuit)
                 Surface(Modifier.fillMaxSize(), color = colors.background) {
                     Row(Modifier.fillMaxSize()) {
@@ -469,7 +494,7 @@ fun main(args: Array<String>) {
                             TextButton({ advanced = true; runCatching { preferences.saveAdvanced(true) }.onFailure { preferencesError = true } }) { Text((if (advanced) "✓ " else "") + "Advanced") }
                         }
                         Text(if (advanced) "Technical controls and feature availability" else "Appearance, privacy and help", style = MaterialTheme.typography.caption)
-                        Box(Modifier.weight(1f)) { DesktopMenu(section, { section = it }, advanced = advanced) }
+                        Box(Modifier.weight(1f)) { DesktopMenu(section, ::openSection, advanced = advanced) }
                     }
                     Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     val destination = DesktopDestinations.all.first { it.id == section }
@@ -491,13 +516,13 @@ fun main(args: Array<String>) {
                         if (localMode) {
                             ModelRecommendations(onLoad = { item ->
                                 stop(true); customModel = java.nio.file.Path.of(item.path); customModelHash = item.sha256
-                                messages = emptyList(); loadLocal(); settings = false
+                                messages = emptyList(); loadLocal(); openSection("chat")
                             })
                             ModelManager(onLoad = { item ->
                                 stop(true); customModel = java.nio.file.Path.of(item.path); customModelHash = item.sha256
-                                messages = emptyList(); loadLocal(); settings = false
+                                messages = emptyList(); loadLocal(); openSection("chat")
                             }, onBundled = {
-                                stop(true); customModel = null; customModelHash = null; messages = emptyList(); loadLocal(); settings = false
+                                stop(true); customModel = null; customModelHash = null; messages = emptyList(); loadLocal(); openSection("chat")
                             })
                             Text(customModel?.fileName?.toString() ?: DesktopStarter.label, fontWeight = FontWeight.Bold)
                             Text(t("Bundled Qwen: 1.12 GB · text/chat/code · ${engineOptions.context}-token configured context · CPU. A small model can make mistakes; it has no web or device tools. Imported GGUFs depend on engine support and available RAM.", "内置 Qwen：1.12 GB · 文本/聊天/代码 · 4,096 令牌上下文 · CPU。小模型可能出错；没有网络或设备工具。导入 GGUF 取决于引擎支持和可用内存。"), style = MaterialTheme.typography.caption)
@@ -557,7 +582,7 @@ fun main(args: Array<String>) {
                         "agents" -> {
                             Text("${studioMode.label} · ${studioApproval.label}")
                             Text("Shared assistant controls for Studio chat and coding. Runs use bounded file tools, system readings and Meshlit navigation. Permissions apply to assistant actions, not your manual settings or terminal commands.")
-                            Button({ assistantControls = true; settings = false }) { Text("Mode, approvals & workspace") }
+                            Button({ assistantControls = true; openSection("chat") }) { Text("Mode, approvals & workspace") }
                         }
                         "providers" -> OnlineModelsPanel(onlineService, endpoint, token, hostProtocol, gateway,
                             network && !localMode, connected && !localMode, busy, if(localMode) emptyList() else models, model,
@@ -571,7 +596,7 @@ fun main(args: Array<String>) {
                             setGateway = { stop(); gateway = it; pricedRoute = "" },
                             setAllowed = { stop(); localMode = false; network = it; connected = false },
                             connect = ::connect,
-                            choose = { model = it; settings = false }, onUsage = { section = "usage" },
+                            choose = { model = it; openSection("chat") }, onUsage = { section = "usage" },
                             credentialControls = { CredentialControls(credentials, endpoint, hostProtocol, token,
                                 invalidate = { stop(); network = false; connected = false; token = ""; activeCredential = null },
                                 use = { lease, value -> activeCredential = lease; token = value }) },
@@ -630,7 +655,7 @@ fun main(args: Array<String>) {
                             Button({ stop(true) }) { Text("Stop request & unload local model") }
                             Text("This stops the process owned by Meshlit. Remote host lifecycle, agent jobs and other devices remain managed by their own authorised controllers.")
                         }
-                        "management" -> DashboardHub { section = it }
+                        "management" -> DashboardHub(onNavigate = ::openSection)
                         "usage" -> {
                             val route = UsageLedger.route(endpoint + "/" + hostProtocol, model)
                             UsageHistoryDashboard(usageVault, route, if(localMode) "" else model, gateway,
@@ -640,7 +665,7 @@ fun main(args: Array<String>) {
                         "router" -> RoutingDashboard({ section = "models" }, { section = "providers" })
                         "vpn" -> VpnDashboard({ section = "network" }, { section = "securityprivacy" })
                         "search" -> SearchPanel(messages.map { it.role to it.text }) { destination, chatQuery ->
-                            if (destination == "chat") { query = chatQuery; settings = false }
+                            if (destination == "chat") { query = chatQuery; openSection("chat") }
                             else section = destination
                         }
                         "help" -> {

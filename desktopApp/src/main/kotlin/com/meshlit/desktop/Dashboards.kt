@@ -4,52 +4,55 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.meshlit.workspace.DashboardDirectory
+import androidx.compose.foundation.clickable
 import com.meshlit.workspace.GenerationUsage
 
-@Composable internal fun DashboardHub(onNavigate: (String) -> Unit) {
-    Text("Your workspace, at a glance", style = MaterialTheme.typography.h5)
-    Text("Models, connections and activity have their own homes. Preferences stay in Settings.",
-        style = MaterialTheme.typography.body2)
-    BoxWithConstraints {
-        val columns = if (maxWidth >= 560.dp) 2 else 1
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DashboardDirectory.entries.chunked(columns).forEach { row ->
-                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { entry ->
-                        Surface(modifier = Modifier.weight(1f).fillMaxHeight(), shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colors.onSurface.copy(alpha = .14f))) {
-                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                MenuHeading(entry.id, entry.title)
-                                Text(entry.description, style = MaterialTheme.typography.body2)
-                                Text(when (entry.id) {
-                                    "models" -> "Local models and compatible hosts"
-                                    "router" -> "Manual selection · automatic routing pending"
-                                    "usage" -> "Encrypted history · device budgets"
-                                    else -> "Optional Tailscale · observed status"
-                                }, style = MaterialTheme.typography.caption)
-                                Spacer(Modifier.weight(1f))
-                                TextButton({ onNavigate(entry.id) }) { Text("Open ${entry.title}") }
+@Composable internal fun DashboardHub(modelStatus: String? = null, onNavigate: (String) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val groups = remember(query) {
+        DesktopDestinations.search(query).filter { it.available && it.id !in setOf("management", "ide") }
+            .groupBy { desktopGroup(it.id) }
+    }
+    Text("Studio dashboard", style = MaterialTheme.typography.h4)
+    modelStatus?.let { Text(it, style = MaterialTheme.typography.subtitle2, color = MaterialTheme.colors.primary) }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button({ onNavigate("code") }) { Text("Open coding IDE") }
+        OutlinedButton({ onNavigate("chat") }) { Text("Chat") }
+        TextButton({ onNavigate("appearance") }) { Text("Settings") }
+    }
+    OutlinedTextField(query, { query = it.take(200) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        label = { Text("Find a dashboard or setting") }, trailingIcon = {
+            if (query.isNotEmpty()) TextButton({ query = "" }) { Text("Clear") }
+        })
+    if (groups.isEmpty()) Text("No matching dashboards.")
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val columns = if (maxWidth >= 660.dp) 2 else 1
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            groups.entries.chunked(columns).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    row.forEach { (group, items) ->
+                        Surface(Modifier.weight(1f), shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colors.onSurface.copy(alpha = .16f))) {
+                            Column(Modifier.padding(14.dp)) {
+                                Text(group, style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
+                                items.forEach { item ->
+                                    Row(Modifier.fillMaxWidth().clickable(onClickLabel = "Open ${item.title}") { onNavigate(item.id) }
+                                        .padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text(item.title, Modifier.weight(1f))
+                                        Text("›", color = MaterialTheme.colors.primary)
+                                    }
+                                }
                             }
                         }
                     }
+                    if (row.size < columns) Spacer(Modifier.weight(1f))
                 }
             }
         }
     }
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colors.primary.copy(alpha = .4f))) {
-        Column(Modifier.padding(18.dp)) {
-            MenuHeading("providers", "Online models & gateways")
-            Text("OpenRouter · Hugging Face · OmniRoute · FreeLLMAPI")
-            TextButton({ onNavigate("providers") }) { Text("Connect a service") }
-        }
-    }
-    Text("Other workspaces", style = MaterialTheme.typography.subtitle1)
-    listOf("device-dashboard" to "Devices", "rag" to "Knowledge library", "hyperl" to "HyperL workbench",
-        "monitor" to "Resources").forEach { (id, label) -> TextButton({ onNavigate(id) }) { Text(label) } }
 }
 
 @Composable internal fun RoutingDashboard(onModels: () -> Unit, onProviders: () -> Unit) {

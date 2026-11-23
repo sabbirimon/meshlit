@@ -9,7 +9,7 @@ function fixture(){
  return {vscode,commands,calls,panels,setRuntime:value=>runtime=value,setRuntimeFailure:value=>failRuntime=value,setCommandFailure:value=>failCommand=value,open:async()=>{await commands.get('meshlit.management')();return panels.at(-1);}};
 }
 test('management groups expose implemented destinations and distinguish unbuilt coverage',()=>{
- const html=render();assert.equal(groups.length,5);assert.equal(Object.keys(destinations).length,18);
+ const html=render();assert.equal(groups.length,5);assert.equal(Object.keys(destinations).length,21);
  for(const destination of Object.keys(destinations))assert(html.includes('data-destination="'+destination+'"'));
  assert(html.includes('Partial device management'));assert(html.includes('Coverage still to build and qualify'));assert(html.includes('thermal and power-saver signals are unavailable'));
  assert(!html.includes('data-destination="thermal"'));assert(!html.includes('data-destination="peerManager"'));
@@ -25,6 +25,10 @@ test('runtime summaries include only actual supplied state and safely render the
 });
 test('only allowlisted dashboard messages dispatch and project pages hand off explicitly',async()=>{
  const f=fixture(),panel=await f.open();
+ for(const [id,command] of [['ide','meshlit.openIde'],['chat','meshlit.generalChat'],['settings','meshlit.settings']]){
+  await panel.receive({managementPage:true,op:'open',id});
+  assert.deepEqual(f.calls.pop(),[command]);
+ }
  await panel.receive({managementPage:true,op:'open',id:'models',command:'workbench.action.terminal.new'});assert.deepEqual(f.calls.at(-1),['meshlit.mainModels']);
  for(const id of ['constructor','__proto__','workbench.action.terminal.new','missing'])await panel.receive({managementPage:true,op:'open',id});
  await panel.receive({managementPage:false,op:'open',id:'monitor'});assert.equal(f.calls.length,1);

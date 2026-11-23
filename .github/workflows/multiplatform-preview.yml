@@ -22,8 +22,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Test Studio chat settings and model navigation
-        run: node --test companions/studio-runtime/extension/main-pages.test.cjs
+      - name: Test Studio dashboard, settings, project windows and chat
+        run: node --test companions/studio-runtime/extension/navigation.test.cjs companions/studio-runtime/extension/management.test.cjs companions/studio-runtime/extension/settings.test.cjs companions/studio-runtime/extension/shell.test.cjs companions/studio-runtime/extension/main-pages.test.cjs
       - uses: actions/setup-java@v6.0.1
         with:
           distribution: temurin

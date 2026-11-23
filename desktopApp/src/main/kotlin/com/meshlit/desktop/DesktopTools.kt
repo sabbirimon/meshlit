@@ -27,12 +27,16 @@ import javax.swing.JOptionPane
     var query by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth()) {
         TextButton({ onSelect("management") }, Modifier.fillMaxWidth()) { Text("Open dashboards") }
-        OutlinedTextField(query, { query = it.take(200) }, singleLine = true, placeholder = { Text("Find settings or features") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(query, { query = it.take(200) }, singleLine = true, label = { Text("Find settings") },
+            modifier = Modifier.fillMaxWidth(), trailingIcon = {
+                if (query.isNotEmpty()) TextButton({ query = "" }) { Text("Clear") }
+            })
         Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-            val matches = DesktopSearch.settings().filter { query.isBlank() || DesktopSearch.find(listOf(it), query, SearchType.SETTINGS).isNotEmpty() }.map { entry -> DesktopDestinations.all.first { it.id == entry.id } }.filter { query.isNotBlank() || if (advanced) it.id !in BASIC_DESKTOP_SECTIONS else it.id in BASIC_DESKTOP_SECTIONS }
+            val matches = DesktopSearch.settings().filter { query.isBlank() || DesktopSearch.find(listOf(it), query, SearchType.SETTINGS).isNotEmpty() }.map { entry -> DesktopDestinations.all.first { it.id == entry.id } }.filter { query.isNotBlank() || it.id == selected || if (advanced) it.id !in BASIC_DESKTOP_SECTIONS else it.id in BASIC_DESKTOP_SECTIONS }
             val groups = matches.groupBy { desktopGroup(it.id) }
+            if (matches.isEmpty()) Text("No matching settings.", Modifier.padding(8.dp))
             groups.forEach { (group, entries) ->
-                var expanded by remember(group, advanced) { mutableStateOf(!advanced || group in setOf("Models & inference", "Devices & clusters")) }
+                var expanded by remember(group, advanced, desktopGroup(selected)) { mutableStateOf(group == desktopGroup(selected) || !advanced || group in setOf("Models & inference", "Devices & clusters")) }
                 TextButton({ expanded = !expanded }, Modifier.fillMaxWidth()) {
                     Text("${if (expanded || query.isNotBlank()) "▾" else "▸"} $group", Modifier.fillMaxWidth(), color = MaterialTheme.colors.primary)
                 }

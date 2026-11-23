@@ -42,7 +42,7 @@ const iconPaths={
 function icon(name){const key={llm:'settings',addModel:'newChat',tools:'connectors'}[name]||name;return `<svg class="shell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${iconPaths[key]||iconPaths.settings}</svg>`;}
 function initialize(value){context=value;}
 function enabled(vscode){
- return !!context&&!!vscode.workspace&&typeof vscode.workspace.getConfiguration==='function'&&!(vscode.workspace.workspaceFolders?.length)&&vscode.workspace.getConfiguration('meshlit').get('startupView','chat')!=='editor';
+ return !!context&&!!vscode.workspace&&typeof vscode.workspace.getConfiguration==='function'&&!(vscode.workspace.workspaceFolders?.length)&&vscode.workspace.getConfiguration('meshlit').get('startupView','welcome')!=='editor';
 }
 function snapshot(){return [...panels].map(([id,item])=>({id,title:String(item.panel.title),type:item.type,active:!!item.panel.active}));}
 function update(){const message={type:'shellNavigation',panels:snapshot()};for(const item of panels.values())void Promise.resolve(item.panel.webview.postMessage(message)).catch(()=>{});}
