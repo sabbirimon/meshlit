@@ -1,6 +1,7 @@
 'use strict';
 const vscode = require('vscode');
 const crypto = require('node:crypto');
+const {page} = require('./welcome.cjs');
 const {LocalServer, endpoint, request} = require('./runtime.cjs');
 let local, active, panel;
 
@@ -8,6 +9,10 @@ async function activate(context) {
     const root = process.env.MESHLIT_SUITE_ROOT;
     if (!root) throw Error('Launch the extracted Meshlit Studio application');
     local = new LocalServer(root);
+    const hostPath = require('node:path');
+    const homeWorkspace = process.env.MESHLIT_HOME_WORKSPACE || hostPath.join(require('node:os').homedir(),'.meshlit','native-studio','Meshlit Studio.code-workspace');
+    const home = vscode.workspace.workspaceFile?.scheme==='file' && hostPath.relative(homeWorkspace,vscode.workspace.workspaceFile.fsPath)==='' && !vscode.workspace.workspaceFolders?.length;
+    let ready=false;
     const settings = () => context.globalState.get('route', {kind:'local', model:'meshlit-local'});
     const pair = require('./pairing.cjs').register(vscode,context);
     const control = require('./control.cjs').register(vscode,context,root);
@@ -19,7 +24,7 @@ async function activate(context) {
             {label:'Filter replies',detail:'Hide email addresses and recognized API token patterns',enabled:true},
             {label:'Show original replies',detail:'Display the text returned by the model',enabled:false}
         ],{title:'Output guardrails · currently '+(enabled?'on':'off')});
-        if(choice) {await context.globalState.update('filter-output',choice.enabled);history=[];panel?.webview.postMessage({type:'clear'});status();}
+        if(choice) {await context.globalState.update('filter-output',choice.enabled);resetChats();status();}
     }
     async function select(forced) {
         if(active) throw Error("Stop the current reply before switching models");
@@ -75,8 +80,7 @@ async function activate(context) {
         }
         active?.abort();
         local.stop();
-        history = [];
-        panel?.webview.postMessage({type:'clear'});
+        resetChats();
         status();
     }
     async function cpu() {
@@ -86,7 +90,23 @@ async function activate(context) {
             value:String(context.globalState.get('threads',0)),validateInput:v=>/^\d+$/.test(v) && Number(v)<=max ? undefined : 'Enter an integer from 0 to '+max});
         if (text !== undefined) { await context.globalState.update('threads', Number(text)); local.stop(); management.refresh(); }
     }
-    let history = [], changing=false;
+    let history = [], changing=false, currentThread;
+    const threads=new Map();
+    function threadList(){
+        const items=Array.from(threads,([id,t])=>({id,title:t.title})).reverse();
+        panel?.webview.postMessage({type:'threads',items,current:currentThread});
+    }
+    function resetChats(){
+        history=[];threads.clear();currentThread=undefined;
+        panel?.webview.postMessage({type:'clear'});threadList();
+    }
+    function recordChat(messages){
+        if(!currentThread)currentThread=crypto.randomUUID();
+        const title=threads.get(currentThread)?.title||messages[0].content.slice(0,72);
+        threads.set(currentThread,{title,messages});
+        if(threads.size>12)threads.delete(threads.keys().next().value);
+        threadList();
+    }
     const packaged={kind:'local',model:'meshlit-local'};
     const manifest=JSON.parse(require('node:fs').readFileSync(require('node:path').join(root,'inference','model.json'),'utf8'));
     const modelId=r=>crypto.createHash('sha256').update(JSON.stringify([r.kind,r.base||'',r.file||'',r.model])).digest('hex');
@@ -142,6 +162,7 @@ async function activate(context) {
             signal.throwIfAborted();
             const output=displayOutput(answer,context.globalState.get('filter-output',true));
             history=[...messages,{role:'assistant',content:output}].slice(-8);
+            recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined; management.refresh(); }
     }
@@ -154,11 +175,17 @@ async function activate(context) {
         panel=vscode.window.createWebviewPanel('meshlit.chat','Meshlit · General Chat',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[],retainContextWhenHidden:true});
         const nonce=crypto.randomBytes(20).toString('hex');
         panel.webview.html=page(nonce);
-        panel.onDidDispose(()=>{active?.abort();panel=undefined;history=[];});
+        panel.onDidDispose(()=>{active?.abort();panel=undefined;ready=false;});
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
             try {
-                if(msg.op==='ready') status();
+                if(msg.op==='ready') {ready=true;status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='new'&&!active){history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
+                if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='settings'&&!active){
+                    const item=await vscode.window.showQuickPick(['Local CPU threads','Reply filtering'],{title:'Studio settings'});
+                    if(item==='Local CPU threads')await cpu();else if(item==='Reply filtering')await guardrails();
+                }
                 if(msg.op==='models') await management.open();
                 if(msg.op==='pair') await pair();
                 if(msg.op==='control') await control();
@@ -176,13 +203,16 @@ async function activate(context) {
         context.subscriptions.push(vscode.commands.registerCommand('meshlit.studio.'+cmd,async()=>{try {return await fn();} catch(err){vscode.window.showErrorMessage(err.message);}}));
     }
     context.subscriptions.push({dispose:()=>{active?.abort();local.stop();}});
-    if (!vscode.workspace.workspaceFolders?.length) chat();
-    return {generate, unload:()=>local.stop()};
-}
-function page(nonce) {
-    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}'">
-<style nonce="${nonce}">body{max-width:760px;margin:8vh auto;padding:0 24px;color:var(--vscode-foreground);font:15px/1.5 var(--vscode-font-family)}header,nav,footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap}header{justify-content:space-between}h1{font-size:28px;margin-bottom:0}#status{color:var(--vscode-descriptionForeground)}button,textarea{font:inherit;border-radius:5px}button{background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);border:0;padding:6px 12px;cursor:pointer}button:focus-visible,textarea:focus{outline:2px solid var(--vscode-focusBorder)}#send{background:var(--vscode-button-background);color:var(--vscode-button-foreground)}textarea{display:block;width:100%;box-sizing:border-box;background:var(--vscode-input-background);color:var(--vscode-input-foreground);padding:14px;border:1px solid var(--vscode-panel-border);resize:vertical;margin-bottom:8px}article{white-space:pre-wrap;margin:16px 0}article b{display:block;font-size:12px;color:var(--vscode-descriptionForeground)}#log{margin:24px 0}#feedback{min-height:22px}</style></head><body><header><h1>General chat</h1><nav><button id="models">Models &amp; connections</button><button id="pair">Devices</button><button id="control">Control an app</button><button id="guard">Output guardrails</button><button id="cpu">CPU settings</button><button id="ide">Open coding IDE…</button></nav></header><div id="status"></div><main id="log" role="log" aria-live="polite"></main><textarea id="prompt" aria-label="Message" rows="3" maxlength="16000" placeholder="Message your model"></textarea><footer><button id="send">Send</button><button id="stop" disabled>Stop</button><span id="feedback" role="status"></span></footer>
-<script nonce="${nonce}">const api=acquireVsCodeApi(),el=id=>document.getElementById(id);function row(label,text){const p=document.createElement('article'),b=document.createElement('b');b.textContent=label;p.append(b,document.createTextNode(text));el('log').append(p)}function busy(on){el('send').disabled=on;el('models').disabled=on;el('stop').disabled=!on}for(const id of ['models','cpu','ide','stop','pair','guard','control'])el(id).onclick=()=>api.postMessage({op:id});el('send').onclick=()=>{const text=el('prompt').value.trim();if(!text)return;row('You',text);el('prompt').value='';busy(true);el('feedback').textContent='Generating…';api.postMessage({op:'send',text})};el('prompt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!el('send').disabled){e.preventDefault();el('send').click()}};window.addEventListener('message',e=>{const m=e.data;if(m.type==='status')el('status').textContent=m.text;if(m.type==='clear')el('log').replaceChildren();if(m.type==='answer')row('Model',m.text);if(['error','answer','notice'].includes(m.type)){busy(false);el('feedback').textContent=m.type==='answer'?'':m.text}});api.postMessage({op:'ready'});</script></body></html>`;
+    if (home) {
+        // The dedicated workspace has no project contents. Its layout choices are window-scoped.
+        for(const cmd of ['workbench.action.closePanel','workbench.action.closeAuxiliaryBar','workbench.action.closeSidebar']){
+            await vscode.commands.executeCommand(cmd);
+        }
+        await vscode.commands.executeCommand('workbench.action.exitZenMode');
+        await vscode.commands.executeCommand('workbench.action.toggleZenMode');
+        chat();
+    }
+    return {generate, unload:()=>local.stop(), homeStatus:()=>({home,ready,visible:!!panel?.visible,folders:vscode.workspace.workspaceFolders?.length||0})};
 }
 exports.activate=activate;
 exports.deactivate=()=>{active?.abort();local?.stop();};

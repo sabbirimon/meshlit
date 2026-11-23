@@ -52,3 +52,11 @@ Select a local model and use **Load selected model** to start the bundled CPU se
 The workflow follows model import, selection, loading and local serving in [LM Studio's model guide](https://lmstudio.ai/docs/cli/local-models/import) and [developer server guide](https://lmstudio.ai/docs/developer/core/server). CUDA migration and accelerator qualification belong to [HyperL](https://github.com/sabbirimon/HyperL/tree/feature/native-mlir-engine/docs/CUDA_MIGRATION.md).
 
 The offline acceptance test opens an Extension Development Host with a disposable profile and in-memory secret storage. On macOS the test uses Chromium’s mock Keychain. A normal Studio session uses the OS credential store for saved provider keys and pairing identity.
+
+## The default Studio window
+
+Launch **Meshlit** with no arguments to open **General chat**. The welcome screen has a message composer, a model selector and a navigation rail for models, devices, app control and settings. Recent chats are available within this running session and model route. Switching provider clears the previous conversations from that route.
+
+Choose **Open coding IDE** and select a folder to open a separate project window with Explorer, editor tabs and a terminal. The Home window stays available. The launcher opens a dedicated, empty Studio workspace for Home so reopening the app after coding returns to chat. Home and the project IDE share the bundled workbench runtime and use separate window layouts. This restores the CS-01 window contract in the [older Studio design](../CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+
+The package check launches Home first and requires a visible, initialized chat view with zero project folders. A second isolated test opens the IDE and compiles a C program. An **Extension Development Host** title and a workspace containing `hello.c` identify that test.

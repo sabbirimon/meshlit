@@ -27,13 +27,17 @@ fn launch() -> io::Result<()> {
     let args: Vec<_> = env::args_os().skip(1).collect();
     let mut folder = None;
     let mut probe = None;
+    let mut home = args.is_empty();
     match args.as_slice() {
         [] => (),
         [option, dir] if option == "--workspace" => folder = Some(std::path::absolute(dir)?),
-        [option, dir] if option == "--self-test" => {
+        [option, dir] if option == "--self-test" || option == "--self-test-home" => {
+            home = option == "--self-test-home";
             let dir = std::path::absolute(dir)?;
             profile = dir.join("profile");
-            folder = Some(dir.join("workspace"));
+            if !home {
+                folder = Some(dir.join("workspace"));
+            }
             probe = Some(dir.join("probe"));
         }
         _ => return Err(io::Error::other("Usage: Meshlit [--workspace DIRECTORY]")),
@@ -58,10 +62,19 @@ fn launch() -> io::Result<()> {
         Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
         Err(e) => return Err(e),
     }
+    // An explicit empty workspace makes Home deterministic even after a coding session.
+    let home_file = profile.join("Meshlit Studio.code-workspace");
+    if home {
+        let content = include_bytes!("home.code-workspace");
+        if fs::read(&home_file).ok().as_deref() != Some(content.as_slice()) {
+            fs::write(&home_file, content)?;
+        }
+    }
     let make = || {
         let mut cmd = Command::new(&editor);
         cmd.env_remove("ELECTRON_RUN_AS_NODE");
         cmd.env("MESHLIT_SUITE_ROOT", root);
+        cmd.env("MESHLIT_HOME_WORKSPACE", &home_file);
 
         cmd.env(
             "PATH",
@@ -119,12 +132,16 @@ fn launch() -> io::Result<()> {
                 "--extensionTestsPath={}",
                 path.join("test.js").display()
             ));
-        let status = gui.arg(folder.unwrap()).status()?;
+        let status = gui
+            .arg(if home { home_file } else { folder.unwrap() })
+            .status()?;
         if !status.success() {
             return Err(io::Error::other("Studio self-test failed"));
         }
     } else {
-        if let Some(dir) = folder {
+        if home {
+            gui.arg(home_file);
+        } else if let Some(dir) = folder {
             gui.arg(dir);
         }
         gui.spawn()?;

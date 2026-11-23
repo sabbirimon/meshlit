@@ -8,9 +8,42 @@ import sys
 import tempfile
 
 
+def check_home(client):
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp).resolve()
+        probe = work / "probe"
+        probe.mkdir()
+        (probe / "package.json").write_text(json.dumps({"name":"home-acceptance","publisher":"meshlit-test","version":"1.0.0","engines":{"vscode":"^1.95.0"},"main":"./extension.js"}))
+        (probe / "extension.js").write_text("exports.activate=()=>{};")
+        (probe / "test.js").write_text("""
+const vscode=require('vscode'),fs=require('node:fs'),path=require('node:path');
+exports.run=async()=>{
+    const api=await vscode.extensions.getExtension('meshlit.native-studio').activate();
+    const deadline=Date.now()+45000;
+    while(Date.now()<deadline){
+        const s=api.homeStatus();
+        if(s.home && s.ready && s.visible && s.folders===0){
+            fs.writeFileSync(path.join(__dirname,'home.json'),JSON.stringify(s));
+            await vscode.commands.executeCommand('meshlit.studio.models');
+            await vscode.commands.executeCommand('meshlit.studio.chat');
+            return;
+        }
+        await new Promise(r=>setTimeout(r,150));
+    }
+    throw Error('Normal startup did not open the visible chat composer in the project-free Studio window: '+JSON.stringify(api.homeStatus()));
+};
+""")
+        subprocess.run([client,"--self-test-home",work],check=True,timeout=180)
+        state=json.loads((probe/"home.json").read_text())
+        print(json.dumps({"defaultWindow":"general-chat",**state}),flush=True)
+
+
 def main():
     root = Path(sys.argv[1]).resolve()
     client = root / {"Linux":"Meshlit","Darwin":"Meshlit.app/Contents/MacOS/Meshlit","Windows":"Meshlit.exe"}[platform.system()]
+    check_home(client)
+    if "--home-only" in sys.argv[2:]:
+        return
     with tempfile.TemporaryDirectory() as temp:
         work = Path(temp)
         project = work / "workspace"
@@ -41,8 +74,7 @@ exports.run = async () => {
         if (!extension) throw Error('Bundled extension was not installed');
         api = await extension.activate();
         mark('Meshlit activated');
-        await vscode.commands.executeCommand('meshlit.studio.models');
-        mark('Model management opened');
+        if(api.homeStatus().home)throw Error('Project opened in the Home layout');
         const prompt = 'Reply to this greeting in one short sentence: Hello!';
         const answer = await api.generate(prompt);
         if (!answer || !answer.trim()) throw Error('Missing offline reply');
