@@ -25,6 +25,12 @@ import kotlinx.coroutines.flow.collect
 
 private data class Message(val role: String, val text: String, val completed: Boolean = true)
 fun main(args: Array<String>) {
+    if (args.size == 2 && args[0] == "--studio-tools-check") {
+        val studio = checkNotNull(BundledWorkbench.installed()) { "Full Studio tools are unavailable" }
+        val command = studio.command(emptyList())
+        java.nio.file.Files.writeString(java.nio.file.Path.of(args[1]), command.environment().getValue("JAVA_HOME"))
+        return
+    }
     if (args.contentEquals(arrayOf("--ide-backend"))) { runIdeBackend(); return }
     if (args.size == 2 && args[0] == "--assistant-controls-check") { assistantControlsCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--dashboard-browser-check") { dashboardBrowserCheck(args[1]); return }
