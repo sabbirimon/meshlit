@@ -268,6 +268,7 @@ async function activate(context) {
     context.subscriptions.push({dispose:management.dispose});
     require('./legacy/ssh-dashboard.cjs').register(context,vscode);
     require('./legacy/memory.cjs').register(context);
+    require('./legacy/voice.cjs').register(context, { requirePermission });
     const dashboards=require('./operations.cjs').operations(vscode,context,root,{
         models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });

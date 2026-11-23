@@ -4,6 +4,10 @@ Tracking reconciled 2026-11-23: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+## Desktop parity and release qualification, 2026-11-24
+
+The native extension packages the legacy Voice and vision dashboard. Validate capture and playback with physical devices per OS. Team, bot and gateway workflows, remote app-control permissions and native Android parity still require end-to-end tests. Publisher signing awaits Apple and Windows identities. Keep preview artifacts labeled accordingly.
+
 ## Studio model format support — 2026-11-24
 
 **First delivery.** General Chat opens by default. Models & providers is the entry point for registering a file or model directory, inspecting its format and choosing how to run it. The native desktop shell owns this workflow on Windows, Linux, Intel Mac and Apple Silicon. HyperL supplies optional execution capabilities. This priority supersedes the earlier Compose shell proposal below.

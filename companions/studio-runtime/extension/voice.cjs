@@ -1,7 +1,7 @@
 const vscode=require('vscode'),crypto=require('node:crypto');
 const {VoiceRuntime,KEYS,ORIGIN}=require('./voice-runtime.cjs');
 const liveVoice=require('./live-voice-settings.cjs');
-function register(context){
+function register(context, {requirePermission} = {}){
  const runtime=new VoiceRuntime();let panel,liveSaving=false;
  context.subscriptions.push({dispose:()=>runtime.stop()});
  context.subscriptions.push(vscode.commands.registerCommand('meshlit.voice',()=>{
@@ -10,6 +10,8 @@ function register(context){
   const update=(message)=>panel?.webview.postMessage({state:runtime.state,...(message!==undefined?{message}:runtime.failure?{message:runtime.failure}:{}),root:context.globalState.get('meshlit.voice.root','')});
   panel.webview.html=render();const timer=setInterval(()=>update(),1000);panel.onDidDispose(()=>{runtime.cancelPreview();clearInterval(timer);panel=undefined;});context.subscriptions.push(panel);
   panel.webview.onDidReceiveMessage(async m=>{try{
+   if(m.op==='start'||m.op==='open')requirePermission?.('microphone');
+   if(m.op==='preview')requirePermission?.('speech');
    if(m.op==='loadLive'||m.op==='saveLive'){
     if(liveSaving)return;liveSaving=true;
     try{

@@ -10,6 +10,16 @@ The Rust launcher and bundled VSCodium workbench run without Java. The native ll
 
 STUDIO-CONTENTS.json lists installed model-free bytes and upstream hashes. Release qualification checks for JVM executables, libraries, modules and JARs. It runs the packaged extension, generates a local reply and compiles and executes C in the editor terminal. Earlier Compose installers and the Android Kotlin application are separate distributions. Advanced legacy management features have separate porting and qualification work.
 
+## Model discovery and device pairing on the preview branch
+
+**Find a model** shows search results by publisher on the left and details for the selected repository on the right. The detail view lists reported architecture, parameter count and task when the repository supplies them. The GGUF variant selector shows the download size. Sort by relevance, likes, downloads or update date. The RAM filter uses an estimate and can be cleared to inspect larger files.
+
+On November 24 the two installed pairing modules exchanged fresh P-256 challenges between a physical Intel Mac and Windows HP. The HP reached the Mac's advertised Wi-Fi endpoint. A direct request to the HP's temporary listener timed out. Both directions verified when the Mac used a local SSH forward to that listener. The HP also verified a fresh challenge from the running Mac Studio window. This protocol test used temporary peer identities for the bidirectional check. Saving both peers in the ordinary desktop profiles requires completing **Devices → Pair using a link** on each host. Each shared listener expires after ten minutes.
+
+## Voice and vision in the native workbench
+
+Open **Management → Voice and vision** for the OpenLive companion settings and speech previews. Microphone and speech actions use Studio's permission checks. Managed companion startup requires a configured local runtime on macOS or Linux. Windows dictation remains available separately from General Chat.
+
 ## Ubuntu installation
 
 On Ubuntu systems that restrict unprivileged user namespaces, install the verified suite in the administrator-owned path used by its Chromium sandbox profile. From the parent of the extracted directory, for a fresh installation:

@@ -57,7 +57,8 @@ def package_extension(suite):
             if (file.suffix in (".cjs", ".json") or file.name == "model_worker.py") and ".test." not in file.name:
                 bundle.write(file, "extension/" + file.name)
         legacy = ROOT / "companions/studio-runtime/extension"
-        for module in ["ssh-dashboard.cjs", "shell.cjs", "memory.cjs", "memory-store.cjs"]:
+        for module in ["ssh-dashboard.cjs", "shell.cjs", "memory.cjs", "memory-store.cjs",
+                       "voice.cjs", "voice-runtime.cjs", "live-voice-settings.cjs", "natural-audio.cjs"]:
             bundle.write(legacy / module, "extension/legacy/" + module)
         bundle.write(ROOT / "LICENSE", "extension/LICENSE")
     (suite / "extension.sha256").write_text(hashlib.sha256((suite / name).read_bytes()).hexdigest())

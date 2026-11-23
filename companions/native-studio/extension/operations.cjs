@@ -4,7 +4,7 @@ const fs=require('node:fs/promises'),{execFile}=require('node:child_process'),{p
 const run=promisify(execFile);
 const groups={
  permissions:[['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
- management:[['Chat and permissions',['permissions','voice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
+ management:[['Chat and permissions',['permissions','voice','liveVoice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
  tools:[['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
  settings:[['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
 };
@@ -16,6 +16,7 @@ function operations(vscode,context,root,hooks){
   const data={
    welcome:['Welcome and setup','Choose how to start chatting',hooks.welcome],
    permissions:['Permissions','Review access by tool',()=>hooks.go('permissions')],
+   liveVoice:['Voice and vision','OpenLive settings, voice previews and companion controls',()=>vscode.commands.executeCommand('meshlit.voice')],
    voice:['Voice input','Dictate a message and review the draft',hooks.voice],
    attach:['Attach a file or image','Choose a file for the next message',hooks.attach],
    search:['Internet search','Wikipedia sources in chat or web search in your browser',hooks.webSearch],

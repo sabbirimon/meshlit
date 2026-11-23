@@ -11,6 +11,8 @@ On 2026-11-24 the Studio and HyperL development branches gained the same model a
 
 [Native Studio model management](docs/desktop/FULL_STUDIO.md#managing-models-in-native-studio) covers local GGUF discovery and import, providers, authenticated local serving and device pairing. HyperL owns accelerator translation.
 
+The native workbench now packages the Voice and vision companion dashboard under Management. Physical Windows companion capture and full Android parity remain open. [Desktop details](docs/desktop/FULL_STUDIO.md#voice-and-vision-in-the-native-workbench).
+
 
 ## HyperL engine priority — 2026-11-06
 

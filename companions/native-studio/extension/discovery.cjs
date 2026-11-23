@@ -18,19 +18,42 @@ const size = bytes => (bytes / GiB).toFixed(2) + ' GiB';
 function render(nonce) {
     return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}'">
 <style nonce="${nonce}">
-body{font:14px/1.5 var(--vscode-font-family);margin:auto;max-width:1060px;padding:24px;color:var(--vscode-foreground)}header,form,.filters{display:flex;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:26px}input,select,button{font:inherit;padding:8px;border:1px solid var(--vscode-panel-border);border-radius:6px;background:var(--vscode-input-background);color:inherit}button{cursor:pointer}input[type=search]{flex:1;min-width:12em}.filters{margin:14px 0}.layout{display:grid;grid-template-columns:minmax(13em,2fr) minmax(0,3fr);gap:24px}.results{max-height:60vh;overflow:auto}.results button{width:100%;text-align:left;margin-bottom:4px;overflow-wrap:anywhere}.results [aria-pressed=true]{background:var(--vscode-list-activeSelectionBackground);color:var(--vscode-list-activeSelectionForeground)}#details{border-inline-start:1px solid var(--vscode-panel-border);padding-inline-start:20px;overflow-wrap:anywhere}#variant{max-width:100%}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--vscode-focusBorder)}@media(max-width:620px){body{padding:12px}.layout{grid-template-columns:1fr}.results{max-height:24vh}#details{padding:0;border:0}}</style>
+*{box-sizing:border-box}
+body{font:14px/1.5 var(--vscode-font-family,system-ui);margin:0;padding:24px;color:var(--vscode-foreground);background:var(--vscode-editor-background)}
+header,.filters,form{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header,.layout{max-width:1120px;margin:auto}
+header{margin-bottom:16px}h1{font-size:24px;margin:0}h2{font-size:22px;margin:0;overflow-wrap:anywhere}
+button,select,input{font:inherit;color:inherit}button,select{cursor:pointer}button,input,select{border:1px solid var(--vscode-panel-border);border-radius:6px;background:var(--vscode-input-background);padding:7px 10px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--vscode-focusBorder);outline-offset:2px}
+.layout{display:grid;grid-template-columns:minmax(255px,2fr) minmax(0,3fr);border:1px solid var(--vscode-panel-border);border-radius:14px;overflow:hidden;min-height:60vh}
+.browser,.detailPane{padding:20px;min-width:0}.browser{background:var(--vscode-sideBar-background);border-inline-end:1px solid var(--vscode-panel-border)}
+input[type=search]{flex:1;min-width:10em}.filters{margin-top:12px}.filters label:last-child{display:flex;align-items:baseline;gap:6px}
+#capacity,#status,#summary,#hint,.resultDetail,#empty{color:var(--vscode-descriptionForeground);font-size:13px}
+#status{margin:12px 0 4px}.results{max-height:57vh;overflow:auto}
+.results button{width:100%;display:block;text-align:left;border:0;border-bottom:1px solid var(--vscode-panel-border);border-radius:0;background:transparent;padding:12px 10px;overflow-wrap:anywhere}
+.results button:hover{background:var(--vscode-list-hoverBackground)}.results [aria-pressed=true]{background:var(--vscode-list-activeSelectionBackground);color:var(--vscode-list-activeSelectionForeground);border-radius:8px}
+.resultDetail{display:block}.results [aria-pressed=true] .resultDetail{color:inherit}
+#facts{display:flex;flex-wrap:wrap;gap:6px}#facts span{padding:3px 8px;border:1px solid var(--vscode-panel-border);border-radius:5px;font-size:12px}
+h3{margin:24px 0 8px;font-size:16px}#variant{max-width:100%;width:100%}#download{background:var(--vscode-button-background);color:var(--vscode-button-foreground);font-weight:600}button:disabled{opacity:.55;cursor:default}
+@media(max-width:660px){body{padding:12px}.layout{grid-template-columns:1fr;min-height:0}.browser{border-inline-end:0;border-bottom:1px solid var(--vscode-panel-border)}.results{max-height:24vh}.browser,.detailPane{padding:14px}}</style>
 <header><button id="back">← Back</button><h1>Find a model</h1></header>
+<main class="layout"><section class="browser" aria-label="Model search">
 <form><input id="q" type="search" aria-label="Search Hugging Face by model or author" placeholder="Model or author on Hugging Face" maxlength="120"><button>Search</button></form>
-<div class="filters"><label>Sort <select id="sort"><option value="">Best match</option><option value="likes">Most likes</option><option value="downloads">Most downloads</option><option value="lastModified">Recently updated</option></select></label><label><input id="fit" type="checkbox" checked>Show file variants within estimated RAM budget</label></div>
-<p id="capacity"></p><div role="status" id="status"></div><div class="layout"><div class="results" id="results"></div><section id="details" hidden><h2 id="name"></h2><p id="summary"></p><label>GGUF file <select id="variant"></select></label><p id="hint"></p><button id="download" disabled>Download selected file</button></section></div>
+<div class="filters"><label>Sort <select id="sort"><option value="">Best match</option><option value="likes">Most likes</option><option value="downloads">Most downloads</option><option value="lastModified">Recently updated</option></select></label><label><input id="fit" type="checkbox" checked>Within estimated RAM budget</label></div>
+<p id="capacity"></p><div role="status" id="status"></div><div class="results" id="results"></div></section>
+<div class="detailPane"><p id="empty">Search by model or author to compare available downloads.</p>
+<section id="details" hidden><h2 id="name"></h2><p id="summary"></p><div id="facts"></div>
+<h3>Download options</h3><label>GGUF file <select id="variant"></select></label><p id="hint"></p><button id="download" disabled>Download selected file</button></section></div></main>
 <script nonce="${nonce}">
 const api=acquireVsCodeApi(),el=id=>document.getElementById(id);
 let seq=0,items=[],picked,files=[],capacity=0,loading=false;
-function search(){seq++;picked=null;items=[];files=[];el('results').replaceChildren();el('details').hidden=true;el('status').textContent='Searching Hugging Face…';api.postMessage({op:'search',q:el('q').value.trim(),sort:el('sort').value,seq})}
-function variants(){const displayed=files.filter(f=>!el('fit').checked||f.bytes<=capacity);el('variant').replaceChildren(...displayed.map(f=>new Option(f.name+' · '+f.size,f.sha)));el('download').disabled=loading||!displayed.length;el('hint').textContent=loading?'Reading available files…':displayed.length?'Download size is the size on disk. Runtime memory also depends on context.':files.length?'No variant fits the estimate. Clear the RAM filter to see all files.':'No supported single-file GGUF with a published checksum.'}
-function choose(item){seq++;picked=item;files=[];loading=true;el('details').hidden=false;el('name').textContent=item.id;el('summary').textContent=item.summary;for(const b of el('results').children)b.setAttribute('aria-pressed',String(b.textContent===item.id));variants();api.postMessage({op:'details',repo:item.id,seq})}
+function search(){seq++;picked=null;items=[];files=[];el('results').replaceChildren();el('details').hidden=true;el('empty').hidden=false;el('status').textContent='Searching Hugging Face…';api.postMessage({op:'search',q:el('q').value.trim(),sort:el('sort').value,seq})}
+function variants(){const displayed=files.filter(f=>!el('fit').checked||f.bytes<=capacity);el('variant').replaceChildren(...displayed.map(f=>new Option(f.name+' · '+f.size,f.sha)));el('download').disabled=loading||!displayed.length;updateDownload();el('hint').textContent=loading?'Reading available files…':displayed.length?'Download size is the size on disk. Runtime memory also depends on context.':files.length?'No variant fits the estimate. Clear the RAM filter to see all files.':'No supported single-file GGUF with a published checksum.'}
+function choose(item){seq++;picked=item;files=[];loading=true;el('details').hidden=false;el('empty').hidden=true;el('facts').replaceChildren();el('name').textContent=item.id;el('summary').textContent=item.summary;for(const b of el('results').children)b.setAttribute('aria-pressed',String(b.dataset.repo===item.id));variants();api.postMessage({op:'details',repo:item.id,seq})}
+function updateDownload(){const file=files.find(f=>f.sha===el('variant').value);el('download').textContent=file?'Download · '+file.size:'Download selected file'}
+el('variant').onchange=updateDownload;
 el('back').onclick=()=>api.postMessage({op:'close'});document.querySelector('form').onsubmit=e=>{e.preventDefault();search()};el('sort').onchange=search;el('fit').onchange=variants;el('download').onclick=()=>api.postMessage({op:'download',sha:el('variant').value,seq});
-window.addEventListener('message',({data:m})=>{if(m.op==='ready'){capacity=m.capacity;el('capacity').textContent=m.caption;return}if(m.seq!==seq)return;if(m.op==='error'){loading=false;el('status').textContent=m.message;variants();return}if(m.op==='results'){items=m.items;el('status').textContent=items.length?items.length+' repositories':'No matching repositories.';for(const item of items){const b=document.createElement('button');b.textContent=item.id;b.onclick=()=>choose(item);el('results').append(b)}if(items.length)choose(items[0])}if(m.op==='files'){loading=false;files=m.files;variants()}});api.postMessage({op:'ready'});el('q').focus();
+window.addEventListener('message',({data:m})=>{if(m.op==='ready'){capacity=m.capacity;el('capacity').textContent=m.caption;return}if(m.seq!==seq)return;if(m.op==='error'){loading=false;el('status').textContent=m.message;variants();return}if(m.op==='results'){items=m.items;el('status').textContent=items.length?items.length+' repositories':'No matching repositories.';for(const item of items){const b=document.createElement('button');b.dataset.repo=item.id;const title=document.createElement('strong');title.textContent=item.id.split('/').pop();const detail=document.createElement('small');detail.className='resultDetail';detail.textContent=item.id.split('/')[0];b.append(title,detail);b.onclick=()=>choose(item);el('results').append(b)}if(items.length)choose(items[0])}if(m.op==='files'){loading=false;files=m.files;el('facts').replaceChildren(...(m.facts||[]).map(value=>{const tag=document.createElement('span');tag.textContent=value;return tag}));variants()}});api.postMessage({op:'ready'});el('q').focus();
 </script></html>`;
 }
 
@@ -74,7 +97,13 @@ function chooseFile(vscode, metadata, files) {
                     const data = await metadata('https://huggingface.co/api/models/'+msg.repo+'?blobs=true',signal);
                     if (controller.signal.aborted) return;
                     choices = files(msg.repo,data).map(item=>({...item,repo:msg.repo}));
-                    await post({op:'files',files:choices.map(({name,sha,bytes})=>({name,sha,bytes,size:size(bytes)}))});
+                    const facts = ['GGUF'];
+                    if (typeof data.gguf?.architecture === 'string') facts.push(data.gguf.architecture);
+                    if (Number.isSafeInteger(data.gguf?.total) && data.gguf.total > 0) {
+                        facts.push(new Intl.NumberFormat('en', {notation:'compact'}).format(data.gguf.total) + ' parameters');
+                    }
+                    if (typeof data.pipeline_tag === 'string') facts.push(data.pipeline_tag);
+                    await post({op:'files',facts,files:choices.map(({name,sha,bytes})=>({name,sha,bytes,size:size(bytes)}))});
                 }
             } catch (error) {await post({op:'error',message:error.message});}
         });
