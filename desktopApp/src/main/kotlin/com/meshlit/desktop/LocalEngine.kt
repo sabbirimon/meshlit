@@ -6,6 +6,7 @@ import oshi.SystemInfo
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -33,10 +34,11 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
     private var process: Process? = null
     @Volatile var appliedCpuThreads:Int?=null
         private set
+    private var copiedServer: Path? = null
     private val exeSuffix = if (System.getProperty("os.name").startsWith("Windows")) ".exe" else ""
     private val hook = Thread({ stop() }, "meshlit-local-shutdown")
     init { if (registerShutdownHook) Runtime.getRuntime().addShutdownHook(hook) }
-    fun available() = Files.isExecutable(resources.resolve("local/llama-server$exeSuffix")) &&
+    fun available() = Files.isRegularFile(resources.resolve("local/llama-server$exeSuffix")) &&
         Files.isRegularFile(resources.resolve("models/${DesktopStarter.filename}"))
 
     fun start(customModel: Path? = null, expectedModelSha256: String? = null, options: EngineOptions = EngineOptions(), thinkingTemplates: Boolean = false): LocalSession {
@@ -44,7 +46,7 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
         stop()
         val expectedRevision = synchronized(lock) { revision }
         var server = resources.resolve("local/llama-server$exeSuffix").toAbsolutePath()
-        check(Files.isExecutable(server)) { "Packaged local engine is unavailable" }
+        check(Files.isRegularFile(server)) { "Missing packaged engine at $server" }
         val model = (customModel ?: resources.resolve("models/${DesktopStarter.filename}")).toAbsolutePath()
         validateModel(model, customModel == null) { checkCurrent(expectedRevision) }
         if (expectedModelSha256 != null) {
@@ -86,6 +88,18 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
         synchronized(lock) {
             checkCurrent(expectedRevision)
             try {
+                // Some Unix distribution tools normalize application data files to 0644.
+                // Launch a verified private copy if the installed payload lost its mode.
+                if (!Files.isExecutable(server) && exeSuffix.isEmpty()) {
+                    val file = Files.createTempFile("meshlit-server-", ".bin",
+                        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
+                    copiedServer = file
+                    Files.newInputStream(server).use { src -> Files.newOutputStream(file).use { src.copyTo(it) } }
+                    val expected = if (variant == "llama-server-avx2") fast!!.getValue("sha256").jsonPrimitive.content else serverHash
+                    check(hash(file) { checkCurrent(expectedRevision) } == expected)
+                    Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("r-x------"))
+                    server = file
+                }
                 val builder = ProcessBuilder(listOf(server.toString(), "--model", model.toString(),
                     "--host", "127.0.0.1", "--port", port.toString(),
                     "--alias", DesktopStarter.alias, "--parallel", "1") + options.nativeArgs() +
@@ -129,12 +143,14 @@ internal class LocalEngine(private val resources: Path = desktopResourceDirector
     fun stop() {
         val owned = synchronized(lock) {
             revision++
-            val result = process
+            val result = process to copiedServer
+            copiedServer = null
             process = null; appliedCpuThreads = null
             result
         }
-        owned?.destroy()
-        owned?.let { child -> Thread({
+        owned.first?.destroy()
+        owned.second?.let { runCatching { Files.deleteIfExists(it) } }
+        owned.first?.let { child -> Thread({
             if (!child.waitFor(2, TimeUnit.SECONDS)) { child.destroyForcibly(); child.waitFor(2, TimeUnit.SECONDS) }
         }, "meshlit-local-stop").apply { isDaemon = true; start() } }
     }
