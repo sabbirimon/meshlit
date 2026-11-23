@@ -52,6 +52,12 @@ jobs:
               shutil.rmtree(suite)
           subprocess.run(['tar','-xf',str(archive),'-C',str(extracted)],check=True)
           suite = extracted / 'Meshlit-Studio'
+          if os.environ['RUNNER_OS'] == 'Linux':
+              installed = pathlib.Path('/opt/meshlit-studio')
+              subprocess.run(['sudo','mv',str(suite),str(installed)],check=True)
+              subprocess.run(['sudo','chown','-R','root:root',str(installed)],check=True)
+              subprocess.run(['sudo','apparmor_parser','-r',str(installed / 'meshlit-studio.apparmor')],check=True)
+              suite = installed
           prefix = ['xvfb-run','-a'] if os.environ['RUNNER_OS']=='Linux' else []
           subprocess.run(prefix + ['python','scripts/check-studio-suite.py',str(suite)],check=True)
           shutil.copy2(suite / 'STUDIO-CONTENTS.json', dist)

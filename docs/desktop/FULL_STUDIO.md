@@ -6,6 +6,20 @@ The Rust launcher and bundled VSCodium workbench run without Java. The native ll
 
 STUDIO-CONTENTS.json lists installed model-free bytes and upstream hashes. Release qualification checks for JVM executables, libraries, modules and JARs. It runs the packaged extension, generates a local reply and compiles and executes C in the editor terminal. Earlier Compose installers and the Android Kotlin application are separate distributions. Advanced legacy management features have separate porting and qualification work.
 
+## Ubuntu installation
+
+On Ubuntu systems that restrict unprivileged user namespaces, install the verified suite in the administrator-owned path used by its Chromium sandbox profile. From the parent of the extracted directory, for a fresh installation:
+
+```sh
+sudo test ! -e /opt/meshlit-studio && sudo cp -R Meshlit-Studio /opt/meshlit-studio
+sudo chown -R root:root /opt/meshlit-studio
+sudo install -m 0644 /opt/meshlit-studio/meshlit-studio.apparmor /etc/apparmor.d/meshlit-studio
+sudo apparmor_parser -r /etc/apparmor.d/meshlit-studio
+/opt/meshlit-studio/Meshlit
+```
+
+The included policy is scoped to the editor in that installation. [Ubuntu user namespace guidance](https://documentation.ubuntu.com/release-notes/24.04/)
+
 ## Processor qualification plan
 
 | Resource | Measurement and acceptance |

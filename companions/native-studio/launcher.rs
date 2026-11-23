@@ -45,6 +45,20 @@ fn launch() -> io::Result<()> {
     let extensions = profile.join("extensions");
     let user_data = profile.join("settings");
     fs::create_dir_all(&extensions)?;
+    let settings = user_data.join("User");
+    fs::create_dir_all(&settings)?;
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(settings.join("settings.json"))
+    {
+        Ok(mut file) => {
+            use std::io::Write;
+            file.write_all(br#"{"update.mode":"none","telemetry.telemetryLevel":"off","extensions.autoCheckUpdates":false,"extensions.autoUpdate":false,"workbench.startupEditor":"none"}"#)?;
+        }
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
+        Err(e) => return Err(e),
+    }
     let make = || {
         let mut cmd = Command::new(&editor);
         cmd.env_remove("ELECTRON_RUN_AS_NODE");

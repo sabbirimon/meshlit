@@ -116,6 +116,8 @@ def main():
         zig.parent.rename(suite / "toolchain")
     package_extension(suite)
     launcher(suite)
+    if SYSTEM == "Linux":
+        shutil.copy2(ROOT / "companions/native-studio/meshlit-studio.apparmor", suite)
     shutil.copy2(ROOT / "docs/desktop/FULL_STUDIO.md", suite / "START.md")
     forbidden = [p.relative_to(suite) for p in suite.rglob("*") if p.is_file() and (
         p.suffix.lower() in {".jar",".class",".jmod"} or p.name.lower() in {"java","java.exe","javaw.exe","javac","javac.exe","jvm.dll","libjvm.so","libjvm.dylib"})]
