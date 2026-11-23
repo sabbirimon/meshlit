@@ -102,6 +102,7 @@ def main():
     for name in ("engine.json", server):
         shutil.copy2(args.resources / "local" / name, inference / name)
     shutil.copy2(spec, inference / "model.json")
+    shutil.copy2(spec.with_name("studio-models.json"), inference / "studio-models.json")
     notices = suite / "notices"
     notices.mkdir()
     for name in ("QWEN-MODEL-LICENSE.txt", "llama.cpp-LICENSE.txt"):

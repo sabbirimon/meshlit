@@ -4,6 +4,8 @@ Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+The current [Studio delivery plan](docs/DESKTOP_STUDIO_PLAN.md#device-aware-discovery-and-adapter-delivery) tracks device-aware model discovery, provider control, format qualification and remote lifecycle work.
+
 The first Studio priority is a model format support layer, followed by runnable adapters and extracted-build checks for each desktop platform. [Studio model format milestones](docs/DESKTOP_STUDIO_PLAN.md#studio-model-format-support--2026-11-24)
 
 

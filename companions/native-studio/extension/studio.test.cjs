@@ -64,3 +64,53 @@ test('chat webview contains one target for each action and the generated script 
         assert.equal(page.split('id="'+id+'"').length,2,id);
     }
 });
+
+test('first-run fit reserves RAM and offers only a starter that fits',()=>{
+    const {budget,recommended}=require('./discovery.cjs');
+    const starters=require('../../../desktopApp/distribution/studio-models.json').models;
+    const GiB=1024**3;
+    assert.equal(recommended(starters,budget(8*GiB,GiB)),undefined);
+    assert.equal(recommended(starters,budget(8*GiB,2*GiB)).id,'qwen25-1.5b');
+    assert.equal(recommended(starters,budget(32*GiB,12*GiB)).id,'qwen3-4b');
+});
+
+test('discovery resolves only a revision-pinned variant returned for the current repository',async()=>{
+    const {chooseFile,render}=require('./discovery.cjs');
+    const {files}=require('./hub.cjs');
+    const html=render('testnonce');
+    new (require('node:vm').Script)(html.match(/<script nonce="testnonce">([\s\S]*?)<\/script>/)[1]);
+    let receive,dispose;
+    const posted=[],urls=[];
+    const panel={webview:{onDidReceiveMessage:fn=>{receive=fn},postMessage:m=>posted.push(m)},onDidDispose:fn=>{dispose=fn},dispose:()=>dispose()};
+    const vscode={ViewColumn:{Active:1},window:{createWebviewPanel:()=>panel}};
+    const sha='a'.repeat(64);
+    const promise=chooseFile(vscode,async url=>{
+        urls.push(url);
+        return url.includes('blobs=true')?{sha:'b'.repeat(40),siblings:[{rfilename:'checkpoint.gguf',size:256,lfs:{sha256:sha}}]}:[{id:'org/demo',likes:3}];
+    },files);
+    await receive({op:'search',q:'a & b',sort:'likes',seq:1});
+    assert.equal(new URL(urls[0]).searchParams.get('search'),'a & b');
+    await receive({op:'details',repo:'other/demo',seq:2});
+    assert.equal(posted.at(-1).op,'error');
+    assert.equal(urls.length,1);
+    await receive({op:'details',repo:'org/demo',seq:3});
+    assert.equal(posted.at(-1).files[0].bytes,256);
+    await receive({op:'download',sha,seq:3});
+    assert.match((await promise).url,/org\/demo\/resolve\/b{40}\/checkpoint.gguf$/);
+});
+
+test('LM Studio inventory uses native v1 and unloads the selected instance',async t=>{
+    const {manage}=require('./lm-studio.cjs');
+    const http=require('node:http'),seen=[];
+    const server=http.createServer(async(req,res)=>{
+        const parts=[];for await(const part of req)parts.push(part);
+        seen.push([req.method,req.url,req.headers.authorization,Buffer.concat(parts).toString()]);
+        res.setHeader('Content-Type','application/json');
+        res.end(JSON.stringify(req.method==='GET'?{models:[{key:'org/demo',type:'llm',loaded_instances:[{id:'instance-2'}]}]}:{instance_id:'instance-2'}));
+    });
+    await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+    t.after(()=>new Promise(resolve=>server.close(resolve)));
+    const vscode={window:{showQuickPick:async choices=>choices.find(c=>c.op==='unload'),showInformationMessage:()=>{}}};
+    await manage(vscode,{kind:'LM Studio',base:'http://127.0.0.1:'+server.address().port+'/v1',model:'org/demo'},'test-only');
+    assert.deepEqual(seen,[['GET','/api/v1/models','Bearer test-only',''],['POST','/api/v1/models/unload','Bearer test-only','{"instance_id":"instance-2"}']]);
+});

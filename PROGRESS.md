@@ -4,6 +4,8 @@ Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [D
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+2026-11-24. Studio added a two-pane GGUF catalog and device-aware starter suggestions. A deterministic Flax GPT-2 MessagePack package produced the same four generated tokens through the Studio worker and HyperL CLI on Intel macOS. LM Studio instance control passed a loopback HTTP contract test. [Scope and remaining checks](docs/DESKTOP_STUDIO_PLAN.md#device-aware-discovery-and-adapter-delivery).
+
 On 2026-11-24 the Studio and HyperL development branches gained the same model adapter contract. Both generated text locally from a small SafeTensors checkpoint with Transformers and an ONNX decoder with ONNX Runtime GenAI on Intel macOS. Windows chat navigation, attachments, permissions, timing and installer qualification are tracked in the [desktop plan](docs/DESKTOP_STUDIO_PLAN.md#studio-model-format-support--2026-11-24). These changes postdate the 2.0.48-studio.1 desktop archives.
 
 

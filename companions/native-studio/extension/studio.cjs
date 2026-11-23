@@ -22,7 +22,16 @@ async function activate(context) {
     const {imported, displayOutput} = require('./catalog.cjs');
     const saved = () => context.globalState.get('model-catalog', []);
     const firstRun=()=>!context.globalState.get('welcome-complete',false)&&!context.globalState.get('route')&&!saved().length;
-    const updateWelcome=visible=>sendUI('setup',{visible,host:require('node:os').availableParallelism()+' logical CPUs · '+(require('node:os').totalmem()/1024**3).toFixed(1)+' GiB RAM installed'});
+    const discovery = require('./discovery.cjs');
+    let suggestion;
+    function updateWelcome(visible) {
+        const capacity = discovery.budget();
+        suggestion = visible ? discovery.recommended(starters,capacity) : undefined;
+        const host = require('node:os').availableParallelism()+' logical CPUs · estimated CPU weight budget '+discovery.size(capacity);
+        sendUI('setup',{visible,host,recommendation:suggestion ?
+            {name:suggestion.label||suggestion.filename,detail:discovery.size(suggestion.sizeBytes)+' · '+(suggestion.filename===manifest.filename?'Included for offline chat':'Download from '+suggestion.publisher)} :
+            {name:'Connect a provider',detail:'Free memory is low for the starter models.'}});
+    }
     async function finishWelcome(){
         await context.globalState.update('welcome-complete',true);updateWelcome(false);
     }
@@ -67,7 +76,8 @@ async function activate(context) {
         } else if(['Import model file…','Import model folder…','Discover models'].includes(choice)) {
             let route;
             if(choice==='Discover models'){
-                route=await require('./hub.cjs').discover(vscode,require('node:path').join(context.globalStorageUri.fsPath,'models'));
+                const hub=require('./hub.cjs'),dir=path.join(context.globalStorageUri.fsPath,'models');
+                route=forced?.item?await hub.install(vscode,dir,forced.item):await hub.discover(vscode,dir);
                 if(!route)return;
             } else {
                 const folder=choice==='Import model folder…';
@@ -115,6 +125,7 @@ async function activate(context) {
         local.stop();
         resetChats();
         status();
+        return true;
     }
     async function cpu() {
         if (active||changing) throw Error('Finish the current model operation first');
@@ -142,6 +153,8 @@ async function activate(context) {
     }
     const packaged={kind:'local',model:'meshlit-local'};
     const manifest=JSON.parse(require('node:fs').readFileSync(require('node:path').join(root,'inference','model.json'),'utf8'));
+    const catalogPath=path.join(root,'inference','studio-models.json');
+    const starters=require('node:fs').existsSync(catalogPath)?JSON.parse(require('node:fs').readFileSync(catalogPath,'utf8')).models:[manifest];
     const modelId=r=>crypto.createHash('sha256').update(JSON.stringify([r.kind,r.base||'',r.file||'',r.model])).digest('hex');
     function generationSettings(route=settings()){
         return context.globalState.get('generation:'+modelId(route),{maxTokens:128,temperature:0});
@@ -165,7 +178,7 @@ async function activate(context) {
             canSelect:r.kind!=='asset'||!!r.info?.adapters?.length,
             detail:r.kind==='asset'?[r.info.label,...r.info.quantization,r.info.evidence,r.info.adapters.length?'Requires local '+r.info.adapters.join(' or '):'External runtime required: '+r.info.runtime,r.file].join(' · '):r.base?r.kind+' · '+r.base:r.kind==='local'?'Bundled GGUF':((r.bytes||0)/1024**3).toFixed(2)+' GiB weights · '+(require('node:os').freemem()/1024**3).toFixed(1)+' GiB RAM free now · '+r.file
         }));
-        return {library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:['local','import'].includes(selected.kind),
+        return {isLmStudio:selected.kind==='LM Studio',library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:['local','import'].includes(selected.kind),
             running:!!local.route,server:local.route?'Running · '+local.route.base:local.pending?'Loading local model…':'Stopped'};
     }
     async function action(op,id){
@@ -176,6 +189,11 @@ async function activate(context) {
         changing=true;
         try{
             if(op==='tune')await tuneModel();
+            else if(op==='lmManage'){
+                const route=settings();
+                if(route.kind!=='LM Studio')throw Error('Select an LM Studio connection first');
+                await require('./lm-studio.cjs').manage(vscode,route,await context.secrets.get('token:'+route.base));
+            }
             else if(op==='connect'){
                 const label=await vscode.window.showQuickPick(['Ollama','LM Studio','Other OpenAI-compatible server'],{title:'Connect a model server'});
                 if(label)await select({label});
@@ -311,6 +329,18 @@ async function activate(context) {
                 if(msg.op==='ready') {ready=true;updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
                 if(msg.op==='new'&&!active){await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){pendingFile=undefined;sendUI('attachment',{name:''});currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='useSuggestion'){
+                    if(active||changing)return;
+                    const model=suggestion;
+                    if(!model){await action('connect');if(settings().base)await finishWelcome();return;}
+                    changing=true;
+                    try{
+                        const done=model.filename===manifest.filename?await select({label:'Bundled offline model'}):
+                            await select({label:'Discover models',item:{name:model.filename,sha:model.sha256,bytes:model.sizeBytes,url:model.url,repo:model.repository}});
+                        if(done)await finishWelcome();
+                    }finally{changing=false;}
+                    return;
+                }
                 if(msg.op==='skipSetup'||msg.op==='startLocal'){if(msg.op==='startLocal'&&settings().kind!=='local')await select({label:'Bundled offline model'});await finishWelcome();return;}
                 if(msg.op==='startLibrary'){await finishWelcome();go('models');return;}
                 if(msg.op==='startProvider'){

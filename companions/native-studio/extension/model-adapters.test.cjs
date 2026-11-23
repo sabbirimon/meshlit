@@ -77,3 +77,14 @@ test('GGUF signature, LiteRT identifier and NumPy magic are checked',async t=>{
     assert.equal((await inspect(tflite)).format,'litert');
     assert.equal(formats.numpy.runtime,'Architecture-specific loader');
 });
+
+test('Flax folder requires a local config and tokenizer and excludes custom code',async t=>{
+    const dir=await temp(t);
+    await fs.writeFile(path.join(dir,'flax_model.msgpack'),'weights');
+    assert.deepEqual((await inspect(dir)).adapters,[]);
+    await fs.writeFile(path.join(dir,'config.json'),'{"model_type":"gpt2"}');
+    await fs.writeFile(path.join(dir,'tokenizer.json'),'{}');
+    assert.deepEqual((await inspect(dir)).adapters,['flax-transformers']);
+    await fs.writeFile(path.join(dir,'config.json'),'{"auto_map":{"AutoModel":"custom"}}');
+    assert.deepEqual((await inspect(dir)).adapters,[]);
+});

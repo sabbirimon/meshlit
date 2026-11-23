@@ -17,7 +17,7 @@ async function metadata(url, signal) {
 function files(repo, data) {
     if (!repoPattern.test(repo) || !/^[a-f0-9]{40}$/.test(data.sha)) throw Error('Missing immutable model revision');
     return (data.siblings||[]).filter(s=>typeof s.rfilename==='string' && s.rfilename.split('/').every(x=>x.length>0&&x!=='.'&&x!=='..') &&
-        /\.gguf$/i.test(s.rfilename) && !/-\d{5}-of-\d{5}\.gguf$/i.test(s.rfilename) &&
+        /\.gguf$/i.test(s.rfilename) && !/^mmproj[-_.]/i.test(path.posix.basename(s.rfilename)) && !/-\d{5}-of-\d{5}\.gguf$/i.test(s.rfilename) &&
         /^[a-f0-9]{64}$/.test(s.lfs?.sha256) && Number.isSafeInteger(s.size) && s.size>=24 && s.size<=64*1024**3)
         .map(s=>({name:s.rfilename,bytes:s.size,sha:s.lfs.sha256,url:HUB+'/'+repo+'/resolve/'+data.sha+'/'+s.rfilename.split('/').map(encodeURIComponent).join('/')}));
 }
@@ -51,24 +51,19 @@ async function download(item, dir, signal, progress, fetcher=fetch) {
     }
 }
 async function discover(vscode, directory) {
-    const query=await vscode.window.showInputBox({title:'Discover GGUF models on Hugging Face',prompt:'Search the public model catalog',validateInput:s=>s.trim().length>0&&s.length<=120?undefined:'Enter 1–120 characters'});
-    if(!query)return;
-    const items=await metadata(HUB+'/api/models?filter=gguf&limit=30&search='+encodeURIComponent(query.trim()),AbortSignal.timeout(15000));
-    const repo=await vscode.window.showQuickPick(items.map(m=>m.id).filter(id=>typeof id==='string'&&repoPattern.test(id)),{title:'Choose a model repository'});
-    if(!repo)return;
-    const data=await metadata(HUB+'/api/models/'+repo+'?blobs=true',AbortSignal.timeout(15000));
-    const choices=files(repo,data).map(item=>({label:item.name,description:(item.bytes/1024**3).toFixed(2)+' GiB',item}));
-    if(!choices.length)throw Error('No single-file GGUF with a published digest within the 64 GiB download limit');
-    const choice=await vscode.window.showQuickPick(choices,{title:'Choose GGUF file and quantization'});
-    if(!choice)return;
-    const ok=await vscode.window.showInformationMessage('Download '+choice.label+' ('+choice.description+') from '+repo+' into Studio storage?',{modal:true},'Download');
+    const item=await require('./discovery.cjs').chooseFile(vscode,metadata,files);
+    if(!item)return;
+    return install(vscode,directory,item);
+}
+async function install(vscode,directory,item) {
+    const ok=await vscode.window.showInformationMessage('Download '+item.name+' ('+(item.bytes/1024**3).toFixed(2)+' GiB) from '+item.repo+' into Studio storage?',{modal:true},'Download');
     if(!ok)return;
-    return vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Downloading '+choice.label,cancellable:true},async(progress,token)=>{
+    return vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Downloading '+item.name,cancellable:true},async(progress,token)=>{
         const ctl=new AbortController(), sub=token.onCancellationRequested(()=>ctl.abort());
         let last=0;
-        try{return await download(choice.item,directory,AbortSignal.any([ctl.signal,AbortSignal.timeout(3600000)]),fraction=>{
+        try{return await download(item,directory,AbortSignal.any([ctl.signal,AbortSignal.timeout(3600000)]),fraction=>{
             const now=Math.floor(100*fraction);if(now>last){progress.report({increment:now-last});last=now;}
         });}finally{sub.dispose();}
     });
 }
-module.exports={discover,files,download};
+module.exports={discover,files,download,install};

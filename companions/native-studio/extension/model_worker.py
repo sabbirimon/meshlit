@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 PACKAGES = {
+    "flax-transformers": ("transformers", "flax", "jax", "jaxlib"),
     "transformers": ("transformers", "torch", "safetensors"),
     "onnx-genai": ("onnxruntime-genai",),
     "openvino-genai": ("openvino-genai",),
@@ -24,6 +25,20 @@ def prompt_for(messages):
 
 def generate(adapter, root, messages, limit):
     prompt = prompt_for(messages)
+    if adapter == "flax-transformers":
+        from transformers import AutoTokenizer, FlaxAutoModelForCausalLM
+        options = dict(local_files_only=True, trust_remote_code=False)
+        tokenizer = AutoTokenizer.from_pretrained(root, **options)
+        model = FlaxAutoModelForCausalLM.from_pretrained(root, **options)
+        if tokenizer.chat_template:
+            prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        encoded = tokenizer(prompt, return_tensors="np", add_special_tokens=not bool(tokenizer.chat_template))
+        ids = encoded["input_ids"]
+        length = ids.shape[-1]
+        if not 0 < length <= 8192:
+            raise ValueError("Input exceeds the adapter context limit")
+        result = model.generate(ids, attention_mask=encoded["attention_mask"], max_new_tokens=limit, do_sample=False)
+        return tokenizer.decode(result.sequences[0, length:], skip_special_tokens=True)
     if adapter == "transformers":
         from transformers import AutoModelForCausalLM, AutoTokenizer
         import torch
@@ -72,6 +87,8 @@ def respond(req):
     if adapter == "mlx-lm" and (platform.system(), platform.machine()) != ("Darwin", "arm64"):
         raise ValueError("This MLX-LM adapter requires an Apple Silicon Python environment")
     if req["operation"] == "probe":
+        if adapter == "flax-transformers":
+            from transformers import FlaxAutoModelForCausalLM  # Verify the installed Transformers exposes Flax.
         return {"versions": {name: importlib.metadata.version(name) for name in packages}}
     if req["operation"] != "generate":
         raise ValueError("Unknown worker operation")

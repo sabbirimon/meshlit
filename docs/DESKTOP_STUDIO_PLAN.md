@@ -157,7 +157,7 @@ See [API reference](https://docs.openwebui.com/reference/api-endpoints/) and
 
 ## LM Studio and Bionic workflow review — 2026-11-24
 
-The Windows host reported LM Studio 0.4.28.0 and Bionic 1.2.2.0. The capabilities below come from the vendor guides. The exact first-run Windows screen still needs a visual comparison. Meshlit uses its own assets, UI and runtime adapters.
+The Windows host reported LM Studio 0.4.28.0 and Bionic 1.2.2.0. The capabilities below come from the vendor guides. The Windows first-run and server settings screenshots confirm the device recommendation, skippable download, optional settings and separate catalog, library, server and remote views. Meshlit uses its own assets, UI and runtime adapters.
 
 | Workflow | Meshlit development state | Next acceptance gate |
 | --- | --- | --- |
@@ -169,3 +169,12 @@ The Windows host reported LM Studio 0.4.28.0 and Bionic 1.2.2.0. The capabilitie
 | Developer workflows | Local authenticated API controls, separate IDE, compiler, terminal and provider routes. | Runtime manager, portable configuration presets, prompt templates, embeddings, parallel requests, speculative decoding and headless lifecycle controls. |
 
 Sources include the [LM Studio application guide](https://lmstudio.ai/docs/app), [Bionic model picker](https://lmstudio.ai/docs/bionic/models), [local model library](https://lmstudio.ai/docs/bionic/models/download-local-models) and [voice settings](https://lmstudio.ai/docs/bionic/voice-input).
+
+## Device-aware discovery and adapter delivery
+
+1. **Welcome and discovery.** Implemented in source. A local CPU memory snapshot recommends the largest catalog starter within the estimated budget, or a provider when neither starter fits. The bundled model works offline. Larger downloads require confirmation. Public GGUF search opens a two-pane model and file picker with relevance, likes, downloads and update sorting. Each immutable variant shows size and can be filtered by available memory. The estimate reserves runtime memory and excludes swap and GPU capacity. Next qualify GPU-specific estimates and resumable downloads.
+2. **Provider management.** A selected LM Studio connection can inspect its native v1 inventory and load or unload a specific instance using its stored endpoint credential. Local chat retains the OpenAI-compatible interface. The client uses the documented REST routes directly. Server configuration, per-client credentials, MCP and remote access remain independently managed. Next qualify lifecycle changes against a live LM Studio server and add cancellable download tracking.
+3. **Format adapters.** The same worker and inspection code serves Meshlit and HyperL. Flax GPT-2 generation now joins the SafeTensors, ONNX GenAI and OpenVINO CPU checks. Full local Flax packages require native MessagePack weights, Transformers with Flax support, JAX, Flax and a local tokenizer. MLX-LM still needs physical Apple Silicon inference qualification. For the other catalog families, qualify one architecture, tokenizer, runtime version and target device at a time before advertising local chat.
+4. **Server and pairing.** Keep model inventory, instance status and memory usage visible per device. Next deliver authenticated, scoped remote lifecycle controls, idle unloading that respects external requests and revocation tests. Introduce developer settings separately from first chat.
+
+Integration references include the [native model inventory](https://lmstudio.ai/docs/developer/rest/list), [load](https://lmstudio.ai/docs/developer/rest/load), [unload](https://lmstudio.ai/docs/developer/rest/unload) and [official TypeScript SDK](https://github.com/lmstudio-ai/lmstudio-js). The [archived catalog](https://github.com/lmstudio-ai/model-catalog) is historical schema reference material.

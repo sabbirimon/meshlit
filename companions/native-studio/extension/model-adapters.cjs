@@ -155,7 +155,9 @@ async function inspect(source,hint) {
         if(entries.has(aux))tags.push(...quantization(await metadata(path.join(dir,aux))));
     }
     const data={quantization:[...new Set(tags)]};
-    const markers=[['mlc-chat-config.json','mlc'],['genai_config.json','onnx'],['openvino_model.xml','openvino'],['saved_model.pb','tensorflow'],['flax_model.msgpack','flax'],['pytorch_model.bin','pytorch'],['pytorch_model.bin.index.json','pytorch']];
+    const tokenizerPresent = entries.has('tokenizer.json') || entries.has('tokenizer.model');
+    const configured = entries.has('config.json') && tokenizerPresent && !config.auto_map;
+    const markers=[['mlc-chat-config.json','mlc'],['genai_config.json','onnx'],['openvino_model.xml','openvino'],['saved_model.pb','tensorflow'],['pytorch_model.bin','pytorch'],['pytorch_model.bin.index.json','pytorch']];
     if(!indexed) for(const [name,id] of markers) if(entries.has(name)){
         if(id==='openvino')await inspectFile(path.join(dir,name));
         if(id==='onnx' && ![...entries].some(n=>n.endsWith('.onnx')))throw Error('ONNX GenAI package has no top-level ONNX graph');
@@ -173,8 +175,11 @@ async function inspect(source,hint) {
     if(weights.length){
         const mlx=!!(config.quantization?.group_size && config.quantization?.bits && !config.quantization_config);
         const rwkv=/^rwkv/i.test(config.model_type||'');
-        const prep=!indexed && entries.has('config.json') && (entries.has('tokenizer.json')||entries.has('tokenizer.model')) && !config.auto_map;
+        const prep=!indexed && configured;
         return result(input,mlx?'mlx':rwkv?'rwkv':'safetensors','weight filenames and package metadata',{...data,adapters:prep?[mlx?'mlx-lm':'transformers']:[]});
+    }
+    if(entries.has('flax_model.msgpack')){
+        return result(input,'flax','Flax MessagePack checkpoint and package metadata',{...data,adapters:configured?['flax-transformers']:[]});
     }
     if([...entries].some(n=>n.endsWith('.engine')))return result(input,'tensorrt','engine filename in package',data);
     throw Error('Unrecognized model directory. Select a specific model file.');
