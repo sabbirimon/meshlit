@@ -14,8 +14,9 @@ val configureHostPlacement by tasks.registering(Exec::class) {
 val buildHostPlacement by tasks.registering(Exec::class) {
     dependsOn(configureHostPlacement)
     inputs.files(fileTree("src/main/cpp"))
+    inputs.file(hostPlacement.map { it.file("CMakeCache.txt") })
     outputs.file(hostPlacement.map { it.file("lib/" + System.mapLibraryName("meshlit_placement")) })
-    commandLine("cmake", "--build", hostPlacement.get().asFile, "--config", "Release")
+    commandLine("cmake", "--build", hostPlacement.get().asFile, "--config", "Release", "--target", "meshlit_placement")
 }
 
 android {

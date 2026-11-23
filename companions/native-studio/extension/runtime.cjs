@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
+const os = require('node:os');
 const crypto = require('node:crypto');
 const {spawn} = require('node:child_process');
 const {once} = require('node:events');
@@ -41,13 +42,18 @@ async function digest(file) {
 
 class LocalServer {
     constructor(root) { this.root = root; }
-    async start(signal) {
+    async start(signal, configuredThreads = 0) {
         if (!this.pending) {
-            this.pending = this.launch(signal).catch(err => { this.stop(); throw err; });
+            this.pending = this.launch(signal, configuredThreads).catch(err => { this.stop(); throw err; });
         }
         return this.pending;
     }
-    async launch(signal) {
+    async launch(signal, configuredThreads) {
+        const available = os.availableParallelism();
+        if (!Number.isInteger(configuredThreads) || configuredThreads < 0 || configuredThreads > Math.min(64, available)) {
+            throw Error('CPU thread limit exceeds available processors');
+        }
+        const threads = String(configuredThreads || Math.min(4, available));
         const meta = JSON.parse(fs.readFileSync(path.join(this.root, 'inference/engine.json')));
         const model = JSON.parse(fs.readFileSync(path.join(this.root, 'inference/model.json')));
         const server = path.join(this.root, 'inference', process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
@@ -64,12 +70,14 @@ class LocalServer {
         const base = 'http://127.0.0.1:' + port + '/v1';
         const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(LLAMA_|GGML_)/i.test(k)));
         env.LLAMA_API_KEY = token;
-        const child = spawn(server, ['--host','127.0.0.1','--port',String(port),'--model',weights,'--alias','meshlit-local','--ctx-size','4096','--parallel','1'], {env,stdio:'ignore', windowsHide:true});
+        const child = spawn(server, ['--host','127.0.0.1','--port',String(port),'--model',weights,'--alias','meshlit-local','--ctx-size','4096','--parallel','1','--threads',threads,'--threads-batch',threads,
+            '--fit','off','--device','none','--n-gpu-layers','0','--no-warmup','--no-agent','--no-webui','--offline'], {env,stdio:'ignore', windowsHide:true});
         this.child = child;
         let failed;
         child.once('error', err => { failed = err; });
         child.once('exit', () => { if (this.child === child) { this.child = undefined; this.pending = undefined; } });
-        for (let i = 0; i < 240; i++) {
+        const deadline = Date.now() + 180000;
+        while (Date.now() < deadline) {
             signal.throwIfAborted();
             if (failed || child.exitCode !== null || child.signalCode) throw Error('Local model server stopped during startup');
             try {
