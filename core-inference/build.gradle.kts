@@ -9,7 +9,7 @@ val configureHostPlacement by tasks.registering(Exec::class) {
     outputs.file(hostPlacement.map { it.file("CMakeCache.txt") })
     commandLine("cmake", "-S", file("src/main/cpp"), "-B", hostPlacement.get().asFile,
         "-DMESHLIT_BUILD_JNI=ON", "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=" + hostPlacement.get().dir("lib").asFile,
-        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=" + hostPlacement.get().dir("lib").asFile, "-DJAVA_HOME=" + System.getProperty("java.home"))
+        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=" + hostPlacement.get().dir("lib").asFile, "-DJAVA_HOME:PATH=" + file(System.getProperty("java.home")).invariantSeparatorsPath)
 }
 val buildHostPlacement by tasks.registering(Exec::class) {
     dependsOn(configureHostPlacement)
