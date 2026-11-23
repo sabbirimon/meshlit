@@ -56,7 +56,7 @@ import javax.swing.JFileChooser
                 Text("Local files", style = MaterialTheme.typography.caption, color = colors.onSurface.copy(alpha = .55f))
             }
             TextButton({ guarded { val picker = JFileChooser().apply { fileSelectionMode = JFileChooser.DIRECTORIES_ONLY }; if(picker.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) openFolder(picker.selectedFile.toPath()) } }) { Text("Open folder") }
-            TextButton({ attempt { openVsCode(workspace?.root) } }) { Text(if (BundledWorkbench.installed() != null) "Full IDE ↗" else "VS Code ↗") }
+            TextButton({ attempt { openVsCode(workspace?.root) } }) { Text("VS Code ↗") }
             TextButton({ guarded(onClose) }) { Text("Back to chat") }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {

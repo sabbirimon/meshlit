@@ -18,7 +18,7 @@ import javax.swing.JFileChooser
             Item("Open folder…", onClick = { action("open-folder") }, shortcut = shortcut(Key.O))
             Item("Save file", onClick = { action("save-file") }, enabled = coding, shortcut = shortcut(Key.S))
             Separator()
-            Item(if (BundledWorkbench.installed() != null) "Open project in bundled IDE…" else "Open project in VS Code…", onClick = { action("vscode") })
+            Item("Open project in VS Code…", onClick = { action("vscode") })
             Separator()
             Item("Quit Meshlit", onClick = quit, shortcut = shortcut(Key.Q))
         }
@@ -57,6 +57,5 @@ internal fun openVsCode(folder: Path? = null) {
         if(picker.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) return
         picker.selectedFile.toPath()
     }
-    val studio = BundledWorkbench.installed()
-    if (studio != null) studio.open(selected) else java.awt.Desktop.getDesktop().browse(vscodeFolderUri(selected))
+    java.awt.Desktop.getDesktop().browse(vscodeFolderUri(selected))
 }

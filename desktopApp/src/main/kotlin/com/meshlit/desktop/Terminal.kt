@@ -24,7 +24,6 @@ internal class HumanCommandRunner : AutoCloseable {
         val process = synchronized(lock) {
             check(!closed && child == null)
             val builder = ProcessBuilder(argv).directory(directory.toFile())
-            BundledWorkbench.installed()?.configure(builder)
             builder.start().also { child = it }
         }
         try {
