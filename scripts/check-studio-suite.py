@@ -21,6 +21,8 @@ def main():
     args = parser.parse_args()
     root = args.suite.resolve()
     client, cli = [root / name for name in PATHS[SYSTEM]]
+    if SYSTEM == "Linux" and not client.is_file():
+        client = root / "Meshlit/bin/meshlit"
     with tempfile.TemporaryDirectory() as temp:
         temp = Path(temp)
         project = temp / "test workspace"

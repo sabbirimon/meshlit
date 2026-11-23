@@ -52,7 +52,7 @@ def main():
     suite = output / "Meshlit-Studio"
     suite.mkdir()
     [app] = [p for p in args.image.iterdir() if p.is_dir() and p.name.lower() in ("meshlit", "meshlit.app")]
-    shutil.copytree(app, suite / app.name, symlinks=True)
+    shutil.copytree(app, suite / ("Meshlit.app" if SYSTEM == "Darwin" else "Meshlit"), symlinks=True)
     with tempfile.TemporaryDirectory(dir=output) as temp:
         raw = Path(temp)
         unpack(specs["editor"], raw / "editor", args.cache)

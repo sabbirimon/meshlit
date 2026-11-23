@@ -25,7 +25,7 @@ internal class BundledWorkbench(private val root: Path, private val editor: Path
             val launcher = System.getProperty("jpackage.app-path")?.let { Path.of(it).toRealPath() } ?: return null
             val os = System.getProperty("os.name").lowercase()
             val (root, relative) = when {
-                os.startsWith("mac") -> launcher.parent.parent.parent.parent to "editor/VSCodium.app/Contents/MacOS/Electron"
+                os.startsWith("mac") -> launcher.parent.parent.parent.parent to "editor/VSCodium.app/Contents/MacOS/VSCodium"
                 os.startsWith("windows") -> launcher.parent.parent to "editor/VSCodium.exe"
                 else -> launcher.parent.parent.parent to "editor/codium"
             }
