@@ -5,6 +5,8 @@ on:
     branches: [feature/desktop-inference-profiles]
     paths:
       - '.github/workflows/mobile-candidate.yml'
+      - 'core-inference/src/main/cpp/**'
+      - 'core-inference/build.gradle.kts'
       - 'core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/LayerPlacement.kt'
 permissions:
   contents: read
