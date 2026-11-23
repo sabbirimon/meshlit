@@ -3,6 +3,35 @@ import org.junit.Test
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 class GibberLinkCodecTest {
+    @Test fun spectrumMatchesIndependentHannWindowedDft() {
+        assumeTrue(System.getProperty("gibberlink.host.test") == "true")
+        val codec = GibberLinkCodec()
+        val pcm = ByteArray(181) { (it * 71 - 19).toByte() }
+        for (length in listOf(0, 1, 3, 47, 128, pcm.size)) {
+            val frame = pcm.copyOf(length)
+            for (count in listOf(0, 1, 9, 32)) {
+                val expected = DoubleArray(count) { bin ->
+                    var real = 0.0
+                    var imag = 0.0
+                    for (i in 0 until minOf(64, frame.size / 2)) {
+                        val sample = (frame[2*i].toInt() and 255) + 256 * frame[2*i+1]
+                        val value = sample * (1 - kotlin.math.cos(2 * Math.PI * i / 63)) / 65536.0
+                        val angle = 2 * Math.PI * bin * i / 64
+                        real += value * kotlin.math.cos(angle)
+                        imag -= value * kotlin.math.sin(angle)
+                    }
+                    kotlin.math.hypot(real, imag)
+                }
+                val peak = expected.maxOrNull() ?: 0.0
+                val actual = FloatArray(count) { -1f }
+                codec.spectrum(frame, actual)
+                for (bin in expected.indices) {
+                    assertEquals(if (peak == 0.0) 0.0 else expected[bin] / peak, actual[bin].toDouble(), 1e-5)
+                }
+            }
+        }
+        assertThrows(IllegalArgumentException::class.java) { codec.spectrum(pcm, FloatArray(33)) }
+    }
     @Test fun actualPcmRoundTripAndInvalidHandles() {
         assumeTrue(System.getProperty("gibberlink.host.test") == "true")
         val codec = GibberLinkCodec(); val tx = codec.open(); val rx = codec.open()

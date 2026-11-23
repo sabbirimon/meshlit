@@ -1073,7 +1073,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "JVM dependency migration",
-      "contentSha256WithoutTrackingBlock": "9a3eb5ac060b5514eef160542478de2a5fcd53628bec3358dcfdbfd04a6bdb02"
+      "contentSha256WithoutTrackingBlock": "cfde5126aac170fe970255bd2ffdd5250a9eab8deb0c076d49dc4a20686b5d11"
     },
     {
       "path": "docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md",

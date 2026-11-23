@@ -26,40 +26,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlin.math.PI
-import kotlin.math.cos
+import com.meshlit.core.gibberlink.GibberLinkCodec
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Live audio spectrum analyzer for the v2 Voice screen.
  *
- * Renders a 32-bar magnitude display from a 1024-sample 16-kHz
- * mono PCM frame so the user can SEE whether the mic is actually
- * capturing audio. Each bar represents a frequency bin in
- * 500 Hz steps from 0 Hz → 8 kHz (Nyquist for 16-kHz audio).
- *
- * Why a real spectrum instead of a single VAD bar:
- *  - **Confidence**: the VAD bar only tells the user "speech was
- *    detected", not "the mic is open". A spectrum with visible
- *    noise floor + speech peaks is unambiguous evidence of capture.
- *  - **Calibration**: the user can hold the phone near a fan /
- *    speaker / keyboard and watch the spectrum shape change —
- *    useful when validating that the chosen mic is the right one.
- *  - **Diagnosis**: silent audio with a flat noise floor points
- *    to a permissions issue, a muted mic, or a hardware fault;
- *    a tall low-band energy with no high-band content points to
- *    the user's voice (vs a fan blowing on the back mic).
- *
- * The analyzer is a 32-point Cooley–Tukey radix-2 FFT. Each
- * ~32 ms frame runs ~1 024 multiply-adds per bin × 32 bins = 33 k
- * ops, well under a millisecond on a Pixel 4. A Hann window is
- * applied before the FFT so the 32 frequency bins aren't smeared
- * by spectral leakage — that lets us resolve voice formants
- * (~300 Hz–4 kHz) without adjacent-bin contamination.
+ * Shows the first 32 bins of a Hann-windowed, 64-sample native FFT.
+ * At 16 kHz the bin centers are spaced 250 Hz apart, starting at DC.
  *
  * The bars use a logarithmic scale (40 dB dynamic range) so the
  * user can see both loud and quiet signals without one drowning
@@ -76,6 +52,7 @@ fun MeshlitAudioSpectrum(
     idle: Color = Color(0xFF2A3354),    // MeshlitOutline
     sensitivity: Float = 1.0f,
 ) {
+    require(barCount in 0..32)
     // Recompose the FFT-magnitudes feed whenever the user moves the
     // sensitivity slider so the multiplier is applied per-frame
     // (not just once at the start of the collector).
@@ -85,8 +62,8 @@ fun MeshlitAudioSpectrum(
     // We use a list rather than FloatArray because Compose's
     // snapshot system observes per-element writes on lists but
     // not on arrays.
-    val bars: SnapshotStateList<Float> = remember { androidx.compose.runtime.mutableStateListOf(*FloatArray(barCount) { 0f }.toTypedArray()) }
-    val peaks: SnapshotStateList<Float> = remember { androidx.compose.runtime.mutableStateListOf(*FloatArray(barCount) { 0f }.toTypedArray()) }
+    val bars: SnapshotStateList<Float> = remember(barCount) { androidx.compose.runtime.mutableStateListOf(*FloatArray(barCount) { 0f }.toTypedArray()) }
+    val peaks: SnapshotStateList<Float> = remember(barCount) { androidx.compose.runtime.mutableStateListOf(*FloatArray(barCount) { 0f }.toTypedArray()) }
     // Live waveform ring buffer (last 128 mono samples, normalized
     // to -1..+1). Drawn underneath the bars so the user can see
     // the *raw time-domain* audio alongside the frequency-domain
@@ -111,11 +88,13 @@ fun MeshlitAudioSpectrum(
     // envelope decay animates smoothly even when no PCM frames
     // are flowing. Recomposition is driven by the bar list
     // changing, not by the tick itself.
-    LaunchedEffect(pcmFlow) {
+    LaunchedEffect(pcmFlow, barCount) {
         if (pcmFlow != null) {
             try {
+                val audio = GibberLinkCodec()
+                val mags = FloatArray(barCount)
                 pcmFlow.collect { pcm ->
-                    val mags = dftMagnitudes(pcm, binCount = barCount)
+                    audio.spectrum(pcm, mags)
                     // Apply the sensitivity multiplier before the EMA
                     // so the slider visibly raises / lowers the bars.
                     // The rest of the chain (normalization → EMA →
@@ -207,7 +186,7 @@ fun MeshlitAudioSpectrum(
     // decay the bars smoothly to zero so the user sees the
     // spectrum fade out (instead of freezing at the last
     // magnitude).
-    LaunchedEffect(Unit) {
+    LaunchedEffect(barCount) {
         var prev = 0L
         while (true) {
             withFrameNanos { now ->
@@ -415,99 +394,4 @@ private fun DrawScope.drawRoundedBar(
         size = size,
         cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r),
     )
-}
-
-/**
- * 32-point Cooley–Tukey radix-2 FFT for a 16-bit mono PCM frame.
- *
- * We only need the magnitudes of the first [binCount] bins (the
- * lower 8 kHz of the spectrum at 16 kHz sample rate). Returns a
- * FloatArray of length [binCount] where each entry is the linear
- * magnitude (0..1 for normalized audio, ~0.0001..0.5 for real
- * voice signals).
- *
- * The frame length doesn't have to match the FFT size — we read
- * the first [fftSize] samples (or zero-pad if shorter). Frames
- * from `RunAnywhereVoiceEngine.startCapture` are 1024 samples,
- * so this reads the first 32 of every frame (≈ 8 ms at 16 kHz).
- * That's enough resolution for a visible spectrum.
- */
-private fun dftMagnitudes(pcm: ByteArray, binCount: Int, fftSize: Int = 32): FloatArray {
-    val out = FloatArray(binCount)
-    if (pcm.isEmpty()) return out
-    val samples = ShortArray(fftSize)
-    // Convert 16-bit little-endian PCM to shorts, zero-pad if
-    // the frame is shorter than fftSize.
-    val limit = min(pcm.size / 2, fftSize)
-    for (i in 0 until limit) {
-        val lo = pcm[i * 2].toInt() and 0xFF
-        val hi = pcm[i * 2 + 1].toInt()
-        samples[i] = ((hi shl 8) or lo).toShort()
-    }
-    // Convert to float [-1, 1] + apply Hann window so the FFT
-    // bins don't leak between adjacent voice bands.
-    val real = FloatArray(fftSize)
-    val imag = FloatArray(fftSize)
-    for (i in 0 until fftSize) {
-        val w = 0.5f * (1f - cos(2f * PI.toFloat() * i / (fftSize - 1).toFloat()))
-        real[i] = (samples[i] / 32768f) * w
-    }
-    // Bit-reversal permutation for radix-2.
-    val jArr = IntArray(fftSize)
-    var j = 0
-    for (i in 1 until fftSize) {
-        var bit = fftSize shr 1
-        while (j >= bit) { j -= bit; bit = bit shr 1 }
-        j += bit
-        jArr[i] = j
-    }
-    // Cooley–Tukey butterflies.
-    var size = 2
-    while (size <= fftSize) {
-        val half = size / 2
-        val theta = -2f * PI.toFloat() / size
-        val wReal0 = cos(theta)
-        val wImag0 = sin(theta)
-        var k = 0
-        while (k < fftSize) {
-            var wReal = 1f
-            var wImag = 0f
-            for (m in 0 until half) {
-                val idxEven = k + m
-                val idxOdd = k + m + half
-                val tReal = wReal * real[idxOdd] - wImag * imag[idxOdd]
-                val tImag = wReal * imag[idxOdd] + wImag * real[idxOdd]
-                real[idxOdd] = real[idxEven] - tReal
-                imag[idxOdd] = imag[idxEven] - tImag
-                real[idxEven] = real[idxEven] + tReal
-                imag[idxEven] = imag[idxEven] + tImag
-                val nReal = wReal * wReal0 - wImag * wImag0
-                val nImag = wReal * wImag0 + wImag * wReal0
-                wReal = nReal
-                wImag = nImag
-            }
-            k += size
-        }
-        size = size shl 1
-    }
-    // Apply bit-reversal permutation.
-    val r2 = FloatArray(fftSize)
-    val i2 = FloatArray(fftSize)
-    for (i in 0 until fftSize) {
-        r2[i] = real[jArr[i]]
-        i2[i] = imag[jArr[i]]
-    }
-    // Magnitudes for the first binCount bins.
-    var maxMag = 0f
-    for (b in 0 until binCount) {
-        val mag = sqrt(r2[b] * r2[b] + i2[b] * i2[b])
-        out[b] = mag
-        if (mag > maxMag) maxMag = mag
-    }
-    // Normalize so the loudest bin is 1.0; the log-scale remap
-    // in the renderer will then map 1.0 → bar full-height.
-    if (maxMag > 0f) {
-        for (b in 0 until binCount) out[b] = out[b] / maxMag
-    }
-    return out
 }

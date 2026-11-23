@@ -1,5 +1,8 @@
 #include <jni.h>
 #include <ggwave/ggwave.h>
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <mutex>
 #include <set>
 #include <vector>
@@ -59,4 +62,45 @@ Java_com_meshlit_core_gibberlink_GibberLinkCodec_decode(JNIEnv *e, jobject, jint
     for (int i = 0; i < n; ++i) if (payload[i] < 32 || payload[i] > 126) return nullptr;
     auto out = e->NewByteArray(n);
     if (out) e->SetByteArrayRegion(out, 0, n, reinterpret_cast<jbyte *>(payload)); return out;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_meshlit_core_gibberlink_GibberLinkCodec_spectrum(
+        JNIEnv *env, jobject, jbyteArray pcm, jfloatArray bins) {
+    constexpr int n = 64;
+    const int count = env->GetArrayLength(bins);
+    if (count > n / 2) { fail(env, "Spectrum supports at most 32 bins"); return; }
+    if (!count) return;
+    const int samples = std::min(static_cast<int>(env->GetArrayLength(pcm)) / 2, n);
+    jbyte bytes[n * 2];
+    env->GetByteArrayRegion(pcm, 0, samples * 2, bytes);
+    if (env->ExceptionCheck()) return;
+
+    static const auto hann = [] {
+        std::array<float, n> window{};
+        for (int i = 0; i < n; ++i)
+            window[i] = 0.5f * (1.0f - std::cos(6.283185307179586f * i / (n - 1)));
+        return window;
+    }();
+    float input[n]{}, packed[2 * n];
+    for (int i = 0; i < samples; ++i) {
+        const int sample = static_cast<uint8_t>(bytes[2*i]) + 256 * static_cast<int>(bytes[2*i+1]);
+        input[i] = sample * (1.0f / 32768.0f) * hann[i];
+    }
+    // The transform lazily initializes these tables. Each caller thread owns its copy.
+    static thread_local int indices[2 * n]{};
+    static thread_local float coefficients[2 * n]{};
+    GGWave::computeFFTR(input, packed, n, indices, coefficients);
+    float magnitudes[n / 2];
+    // Ooura's packed real FFT stores Nyquist in packed[1], separately from DC.
+    magnitudes[0] = std::abs(packed[0]);
+    float peak = magnitudes[0];
+    for (int i = 1; i < count; ++i) {
+        const float real = packed[2*i], imag = packed[2*i+1];
+        magnitudes[i] = std::sqrt(real * real + imag * imag);
+        peak = std::max(peak, magnitudes[i]);
+    }
+    if (peak > 0)
+        for (int i = 0; i < count; ++i) magnitudes[i] /= peak;
+    env->SetFloatArrayRegion(bins, 0, count, magnitudes);
 }

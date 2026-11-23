@@ -21,3 +21,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
 }
+
+// The desktop tests call the same native admission kernel as the Android bridge.
+val placementLibraries = project(":core-inference").layout.buildDirectory.dir("host-placement/lib")
+tasks.test {
+    dependsOn(":core-inference:buildHostPlacement")
+    systemProperty("java.library.path", placementLibraries.get().asFile.absolutePath)
+}
