@@ -50,3 +50,5 @@ Under **Provider connections**, choose Ollama, LM Studio or another OpenAI-compa
 Select a local model and use **Load selected model** to start the bundled CPU server. **Copy endpoint** and **Copy API key** supply credentials for a loopback API client. **Unload** stops the server. Pair devices from this dashboard or type `/pair` in chat. A verified device identity and authorization for app control are separate settings. Open the coding IDE from General chat when you need a project window.
 
 The workflow follows model import, selection, loading and local serving in [LM Studio's model guide](https://lmstudio.ai/docs/cli/local-models/import) and [developer server guide](https://lmstudio.ai/docs/developer/core/server). CUDA migration and accelerator qualification belong to [HyperL](https://github.com/sabbirimon/HyperL/tree/feature/native-mlir-engine/docs/CUDA_MIGRATION.md).
+
+The offline acceptance test opens an Extension Development Host with a disposable profile and in-memory secret storage. On macOS the test uses Chromium’s mock Keychain. A normal Studio session uses the OS credential store for saved provider keys and pairing identity.

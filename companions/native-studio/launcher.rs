@@ -107,6 +107,11 @@ fn launch() -> io::Result<()> {
         .arg(extensions)
         .arg("--new-window");
     if let Some(path) = probe {
+        // A disposable extension test profile must never request credentials from the operator.
+        gui.arg("--use-inmemory-secretstorage");
+        if cfg!(target_os = "macos") {
+            gui.arg("--use-mock-keychain");
+        }
         gui.arg("--disable-gpu")
             .arg("--disable-workspace-trust")
             .arg(format!("--extensionDevelopmentPath={}", path.display()))
