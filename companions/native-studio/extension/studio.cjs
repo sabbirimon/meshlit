@@ -11,7 +11,7 @@ async function activate(context) {
     const brand = require('./legacy/brand.cjs');
     const root = process.env.MESHLIT_SUITE_ROOT;
     if (!root) throw Error('Launch the extracted Meshlit Studio application');
-    local = new LocalServer(root, status);
+    local = new LocalServer(root, status, ()=>context.globalState.get('local-server-port',0));
     const empty = !vscode.workspace.workspaceFolders?.length;
     const oldHome = require('node:path').join(require('node:os').homedir(),'.meshlit','native-studio','Meshlit Studio.code-workspace');
     const home = empty && (!vscode.workspace.workspaceFile || vscode.workspace.workspaceFile.fsPath===oldHome);
@@ -57,6 +57,22 @@ async function activate(context) {
         ],{title:'Output guardrails · currently '+(enabled?'on':'off')});
         if(choice) {await context.globalState.update('filter-output',choice.enabled);resetChats();status();}
     }
+    async function browseModels(){
+        const hub=require('./hub.cjs');
+        const state=dashboardState();
+        const inventory=[...state.library,...state.providers].map(row=>({...row,local:true,summary:row.detail}));
+        const item=await discovery.chooseFile(vscode,hub.metadata,hub.files,brand,inventory);
+        if(!item)return;
+        if(item.action==='more')return select();
+        if(item.action==='vendor')return select({label:'Import from LM Studio or Bionic…'});
+        if(item.action==='local'){
+            const route=routes().find(r=>modelId(r)===item.id);
+            if(!route)throw Error('This registration changed. Reopen the model picker.');
+            if(modelId(route)===modelId(settings()))return true;
+            return select({label:route.model,route});
+        }
+        return select({label:'Import from Hugging Face…',item});
+    }
     async function select(forced) {
         if(active) throw Error("Stop the current reply before switching models");
         const selection = forced || await vscode.window.showQuickPick([
@@ -91,7 +107,8 @@ async function activate(context) {
             let route;
             if(choice==='Import from Hugging Face…'){
                 const hub=require('./hub.cjs'),dir=path.join(context.globalStorageUri.fsPath,'models');
-                route=forced?.item?await hub.install(vscode,dir,forced.item):await hub.discover(vscode,dir,brand);
+                if(!forced?.item)return browseModels();
+                route=await hub.install(vscode,dir,forced.item);
                 if(!route)return;
             } else if(choice==='Import from LM Studio or Bionic…'){
                 const file=await require('./catalog.cjs').pickLibraryFile(vscode);
@@ -158,9 +175,12 @@ async function activate(context) {
         const minutes=context.globalState.get('idle-minutes',0);
         if(minutes>0&&local.route)idleTimer=setTimeout(()=>{if(!active&&!changing){local.stop();serverLog('Unloaded after '+minutes+' idle minutes');}else scheduleUnload();},minutes*60000);
     }
-    async function serverSettings(){
-        const key=await vscode.window.showQuickPick(['On-demand loading','Idle unload','Start at login'],{title:'Local server settings'});
-        if(key==='Idle unload'){
+    async function serverSettings(settingName){
+        const key=settingName||await vscode.window.showQuickPick(['On-demand loading','Idle unload','Start at login'],{title:'Local server settings'});
+        if(key==='Server port'){
+            const port=await vscode.window.showInputBox({title:'Local server port',prompt:'Use 0 for an automatic port. Takes effect at next load.',value:String(context.globalState.get('local-server-port',0)),validateInput:x=>/^\d{1,5}$/.test(x)&&(Number(x)===0||Number(x)>=1024&&Number(x)<=65535)?undefined:'Use 0 or a port from 1024 through 65535'});
+            if(port!==undefined)await context.globalState.update('local-server-port',Number(port));
+        }else if(key==='Idle unload'){
             const input=await vscode.window.showInputBox({title:'Minutes before unloading (0 keeps the model loaded)',value:String(context.globalState.get('idle-minutes',0)),validateInput:v=>/^\d+$/.test(v)&&Number(v)<=1440?undefined:'Enter 0 to 1440 minutes'});
             if(input!==undefined){await context.globalState.update('idle-minutes',Number(input));scheduleUnload();}
         }else if(key){
@@ -231,7 +251,7 @@ async function activate(context) {
             canSelect:r.kind!=='asset'||!!r.info?.adapters?.length,
             detail:r.kind==='peer'?'Shared by '+r.hostName:r.kind==='asset'?[r.info.label,...r.info.quantization,r.info.evidence,r.info.adapters.length?'Requires local '+r.info.adapters.join(' or '):'External runtime required: '+r.info.runtime,r.file].join(' · '):r.base?r.kind+' · '+r.base:r.kind==='local'?'Bundled GGUF':((r.bytes||0)/1024**3).toFixed(2)+' GiB weights · '+(require('node:os').freemem()/1024**3).toFixed(1)+' GiB RAM free now · '+r.file
         }));
-        return {events:serverEvents.slice(-12),isLmStudio:selected.kind==='LM Studio',library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:['local','import'].includes(selected.kind),
+        return {selectedName:modelName(selected),port:local.route?new URL(local.route.base).port:context.globalState.get('local-server-port',0),onDemand:context.globalState.get('on-demand',true),idleMinutes:context.globalState.get('idle-minutes',0),events:serverEvents.slice(-12),isLmStudio:selected.kind==='LM Studio',library:rows.filter(r=>r.local),providers:rows.filter(r=>!r.local),isLocal:['local','import'].includes(selected.kind),
             running:!!local.route,server:local.route?'Running · '+local.route.base:local.pending?'Loading local model…':'Stopped'};
     }
     async function action(op,id){
@@ -242,6 +262,8 @@ async function activate(context) {
         changing=true;
         try{
             if(op==='serverSettings')await serverSettings();
+            else if(['port','onDemand','idle'].includes(op))await serverSettings({port:'Server port',onDemand:'On-demand loading',idle:'Idle unload'}[op]);
+            else if(op==='mcp')await vscode.commands.executeCommand('workbench.mcp.listServer');
             else if(op==='tune')await tuneModel();
             else if(op==='lmManage'){
                 const route=settings();
@@ -465,7 +487,7 @@ async function activate(context) {
                     if(dest)await vscode.workspace.fs.writeFile(dest,Buffer.from(msg.text.slice(0,128000)));
                 }
                 if(msg.op==='models')go('models');
-                if(msg.op==='pickModel'&&!active)await select();
+                if(msg.op==='pickModel'&&!active&&!changing){changing=true;try{await browseModels();}finally{changing=false;}}
                 if(msg.op==='tuneChat'&&!active)await tuneModel();
                 if(msg.op==='pair') await pair();
                 if(msg.op==='control') await control();

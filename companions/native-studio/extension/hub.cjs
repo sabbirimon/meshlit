@@ -50,11 +50,6 @@ async function download(item, dir, signal, progress, fetcher=fetch) {
         await fs.rm(temp,{force:true});
     }
 }
-async function discover(vscode, directory, brand) {
-    const item=await require('./discovery.cjs').chooseFile(vscode,metadata,files,brand);
-    if(!item)return;
-    return install(vscode,directory,item);
-}
 async function install(vscode,directory,item) {
     const ok=await vscode.window.showInformationMessage('Download '+item.name+' ('+(item.bytes/1024**3).toFixed(2)+' GiB) from '+item.repo+' into Studio storage?',{modal:true},'Download');
     if(!ok)return;
@@ -66,4 +61,4 @@ async function install(vscode,directory,item) {
         });}finally{sub.dispose();}
     });
 }
-module.exports={discover,files,download,install};
+module.exports={metadata,files,download,install};

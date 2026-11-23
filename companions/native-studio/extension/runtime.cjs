@@ -41,7 +41,7 @@ async function digest(file,signal) {
 }
 
 class LocalServer {
-    constructor(root, onStateChange = () => {}) { this.root = root; this.onStateChange = onStateChange; }
+    constructor(root, onStateChange = () => {}, portPreference = () => 0) { this.root = root; this.onStateChange = onStateChange; this.portPreference = portPreference; }
     async start(signal, configuredThreads = 0, imported, progress=()=>{}) {
         if (!this.pending) {
             const startup = new AbortController();
@@ -70,7 +70,7 @@ class LocalServer {
         if (await digest(server,signal) !== meta.sha256 || await digest(weights,signal) !== (imported?.sha256 || model.sha256)) throw Error('Installed inference files failed verification');
         signal.throwIfAborted();
         const reservation = net.createServer();
-        reservation.listen(0, '127.0.0.1');
+        reservation.listen(this.portPreference(), '127.0.0.1');
         await once(reservation, 'listening');
         const port = reservation.address().port;
         await new Promise(resolve => reservation.close(resolve));
