@@ -12,35 +12,46 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 100
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SOURCE: 25ff596f9067b728b07471c929abc5f0d8518cf5
-      RUN: '45225787204'
-      TAG: v2.0.48-studio.1
+      SOURCE: cbcfa7af1a33552e4fd9502d75664fa08ae035f3
+      RUN: '45247265309'
+      TAG: v2.0.48-studio.2
     steps:
       - name: Verify all tested packages before publishing
         shell: bash
         run: |
           set -euo pipefail
+          for attempt in {1..160}; do
+            if [[ "$(gh run view "$RUN" -R "$REPO" --json status --jq .status)" == completed ]]; then break; fi
+            sleep 20
+          done
           test "$(gh run view "$RUN" -R "$REPO" --json conclusion,headSha --jq '[.conclusion,.headSha]|join(" ")')" = "success $SOURCE"
           mkdir assets
-          for platform in Windows-X64 Linux-X64 macOS-ARM64; do
+          for platform in Windows-X64 Linux-X64 macOS-ARM64 macOS-X64; do
             gh run download "$RUN" -R "$REPO" -D "$platform" -n "Meshlit-Full-Studio-$platform"
             filename="Meshlit-Studio-$platform.tar.gz"
             if [[ "$platform" == Windows-X64 ]]; then filename="Meshlit-Studio-$platform.zip"; fi
             archive="$platform/$filename"
             (cd "$platform" && sha256sum -c SHA256SUMS.txt)
             gh attestation verify "$archive" --repo "$REPO" --signer-workflow "$REPO/.github/workflows/full-studio.yml" --source-digest "$SOURCE"
+            if [[ "$platform" == Windows-X64 ]]; then
+              setup="$platform/Meshlit-Studio-Windows-X64-Setup.exe"
+              gh attestation verify "$setup" --repo "$REPO" --signer-workflow "$REPO/.github/workflows/full-studio.yml" --source-digest "$SOURCE"
+              mv "$setup" assets/
+            fi
             mv "$archive" "assets/$filename"
             rm -r "$platform"
           done
           (cd assets && sha256sum * > SHA256SUMS.txt)
           cat > notes.md <<'NOTES'
-          Windows x64: download the ZIP, extract the entire Meshlit-Studio folder, and open Meshlit.exe. Keep the toolchain, editor, models and inference folders beside the launcher. General Chat opens first. The coding IDE opens from Home.
+          On Windows x64, download Meshlit-Studio-Windows-X64-Setup.exe to install Studio for your Windows account. A portable ZIP is also available. On Linux, Intel Mac and Apple Silicon, extract the complete archive.
 
-          Platform archives were tested after extraction. Verify downloads with SHA256SUMS.txt or GitHub artifact attestations. This is a preview build. OS publisher signing and notarization remain outstanding.
+          Studio opens in General Chat. This preview adds reply actions, attachments, internet search, voice input, persistent tool permissions, model loading feedback, and a shared model format catalog with optional local runtime adapters. Compatible models and runtimes must be installed for optional adapters. The bundled Qwen GGUF runs offline.
+
+          Each archive was tested after extraction. Windows Setup was installed, launched and uninstalled in CI. SHA256SUMS.txt covers the five downloads. GitHub build attestations identify the workflow and source commit. This preview has no Windows publisher signature or Apple notarization. Android build 48 APKs are on the earlier v2.0.48-studio.1 release.
           NOTES
-          gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.48-studio.1" --notes-file notes.md assets/*
+          gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.48-studio.2" --notes-file notes.md assets/*
           gh release edit "$TAG" -R "$REPO" --draft=false
