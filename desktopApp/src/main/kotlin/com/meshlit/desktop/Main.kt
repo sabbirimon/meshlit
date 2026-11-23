@@ -581,8 +581,15 @@ fun main(args: Array<String>) {
                         "engine" -> {
                             if (preferencesError) Text("Engine settings could not be saved; previous values are retained.", color = colors.error)
                             EnginePanel(engineOptions, localSession) { options ->
-                            stop(true); messages = emptyList(); usage = GenerationUsage(); sendAfterLoad = false
-                            runCatching { options.validate(); enginePreferences.save(options) }.onSuccess { engineOptions = options; budget = minOf(budget, (options.context / 2).toFloat()); preferencesError = false }.onFailure { preferencesError = true }
+                                runCatching { enginePreferences.save(options) }.onSuccess {
+                                    stop(true)
+                                    messages = emptyList()
+                                    usage = GenerationUsage()
+                                    sendAfterLoad = false
+                                    engineOptions = options
+                                    budget = minOf(budget, (options.context / 2).toFloat())
+                                    preferencesError = false
+                                }.onFailure { preferencesError = true }
                             }
                         }
                         "nodes", "network" -> NodesPanel { node ->

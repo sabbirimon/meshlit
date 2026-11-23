@@ -44,13 +44,16 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: ./gradlew :desktopApp:packageDeb --no-daemon --max-workers=2
+      - name: Build experimental macOS installer
+        if: runner.os == 'macOS'
+        shell: bash
+        run: ./gradlew :desktopApp:packageDmg --no-daemon --max-workers=2
       - name: Installer checksums and scope
-        if: runner.os != 'macOS'
         shell: python
         run: |
           import hashlib, json, pathlib, shutil, os
           root = pathlib.Path('desktopApp/build/compose/binaries/main')
-          files = sorted(root.glob('**/*.msi')) + sorted(root.glob('**/*.deb'))
+          files = sorted(root.glob('**/*.msi')) + sorted(root.glob('**/*.deb')) + sorted(root.glob('**/*.dmg'))
           assert files, 'Missing installer'
           output = pathlib.Path('preview-assets')
           output.mkdir()
@@ -69,7 +72,6 @@ jobs:
               checksums.append(hashlib.sha256(item.read_bytes()).hexdigest() + '  ' + item.name)
           (output / 'SHA256SUMS.txt').write_text('\n'.join(checksums) + '\n')
       - name: Retain experimental installers for release review
-        if: runner.os != 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: studio-preview-${{ runner.os }}-${{ runner.arch }}

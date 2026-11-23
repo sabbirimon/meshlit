@@ -5,6 +5,16 @@ import org.junit.Test
 import kotlin.test.*
 
 class EngineOptionsTest {
+    @Test fun profilesFitEachProcessorCountAndPreserveIdlePolicy() {
+        for (processors in listOf(1, 2, 8, 256)) {
+            for (profile in InferenceProfile.entries) {
+                val options = profile.options(processors, EngineOptions(idleMinutes = 15))
+                options.validate(processors)
+                assertEquals(15, options.idleMinutes)
+                assertEquals(options, profile.options(processors, options))
+            }
+        }
+    }
     private val metadata=GgufModelMetadata("qwen2","Q4_K_M",32768,28,2,128,128)
     @Test fun modelContextAndKvNeedMemoryNotJustAvailableWeightFile() {
         val options=EngineOptions(threads=1,batchThreads=1)
