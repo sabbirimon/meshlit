@@ -23,9 +23,15 @@ object LayerPlacement {
         } else {
             val assigned = MutableList(capacities.size) { 1 }
             repeat(blocks - capacities.size) {
-                val chosen = assigned.indices.filter { assigned[it] < maximum[it] }
-                    .minWithOrNull(compareBy<Int> { (assigned[it] + 1).toDouble() / maximum[it] }.thenBy { it })
-                    ?: error("No worker capacity remains")
+                var chosen = -1
+                for (i in assigned.indices) {
+                    if (assigned[i] >= maximum[i]) continue
+                    // Compare projected utilization exactly. The 1024-block limit
+                    // bounds both products; a tie keeps the first worker.
+                    if (chosen < 0 || (assigned[i] + 1) * maximum[chosen] <
+                        (assigned[chosen] + 1) * maximum[i]) chosen = i
+                }
+                check(chosen >= 0) { "No worker capacity remains" }
                 assigned[chosen]++
             }
             assigned

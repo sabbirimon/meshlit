@@ -1,0 +1,45 @@
+name: Android local inference candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/desktop-inference-profiles]
+    paths:
+      - '.github/workflows/mobile-candidate.yml'
+      - 'core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/LayerPlacement.kt'
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 105
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4.0.4
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+      - run: python3 scripts/prepare-bundled-model.py
+      - run: ./gradlew :app:assembleMeshlitV2ProductionCandidate :app:lintMeshlitV2ProductionCandidate :core-inference:testDebugUnitTest --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process
+      - name: Verify mobile package and bundled model
+        shell: bash
+        run: |
+          mkdir mobile-artifacts
+          apk=$(find app/build/outputs/apk -name '*universal-productionCandidate.apk' -print -quit)
+          python3 scripts/check-core-candidate.py --apk "$apk" --output mobile-artifacts/core-candidate.json
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify "$apk"
+          cp "$apk" mobile-artifacts/Meshlit-Core-Android.apk
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: mobile-artifacts/Meshlit-Core-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meshlit-android-core-candidate
+          path: mobile-artifacts/
+          compression-level: 0
