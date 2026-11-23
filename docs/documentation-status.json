@@ -142,7 +142,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 Many devices. One mind.",
-      "contentSha256WithoutTrackingBlock": "5ade9c28d14aa241619d723125e1caa273a35c3647458c57fda8979c3d3b67f1"
+      "contentSha256WithoutTrackingBlock": "64db6f931551e8456f076a0cb5c720117f1d00cb05bf3b5608c63ad00858536d"
     },
     {
       "path": "REQUESTS.md",
@@ -1059,7 +1059,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit Native Studio",
-      "contentSha256WithoutTrackingBlock": "cb985eba0defd8c2b90e423546f14e031bf3f92cf9a3fae10ecab5b93d104f41"
+      "contentSha256WithoutTrackingBlock": "f4653d9104f64cd9fe910e1a854c30ec65c19e49b5e4e8c880aca4f111b541f2"
     },
     {
       "path": "docs/desktop/INFERENCE_PROFILES.md",
