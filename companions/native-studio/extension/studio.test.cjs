@@ -44,3 +44,23 @@ test('Hub discovery pins eligible GGUF revisions and downloads verified bytes',a
         assert.deepEqual(await fs.readdir(dir),[sha+'.gguf']);
     }finally{await fs.rm(dir,{recursive:true,force:true});}
 });
+
+test('file attachment accepts bounded UTF-8 text and rejects oversized or mislabeled images',async t=>{
+    const {attachment}=require('./chat-tools.cjs');
+    const dir=await fs.mkdtemp(path.join(os.tmpdir(),'studio-attach-'));
+    t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+    const text=path.join(dir,'notes.txt'),image=path.join(dir,'image.jpg');
+    await fs.writeFile(text,'example π');
+    assert.deepEqual(await attachment(text),{name:'notes.txt',text:'example π'});
+    await fs.writeFile(text,Buffer.alloc(32769));await assert.rejects(attachment(text),/32 KiB/);
+    await fs.writeFile(image,'not image bytes');await assert.rejects(attachment(image),/signature/);
+    await fs.writeFile(text,Buffer.from([255]));await assert.rejects(attachment(text));
+});
+test('chat webview contains one target for each action and the generated script parses',()=>{
+    const page=require('./welcome.cjs').page('testnonce');
+    const vm=require('node:vm');
+    new vm.Script(page.match(/<script nonce="testnonce">([\s\S]*?)<\/script>/)[1]);
+    for(const id of ['back','permissions','web','voice','attach','guard','stop','send','feedback','metrics','prompt']){
+        assert.equal(page.split('id="'+id+'"').length,2,id);
+    }
+});

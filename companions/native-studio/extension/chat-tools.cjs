@@ -39,4 +39,18 @@ async function dictate(){
     if(!stdout.trim())throw Error('No speech recognized. Check the Windows microphone and speech language settings.');
     return stdout.trim();
 }
-module.exports={attachment,search,dictate};
+async function readAloud(text,signal){
+    if(typeof text!=='string'||!text.trim()||text.length>16000)throw Error('Choose a reply of up to 16,000 characters for read-aloud');
+    const run=promisify(execFile),options={windowsHide:true,timeout:180000,signal,maxBuffer:32768};
+    if(process.platform==='darwin')return run('/usr/bin/say',['--',text],options);
+    if(process.platform==='linux')return run('spd-say',['--wait','--',text],options);
+    const {spawn}=require('node:child_process');
+    const ps=path.join(process.env.SystemRoot||'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe');
+    const script="[Console]::InputEncoding=[Text.UTF8Encoding]::new();Add-Type -AssemblyName System.Speech;$s=[System.Speech.Synthesis.SpeechSynthesizer]::new();try{$s.Speak([Console]::In.ReadToEnd())}finally{$s.Dispose()}";
+    return new Promise((resolve,reject)=>{
+        const child=spawn(ps,['-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{...options,stdio:['pipe','ignore','ignore']});
+        child.once('error',reject);child.once('close',code=>code===0?resolve():reject(Error('Windows speech output stopped')));
+        child.stdin.on('error',()=>{});child.stdin.end(text);
+    });
+}
+module.exports={attachment,search,dictate,readAloud};

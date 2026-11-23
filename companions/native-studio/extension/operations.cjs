@@ -3,7 +3,7 @@ const os=require('node:os'),path=require('node:path'),crypto=require('node:crypt
 const fs=require('node:fs/promises'),{execFile}=require('node:child_process'),{promisify}=require('node:util');
 const run=promisify(execFile);
 const groups={
- permissions:[['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
+ permissions:[['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
  management:[['Chat and permissions',['permissions','voice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
  tools:[['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
  settings:[['Chat and inference',['models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
@@ -17,7 +17,7 @@ function operations(vscode,context,root,hooks){
    permissions:['Permissions','Review access by tool',()=>hooks.go('permissions')],
    voice:['Voice input','Dictate a message and review the draft',hooks.voice],
    attach:['Attach a file or image','Choose a file for the next message',hooks.attach],
-   search:['Search Wikipedia','Review the query before contacting Wikipedia',hooks.webSearch],
+   search:['Internet search','Wikipedia sources in chat or web search in your browser',hooks.webSearch],
    models:['Models & providers',(1+context.globalState.get('model-catalog',[]).length)+' model registrations',hooks.models],
    server:['Local API server',hooks.server(),hooks.models],
    cpu:['CPU thread limit',cpu?cpu+' threads':'Automatic',hooks.cpu],
@@ -39,6 +39,7 @@ function operations(vscode,context,root,hooks){
        return showData('Registered model tools',list.length?list:[['Installed tools','No model tools registered in this host']]);}],
    compiler:['Check bundled compiler','Run Zig version on this device',async()=>{const r=await run(path.join(root,'toolchain',process.platform==='win32'?'zig.exe':'zig'),['version'],{timeout:10000,maxBuffer:4096,windowsHide:true});vscode.window.showInformationMessage('Bundled Zig '+r.stdout.trim());}]
   };
+  for(const [id,label] of Object.entries(hooks.permissionLabels))data[id]=[label,hooks.allowed(id)?'Allowed':'Blocked',()=>hooks.editPermission(id)];
   return data;
  }
  async function showData(title,pairs){detail=true;await panel?.webview.postMessage({type:'details',title,pairs});}

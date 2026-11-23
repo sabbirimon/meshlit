@@ -26,8 +26,8 @@ Scope: desktop/server; individual acceptance gates apply. Phase labels in older 
 | Android reference | Studio development work | Remaining qualification |
 | --- | --- | --- |
 | Chat output actions and sharing | Right-aligned user messages, copy, quote and save replies. Attach selected text or images to a draft. | Test keyboard use, narrow windows and sending images to a real vision model on Windows. OS share sheets remain open. |
-| Voice screen and speech adapters | On-demand Windows dictation with transcript review. | Test microphone approval, missing language packs and recognition on a physical Windows host. Continuous conversation and read-aloud are separate ports. |
-| Web search and permission helper | Review a Wikipedia query before it leaves the device. Show the destination before sending attachments to a provider. Group tool access in Permissions. | Qualify general web search providers and additional permission controls. |
+| Voice screen and speech adapters | On-demand Windows dictation with transcript review. | Test microphone approval, missing language packs and recognition on a physical Windows host. Verify read-aloud on each OS. Continuous voice conversation remains a separate port. |
+| Web search and permission helper | Review a Wikipedia query before it leaves the device. Show the destination before sending attachments to a provider. Group tool access in Permissions. | Test browser search and per-tool permission controls on the Windows host. |
 | Devices, jobs and recovery | Studio links model management, device pairing, SSH, local control and host resources. | Port job history, recovery views and device capability telemetry using actual backend data. |
 | Desktop shell and distribution | Scope editor menus to the project window. Exercise install, launch and uninstall for the single-file Windows installer in CI. | Verify first launch on the HP and record model, startup stage, latency and any runtime error. |
 

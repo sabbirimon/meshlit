@@ -176,27 +176,49 @@ async function activate(context) {
     const navigation=['chat'];
     function go(target,remember=true){
         if(remember&&navigation.at(-1)!==target){navigation.push(target);if(navigation.length>40)navigation.shift();}
-        if(target==='chat')return chat();
+        if(target==='chat'){const result=chat();sendUI('navigation',{back:navigation.length>1});return result;}
         if(target==='models')return management.open();
         return dashboards.open(target);
     }
     function back(){if(navigation.length>1)navigation.pop();return go(navigation.at(-1),false);}
-    let pendingFile;
+    let pendingFile,speech;
+    context.subscriptions.push({dispose:()=>speech?.abort()});
     const sendUI=(type,values)=>panel?.webview.postMessage({type,...values});
     const tools=require('./chat-tools.cjs');
+    const permissionLabels={internet:'Internet search',microphone:'Voice input',files:'Read selected attachments',share:'Send attachments to providers',speech:'Read replies aloud'};
+    const permissions=()=>context.globalState.get('chat-permissions',{});
+    const allowed=id=>permissions()[id]!==false;
+    function requirePermission(id){if(!allowed(id))throw Error(permissionLabels[id]+' is disabled in Studio Permissions.');}
+    async function editPermission(id){
+        const selected=await vscode.window.showQuickPick([{label:'Allow',value:true},{label:'Block',value:false}],{title:permissionLabels[id]+' · currently '+(allowed(id)?'allowed':'blocked')});
+        if(!selected)return;
+        await context.globalState.update('chat-permissions',{...permissions(),[id]:selected.value});
+        if(!selected.value&&id==='files'){pendingFile=undefined;sendUI('attachment',{name:''});}
+        if(!selected.value&&id==='speech')speech?.abort();
+    }
     async function chooseAttachment(){
+        requirePermission('files');
         const files=await vscode.window.showOpenDialog({canSelectMany:false,openLabel:'Attach to the next message'});
         if(!files?.length)return;
         pendingFile=await tools.attachment(files[0].fsPath);
         go('chat');sendUI('attachment',{name:pendingFile.name});
     }
     async function webSearch(){
+        requirePermission('internet');
+        const provider=await vscode.window.showQuickPick(['Wikipedia results in chat','Web search in browser'],{title:'Internet tools'});
+        if(!provider)return;
+        if(provider==='Web search in browser'){
+            const q=await vscode.window.showInputBox({title:'Search the web with DuckDuckGo',prompt:'Open this query in your default browser',validateInput:v=>v.trim()&&v.length<=300?undefined:'Enter up to 300 characters'});
+            if(q)await vscode.env.openExternal(vscode.Uri.parse('https://duckduckgo.com/?q='+encodeURIComponent(q)));
+            return;
+        }
         const query=await vscode.window.showInputBox({title:'Search Wikipedia',prompt:'Only this search query goes to en.wikipedia.org. Results are added to your draft.',validateInput:v=>v.trim()&&v.length<=300?undefined:'Enter up to 300 characters'});
         if(!query)return;
         const text=await tools.search(query.trim(),AbortSignal.timeout(12000));
         go('chat');sendUI('draft',{text:'Search results for '+query+String.fromCharCode(10)+text});
     }
     async function voice(){
+        requirePermission('microphone');
         go('chat');
         if(process.platform!=='win32'){sendUI('focus',{});vscode.window.showInformationMessage('Use system dictation in the message box. On macOS use your configured Dictation shortcut.');return;}
         if(!await vscode.window.showInformationMessage('Use the Windows microphone for one dictation? Review the transcript before sending.',{modal:true},'Start dictation'))return;
@@ -209,7 +231,7 @@ async function activate(context) {
     require('./legacy/ssh-dashboard.cjs').register(context,vscode);
     require('./legacy/memory.cjs').register(context);
     const dashboards=require('./operations.cjs').operations(vscode,context,root,{
-        models:()=>go('models'),go,back,webSearch,voice,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
+        models:()=>go('models'),go,back,webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
     function status() { const current=settings(); panel?.webview.postMessage({type:'status',text:(current.kind==='local'?'On this device · Qwen2.5 1.5B':(current.adapter||current.kind)+' · '+current.model)+' · Reply filter '+(context.globalState.get('filter-output',true)?'on':'off')}); }
     async function generate(prompt,file) {
@@ -266,7 +288,7 @@ async function activate(context) {
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
             try {
-                if(msg.op==='ready') {ready=true;status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
+                if(msg.op==='ready') {ready=true;sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:history});threadList();}
                 if(msg.op==='new'&&!active){pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){pendingFile=undefined;sendUI('attachment',{name:''});currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:history});threadList();}
                 if(msg.op==='back')back();
@@ -275,6 +297,12 @@ async function activate(context) {
                 if(msg.op==='voice'&&!active)await voice();
                 if(msg.op==='attach'&&!active)await chooseAttachment();
                 if(msg.op==='dropAttachment'){pendingFile=undefined;sendUI('attachment',{name:''});}
+                if(msg.op==='speak'&&typeof msg.text==='string'){
+                    requirePermission('speech');speech?.abort();const controller=new AbortController();speech=controller;
+                    try{await tools.readAloud(msg.text,controller.signal);}catch(e){if(!controller.signal.aborted)vscode.window.showErrorMessage('Read-aloud unavailable. '+e.message.slice(0,180));}
+                    finally{if(speech===controller)speech=undefined;}
+                }
+                if(msg.op==='silence')speech?.abort();
                 if(msg.op==='copy'&&typeof msg.text==='string')await vscode.env.clipboard.writeText(msg.text.slice(0,128000));
                 if(msg.op==='export'&&typeof msg.text==='string'){
                     const dest=await vscode.window.showSaveDialog({saveLabel:'Save reply',filters:{Text:['txt']}});
@@ -291,6 +319,8 @@ async function activate(context) {
                 if(msg.op==='send' && typeof msg.text==='string' && /^\/pair(?:\s|$)/i.test(msg.text)){await pair(msg.text.replace(/^\/pair\s*/i,'')||undefined);panel?.webview.postMessage({type:'notice',text:'Pairing review closed.'});return;}
                 if(msg.op==='send') {
                     const file=pendingFile,route=settings();
+                    if(file)requirePermission('files');
+                    if(file&&route.base)requirePermission('share');
                     if(file&&route.base&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+new URL(route.base).host+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
                     const answer=await generate(msg.text,file);
                     pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer});
