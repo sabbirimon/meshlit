@@ -1,0 +1,10 @@
+{
+  "client_id": "https://cdn.jsdelivr.net/gh/sabbirimon/meshlit@hf-oauth-v1/docs/oauth-client.json",
+  "client_name": "Meshlit Studio",
+  "client_uri": "https://github.com/sabbirimon/meshlit",
+  "redirect_uris": ["http://127.0.0.1/hf/callback"],
+  "token_endpoint_auth_method": "none",
+  "grant_types": ["authorization_code"],
+  "response_types": ["code"],
+  "scope": "profile read-repos gated-repos"
+}
