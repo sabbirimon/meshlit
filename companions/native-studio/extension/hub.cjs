@@ -4,7 +4,16 @@ const {imported} = require('./catalog.cjs');
 const HUB = 'https://huggingface.co';
 const repoPattern = /^[\w.-]+\/[\w.-]+$/;
 async function metadata(url, signal, fetcher=fetch, page) {
-    const response = await fetcher(url, {signal, redirect:'error'});
+    let response;
+    for(let attempt=0;attempt<4;attempt++){
+        const target=new URL(url);
+        if(target.origin!==HUB||!target.pathname.startsWith('/api/models'))throw Error('Unexpected model catalog URL');
+        response=await fetcher(target.href,{signal,redirect:'manual'});
+        if(![301,302,303,307,308].includes(response.status))break;
+        const location=response.headers.get('location');await response.body?.cancel();
+        if(!location)throw Error('Missing catalog redirect destination');
+        url=new URL(location,target).href;
+    }
     if (!response.ok) throw Error('Model Hub returned HTTP '+response.status+([401,403].includes(response.status)?'. Sign in with a read token and check your access on the publisher model card.':''));
     if(page)page.next=require('./hugging-face.cjs').nextPage(response.headers.get('link'));
     const chunks=[]; let size=0;

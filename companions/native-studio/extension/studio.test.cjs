@@ -170,11 +170,12 @@ test('encrypted chat history survives restart, isolates routes and forks concurr
     const {ChatHistory}=require('./chat-history.cjs'),keys=new Map();
     const secrets={get:k=>keys.get(k),store:(k,v)=>keys.set(k,v),delete:k=>keys.delete(k)};
     const dir=await fs.mkdtemp(path.join(os.tmpdir(),'meshlit-history-'));
-    t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+    let w;
+    t.after(async()=>{w?.close();await fs.rm(dir,{recursive:true,force:true});});
     const id=crypto.randomUUID(),row={title:'private prompt',messages:[{role:'user',content:'private words'}]};
     const first=new ChatHistory(dir,secrets);assert.equal(await first.save('A',id,0,row),undefined);
     first.enable(true);await first.save('A',id,0,row);first.close();
-    const w=new ChatHistory(dir,secrets);t.after(()=>w.close());
+    w=new ChatHistory(dir,secrets);
     assert.equal((await w.recent('A'))[0][1].title,row.title);assert.equal((await w.recent('B')).length,0);
     assert.equal((await fs.readFile(path.join(dir,'chat-history.sqlite'))).includes(Buffer.from(row.title)),false);
     await w.save('A',id,1,row);const fork=await w.save('A',id,1,row);assert.notEqual(id,fork.id);
