@@ -39,7 +39,7 @@ jobs:
           node-version: '22'
       - run: npm ci --prefix companions/studio-relay --ignore-scripts
       - run: npm ci --prefix companions/native-studio/catalog-sdk --ignore-scripts
-      - run: node --test companions/native-studio/extension/studio.test.cjs companions/native-studio/extension/model-adapters.test.cjs companions/native-studio/extension/connections.test.cjs companions/native-studio/extension/chat-export.test.cjs companions/native-studio/extension/device.test.cjs
+      - run: node --test companions/native-studio/extension/studio.test.cjs companions/native-studio/extension/model-adapters.test.cjs companions/native-studio/extension/connections.test.cjs companions/native-studio/extension/chat-export.test.cjs companions/native-studio/extension/device.test.cjs companions/native-studio/extension/flux-image.test.cjs companions/native-studio/extension/model-handoff.test.cjs companions/native-studio/extension/system-dictation.test.cjs
         env:
           MESHLIT_RELAY_TEST: '1'
       - uses: actions/setup-python@v5

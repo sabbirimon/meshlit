@@ -36,7 +36,7 @@ function operations(vscode,context,root,hooks){
    welcome:['Welcome and setup','Choose how to start chatting',hooks.welcome],
    permissions:['Permissions','Review access by tool',()=>hooks.go('permissions')],
    liveVoice:['Voice and vision','OpenLive settings, voice previews and companion controls',()=>vscode.commands.executeCommand('meshlit.voice')],
-   voice:['Voice input','Dictate a message and review the draft',hooks.voice],
+   voice:['Voice input',process.platform==='win32'?'Dictate a message':'Dictate a named task in the chat composer',hooks.voice],
    attach:['Attach a file or image','Choose a file for the next message',hooks.attach],
    search:['Internet search','Wikipedia sources in chat or web search in your browser',hooks.webSearch],
    models:['Models & providers',(1+context.globalState.get('model-catalog',[]).length)+' model registrations',hooks.models],
@@ -92,7 +92,6 @@ function operations(vscode,context,root,hooks){
   if(['shieldLive','shieldApply'].includes(id) && (process.platform!=='linux'||![shirudo.runtime,'/usr/bin/pkexec'].every(file=>require('node:fs').existsSync(file))))return 'Configure Shirudo on a supported Linux target. Use Inspect Shirudo report to view an exported report here.';
   if(id==='shieldExport'&&!lastShieldReport)return 'Inspect a report or scan the local Linux target first.';
   if(id==='memory'&&(!vscode.workspace.workspaceFolders?.length||!vscode.workspace.isTrusted))return 'Choose Open coding IDE, open your project folder and review its workspace trust to use Project memory.';
-  if(id==='voice'&&process.platform!=='win32')return 'Built-in speech recognition is available on Windows. Use system dictation in the chat message box on this device.';
   if(dependencies[id]&&!registered.has(dependencies[id][0]))return dependencies[id][1];
   if(id==='toolList'&&!vscode.lm?.tools)return 'Open Studio with a workbench that supports the language model tool registry.';
   const permission={shieldReport:'files',shieldExport:'files',moltbook:'internet',hubExplore:'internet',search:'internet',attach:'files',voice:'microphone'}[id];

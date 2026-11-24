@@ -11,8 +11,7 @@ function account(vscode, context, fetcher = fetch) {
         if(token)headers.Authorization='Bearer '+token;
         return fetcher(url, {...options, headers, referrerPolicy:'no-referrer'});
     }
-    async function profile(token) {
-        const oauth=token.startsWith('hf_oauth_');
+    async function profile(token, oauth) {
         const response = await fetcher(origin+(oauth?'/oauth/userinfo':'/api/whoami-v2'), {
             headers:{Authorization:'Bearer '+token}, redirect:'error', signal:AbortSignal.timeout(10000)
         });
@@ -40,7 +39,8 @@ function account(vscode, context, fetcher = fetch) {
                 return;
             }
             let value;
-            if(choice==='Sign in with Hugging Face in browser'){
+            const oauth = choice === 'Sign in with Hugging Face in browser';
+            if(oauth){
                 value=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Waiting for Hugging Face sign-in',cancellable:true},async(_,cancel)=>{
                     const controller=new AbortController();
                     const listener=cancel.onCancellationRequested(()=>controller.abort());
@@ -51,7 +51,7 @@ function account(vscode, context, fetcher = fetch) {
                 value=await vscode.window.showInputBox({title:'Hugging Face access token',password:true,prompt:'Enter a read or fine-grained token',ignoreFocusOut:true});
             }
             if(!value)return;
-            const token=value.trim(),name=await profile(token);
+            const token=value.trim(),name=await profile(token,oauth);
             await context.secrets.store(secretKey,token);
             await context.globalState.update('hugging-face.account-name',name);
         },

@@ -201,7 +201,7 @@ function register(vscode,context,hooks) {
             if(input){const id=input.trim().toLowerCase();await connect(service.nearby.get(id)||{id});}return;
         }
         if(pick.op==='relay'){
-            const url=await vscode.window.showInputBox({title:'Internet relay HTTPS origin (clear to disconnect)',value:context.globalState.get('device-relay','')});
+            const url=await vscode.window.showInputBox({title:'Internet relay HTTPS origin (clear to disconnect)',value:context.globalState.get('device-relay','https://meshlit-relay.imon.com.bd')});
             if(url===undefined)return;
             if(url){
                 const {Relay,relayURL}=require('./device-relay.cjs');relayURL(url);

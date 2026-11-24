@@ -42,7 +42,11 @@ async function authorize(open, signal, fetcher = fetch) {
             body:new URLSearchParams({grant_type:'authorization_code',client_id:clientId,code,redirect_uri:redirect,code_verifier:verifier})});
         if(!response.ok)throw Error('Hugging Face token exchange returned HTTP '+response.status);
         const result=await response.json();
-        if(!/^Bearer$/i.test(result.token_type)||typeof result.access_token!=='string'||!/^hf_[^\s]{1,508}$/.test(result.access_token))throw Error('Invalid Hugging Face access token response.');
+        const token = result?.access_token;
+        if (String(result?.token_type).toLowerCase() !== 'bearer' || typeof token !== 'string' ||
+            token.length > 8192 || !/^[A-Za-z0-9._~+/-]+=*$/.test(token)) {
+            throw Error('Invalid Hugging Face access token response.');
+        }
         return result.access_token;
     } finally { server.close();server.closeAllConnections(); }
 }

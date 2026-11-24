@@ -1,5 +1,6 @@
 'use strict';
 const viewHelp=require('./view-help.cjs');
+const {systemDictation}=require('./system-dictation.cjs');
 const icons={
  manage:'<path d="M4 6h9m4 0h3M4 12h3m4 0h9M4 18h10m4 0h2"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>',
  cloud:'<path d="M6 18a5 5 0 0 1-.8-9.9 7 7 0 0 1 13.2.2A5 5 0 0 1 18 18z"/>',
@@ -35,13 +36,28 @@ function page(nonce,firstRun=false,brand="",pdf={}){
 .activityHidden .replyActivity{display:none}.replyActivity{color:var(--muted);font-size:13px;margin:6px 0}.replyActivity summary{cursor:pointer}.replyActivity ol{padding-left:22px}.replyActivity p{white-space:pre-wrap}
 ${viewHelp.styles}</style></head><body><div id="app"><aside id="rail" aria-label="Studio navigation"><div class="brand">${brand}<span>Meshlit Studio</span></div><div class="railLabel">Workspace</div>${nav('new','New chat','compose')}${nav('models','Models & providers','models')}${nav('pair','Devices','devices')}<div class="railLabel">Tools and access</div>${nav('tools','Tools','tools')}${nav('permissions','Permissions','shield')}${nav('control','Control an app','control')}<div class="railLabel">Services</div>${nav('cloud','Cloud providers','cloud')}${nav('wallet','MeshCoin','coin')}${nav('management','Management','manage')}${nav('historyToggle','Recent chats','history')}<button id="historyOptions" title="Save, pause or delete local chat history">Chat history settings</button><div id="recentTitle" hidden>Recent chats</div><div id="recent"></div><div class="bottom">${nav('ide','Open coding IDE','ide')}</div></aside><main class="main"><div class="watermark" aria-hidden="true">${brand.replaceAll('id="blue"','id="wm-blue"').replaceAll('url(#blue)','url(#wm-blue)')}</div><header class="top"><div class="headStart"><button id="menu" aria-label="Collapse sidebar" aria-controls="rail" aria-expanded="true">${icon('menu')}</button><button id="back" disabled data-reason="This is the first screen. Open another Studio page to use Back." aria-label="Go back">← Back</button></div><strong class="chatHeading">General chat</strong><div class="headEnd"><button id="findChat" title="Find a message in this chat" aria-expanded="false" aria-controls="chatFind">Find</button><button id="settings" class="topSettings">${icon('settings')}<span>Settings</span></button></div></header><div id="chatFind" hidden role="search"><input id="findText" aria-label="Find in this chat" placeholder="Find in this chat"><output id="findCount" aria-live="polite"></output><button id="findPrev" aria-label="Previous match">↑</button><button id="findNext" aria-label="Next match">↓</button><button id="findClose" aria-label="Close chat search">×</button></div><div class="content empty${firstRun?' firstRun':''}" id="content"><section id="setup" ${firstRun?'':'hidden'} aria-label="First-time setup"><div id="setupIntro"><h1 class="setupTitle">Welcome to Meshlit Studio</h1><button id="getStarted" class="setupChoice">Get started →</button></div><div id="firstModel" hidden><button id="setupBack">← Back</button><h1 class="setupTitle">Your first model</h1><p class="setupIntro">Choose a model for this computer or connect a provider.</p><div class="setupChoices"><button class="setupChoice" id="useSuggestion"><span><strong id="suggestedName">Checking available memory…</strong><small id="suggestedDetail"></small></span></button><button class="setupChoice" id="startLocal">${icon('compose')}<span><strong>Chat on this device</strong><small>Use the included Qwen model offline.</small></span></button><button class="setupChoice" id="startProvider">${icon('devices')}<span><strong>Connect a model provider</strong><small>Use Ollama, LM Studio or a compatible endpoint.</small></span></button><button class="setupChoice" id="startLibrary">${icon('models')}<span><strong>Browse the model library</strong><small>Import a checkpoint or find a model to download.</small></span></button></div><div id="hostSummary"></div><button id="skipSetup" class="setupSkip">Skip model setup</button></div><div id="advancedSetup" hidden><button id="advancedBack">← Back</button><h1 class="setupTitle">Advanced settings</h1><p><label><input type="checkbox" id="loginService"> Start Studio and load the local model at login</label></p><p><label><input type="checkbox" id="openServer"> Open model management after setup</label></p><button class="setupChoice" id="finishSetup">Continue to Studio →</button></div></section><div class="welcome" id="welcome"><h1>What would you like to work on?</h1></div><div class="transcript"><nav id="anchors" aria-label="Conversation points" hidden></nav><div id="log" role="log" aria-live="polite"></div></div><div class="composer"><textarea autofocus id="prompt" rows="2" aria-label="Message Meshlit" placeholder="Message Meshlit…"></textarea><button id="attached" hidden title="Remove attachment"></button><div class="bar">
 <div class="composerGroup"><button id="addMenu" class="iconButton" aria-label="Add to chat" title="Add to chat" aria-expanded="false" aria-controls="addPanel">${icon('plus')}</button><div class="composerMenu" id="addPanel" hidden><button id="attach">Attach file or image</button><button id="screenFrame">Share screen…</button><button id="web">Internet search</button><button id="tuneChat">Generation settings</button><div id="composerPins"></div><button id="pasteResult">Paste tool result</button><button id="copyDraft">Copy draft for a tool</button><button id="composerInternet">Internet search</button><button id="toggleActivity" aria-pressed="true">Show reply activity</button><button id="composerAuto">Autopilot permission</button><button id="composerFiles">Browse device files…</button><button id="composerPair">Pair a device…</button><button id="newDocument">Create document…</button><button id="makeImage">Generate image…</button><button id="makeVideo">Generate video…</button><button id="researchTopic">Research…</button><button id="toolDownloads">Download tool output…</button><button id="composerServer">Allow local model clients…</button><button id="composerModels">Models and providers…</button><button id="composerAgents">Agents and model tools…</button><button id="moreTools">More tools…</button><button id="saveChat">Export this conversation…</button></div></div>
-<div class="composerGroup"><button id="accessMenu" aria-controls="accessPanel" aria-expanded="false" title="Model access and chat actions">Chat only</button><div class="composerMenu" id="accessPanel" hidden><p id="toolAccess">Model tools: none</p><button id="replyPreference">Local reply preference…</button><button id="editAccess">Manage permissions</button><button id="guard">Reply filter</button></div></div>
+<div class="composerGroup"><button id="accessMenu" aria-controls="accessPanel" aria-expanded="false" title="Model access and chat actions">Chat only</button><div class="composerMenu" id="accessPanel" hidden><button id="namedAccess">Automatic named model tasks…</button><p id="toolAccess">Model tools: none</p><button id="replyPreference">Local reply preference…</button><button id="editAccess">Manage permissions</button><button id="guard">Reply filter</button></div></div>
 <button class="chip" id="model" title="Choose model">Select model</button><button id="voice" class="iconButton" aria-label="Voice input" title="Voice input">${icon('mic')}</button><button class="submit" id="send" aria-label="Send message" title="Send message">${icon('send')}</button><button class="submit" id="stop" aria-label="Stop generating" title="Stop generating" hidden>${icon('stop')}</button></div><details id="liveActivity" class="replyActivity" hidden><summary>Activity</summary><ol></ol></details><div id="feedback" role="status"></div><div id="metrics"></div></div></div></main></div>
 <script nonce="${nonce}">${viewHelp.script}const api=acquireVsCodeApi(),el=id=>document.getElementById(id);
 let pendingSince=0,phase='',lastPrompt='';
 let partial,activeModel='',access={},generating=false;
 const waitForReply='A reply is running. Press Stop or wait for it to finish.';
 let voiceHelp='Enable Voice input in Permissions, or use system dictation in the message box.';
+const voiceField=el('prompt');
+let voiceId,submittedVoice;
+const dictation=(${systemDictation.toString()})(voiceField,{
+ cancel(id){
+    if(voiceId===id){voiceId=undefined;el('voice').setAttribute('aria-pressed','false');el('feedback').textContent='Named dictation ended. Your draft is editable.';}
+    api.postMessage({op:'cancelSystemVoice',id});
+ },
+ submit(id,text){
+    voiceId=undefined;submittedVoice={id,text};
+    el('voice').setAttribute('aria-pressed','false');resize();busy(true);
+    api.postMessage({op:'finishSystemVoice',id,text});
+ }
+});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)dictation.stop()});
+el('voice').addEventListener('pointerdown',event=>{if(voiceId)event.preventDefault();});
 let matchIndex=0;
 function findMessages(delta=0){
  const term=el('findText').value.trim().toLocaleLowerCase();
@@ -93,6 +109,7 @@ function addAnchor(item,role,text){
 }
 el('log').addEventListener('scroll',()=>{const log=el('log');followEnd=log.scrollHeight-log.scrollTop-log.clientHeight<24;queueAnchors()},{passive:true});
 for(const [id,command] of [['newDocument','document'],['makeImage','image'],['makeVideo','video'],['researchTopic','research'],['toolDownloads','downloads']])el(id).onclick=()=>api.postMessage({op:'composerBuiltin',target:command,draft:el('prompt').value});
+el('namedAccess').onclick=()=>api.postMessage({op:'namedAccess'});
 el('composerServer').onclick=()=>api.postMessage({op:'modelServer'});
 el('toggleActivity').onclick=()=>api.postMessage({op:'toggleActivity'});
 function clearPartial(){partial?.remove();partial=undefined;}
@@ -198,7 +215,7 @@ function busy(on){
  pendingSince=on?Date.now():0;
  if(on){phase='Preparing request…';el('metrics').textContent='';tick()}
 }
-function clear(){for(const group of previews.values())for(const slot of group){if(slot.dataset.url)URL.revokeObjectURL(slot.dataset.url);slot.cleanup?.()}previews.clear();el('anchors').replaceChildren();el('anchors').hidden=true;followEnd=true;el('log').replaceChildren();el('welcome').hidden=false;el('content').classList.add('empty');el('feedback').textContent='';el('prompt').value='';el('metrics').textContent='';resize();busy(false)}
+function clear(){dictation.stop();submittedVoice=undefined;for(const group of previews.values())for(const slot of group){if(slot.dataset.url)URL.revokeObjectURL(slot.dataset.url);slot.cleanup?.()}previews.clear();el('anchors').replaceChildren();el('anchors').hidden=true;followEnd=true;el('log').replaceChildren();el('welcome').hidden=false;el('content').classList.add('empty');el('feedback').textContent='';el('prompt').value='';el('metrics').textContent='';resize();busy(false)}
 for(const id of ['useSuggestion','startLocal','startProvider','startLibrary','skipSetup','new','models','management','tools','cloud','settings','ide','pair','wallet','control','stop','back','web','voice','guard','permissions','attach','screenFrame'])el(id).onclick=()=>api.postMessage({op:id});el('model').onclick=()=>api.postMessage({op:'pickModel'});function setRail(compact){
  document.body.classList.toggle('collapsed',compact);
  const label=compact?'Expand sidebar':'Collapse sidebar';el('menu').title=label;el('menu').setAttribute('aria-label',label);el('menu').setAttribute('aria-expanded',String(!compact));
@@ -214,11 +231,27 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenus(true);});
 el('replyPreference').onclick=()=>api.postMessage({op:'replyPreference'});el('editAccess').onclick=()=>api.postMessage({op:'permissions'});el('tuneChat').onclick=()=>api.postMessage({op:'tuneChat'});
 el('finishSetup').onclick=()=>api.postMessage({op:'finishSetup',login:el('loginService').checked,server:el('openServer').checked});el('advancedBack').onclick=()=>{el('advancedSetup').hidden=true;el('firstModel').hidden=false;};el('getStarted').onclick=()=>{el('setupIntro').hidden=true;el('firstModel').hidden=false};el('setupBack').onclick=()=>{el('setupIntro').hidden=false;el('firstModel').hidden=true};el('prompt').oninput=resize;el('attached').onclick=()=>api.postMessage({op:'dropAttachment'});el('send').onclick=()=>{const text=el('prompt').value.trim();if(!text)return;lastPrompt=text;row('user',text,activeModel,false,undefined,undefined,undefined,Date.now());el('prompt').value='';resize();busy(true);api.postMessage({op:'send',text})};el('prompt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&!el('send').disabled){e.preventDefault();el('send').click()}};
 window.addEventListener('message',({data:m})=>{if(m.type==='setup'){el('setup').hidden=!m.visible;el('content').classList.toggle('firstRun',m.visible);el('hostSummary').textContent=m.host||'';if(m.recommendation){el('suggestedName').textContent='Recommended · '+m.recommendation.name;el('suggestedDetail').textContent=m.recommendation.detail;}if(!m.visible)el('prompt').focus()}
+if(m.type==='armVoice'){
+ voiceField.focus();
+ if(dictation.arm(m.id)){
+   voiceId=m.id;el('voice').setAttribute('aria-pressed','true');
+   el('feedback').textContent=m.instruction+' Say “Ask Gemini to …” or “Ask ChatGPT to …”, then “send task now”. Esc cancels.';
+ }else el('feedback').textContent='Review or clear your draft before dictating a named task.';
+}
+if(m.type==='disarmVoice' && m.id===voiceId)dictation.stop();
+if(m.type==='systemVoiceResult' && m.id===submittedVoice?.id){
+ if(m.ok && voiceField.value===submittedVoice.text){voiceField.value='';resize();}
+ submittedVoice=undefined;busy(false);el('feedback').textContent=m.error||'';
+}
+if(['draft','restore','clear'].includes(m.type) || (m.type==='attachment' && m.name))dictation.stop();
 if(m.type==='restartSetup'){el('setupIntro').hidden=false;el('firstModel').hidden=true;el('advancedSetup').hidden=true;}if(m.type==='advancedSetup'){el('firstModel').hidden=true;el('setupIntro').hidden=true;el('advancedSetup').hidden=false;el('loginService').checked=m.login;}
 if(m.type==='sidebar')setRail(m.compact);
 if(m.type==='navigation')setAvailability(el('back'),m.back?'':'This is the first screen. Open another Studio page to use Back.');
 if(m.type==='metrics')el('metrics').textContent=m.text;
 if(m.type==='activity'){const view=el('liveActivity');view.hidden=false;const list=view.querySelector('ol');list.replaceChildren(...m.steps.map(step=>{const li=document.createElement('li');li.textContent=step;return li}))}
+if(m.type==='automaticTurn'){
+ const r=m.reply;if(document.querySelector('[data-reply-id="'+r.id+'"]'))return;row('user',m.request);row('assistant',r.text,r.model,false,r.id,undefined,r.metrics,r.createdAtMs,r.activity,r.summary,r.files);
+}
 if(m.type==='progress'){phase=m.text;tick()}
 if(m.type==='focus')el('prompt').focus();
 if(m.type==='draft' && m.files?.length){
@@ -234,6 +267,8 @@ if(m.type==='status'){
  activeModel=m.model;el('model').textContent=m.text;el('model').title='Choose model · '+m.text;
  const names={attach:'attachments',web:'internet search',voice:'dictation',speak:'read aloud'};
  voiceHelp=m.voiceHelp||voiceHelp;access=m.actions;applyAccess();
+ if(m.systemDictation){el('voice').title='Dictate a named task';el('voice').setAttribute('aria-label','Dictate a named task');}
+ if(!m.actions.voice)dictation.stop();
  const actions=Object.keys(names).filter(id=>m.actions[id]).map(id=>names[id]);
  el('composerPins').replaceChildren(...(m.pins||[]).map(p=>{const b=document.createElement('button');b.textContent=p.title;b.onclick=()=>api.postMessage({op:'composerPin',command:p.command,draft:el('prompt').value});return b}));
  el('composerInternet').textContent='Internet search · '+(m.actions.web?'on':'off');

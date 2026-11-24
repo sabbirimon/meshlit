@@ -4,6 +4,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),crypto=requ
 const {authorize,clientId}=require('./hf-oauth.cjs');
 test('browser sign-in binds loopback state and the verifier to the code exchange',async()=>{
     let auth;
+    const bearer = 'opaque.' + 'a'.repeat(640) + '.part';
     const token=await authorize(async link=>{
         auth=new URL(link);
         assert.equal(auth.origin,'https://huggingface.co');
@@ -20,9 +21,9 @@ test('browser sign-in binds loopback state and the verifier to the code exchange
         assert.equal(form.get('client_id'),clientId);
         assert.equal(form.get('code'),'test-code');
         assert.equal(crypto.createHash('sha256').update(form.get('code_verifier')).digest('base64url'),auth.searchParams.get('code_challenge'));
-        return Response.json({access_token:'hf_oauth_fixture',token_type:'Bearer'});
+        return Response.json({access_token:bearer,token_type:'bearer'});
     });
-    assert.equal(token,'hf_oauth_fixture');
+    assert.equal(token,bearer);
 });
 test('Moltbook extracts bounded text from public posts and rejects errors',async()=>{
     const {feed}=require('./community.cjs');

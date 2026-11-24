@@ -9,7 +9,8 @@
   },
   "main": "./studio.cjs",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onCommand:meshlit.studio.delegateTask"
   ],
   "license": "Apache-2.0",
   "capabilities": {
@@ -19,6 +20,17 @@
   },
   "contributes": {
     "languageModelTools": [
+      {
+        "name": "meshlit_delegate_model_task",
+        "displayName": "Delegate a named model task",
+        "modelDescription": "Send the supplied text to a previously approved Gemini or ChatGPT model and show its answer in Meshlit chat. Requires a trusted workspace and explicit agent delegation for that model. Supply the complete task. The reply is model output.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {"request": {"type":"string","minLength":1,"maxLength":16000,"description":"A named request such as Ask Gemini to summarize: followed by the text."}},
+          "required": ["request"],
+          "additionalProperties": false
+        }
+      },
       {
         "name": "meshlit_shirudo_status",
         "displayName": "Inspect Shirudo status",

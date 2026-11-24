@@ -77,6 +77,25 @@ async function activate(context) {
         }
         return select({label:'Import from Hugging Face…',item});
     }
+    async function configureProvider(choice,defaultBase){
+        const input = await vscode.window.showInputBox({title:'Model server base URL',value:defaultBase || (choice === 'Ollama'?'http://127.0.0.1:11434/v1':choice === 'LM Studio'?'http://127.0.0.1:1234/v1':choice==='Bionic'?'http://127.0.0.1:':'https://'),ignoreFocusOut:true});
+        if (!input) return;
+        const base = endpoint(input);
+        const token = await vscode.window.showInputBox({title:'API key (leave empty for a server without authentication)',password:true,ignoreFocusOut:true});
+        if (token === undefined) return;
+        const inventory = await request(base,'/models',token,null,AbortSignal.timeout(12000));
+        const models = (inventory.data || []).map(m=>m.id).filter(id=>typeof id==='string' && id.length<=256);
+        if (!models.length) throw Error('The server returned no models.');
+        const model = await vscode.window.showQuickPick(models,{title:'Use model from ' + new URL(base).host});
+        if (!model) return;
+        const key = 'token:' + base;
+        const route={kind:choice,base,model};
+        const others=saved().filter(r=>r.base!==base||r.model!==model);
+        if(others.length>=128)throw Error('Remove a saved model first');
+        if (token) await context.secrets.store(key,token); else await context.secrets.delete(key);
+        await context.globalState.update('model-catalog',[...others,route]);
+        return route;
+    }
     async function select(forced) {
         if(active) throw Error("Stop the current reply before switching models");
         const selection = forced || await vscode.window.showQuickPick([
@@ -90,6 +109,7 @@ async function activate(context) {
             if(!item)return;
             const retained=saved().filter(r=>modelId(r)!==modelId(item.route));
             await context.globalState.update('model-catalog',retained);
+            await named.removed(modelId(item.route));
             if(item.route.base&&!retained.some(r=>r.base===item.route.base))await context.secrets.delete('token:'+item.route.base);
             if(modelId(settings())===modelId(item.route))await context.globalState.update('route',{kind:'local',model:'meshlit-local'});
         } else if(selection.route) {
@@ -142,22 +162,8 @@ async function activate(context) {
         } else if (choice === 'Bundled offline model') {
             await context.globalState.update('route', {kind:'local', model:'meshlit-local'});
         } else {
-            const input = await vscode.window.showInputBox({title:'Model server base URL',value:choice === 'Ollama'?'http://127.0.0.1:11434/v1':choice === 'LM Studio'?'http://127.0.0.1:1234/v1':choice==='Bionic'?'http://127.0.0.1:':'https://',ignoreFocusOut:true});
-            if (!input) return;
-            const base = endpoint(input);
-            const token = await vscode.window.showInputBox({title:'API key (leave empty for a server without authentication)',password:true,ignoreFocusOut:true});
-            if (token === undefined) return;
-            const inventory = await request(base,'/models',token,null,AbortSignal.timeout(12000));
-            const models = (inventory.data || []).map(m=>m.id).filter(id=>typeof id==='string' && id.length<=256);
-            if (!models.length) throw Error('The server returned no models.');
-            const model = await vscode.window.showQuickPick(models,{title:'Use model from ' + new URL(base).host});
-            if (!model) return;
-            const key = 'token:' + base;
-            const route={kind:choice,base,model};
-            const others=saved().filter(r=>r.base!==base||r.model!==model);
-            if(others.length>=128)throw Error('Remove a saved model first');
-            if (token) await context.secrets.store(key,token); else await context.secrets.delete(key);
-            await context.globalState.update('model-catalog',[...others,route]);
+            const route=await configureProvider(choice);
+            if(!route)return;
             await context.globalState.update('route',route);
         }
         active?.abort();
@@ -355,8 +361,20 @@ async function activate(context) {
             else if(op==='key'&&local.route&&await vscode.window.showInformationMessage('Copy the local server API key to the system clipboard?',{modal:true},'Copy key'))await vscode.env.clipboard.writeText(local.route.token);
         }finally{changing=false;}
     }
+    let armedVoice;
+    function disarmVoice(){
+        if(!armedVoice)return;
+        const {id}=armedVoice;
+        armedVoice=undefined;
+        sendUI('disarmVoice',{id});
+    }
+    function showVoiceInstructions(){
+        const instruction=process.platform==='darwin'?'Start macOS Dictation with your configured shortcut.':'Start your system dictation tool.';
+        sendUI('armVoice',{id:armedVoice.id,instruction});
+    }
     const navigation=['chat'];
     function go(target,remember=true){
+        if(target!=='chat')disarmVoice();
         if(remember&&navigation.at(-1)!==target){navigation.push(target);if(navigation.length>40)navigation.shift();}
         if(target==='chat'){const result=chat();sendUI('navigation',{back:navigation.length>1});return result;}
         if(target==='models')return management.open();
@@ -376,6 +394,7 @@ async function activate(context) {
         if(!selected)return;
         await context.globalState.update('chat-permissions',{...permissions(),[id]:selected.value});
         if(!selected.value&&id==='files'){pendingFile=undefined;sendUI('attachment',{name:''});}
+        if(!selected.value&&id==='microphone')disarmVoice();
         if(!selected.value&&id==='speech')speech?.abort();
         status();
     }
@@ -405,10 +424,28 @@ async function activate(context) {
     async function voice(){
         requirePermission('microphone');
         go('chat');
-        if(process.platform!=='win32'){sendUI('focus',{});vscode.window.showInformationMessage('Use system dictation in the message box. On macOS use your configured Dictation shortcut.');return;}
-        if(!await vscode.window.showInformationMessage('Use the Windows microphone for one dictation? Review the transcript before sending.',{modal:true},'Start dictation'))return;
+        if(process.platform!=='win32'){
+            if(armedVoice){disarmVoice();return;}
+            if(active || changing || pendingFile)throw Error('Finish the current operation and remove attachments before dictating a named task.');
+            const id=crypto.randomUUID();
+            armedVoice={id,panel,thread:currentThread,scope:historyScope(),expires:Date.now()+120000};
+            if(ready)showVoiceInstructions();
+            return;
+        }
+        if(!await vscode.window.showInformationMessage('Dictate one message? An explicitly named task goes directly to a model with an automatic voice grant.',{modal:true},'Start dictation'))return;
         sendUI('notice',{text:'Listening on this device…'});
-        try{sendUI('draft',{text:await tools.dictate()});}
+        const sourcePanel=panel,sourceThread=currentThread;
+        try{
+            const transcript=await tools.dictate();
+            requirePermission('microphone');
+            if(panel!==sourcePanel || currentThread!==sourceThread)return;
+            const command=handoff.intent(transcript);
+            if(!active && !changing && !pendingFile && command?.task && named.automaticRoute(command.name,'voice')){
+                try{await automaticTask(transcript,'voice');return;}
+                catch(error){sendUI('draft',{text:transcript});sendUI('notice',{text:error.message});return;}
+            }
+            sendUI('draft',{text:transcript});
+        }
         catch(e){sendUI('notice',{text:'Dictation unavailable. Focus the message box and press Windows + H. '+e.message.slice(0,180)});}
     }
     const management=require('./management.cjs').dashboard(vscode,dashboardState,action,brand);
@@ -452,7 +489,7 @@ async function activate(context) {
         if(await vscode.window.showInformationMessage('Project saved.','Open in coding IDE'))await vscode.commands.executeCommand('vscode.openFolder',vscode.Uri.file(folder),true);
     }
     const composerTools=require('./composer-tools.cjs');
-    const composer=composerTools.composer(vscode,context,{refresh:status,result:resultToChat,arguments:()=>{if(!draftForTool.trim()||draftForTool.startsWith('/tool '))return '{}';try{const parsed=JSON.parse(draftForTool);if(parsed&&!Array.isArray(parsed)&&typeof parsed==='object')return draftForTool;}catch{}return JSON.stringify({text:draftForTool.slice(0,3000)});},
+    const composer=composerTools.composer(vscode,context,{requirePermission,imagePrompt:()=>draftForTool.startsWith('/tool ')?'':draftForTool,refresh:status,result:resultToChat,arguments:()=>{if(!draftForTool.trim()||draftForTool.startsWith('/tool '))return '{}';try{const parsed=JSON.parse(draftForTool);if(parsed&&!Array.isArray(parsed)&&typeof parsed==='object')return draftForTool;}catch{}return JSON.stringify({text:draftForTool.slice(0,3000)});},
         destinations:dashboards.composerDestinations,dashboard:dashboards.composerAction,agentChat:async()=>{
             if(!(await vscode.commands.getCommands(true)).includes('workbench.action.chat.open'))throw Error('Enable a chat agent in the coding IDE to open agent chat.');
             return vscode.commands.executeCommand('workbench.action.chat.open',draftForTool?{query:draftForTool,isPartialQuery:true}:{});
@@ -491,30 +528,51 @@ async function activate(context) {
         const state=native ? local.route?'Loaded · '+local.route.contextSize+' configured context':local.pending?'Loading':'Selected · unloaded'
             :route.kind==='asset'?'Local runtime · loads per request':'Remote · '+(route.hostName || new URL(route.base).host);
         sendUI('status',{text:modelName(route)+' · '+state, model:modelName(route),
-            voiceHelp:process.platform==='win32'?'Open Permissions and allow Voice input.':'Built-in speech recognition is available on Windows. Use system dictation in the message box here.',
-            automaticReads,showActivity:context.globalState.get('show-reply-activity',true),pins:composer.pins(),actions:{attach:allowed('files'),web:allowed('internet'),voice:process.platform==='win32'&&allowed('microphone'),speak:allowed('speech')},
+            voiceHelp:'Open Permissions and allow Voice input.',systemDictation:process.platform!=='win32',
+            automaticReads,showActivity:context.globalState.get('show-reply-activity',true),pins:composer.pins(),actions:{attach:allowed('files'),web:allowed('internet'),voice:allowed('microphone'),speak:allowed('speech')},
             filter:context.globalState.get('filter-output',true)});
     }
-    async function generate(prompt,file) {
+    const handoff=require('./model-handoff.cjs');
+    const named=handoff.handoffs(vscode,context.globalState,{routes,modelId,configure:configureProvider});
+    function requireAutomatic(name,source){
+        if(source==='agents' && !vscode.workspace.isTrusted)throw Error('Agent tasks require a trusted workspace.');
+        if(source==='voice')requirePermission('microphone');
+        const route=named.automaticRoute(name,source);
+        if(!route)throw Error('Enable automatic '+source+' tasks for '+name+' under chat permissions.');
+        return route;
+    }
+    async function automaticTask(text,source,signal){
+        signal?.throwIfAborted();
+        const command=handoff.checkTask(text);
+        if(active || changing)throw Error('Wait for the current model operation to finish.');
+        const route=requireAutomatic(command.name,source);
+        go('chat');
+        const answer=await generate(command.task,null,{route,name:command.name,request:text,source,signal});
+        if(ready){
+            sendUI('automaticTurn',{request:text,reply:{...history.at(-1),text:answer}});
+        }
+        return {provider:command.name,model:route.model,text:answer};
+    }
+    async function generate(prompt,file,delegated) {
         if (typeof prompt !== 'string' || !prompt.trim() || prompt.length>16000) throw Error('Enter a prompt of up to 16,000 characters');
         if (active||changing) throw Error('A model operation is already running');
         const controller = new AbortController();
         active=controller;
-        const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(240000)]);
+        const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(240000),...(delegated?.signal?[delegated.signal]:[])]);
         try {
-            const selected=settings(),options=generationSettings(selected);
+            const selected=delegated?.route||settings(),options=generationSettings(selected);
             const activity=[];
             function step(label){
                 if(activity.at(-1)!==label && activity.length<32){activity.push(label);sendUI('activity',{steps:[...activity]});}
             }
-            step('Preparing request');
+            step(delegated?'Delegating to '+delegated.name+' · '+selected.model:'Preparing request');
             let summary;
-            const messages=[...history.slice(-8).map(({role,content})=>({role,content})),{role:'user',content:prompt}];
+            const messages=handoff.inputMessages(prompt,history,delegated);
             if(['local','import'].includes(selected.kind)){
                 const preference=context.globalState.get('local-reply-preference','');
                 if(preference)messages.unshift({role:'system',content:'The user prefers these response styles: '+preference});
             }
-            const searchQuery=automaticReads && !file && /^search the web for\s+(.{1,300})[.!?]?$/i.exec(prompt.trim());
+            const searchQuery=!delegated && automaticReads && !file && /^search the web for\s+(.{1,300})[.!?]?$/i.exec(prompt.trim());
             if(searchQuery){
                 requirePermission('internet');
                 step('Searching the web');
@@ -556,6 +614,7 @@ async function activate(context) {
                 const route = ['local','import'].includes(selected.kind) ? await local.start(signal, context.globalState.get('threads',0), selected.kind==='import'?selected:undefined,progress) : {...selected,token:await context.secrets.get('token:'+selected.base)};
                 progress('Waiting for '+(selected.base?new URL(route.base).host:'the local model')+' to reply…');
                 step('Requesting model reply');
+                if(delegated?.source && modelId(requireAutomatic(delegated.name,delegated.source))!==modelId(selected))throw Error('Named task permission changed; try again.');
                 const result=await request(route.base,'/chat/completions',route.token,{model:route.model,messages,max_tokens:options.maxTokens,temperature:options.temperature},signal);
                 promptTokens=result.usage?.prompt_tokens;count=result.usage?.completion_tokens;rate=result.timings?.predicted_per_second;
                 const message=result.choices?.[0]?.message;
@@ -579,7 +638,7 @@ async function activate(context) {
             const metrics=usage.join(' · ');
             const id=crypto.randomUUID();replyIds.add(id);if(replyIds.size>512)replyIds.delete(replyIds.values().next().value);
             step('Received model reply');
-            history=[...history,{role:'user',createdAtMs:sentAt,content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,createdAtMs:Date.now(),content:output,model:modelName(selected),metrics,activity,summary,files}].slice(-128);
+            history=[...history,{role:'user',createdAtMs:sentAt,content:(delegated?.request||prompt)+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,createdAtMs:Date.now(),content:output,model:(delegated?delegated.name+' · ':'')+modelName(selected),metrics,activity,summary,files}].slice(-128);
             await recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
@@ -599,17 +658,34 @@ async function activate(context) {
             module:panel.webview.asWebviewUri(vscode.Uri.joinPath(pdfRoot,'pdf.min.mjs')).toString(),
             worker:panel.webview.asWebviewUri(vscode.Uri.joinPath(pdfRoot,'pdf.worker.min.mjs')).toString()
         });
-        panel.onDidDispose(()=>{screenSession?.abort();active?.abort();panel=undefined;ready=false;});
+        panel.onDidChangeViewState(({webviewPanel})=>{if(!webviewPanel.active)disarmVoice();});
+        panel.onDidDispose(()=>{armedVoice=undefined;screenSession?.abort();active?.abort();panel=undefined;ready=false;});
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
             try {
+                if(msg.op==='cancelSystemVoice'){
+                    if(armedVoice?.id===msg.id)disarmVoice();
+                    return;
+                }
+                if(msg.op==='finishSystemVoice'){
+                    const session=armedVoice;
+                    if(!session || session.id!==msg.id){sendUI('systemVoiceResult',{id:msg.id,error:'Dictation ended. Review your draft.'});return;}
+                    armedVoice=undefined;
+                    try{
+                        if(session.panel!==panel || !panel.active || session.thread!==currentThread || session.scope!==historyScope() || Date.now()>session.expires || pendingFile)throw Error('Dictation ended. Review your draft.');
+                        await automaticTask(msg.text,'voice');
+                        sendUI('systemVoiceResult',{id:session.id,ok:true});
+                    }catch(error){sendUI('systemVoiceResult',{id:session.id,error:error.message});}
+                    return;
+                }
+                if(armedVoice && !['ready','voice','previewFile'].includes(msg.op))disarmVoice();
                 if(msg.op==='rateReply')await rateReply(msg.id,msg.vote);
                 if(msg.op==='replyPreference')await replyPreference();
                 if(msg.op==='sidebar'&&typeof msg.compact==='boolean')await context.globalState.update('compact-sidebar',msg.compact);
                 if(msg.op==='exportChat')return await exportConversation();
                 if(msg.op==='historyOptions')return await historyOptions();
                 if(msg.op==='toggleActivity'){await context.globalState.update('show-reply-activity',!context.globalState.get('show-reply-activity',true));status();return;}
-                if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});if(pendingResult){sendUI('draft',pendingResult);pendingResult=null;}threadList();await loadRecents();}
+                if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});if(pendingResult){sendUI('draft',pendingResult);pendingResult=null;}threadList();if(armedVoice)showVoiceInstructions();await loadRecents();}
                 if(msg.op==='new'&&!active){automaticReads=false;screenSession?.abort();await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;showThread();}
                 if(msg.op==='useSuggestion'){
@@ -703,6 +779,7 @@ async function activate(context) {
                 if(msg.op==='guard' && !active) await guardrails();
                 if(msg.op==='ide') await ide();
                 if(msg.op==='cpu' && !active) await cpu();
+                if(msg.op==='namedAccess' && !active && !changing){changing=true;try{await named.manage();}finally{changing=false;}}
                 if(msg.op==='stop') active?.abort();
                 if(['composerBuiltin','composerPin','moreTools'].includes(msg.op))draftForTool=typeof msg.draft==='string'?msg.draft.slice(0,12000):'';
                 if(msg.op==='pasteResult'&&!active){const text=await vscode.env.clipboard.readText();if(text.trim())resultToChat('pasted tool',text);return;}
@@ -712,6 +789,23 @@ async function activate(context) {
                 if(msg.op==='composerPin'&&!active&&typeof msg.command==='string'){await composer.shortcut(msg.command);return;}
                 if(msg.op==='send'&&!active&&typeof msg.text==='string'){
                     draftForTool=msg.text;
+                    const delegation=handoff.intent(msg.text);
+                    if(delegation){
+                        if(delegation.task)handoff.checkTask(msg.text);
+                        if(changing)throw Error('Finish the current model operation first.');
+                        if(pendingFile)throw Error('Named tasks send text only. Remove the attachment first.');
+                        const ownerPanel=panel,thread=currentThread,scope=historyScope();
+                        changing=true;
+                        let approved;
+                        try{approved=await named.prepare(delegation);}finally{changing=false;}
+                        if(panel!==ownerPanel || thread!==currentThread || historyScope()!==scope || active)throw Error('Chat changed during setup. Send the request again.');
+                        if(!approved)throw Error('Model handoff cancelled.');
+                        if(delegation.connect){
+                            sendUI('notice',{text:delegation.name+' connected · '+approved.route.model+'. Type “Ask '+delegation.name+' to …”.'});return;
+                        }
+                        const answer=await generate(delegation.task,null,{route:approved.route,name:delegation.name,request:msg.text});
+                        sendUI('answer',{...history.at(-1),text:answer});return;
+                    }
                     const requested=/^(?:\/tools(?:\s+|$)|find a tool to\s+)([\s\S]*)$/i.exec(msg.text.trim());
                     if(requested){draftForTool=requested[1];await composer.menu(requested[1]);sendUI('notice',{text:'Tool selection closed.'});return;}
                     const remote=require('./build-tools.cjs').sshIntent(msg.text);
@@ -771,7 +865,19 @@ async function activate(context) {
         await vscode.commands.executeCommand('workbench.action.toggleZenMode');
         chat();
     }
-    return {generate, lastReplyMetrics:()=>history.at(-1)?.metrics, unload:()=>local.stop(), homeStatus:()=>({home,ready,visible:!!panel?.visible,folders:vscode.workspace.workspaceFolders?.length||0})};
+    if(vscode.lm?.registerTool)context.subscriptions.push(vscode.lm.registerTool('meshlit_delegate_model_task',{
+        invoke:async(options,token)=>{
+            const cancel=new AbortController();
+            const sub=token.onCancellationRequested(()=>cancel.abort());
+            if(token.isCancellationRequested)cancel.abort();
+            try{
+                const reply=await automaticTask(options.input?.request,'agents',cancel.signal);
+                return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify(reply))]);
+            }finally{sub.dispose();}
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('meshlit.studio.delegateTask',text=>automaticTask(text,'agents')));
+    return {generate:(prompt,file)=>generate(prompt,file), delegateTask:text=>automaticTask(text,'agents'), lastReplyMetrics:()=>history.at(-1)?.metrics, unload:()=>local.stop(), homeStatus:()=>({home,ready,visible:!!panel?.visible,folders:vscode.workspace.workspaceFolders?.length||0})};
 }
 exports.activate=activate;
 exports.deactivate=()=>{active?.abort();local?.stop();};

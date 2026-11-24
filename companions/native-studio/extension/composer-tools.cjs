@@ -109,13 +109,41 @@ function composer(vscode,context,hooks){
         }).join('\n');
         hooks.result(name,output || 'Tool finished with no output.',attachments.filter(name=>files.has(name)));
     }
+    async function generateImage(){
+        const flux=require('./flux-image.cjs');
+        const check=()=>hooks.requirePermission('internet');
+        check();
+        const prompt=await vscode.window.showInputBox({
+            title:'Generate an image with FLUX.1 schnell',
+            prompt:'Press Enter to send only this prompt to '+flux.origin+' (free public Space).',
+            value:hooks.imagePrompt()?.slice(0,2000)||'',
+            validateInput:text=>text.trim() && text.length<=2000?undefined:'Enter 1–2,000 characters.'
+        });
+        if(!prompt?.trim())return;
+        const part=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,
+            title:'Generating image with FLUX.1 schnell',cancellable:true},async(_,token)=>{
+            const controller=new AbortController();
+            const cancel=token.onCancellationRequested(()=>controller.abort());
+            if(token.isCancellationRequested)controller.abort();
+            try{return await flux.generate(prompt,check,AbortSignal.any([controller.signal,AbortSignal.timeout(110000)]));}
+            finally{cancel.dispose();}
+        });
+        check();
+        const filename=cacheFile(part);
+        hooks.result('FLUX.1 schnell',prompt,[filename]);
+    }
     async function activate(target){
         if(target==='downloads')return download();
         if(target==='image'||target==='video'){
             const list=(vscode.lm?.tools||[]).filter(t=>(t.name+' '+(t.description||'')).toLowerCase().includes(target));
-            if(!list.length){await vscode.window.showInformationMessage('Connect a local '+target+' generator in MCP servers to use it from chat.');return hooks.activate('mcp');}
-            const pick=await vscode.window.showQuickPick(list.map(t=>({label:t.name,description:t.description})),{title:'Choose your '+target+' generation tool'});
-            if(pick)return runTool(pick.label);return;
+            const choices=list.map(t=>({label:t.name,description:t.description}));
+            if(target==='image')choices.push({label:'FLUX.1 schnell',description:'Free public Hugging Face Space · 512 × 512',flux:true});
+            choices.push({label:'Connect another generator…',connect:true});
+            const pick=await vscode.window.showQuickPick(choices,{title:'Choose your '+target+' generation tool'});
+            if(pick?.flux)return generateImage();
+            if(pick?.connect)return hooks.activate('mcp');
+            if(pick)return runTool(pick.label);
+            return;
         }
         if(target.startsWith('mcp:'))return runTool(target.slice(4));
         if(target.startsWith('studio:'))return hooks.dashboard(target.slice(7));
