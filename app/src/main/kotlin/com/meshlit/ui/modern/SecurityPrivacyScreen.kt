@@ -65,6 +65,7 @@ import kotlinx.coroutines.tasks.await
         Triple("network","Network and pairing","Approve devices, review transport and worker access"),
         Triple("host-map","Global host map","See approximate pins shared by consenting relay members"),
         Triple("identity-recovery","Device identity backup","Back up the signing identity used for device verification"),
+        Triple("shirudo","Shirudo shields","Inspect the reported defenses of a Linux node"),
         Triple("audit","Audit and telemetry","Review local records, exports and opt-in collector settings"),
         Triple("logs","Logs and export","Search redacted diagnostics and export selected entries"),
         Triple("legal","Terms and privacy","Read the offline privacy policy and accepted agreement")

@@ -27,18 +27,18 @@ import com.meshlit.ui.theme.ChatTokens as T
     if(page=="relay"){com.meshlit.ui.v2.screens.RelaySettingsScreen();return}
     if(page=="join"){com.meshlit.ui.v2.screens.RelayJoinScreen();return}
     if(page=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
-    if(page=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen(onBack={page=null});return}
     if(page=="device_info"){com.meshlit.ui.v2.screens.DeviceInfoScreen(onBack={page=initialPage});return}
     if(page=="ssh"){SshConnectionsScreen{page=if(fromExternalService) "external-services" else null};return}
     if(page=="firewall"){FirewallSettingsScreen{page=null};return}
     if(page=="app"){com.meshlit.ui.v2.screens.DeviceWorkspaceScreen({page=it},focusedPeer);return}
+    if(page=="studio-internet"){StudioInternetPairingScreen{page="app"};return}
     if(page=="saved-qrs"){DeviceManagementScreen({page="app"},{page=it});return}
     if(page=="sharding"){ShardingSettingsScreen(onBack={page="app"});return}
     if(page=="scan"){com.meshlit.ui.v2.screens.V2ScanScreen(onOpenQrPairing={page="app"},onBack={page=initialPage});return}
     if(page=="external-services"){ExternalServiceScreen({page=initialPage}) { fromExternalService=true;page=it };return}
     if(page=="web-bridge"){WebBridgeEnrollmentScreen{page="external-services"};return}
     if(page=="mcp-catalog"){McpCatalogScreen({page="external-services"},{page="gateway"});return}
-    if(page=="providers"){OnlineProvidersScreen{page="external-services"};return}
+    if(page=="providers"){OnlineProvidersScreen(onBack={page="external-services"});return}
     if(page=="gateway"){GatewayScreen{page="mcp-catalog"};return}
     if(page=="radar"){RadarScreen({page=initialPage},{page="scan"},{page="meshchat"},{page="logs"},{page="host-map"},
         {focusedPeer=it;page="app"});return}
@@ -47,12 +47,12 @@ import com.meshlit.ui.theme.ChatTokens as T
     if(page=="meshchat"){PeerChatScreen{page="radar"};return}
     if(page=="logs"){ModernLogsScreen(onBack={page="radar"});return}
     if(page=="forward"){com.meshlit.ui.screens.settings.ForwardingPeersScreen({page=null});return}
-    Scaffold(topBar={TopAppBar(title={Text("Network and pairing")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
+    Scaffold(topBar={CenterAlignedTopAppBar(title={Text("Network and pairing")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
             item{Text("Connect devices",style=MaterialTheme.typography.headlineSmall)
-                Text("Choose a path for another phone, a remote cluster, or a browser device.")}
-            item { NetworkMethod("Direct device pairing · local or Internet",
-                "Discover devices on the same network, or add a verified HTTPS endpoint or pairing link for a remote device. A VPN can make remote devices reachable privately.") {
+                Text("Pair a device to share models. Join a cluster to contribute compute.")}
+            item { NetworkMethod("Pair a Meshlit device",
+                "Find a device on Wi-Fi, or enter its pairing link. Check the fingerprint before you connect.") {
                 Button({if(onDevices!=null) onDevices() else page="app"},Modifier.fillMaxWidth()) { Text("Open Devices and pair") }
                 OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))},modifier=Modifier.fillMaxWidth()) {
                     Text("Open Android VPN settings")
@@ -97,11 +97,6 @@ import com.meshlit.ui.theme.ChatTokens as T
                 OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))}){Text("Open Bluetooth settings")}
             }}
             item{OutlinedButton(onClick={page="firewall"}){Text("Network status and firewall rules")}}
-            if("rewards wallet contribution credits".contains(query,true) || query.isBlank()) item {
-                NetworkMethod("Mesh rewards","Review local signed contribution receipts and back up this device's reward history. Credits are not spendable or transferable.") {
-                    OutlinedButton(onClick={page="rewards"}) { Text("Open rewards wallet") }
-                }
-            }
             item{NetworkMethod("Shared task memory","Planned phone-first design: replicate compact task/session journals across enrolled phones and serve large model files/checkpoints from selected storage holders. Today journals are local; durable replication, leases and recovery remain to be implemented."){
                 Text("Compute, storage, tool, routing and monitoring roles must be negotiated independently.",style=MaterialTheme.typography.bodySmall)
             }}

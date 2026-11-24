@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-HyperL-Community-1.0
 // Earlier Apache-2.0 rights remain; see core-hyperl/LICENSE and NOTICE.
 package com.meshlit.core.hyperl
+import kotlinx.coroutines.*
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeout
@@ -31,7 +32,8 @@ interface HyperLBackend {
 }
 /** Genuine Kotlin/Android/JVM CPU backend. It is a correctness reference, not an LLM
  * inference engine or a CUDA-compatible compiler. Accelerated targets require adapters. */
-class HyperLCpuBackend(private val memoryBudgetBytes:Long=HyperLAdmission.DEFAULT_BUDGET):HyperLBackend {
+class HyperLCpuBackend(private val memoryBudgetBytes:Long=HyperLAdmission.DEFAULT_BUDGET,private val workers:Int=1):HyperLBackend {
+    init {require(workers in 1..128)}
     override val target=HyperLTarget.CPU_REFERENCE
     override val runtimeRevision=HyperLContract.RUNTIME_REVISION
     override suspend fun execute(program:HyperLProgram,inputs:Map<String,FloatArray>):FloatArray {
@@ -56,10 +58,20 @@ class HyperLCpuBackend(private val memoryBudgetBytes:Long=HyperLAdmission.DEFAUL
             val result=FloatArray(length)
             if(step.operation=="sum"){
                 var sum=0f;args[0].forEachIndexed{i,value->if(i%HyperLContract.CANCELLATION_INTERVAL==0) currentCoroutineContext().ensureActive();sum+=value;require(sum.isFinite()){"HyperL nonfinite ordered sum at ${step.output}"}};result[0]=sum
-            }else for(i in 0 until length){
-                if(i%HyperLContract.CANCELLATION_INTERVAL==0) currentCoroutineContext().ensureActive()
-                val value=when(step.operation){"add"->args[0][i]+args[1][i];"multiply"->args[0][i]*args[1][i];"relu"->maxOf(0f,args[0][i]);else->error("Unsupported operation")}
-                require(value.isFinite()){"HyperL nonfinite result at ${step.output}"};result[i]=value
+            }else {
+                suspend fun range(from:Int,to:Int) {
+                    for(i in from until to){
+                        if(i%HyperLContract.CANCELLATION_INTERVAL==0) currentCoroutineContext().ensureActive()
+                        val value=when(step.operation){"add"->args[0][i]+args[1][i];"multiply"->args[0][i]*args[1][i];"relu"->maxOf(0f,args[0][i]);else->error("Unsupported operation")}
+                        require(value.isFinite()){"HyperL nonfinite result at ${step.output}"};result[i]=value
+                    }
+                }
+                val count=minOf(workers,(length/2048).coerceAtLeast(1))
+                if(count==1 || length<8192) range(0,length)
+                else coroutineScope {
+                    val dispatcher=Dispatchers.Default.limitedParallelism(count)
+                    (0 until count).map{worker->async(dispatcher){range(length*worker/count,length*(worker+1)/count)}}.awaitAll()
+                }
             }
             require(result.all(Float::isFinite)){"HyperL nonfinite result at ${step.output}"};live[step.output]=result
         }

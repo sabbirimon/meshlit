@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="204" viewBox="0 0 880 204" role="img" aria-labelledby="title desc">
+  <title id="title">One local reply on a Sharp AQUOS R7</title>
+  <desc id="desc">Qwen2.5 0.5B Instruct Q4_K_M, 2,048-token active context. The measured reply produced 73 output tokens at 20.0 decode tokens per second with 5.7 seconds elapsed overall.</desc>
+  <rect width="880" height="204" rx="18" fill="#11232e"/>
+  <g font-family="system-ui, sans-serif">
+    <text x="30" y="44" fill="#f4f8ff" font-size="25" font-weight="650">One local reply on the AQUOS R7</text>
+    <text x="30" y="73" fill="#c2d4df" font-size="16">Qwen2.5 0.5B Instruct · Q4_K_M · 2,048-token active context</text>
+    <path d="M30 94h820" stroke="#39505e"/>
+    <path d="M285 114v62m284-62v62" stroke="#39505e"/>
+    <g font-size="44" font-weight="700">
+      <text x="30" y="149" fill="#85ead9">73</text>
+      <text x="310" y="149" fill="#c3bdff">20.0</text>
+      <text x="595" y="149" fill="#ffc39f">5.7 s</text>
+    </g>
+    <g font-size="17" fill="#eff5fa">
+      <text x="31" y="178">output tokens</text>
+      <text x="312" y="178">decode tokens per second</text>
+      <text x="597" y="178">total elapsed time</text>
+    </g>
+  </g>
+</svg>

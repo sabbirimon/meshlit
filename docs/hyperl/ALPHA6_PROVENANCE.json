@@ -3,13 +3,13 @@
   "upstream": "https://github.com/sabbirimon/HyperL",
   "upstreamCommit": "c03a8590d959f5480c54efb4e3c3f87af6532e39",
   "license": "LicenseRef-HyperL-Community-1.0 with preserved earlier Apache grants",
-  "modifications": "Android namespace; API 26 NIO; Java 8 IO; bounded SAF input stream and verify adapter. No desktop Python runtime.",
+  "modifications": "Android namespace; API 26 NIO; Java 8 IO; bounded SAF input stream and verify adapter. No desktop Python runtime. Android private storage requires POSIX owner-only creation directly, avoiding denied getFileStore inspection. Android export verifies all data before an exclusive CREATE_NEW bounded copy; no hard-link dependency, incomplete output removed on handled failure.",
   "files": [
     {
       "upstreamPath": "src/main/kotlin/org/hyperl/HyperL.kt",
       "upstreamSha256": "b8ff5d421374d918a2be107d761ab8c8aa456df66091445b2b2f12cc2ee3e9c3",
       "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/HyperL.kt",
-      "sha256": "9f72d1d64d6655de55b2f036128943caca2ffb3d80c6f5c553f5407bc3abf0ca"
+      "sha256": "d16968089e779ff574007fd1e9e966208893a00853efd975387bfc78d1fa7d6e"
     },
     {
       "upstreamPath": "src/main/kotlin/org/hyperl/HyperLAdmission.kt",
@@ -57,7 +57,7 @@
       "upstreamPath": "src/main/kotlin/org/hyperl/LargeData.kt",
       "upstreamSha256": "cbcb6fe2dba8170b64d98d614bb95693ba6edbc36cb5199fb1c4fde567813cc1",
       "path": "core-hyperl/src/main/kotlin/com/meshlit/core/hyperl/LargeData.kt",
-      "sha256": "76ef2e6f0eeca067d380e9e40a499ffc1e5bf403f99ebd14656b7bb1407d7c91"
+      "sha256": "8e4d36bd2ec06f60b9a2fc4567080ba517fdbc179be4255f35bfb0fc4af9a12d"
     },
     {
       "upstreamPath": "native/cpu.c",

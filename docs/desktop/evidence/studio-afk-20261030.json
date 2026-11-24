@@ -1,0 +1,167 @@
+{
+  "date": "2026-10-30",
+  "scope": "Development checkpoint; no release publication",
+  "localChat": {
+    "providerRequests": 0,
+    "ownerVaultAccessed": false,
+    "model": "Qwen2.5 1.5B Instruct \u00b7 Q4_K_M",
+    "lockedRequestRejected": true,
+    "replies": [
+      "Hello!",
+      "2 plus 2 equals 4."
+    ],
+    "usage": {
+      "requests": 2,
+      "inputTokens": 330,
+      "outputTokens": 12,
+      "unknownUsageRequests": 0,
+      "freeOnly": false,
+      "month": "2026-10",
+      "budgets": [],
+      "history": [
+        {
+          "model": "meshlit-local",
+          "startedAt": 1793311482440,
+          "status": "complete",
+          "local": true,
+          "gateway": false,
+          "currency": "USD",
+          "input": 163,
+          "output": 3,
+          "cost": "0",
+          "elapsedMs": 637,
+          "unresolved": false
+        },
+        {
+          "model": "meshlit-local",
+          "startedAt": 1793311480869,
+          "status": "complete",
+          "local": true,
+          "gateway": false,
+          "currency": "USD",
+          "input": 167,
+          "output": 9,
+          "cost": "0",
+          "elapsedMs": 1520,
+          "unresolved": false
+        }
+      ]
+    },
+    "independentLocalChats": 2,
+    "budgetUpdatedThroughHost": true,
+    "wrongPassphraseRejected": true,
+    "usageSurvivesRestart": true,
+    "budgetSurvivesRestart": true
+  },
+  "managedGateways": {
+    "providerRequests": 0,
+    "accountsCreated": 0,
+    "services": [
+      {
+        "name": "OmniRoute",
+        "version": "3.8.52",
+        "dashboardStatus": 307,
+        "authStatus": 200,
+        "unauthenticatedKeysStatus": 401,
+        "stoppedAndPortClosed": true
+      },
+      {
+        "name": "FreeLLMAPI",
+        "version": "0.2.1",
+        "dashboardStatus": 200,
+        "authStatus": 200,
+        "unauthenticatedKeysStatus": 401,
+        "stoppedAndPortClosed": true
+      }
+    ]
+  },
+  "automated": {
+    "desktop": {
+      "tests": 75,
+      "skipped": 1,
+      "failures": 0
+    },
+    "extension": {
+      "tests": 32,
+      "failures": 0
+    },
+    "sdkHost": {
+      "tests": 8,
+      "failures": 0
+    },
+    "android": {
+      "assembleMeshlitV1Debug": "passed",
+      "assembleMeshlitV2Debug": "passed",
+      "lintMeshlitV1Debug": "passed",
+      "lintMeshlitV2Debug": "passed"
+    }
+  },
+  "samsung": {
+    "model": "SM-A207F",
+    "android": "11",
+    "harness": {
+      "checks": [
+        "settings-to-harness",
+        "plaintext-lan-rejected",
+        "connection-confirmation-cancel",
+        "real-host-rendered-with-interactive-controls",
+        "bootstrap-token-removed-and-clean-address-saved",
+        "disconnect-returns-to-setup",
+        "cookie-reconnect-without-token",
+        "back-to-settings"
+      ],
+      "modelRequests": 0,
+      "renderedText": "Into the Unknown\nPreview\nChoose workspace\nChoose a workspace to start",
+      "webView": "155.0.8059.43",
+      "device": "SM-A207F",
+      "android": "11"
+    },
+    "harnessVisual": "Real owner account/API-key setup panel rendered; signed-in workspace not qualified",
+    "encryptedLedgerAndCredentialMutation": "passed",
+    "hyperLNative": "passed",
+    "bundledInference": {
+      "result": "passed",
+      "sameReadyModelReused": true,
+      "model": "Qwen2.5 0.5B Instruct Q4_K_M",
+      "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "reply": "Hello! It's a pleasure to meet you!",
+      "promptTokens": null,
+      "generatedTokens": null,
+      "tokensPerSecond": null,
+      "note": "Pinned Android SDK does not expose token/throughput counters; no synthetic counts substituted"
+    },
+    "settingsNavigation": {
+      "result": "blocked",
+      "reason": "Samsung keyguard showing=true, occluded=false; no Compose hierarchy exposed while locked",
+      "sourceFixes": [
+        "current Basic/Advanced/network labels",
+        "bounded startup wait including boot-open-app",
+        "restore Advanced preference in finally"
+      ],
+      "remaining": "Rerun SettingsNavigationBuild41Test while owner unlocks phone"
+    },
+    "apkSha256": "4a21a8a258cdaa80dd8e32b540d1b15bcecff35de4d3f1a6a6f71bdad87e8590",
+    "harnessFixtureStoppedAndAdbReverseRemoved": true
+  },
+  "developmentDeployment": {
+    "extensionFilesUpdated": true,
+    "backendSha256": "5c6cc622f521583fcda6c4851088337dd1e4fd580916f8e969fdcf92029a1b37",
+    "adHocSignatureVerified": true,
+    "reloadRequired": true,
+    "portableGatewayBundle": false
+  },
+  "nativeUi": {
+    "status": "blocked",
+    "reason": "Computer Use server -10005 timeoutReached on AX and screenshot requests",
+    "newUsageAndManagedGatewayUiQualified": false
+  },
+  "limits": [
+    "No owner usage vault accessed or reset",
+    "No provider generation, credentials, signups or billing requests",
+    "No new Accessibility or Keychain grant",
+    "No paid billing cap guarantee",
+    "Gateway manifest identifies local development dependencies, not a portable signed dependency tree",
+    "No release publication or main merge",
+    "Mobile full IDE, paired operator and cluster acceptance remain separate roadmap work"
+  ]
+}

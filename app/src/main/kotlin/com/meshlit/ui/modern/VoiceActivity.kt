@@ -13,7 +13,7 @@ import com.meshlit.chat.VoiceState
 /** Activity animation; measured microphone/PCM levels only, never invented speech samples. */
 @Composable internal fun VoiceActivity(state:VoiceState,modifier:Modifier=Modifier) {
     val color=if(state.muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
-    val pulse=if(state.busy && !state.muted) {
+    val pulse=if(state.busy && !state.muted && com.meshlit.ui.theme.LocalMeshlitThemeConfig.current.animationsEnabled) {
         val transition=rememberInfiniteTransition(label="Voice activity")
         val value by transition.animateFloat(0.7f,1f,infiniteRepeatable(tween(1000),RepeatMode.Reverse),label="Activity pulse")
         value

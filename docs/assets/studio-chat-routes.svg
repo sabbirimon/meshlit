@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="292" viewBox="0 0 880 292" role="img" aria-labelledby="title desc">
+  <title id="title">Where a Meshlit chat request goes</title>
+  <desc id="desc">The composer can reach a loaded local model, a connected provider with a grant, or tools on an approved device. Results return to the conversation.</desc>
+  <defs>
+    <linearGradient id="paper" x2="1" y2="1"><stop stop-color="#10253b"/><stop offset="1" stop-color="#101622"/></linearGradient>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#546779" opacity=".4"/></pattern>
+  </defs>
+  <rect width="880" height="292" rx="18" fill="url(#paper)"/>
+  <rect width="880" height="292" rx="18" fill="url(#grid)"/>
+  <g font-family="system-ui, sans-serif">
+    <text x="34" y="57" fill="#f4f8ff" font-size="36" font-weight="700">Meshlit Studio</text>
+    <text x="36" y="91" fill="#c5d6e6" font-size="19">Where a chat request goes</text>
+    <rect x="35" y="141" width="187" height="60" rx="14" fill="#19374c" stroke="#73c5fa" stroke-width="2"/>
+    <path d="M54 159h23v16H64l-6 5v-5h-4z" fill="none" stroke="#96d6ff" stroke-width="2" stroke-linejoin="round"/>
+    <text x="88" y="177" fill="#edf8ff" font-size="19" font-weight="600">Composer</text>
+    <g fill="none" stroke-width="3">
+      <path d="M222 171h29q13 0 18-13l20-60q5-14 20-14h36" stroke="#78dfce"/>
+      <path d="M222 171h123" stroke="#aaabff"/>
+      <path d="M222 171h29q13 0 18 13l20 51q5 14 20 14h36" stroke="#ffb88c"/>
+    </g>
+    <g stroke-width="3" fill="#101f30">
+      <circle cx="348" cy="84" r="7" stroke="#78dfce"/>
+      <circle cx="348" cy="171" r="7" stroke="#aaabff"/>
+      <circle cx="348" cy="249" r="7" stroke="#ffb88c"/>
+    </g>
+    <g font-size="23" font-weight="650">
+      <text x="380" y="80" fill="#85ead9">Local model</text>
+      <text x="380" y="167" fill="#c3bdff">Connected provider</text>
+      <text x="380" y="245" fill="#ffc39f">Paired device</text>
+    </g>
+    <g font-size="16" fill="#d1dce9">
+      <text x="380" y="105">Generate a reply with the model loaded on this device.</text>
+      <text x="380" y="192">Send a named task using the access you granted.</text>
+      <text x="380" y="270">Request a tool from an approved peer.</text>
+    </g>
+  </g>
+</svg>

@@ -34,15 +34,16 @@ class EmbeddedGateway(port:Int,private val token:String,
         val owner=MessageDigest.isEqual(token.toByteArray(),key.toByteArray())
         val principal=if(owner) GatewayPrincipal("owner",GatewayScope.entries.toSet(),emptySet(),emptySet(),1024,Long.MAX_VALUE,true)
             else clientAccess?.authenticate(key) ?: return failure(Response.Status.UNAUTHORIZED,"Authentication required")
-        val needed=when(session.uri){"/v1/models"->GatewayScope.MODELS;"/v1/chat/completions"->GatewayScope.CHAT;"/mcp"->GatewayScope.MCP;"/a2a","/.well-known/agent-card.json"->GatewayScope.A2A;else->null}
+        val needed=when(session.uri){"/v1/models","/v1/resources"->GatewayScope.MODELS;"/v1/chat/completions"->GatewayScope.CHAT;"/mcp"->GatewayScope.MCP;"/a2a","/.well-known/agent-card.json"->GatewayScope.A2A;else->null}
         if(needed!=null && !principal.allows(needed)) return failure(Response.Status.FORBIDDEN,"Client permission denied")
-        if(!owner && clientAccess?.acquire(principal)!=true) return failure(Response.Status.TOO_MANY_REQUESTS,"Client rate or concurrency limit reached")
-        if(!admissions.tryAcquire()) {if(!owner) clientAccess?.release(principal);return failure(Response.Status.TOO_MANY_REQUESTS,"Gateway is busy")}
+        if(!admissions.tryAcquire()) return failure(Response.Status.TOO_MANY_REQUESTS,"Gateway is busy")
+        if(!owner && clientAccess?.acquire(principal)!=true) {admissions.release();return failure(Response.Status.TOO_MANY_REQUESTS,"Client allowance, rate, concurrency or durable admission unavailable")}
         val context=lifetime+principal
         val deadline=minOf(120000L,principal.expiresAtMs-System.currentTimeMillis()).coerceAtLeast(1)
         try {
             if(session.method==Method.GET) return when(session.uri) {
                 "/health"->json(buildJsonObject { put("status","ready");put("implementation","meshlit-kotlin");put("streaming",false) })
+                "/v1/resources"->json(runBlocking(context) {withTimeout(minOf(15000,deadline)) {gatewayResources(principal,models())}})
                 "/.well-known/agent-card.json"->json(card())
                 "/v1/models"->json(runBlocking(context) { withTimeout(15000) { buildJsonObject {put("object","list");put("data",JsonArray(models().filter{principal.allowsModel(it.jsonObject["id"]!!.jsonPrimitive.content)}))} } })
                 "/mcp"->failure(Response.Status.METHOD_NOT_ALLOWED,"Server-initiated SSE is not supported")

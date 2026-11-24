@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "recordedDate": "2026-11-06",
+  "candidate": "Meshlit Studio 2026-11-06 UI Polish QA",
+  "scope": "Real native Intel macOS UI selection/inference, isolated synthetic profile, no remote model or cloud provider.",
+  "defaultModel": "qwen25-1.5b",
+  "secondModel": {
+    "id": "qwen3-4b",
+    "label": "Qwen3 4B \u00b7 Q4_K_M",
+    "filename": "Qwen3-4B-Q4_K_M.gguf",
+    "publisher": "Qwen",
+    "repository": "Qwen/Qwen3-4B-GGUF",
+    "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+    "url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf",
+    "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+    "sizeBytes": 2497280256,
+    "license": "Apache-2.0",
+    "quantization": "Q4_K_M",
+    "parameters": "4B",
+    "capabilities": [
+      "text",
+      "chat",
+      "code"
+    ],
+    "packagedContextTokens": 4096
+  },
+  "artifactSha256AndSizeVerifiedBeforeUse": true,
+  "packagedCatalogBothWeightsVerified": true,
+  "contextTokens": 4096,
+  "nativeCpuThreads": 4,
+  "nativeBatchThreads": 8,
+  "modelsVisibleAndSelectable": true,
+  "thinkingControlNativeSelectionVerified": true,
+  "measurements": [
+    {
+      "mode": "off",
+      "prompt": "What is 2 + 2? Answer with just the number.",
+      "reply": "4",
+      "engineCpuSeconds": 85.56,
+      "uiObservedWallUpperBoundSeconds": 31.17,
+      "residentMemoryAfterKiB": 4909476
+    },
+    {
+      "mode": "on",
+      "prompt": "What is 3 + 5? Answer with just the number.",
+      "reply": "8",
+      "engineCpuSeconds": 85.95,
+      "uiObservedWallUpperBoundSeconds": 36.19,
+      "residentMemoryAfterKiB": 4909632
+    }
+  ],
+  "measurementCaveat": "UI wall times include automation/sampling overhead and are upper bounds, not time-to-first-token or controlled throughput benchmarks. CPU seconds aggregate all native engine threads. Thinking tests reused one chat; no tokens-per-second claim.",
+  "cancellation": {
+    "nativeStopObserved": true,
+    "uiMessage": "Stopped. Open New chat to continue.",
+    "sendDisabled": true,
+    "cpuSecondsAfterStop": 215.54,
+    "cpuSecondsAfterIdleObservation": 215.54,
+    "idleObservationSeconds": 15.26
+  },
+  "memoryAdmission": {
+    "initialLoadBlocked": true,
+    "initialAvailableBytes": 6151069696,
+    "action": "Stopped two confirmed-idle Gradle build daemons; user applications untouched. Retried unchanged4096 context and memory admission safeguard.",
+    "retryLoadedSuccessfully": true
+  },
+  "startup": {
+    "preparingLocalChatObserved": true,
+    "passphraseSetupFlashObserved": false,
+    "samplingCaveat": "Native accessibility observations, not exhaustive frame-by-frame recording."
+  },
+  "packaging": {
+    "extensionModulesMatchedSnapshot": 52,
+    "integrityEntriesVerified": 10,
+    "adHocSignatureVerified": true,
+    "notarized": false,
+    "backendJarSha256": "7bdebf40b4e2ad22eee9b58b9ed1c987f722a00786234d8842529b606aa86f67"
+  },
+  "normalProfileLaunchPending": false,
+  "hardware": {
+    "cpu": "Intel Core i9-9880H @ 2.30GHz",
+    "physicalCores": 8,
+    "logicalCores": 16,
+    "memoryBytes": 17179869184
+  },
+  "normalProfileLaunch": {
+    "pid": 8130,
+    "emptyGeneralChat": true,
+    "starterReady": true,
+    "noPassphrasePrompt": true,
+    "studioNativeMenuVisible": true,
+    "normalHomeAndProfile": true,
+    "qaExtensionAbsent": true,
+    "syntheticMessagesAbsent": true,
+    "composerFocusedWithoutTyping": true
+  }
+}

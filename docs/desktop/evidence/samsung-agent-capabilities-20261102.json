@@ -1,0 +1,283 @@
+{
+  "device": "Samsung SM-A207F",
+  "observed_at": 1793639732.136683,
+  "transport": "ADB-forwarded existing loopback MCP",
+  "checks": [
+    {
+      "name": "registered_tools",
+      "state": "INVENTORY",
+      "detail": {
+        "count": 63,
+        "names": [
+          "agent_command_schema",
+          "agent_command_submit",
+          "agent_job_cancel",
+          "agent_job_retry",
+          "agent_job_status",
+          "agent_team_control",
+          "agent_team_start",
+          "agent_team_status",
+          "android_control",
+          "android_control_status",
+          "android_package_request",
+          "android_package_status",
+          "app_search",
+          "cluster_group_select",
+          "cluster_inventory_capacity_set",
+          "cluster_layer_plan",
+          "cluster_layer_start",
+          "cluster_runtime_status",
+          "cluster_runtime_stop",
+          "cluster_worker_assess",
+          "cluster_worker_start",
+          "colibri_mode",
+          "crawl_url",
+          "crypto_local",
+          "cyber_skill_read",
+          "cyber_skills_list",
+          "device_audit_report",
+          "device_radar_status",
+          "device_results_fetch",
+          "device_results_get",
+          "device_settings_read",
+          "discovery_mode_set",
+          "external_device_status",
+          "gateway_route_execute",
+          "gateway_routes_list",
+          "knowledge_search",
+          "model_library",
+          "model_route_execute",
+          "model_routes_list",
+          "online_profiles_list",
+          "operations_emergency_stop",
+          "operations_status",
+          "peer_chat_access",
+          "peer_chat_read",
+          "peer_chat_send",
+          "peer_node_command",
+          "personal_memory",
+          "power_status",
+          "remote_commands_access",
+          "remote_node_command",
+          "remote_nodes",
+          "resource_status",
+          "search_access",
+          "ssh_command_execute",
+          "ssh_connections_list",
+          "ssh_node_request",
+          "ssh_nodes",
+          "vm_exec",
+          "vm_start",
+          "vm_status",
+          "vm_stop",
+          "vm_wait",
+          "web_search"
+        ]
+      }
+    },
+    {
+      "name": "phone_grants",
+      "state": "PASS",
+      "detail": {
+        "enabled": true,
+        "service_bound": true,
+        "all_apps": true,
+        "packages": []
+      }
+    },
+    {
+      "name": "phone_open",
+      "state": "PASS",
+      "detail": {
+        "foregroundVerified": true
+      }
+    },
+    {
+      "name": "phone_snapshot",
+      "state": "PASS",
+      "detail": {
+        "nodes": 105
+      }
+    },
+    {
+      "name": "phone_click",
+      "state": "PASS",
+      "detail": {
+        "searchOpened": true
+      }
+    },
+    {
+      "name": "phone_type",
+      "state": "PASS",
+      "detail": {
+        "typedTextVerified": true
+      }
+    },
+    {
+      "name": "phone_back",
+      "state": "PASS",
+      "detail": {
+        "acknowledged": true
+      }
+    },
+    {
+      "name": "phone_home",
+      "state": "PASS",
+      "detail": {
+        "acknowledged": true
+      }
+    },
+    {
+      "name": "phone_restore_app",
+      "state": "PASS",
+      "detail": {
+        "foregroundVerified": true
+      }
+    },
+    {
+      "name": "search_access",
+      "state": "PASS",
+      "detail": {
+        "webEnabled": true,
+        "agentWeb": true,
+        "agentLocal": true
+      }
+    },
+    {
+      "name": "vm_status",
+      "state": "PASS",
+      "detail": {
+        "state": "STOPPED",
+        "agent_activation_allowed": false,
+        "memory_mb": 512,
+        "cpus": 1,
+        "desktop_enabled": false,
+        "session_limit_minutes": 30
+      }
+    },
+    {
+      "name": "ssh_nodes",
+      "state": "PASS",
+      "detail": []
+    },
+    {
+      "name": "remote_nodes",
+      "state": "FAIL_OR_BLOCKED",
+      "detail": {
+        "reason": "{'type': 'text', 'text': 'exec_failed: Remote commands are off'}"
+      }
+    },
+    {
+      "name": "android_package_status",
+      "state": "PASS",
+      "detail": {
+        "androidApi": 30,
+        "packageAdministrationAvailable": true,
+        "installSourceAllowed": false,
+        "deviceOwner": false,
+        "silentAdministrationImplemented": false,
+        "wirelessAdbAdapterImplemented": false,
+        "rootAdapterImplemented": false,
+        "packageActionsNeedHumanConfirmation": true
+      }
+    },
+    {
+      "name": "model_routes_list",
+      "state": "PASS",
+      "detail": []
+    },
+    {
+      "name": "gateway_routes_list",
+      "state": "PASS",
+      "detail": []
+    },
+    {
+      "name": "agent_team_status",
+      "state": "FAIL_OR_BLOCKED",
+      "detail": {
+        "reason": "{'type': 'text', 'text': 'exec_failed: Team delegation is disabled'}"
+      }
+    },
+    {
+      "name": "external_device_status",
+      "state": "PASS",
+      "detail": {
+        "usbHostSupported": true,
+        "devices": [],
+        "volumes": [
+          {
+            "description": "Internal storage",
+            "uuid": null,
+            "removable": false,
+            "state": "mounted"
+          }
+        ],
+        "grantedTrees": []
+      }
+    },
+    {
+      "name": "cluster_runtime_status",
+      "state": "PASS",
+      "detail": {
+        "worker": false,
+        "coordinator": false,
+        "starting": false,
+        "native_available": true,
+        "agent_control": false,
+        "paired_workers": 0,
+        "active_group": "default",
+        "groups": [
+          "default"
+        ],
+        "estimated_memory_bytes": 0,
+        "remote_failover_implemented": false,
+        "durable_replication_implemented": false
+      }
+    },
+    {
+      "name": "online_profiles_list",
+      "state": "PASS",
+      "detail": {
+        "profiles": [
+          {
+            "id": "owner-openrouter-free",
+            "name": "OpenRouter \u00b7 free model",
+            "endpoint": "https://openrouter.ai/api/v1",
+            "model": "cohere/north-mini-code:free",
+            "enabled": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "local_content_search",
+      "state": "PASS",
+      "detail": {
+        "results": 20
+      }
+    },
+    {
+      "name": "personal_memory_status",
+      "state": "FAIL_OR_BLOCKED",
+      "detail": {
+        "reason": "{'type': 'text', 'text': 'permission_denied: Owner has not delegated personal settings'}"
+      }
+    },
+    {
+      "name": "local_crypto_sha256",
+      "state": "FAIL_OR_BLOCKED",
+      "detail": {
+        "reason": "{'type': 'text', 'text': 'exec_failed: Cryptography failed: verify grant, bounded input, random hex key and authentication data'}"
+      }
+    },
+    {
+      "name": "completed",
+      "state": "DONE",
+      "detail": {
+        "ownerMessagesSent": 0,
+        "packageInstalls": 0,
+        "appRestarts": 0
+      }
+    }
+  ]
+}

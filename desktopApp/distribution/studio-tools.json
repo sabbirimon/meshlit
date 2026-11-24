@@ -1,0 +1,58 @@
+{
+  "darwin-x86_64": {
+    "editor": {
+      "name": "VSCodium-darwin-x64-1.143.17183.zip",
+      "sha256": "2ba006bd8b01f6c208d6cc586b5cef22092d7b0c44338247cfc95c6fd61ebf6c",
+      "size": 215753305,
+      "url": "https://github.com/VSCodium/vscodium/releases/download/1.143.17183/VSCodium-darwin-x64-1.143.17183.zip"
+    },
+    "zig": {
+      "name": "zig-x86_64-macos-0.17.1.tar.xz",
+      "size": 59496824,
+      "url": "https://ziglang.org/download/0.17.1/zig-x86_64-macos-0.17.1.tar.xz",
+      "sha256": "9af07b20319fbd0c92ee46ad23e81d6a782b1aaea2cfb8dcbff35f1d2c7ddbb7"
+    }
+  },
+  "darwin-arm64": {
+    "editor": {
+      "name": "VSCodium-darwin-arm64-1.143.17183.zip",
+      "sha256": "b31ca09d8187dd48e077c13ca39b01af234582fe8f5015a918e3c985cc76427e",
+      "size": 208192247,
+      "url": "https://github.com/VSCodium/vscodium/releases/download/1.143.17183/VSCodium-darwin-arm64-1.143.17183.zip"
+    },
+    "zig": {
+      "name": "zig-aarch64-macos-0.17.1.tar.xz",
+      "size": 54001240,
+      "url": "https://ziglang.org/download/0.17.1/zig-aarch64-macos-0.17.1.tar.xz",
+      "sha256": "75f1bc7a1e9852f17ec9a0c1895f767c4ec56d46bc8a834920eece1d0359dd8d"
+    }
+  },
+  "linux-x86_64": {
+    "editor": {
+      "name": "VSCodium-linux-x64-1.143.17183.tar.gz",
+      "sha256": "b113c7cc55624f0779fe194169bb6c049785bfaac2033c84b8a4da68445d72af",
+      "size": 214776570,
+      "url": "https://github.com/VSCodium/vscodium/releases/download/1.143.17183/VSCodium-linux-x64-1.143.17183.tar.gz"
+    },
+    "zig": {
+      "name": "zig-x86_64-linux-0.17.1.tar.xz",
+      "size": 57411036,
+      "url": "https://ziglang.org/download/0.17.1/zig-x86_64-linux-0.17.1.tar.xz",
+      "sha256": "3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a"
+    }
+  },
+  "windows-x86_64": {
+    "editor": {
+      "name": "VSCodium-win32-x64-1.143.17183.zip",
+      "sha256": "5aea75fde6a7aa239f661cfa0eb49c09eda782c7221f3f18840e7e679b5edc06",
+      "size": 231406262,
+      "url": "https://github.com/VSCodium/vscodium/releases/download/1.143.17183/VSCodium-win32-x64-1.143.17183.zip"
+    },
+    "zig": {
+      "name": "zig-x86_64-windows-0.17.1.zip",
+      "size": 100343666,
+      "url": "https://ziglang.org/download/0.17.1/zig-x86_64-windows-0.17.1.zip",
+      "sha256": "b03f477a1943673e02aca0f570e8030dffd536ce1f45cbc4d3326ec31159562e"
+    }
+  }
+}

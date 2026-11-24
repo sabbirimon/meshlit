@@ -1,5 +1,14 @@
 # Scenario routing, attachments and media
 
+## Current request reconciliation — 2026-11-06
+
+The Chat/Studio request inventory (archived)
+reconciles this plan with the current main shell, passwordless local chat, bounded
+project autonomy, bots, personalities, voice/translation and media requests.
+Earlier architecture choices and completion labels below retain their dated
+scope. Studio settings parity, durable history/RAG, training, media adapters,
+managed device execution and release acceptance remain separate gates.
+
 Updated 2026-10-06. This is source behavior and its acceptance plan. Read
 PROGRESS.md for actual test/device evidence; an API adapter is not paid-provider
 access or successful media generation proof.

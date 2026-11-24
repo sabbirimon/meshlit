@@ -16,7 +16,8 @@ data class OfflineSpeechAudio(val bytes:ByteArray,val sampleRate:Int)
 /** Separately categorized ONNX models. No downloads, network fallback or text-model mutation. */
 class OfflineSpeechRuntime {
     private val loaded=mutableMapOf<Boolean,String>()
-    suspend fun load(id:String,name:String,path:File,recognition:Boolean)=withContext(Dispatchers.IO) {
+    private suspend fun <T> speechWork(action:suspend()->T):T=withContext(Dispatchers.IO){CpuWorkGate.run("Offline speech"){action()}}
+    suspend fun load(id:String,name:String,path:File,recognition:Boolean)=speechWork {
         require(id.matches(Regex("[a-z0-9-]{1,80}")) && path.isDirectory)
         // The text engine registers llama.cpp only. Register the separately
         // packaged ONNX/Sherpa primitives without touching its loaded model.
@@ -29,13 +30,13 @@ class OfflineSpeechRuntime {
         check(result.success) { "Offline speech load failed: ${result.error_message ?: "unsupported model/runtime"}" }
         loaded[recognition]=id
     }
-    suspend fun transcribe(pcm:ByteArray):String=withContext(Dispatchers.IO) {
+    suspend fun transcribe(pcm:ByteArray):String=speechWork {
         require(loaded.containsKey(true));require(pcm.size in 3200..960000 && pcm.size%2==0)
         val result=RunAnywhere.transcribe(pcm,STTOptions(sample_rate=16000,audio_format=AudioFormat.AUDIO_FORMAT_PCM_S16LE,language_code="en",detect_language=false))
         check(result.error_message.isNullOrBlank()) { "Offline recognition failed" }
         result.text.trim().takeIf{it.isNotEmpty() && it.length<=12000} ?: error("No usable speech recognized")
     }
-    suspend fun synthesize(text:String,pitch:Float=1f,speed:Float=1f):OfflineSpeechAudio=withContext(Dispatchers.IO) {
+    suspend fun synthesize(text:String,pitch:Float=1f,speed:Float=1f):OfflineSpeechAudio=speechWork {
         require(loaded.containsKey(false) && text.isNotBlank() && text.length<=4000 && pitch in 0.5f..2f && speed in 0.5f..2f)
         // Pinned SDK 0.20.12 returns float32 PCM even when WAV/S16LE is
         // requested. Ask for its real primitive, then normalize explicitly.
@@ -45,11 +46,7 @@ class OfflineSpeechRuntime {
         require(result.sample_rate in 8000..48000 && bytes.size in 2..16*1024*1024) {
             "Unsupported offline synthesis output: ${result.audio_format}, ${result.sample_rate} Hz, ${bytes.size} bytes"
         }
-        val pcm=when(result.audio_format) {
-            AudioFormat.AUDIO_FORMAT_PCM->speechFloatPcm16(bytes,result.sample_rate)
-            AudioFormat.AUDIO_FORMAT_PCM_S16LE->bytes.also{require(it.size%2==0 && it.size.toLong()<=result.sample_rate*2L*180)}
-            else->error("Unsupported offline synthesis format: ${result.audio_format}")
-        }
+        val pcm=speechOutputPcm16(bytes,result.audio_format,result.sample_rate)
         OfflineSpeechAudio(pcm,result.sample_rate)
     }
     suspend fun close() {
@@ -76,4 +73,14 @@ internal fun speechFloatPcm16(bytes:ByteArray,rate:Int):ByteArray {
         output.putShort((value.coerceIn(-1f,1f)*32768f).roundToInt().coerceIn(-32768,32767).toShort())
     }
     return output.array()
+}
+
+/** Never reinterpret float/compressed output as signed PCM16. */
+internal fun speechOutputPcm16(bytes:ByteArray,format:AudioFormat,rate:Int):ByteArray {
+    require(rate in 8000..48000 && bytes.size in 2..16*1024*1024)
+    return when(format) {
+        AudioFormat.AUDIO_FORMAT_PCM -> speechFloatPcm16(bytes,rate)
+        AudioFormat.AUDIO_FORMAT_PCM_S16LE -> bytes.also{require(it.size%2==0 && it.size.toLong()<=rate*2L*180)}
+        else -> error("Unsupported offline synthesis format: $format")
+    }
 }

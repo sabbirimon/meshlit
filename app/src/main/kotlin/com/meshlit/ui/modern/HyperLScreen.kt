@@ -45,7 +45,6 @@ import java.io.File
     var inputs by remember{mutableStateOf(HyperLCodec.json.encodeToString(first.example))}
     var budget by remember{mutableStateOf("16")};var output by remember{mutableStateOf("Choose a recipe, review the inputs and run it locally.")}
     var running by remember{mutableStateOf<Job?>(null)};var sourceTarget by remember{mutableStateOf(HyperLTarget.METAL)}
-    var choice by remember{mutableStateOf(HyperLCpuChoice.REFERENCE)}
     val idle=running?.isActive!=true
     val allowed=enabled && idle && !policy.emergencyStopped && (com.meshlit.core.common.control.ManagedFeature.HYPERL !in policy.disabled)
     fun start(work:suspend()->String){
@@ -64,7 +63,7 @@ import java.io.File
     Scaffold(topBar={TopAppBar(title={Text("HyperL libraries")},navigationIcon={TextButton(onClick=back){Text("Back")}})}){padding->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("hyperl-list"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             item{Text("HyperL alpha.6",style=MaterialTheme.typography.headlineSmall)
-                Text("Offline preprocessing with Kotlin or bundled C99 CPU execution. This is separate from your chat model. Metal/Vulkan exports are source for qualified hosts; phone GPU execution and full neural networks are not available here.")}
+                Text("Offline preprocessing with native C99 CPU execution. This is separate from your chat model. Metal/Vulkan exports are source for qualified hosts; phone GPU execution and full neural networks are not available here.")}
             item{OutlinedCard{Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
                 Text("Free for personal, developer and research use, and organizations below both enterprise thresholds. Large entities (US$10M revenue/budget or 100 employees) need a paid licence after their six-month production trial. Earlier Apache grants remain.")
                 TextButton(onClick={showLicence=true}){Text("Read full licence and notices")}
@@ -76,10 +75,7 @@ import java.io.File
             if(policy.emergencyStopped)item{Text("Emergency stop is latched. Resume from Operations to allow execution.",color=MaterialTheme.colorScheme.error)}
             if(com.meshlit.core.common.control.ManagedFeature.HYPERL in policy.disabled)item{Text("HyperL is disabled in Operations.",color=MaterialTheme.colorScheme.error)}
             item{Text("1 · CPU workspace",style=MaterialTheme.typography.titleLarge)
-                FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    FilterChip(choice==HyperLCpuChoice.REFERENCE,{choice=HyperLCpuChoice.REFERENCE},label={Text("Kotlin reference")},enabled=idle)
-                    FilterChip(choice==HyperLCpuChoice.NATIVE,{choice=HyperLCpuChoice.NATIVE},label={Text("Native C99")},enabled=idle,modifier=Modifier.testTag("hyperl-native"))
-                }}
+                Text("Native C99",Modifier.testTag("hyperl-native"))}
             item{Box{OutlinedButton(onClick={menu=true},enabled=idle,modifier=Modifier.testTag("hyperl-recipe")){Text(HyperLLibrary.recipe(selected).title)}
                 DropdownMenu(menu,{menu=false}){HyperLLibrary.ids.forEach{id->DropdownMenuItem(text={Text(HyperLLibrary.recipe(id).title)},onClick={
                     selected=id;val r=HyperLLibrary.recipe(id);program=HyperLCodec.json.encodeToString(r.program);inputs=HyperLCodec.json.encodeToString(r.example);menu=false
@@ -88,16 +84,16 @@ import java.io.File
             item{OutlinedTextField(inputs,{if(it.length<=65536)inputs=it},Modifier.fillMaxWidth().testTag("hyperl-inputs"),label={Text("Input vectors JSON")},minLines=3,maxLines=8,enabled=idle)}
             item{OutlinedTextField(budget,{if(it.length<=4)budget=it},modifier=Modifier.testTag("hyperl-budget"),label={Text("Array budget · MiB (1–1024)")},singleLine=true,enabled=idle)}
             item{FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                OutlinedButton(enabled=allowed,onClick={start{withContext(Dispatchers.Default){val p=controller.plan(program,inputs,budget.toLong()*1024*1024,choice);"${choice.name} · valid graph · estimated ${p.estimatedBytes} bytes · available ${p.headroomBytes} · admitted ${p.admitted}. Native mode includes JNI snapshots; admission is checked again before execution."}}}){Text("Validate")}
-                Button(enabled=allowed,onClick={start{val r=controller.execute(program,inputs,budget.toLong()*1024*1024,choice)
+                OutlinedButton(enabled=allowed,onClick={start{withContext(Dispatchers.Default){val p=controller.plan(program,inputs,budget.toLong()*1024*1024);"Native C99 · valid graph · estimated ${p.estimatedBytes} bytes · available ${p.headroomBytes} · admitted ${p.admitted}. Native mode includes JNI snapshots; admission is checked again before execution."}}}){Text("Validate")}
+                Button(enabled=allowed,onClick={start{val r=controller.execute(program,inputs,budget.toLong()*1024*1024)
                     "${r.backend} · ${r.values.size} outputs · ${"%.3f".format(r.wallMs)} ms total\n"+HyperLCodec.json.encodeToString(r.values.take(256))+if(r.values.size>256)"\nPreview limited to 256 values" else ""
                 }}){Text("Run CPU")}
                 OutlinedButton(enabled=!idle,onClick={running?.cancel()}){Text("Stop")}
                 OutlinedButton(enabled=allowed,onClick={start{
-                    val r=controller.benchmark(program,inputs,budget.toLong()*1024*1024,choice)
+                    val r=controller.benchmark(program,inputs,budget.toLong()*1024*1024)
                     "${r.backend} · 1 warm-up + ${r.samplesMs.size} measured runs\nMedian ${"%.3f".format(r.medianMs)} ms · p95 ${"%.3f".format(r.p95Ms)} ms\nSamples: ${r.samplesMs.joinToString{ "%.3f".format(it) }} ms\n${r.outputCount} outputs · repeated output hashes match\nOutput SHA-256 ${r.outputSha256}\nGraph SHA-256 ${r.graphSha256}\n${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.SDK_INT} · ${Build.SUPPORTED_ABIS.firstOrNull()}\nExecution includes admission/JNI copies; editor parsing and output hashing are outside samples. Small-run p95 is the slowest sample, not a sustained-throughput benchmark."
                 }}){Text("Measure CPU")}
-                OutlinedButton(enabled=allowed,onClick={start{"precise-sum/1 · ${choice.name}\n${controller.precise(inputs,budget.toLong()*1024*1024,choice)}"}},modifier=Modifier.testTag("hyperl-precise")){Text("Precise sum")}
+                OutlinedButton(enabled=allowed,onClick={start{"precise-sum/1 · Native C99\n${controller.precise(inputs,budget.toLong()*1024*1024)}"}},modifier=Modifier.testTag("hyperl-precise")){Text("Precise sum")}
             };Text("Precise sum uses one input vector and compensated double accumulation. Normal graph sums keep their original ordered float semantics.",style=MaterialTheme.typography.bodySmall)}
             item{Text("2 · Source export",style=MaterialTheme.typography.titleLarge)
                 FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){

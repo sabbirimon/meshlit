@@ -12,6 +12,9 @@ class BuildProfileTest {
         for(destination in WorkspaceDestinations.all) assertTrue(BuildProfile.routeAllowed(destination.id))
         for(destination in SettingsDestinations.all) assertTrue(BuildProfile.routeAllowed(destination.id))
         for(shortcut in MenuShortcutStore.choices()) assertTrue(WorkspaceDestinations.all.any { it.id==shortcut.id })
+        assertTrue(BuildProfile.routeAllowed("dashboards"))
+        val dashboardLinks = com.meshlit.workspace.DashboardDirectory.entries.filter { BuildProfile.routeAllowed(it.id) }
+        if (BuildConfig.CORE_CANDIDATE) assertEquals(listOf("models"), dashboardLinks.map { it.id })
         BuildProfile.requireChat(ChatOptions())
         if(BuildConfig.CORE_CANDIDATE) {
             assertFalse(BuildProfile.routeAllowed("ssh"));assertFalse(BuildProfile.routeAllowed("runtime"))

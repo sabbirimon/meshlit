@@ -18,10 +18,22 @@ class PairingAuthority(private val self: () -> RecoverableIdentity, private val 
     private val seen = mutableMapOf<String, Long>()
     private val requests = MutableStateFlow<List<HandshakeRequest>>(emptyList())
     private val pendingSince = mutableMapOf<String, Long>()
+    private var issuerIdentity: Pair<String, String>? = null
     private val sessionCount = MutableStateFlow(0)
     val pending = requests.asStateFlow()
     val activeSessionCount = sessionCount.asStateFlow()
     private fun publish(event: PairingHistoryEvent) { runCatching { onEvent(event) } }
+    /** Tokens and queued approvals belong to the identity that issued/received them. */
+    private fun refreshIdentity(identity: RecoverableIdentity) {
+        val current = identity.nodeId to identity.publicKey
+        if (issuerIdentity != null && issuerIdentity != current) {
+            sessions.clear()
+            sessionCount.value = 0
+            requests.value = emptyList()
+            pendingSince.clear()
+        }
+        issuerIdentity = current
+    }
     @Synchronized fun queuedAt(node: String): Long = pendingSince[node] ?: 0L
     @Synchronized fun prunePending() {
         val cutoff = now() - 300_000
@@ -31,13 +43,18 @@ class PairingAuthority(private val self: () -> RecoverableIdentity, private val 
         requests.value = requests.value.filter { pendingSince.containsKey(it.nodeId) }
     }
     @Synchronized fun handshake(req: HandshakeRequest): MeshlitResult<HandshakeResponse> {
-        val time = now(); seen.entries.removeAll { it.value < time - 120_000 };prunePending()
+        val time = now(); seen.entries.removeAll { it.value < time };prunePending()
         val proof = req.identityProof ?: return fail("handshake.unsigned_request")
         if (req.nodeId.length !in 1..128 || req.publicKey.length > 1024 ||
             !PeerCrypto.verify(proof, req.nodeId, req.publicKey, req.nonce, time)) return fail("handshake.bad_signature")
+        val identity = self()
+        refreshIdentity(identity)
+        if (identity.nodeId == req.nodeId) return fail("handshake.self")
         val replay = "${req.nodeId}:${req.nonce}"
         if (seen.containsKey(replay) || seen.size >= 512) return fail("handshake.replay_or_busy")
-        seen[replay] = time
+        // Proofs may be up to 30 seconds ahead of this clock. Retain each nonce
+        // through the proof's entire accepted lifetime, including its last millisecond.
+        seen[replay] = proof.issuedAtMs + 120_000
         val requested = TrustTier.fromTag(req.requestedTier) ?: return fail("handshake.invalid_tier")
         val policy = store.policyFor(NodeId(req.nodeId))
         val fingerprint = PeerCrypto.fingerprint(req.publicKey)
@@ -54,8 +71,6 @@ class PairingAuthority(private val self: () -> RecoverableIdentity, private val 
         }
         val accepted = effectiveTier(policy, policy.copy(trustTier = requested))
         if (accepted != requested) return fail("handshake.scope_mismatch")
-        val identity = self()
-        if (identity.nodeId == req.nodeId) return fail("handshake.self")
         sessions.entries.removeAll { it.value.expires <= time }
         sessionCount.value = sessions.size
         if (sessions.size >= 256) return fail("handshake.session_limit")
@@ -69,8 +84,10 @@ class PairingAuthority(private val self: () -> RecoverableIdentity, private val 
         publish(PairingHistoryEvent(req.nodeId, fingerprint, req.requestedTier, "connected", time))
         return MeshlitResult.Success(response.copy(responseSignature = PeerCrypto.sign(identity, response.message())))
     }
-    fun authenticate(token: String): DeviceTrustPolicy? {
+    @Synchronized fun authenticate(token: String): DeviceTrustPolicy? {
         if (!token.matches(Regex("[a-f0-9]{64}"))) return null
+        val identity = runCatching { self() }.getOrNull() ?: return null
+        refreshIdentity(identity)
         val session = sessions[tokenHash(token)] ?: return null
         if (session.expires <= now()) { sessions.remove(tokenHash(token));sessionCount.value=sessions.size; return null }
         return store.policyFor(NodeId(session.node))?.takeIf {

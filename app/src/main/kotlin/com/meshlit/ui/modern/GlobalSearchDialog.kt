@@ -3,6 +3,7 @@ package com.meshlit.ui.modern
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -44,10 +45,11 @@ import kotlinx.coroutines.*
     var webJob by remember{mutableStateOf<Job?>(null)}
     var reader by remember{mutableStateOf<String?>(null)}
     val scope=rememberCoroutineScope();val uri=LocalUriHandler.current
-    reader?.let{ReplyReader(it){reader=null}}
+    reader?.let{ReplyReader(it,initialQuery=query){reader=null}}
     LaunchedEffect(query,state.conversations,models,articles) {
+        results=emptyList()
         localError=null
-        try{results=service.local(query)}catch(e:CancellationException){throw e}catch(_:Exception){results=emptyList();localError="Local search index could not be read"}
+        try{if(query.isNotBlank())delay(150);results=service.local(query)}catch(e:CancellationException){throw e}catch(_:Exception){results=emptyList();localError="Local search index could not be read"}
     }
     // Never associate an old web result with a newly typed query or a revoked grant.
     LaunchedEffect(query,access.webEnabled){webJob?.cancel();webRows=emptyList();webQuery="";error=null;loading=false}
@@ -91,8 +93,11 @@ import kotlinx.coroutines.*
                         if(webQuery.isNotBlank()) Text("Brave Search · ${webRows.size} results · ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(fetchedAt))}. Snippets are not full fetched articles.",style=MaterialTheme.typography.labelSmall)
                     }
                     LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        items(webRows,key={it.url}){row->Card {Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                        itemsIndexed(webRows,key={_,it->it.url}){index,row->Card {Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                            Text("Result ${index+1} of ${webRows.size}",style=MaterialTheme.typography.labelSmall)
                             Text(row.title,style=MaterialTheme.typography.titleMedium);Text(row.snippet);Text(row.url,style=MaterialTheme.typography.labelSmall)
+                            val matches=remember(row.snippet,query){textSearchMatches(row.snippet,query,words=true,maxPositions=1)}
+                            Text("${matches.total} snippet matches · ${matches.characters} characters${matches.location().takeIf{it.isNotEmpty()}?.let{" · $it"}.orEmpty()}",style=MaterialTheme.typography.labelSmall)
                             Row{TextButton(onClick={runCatching{uri.openUri(row.url)}.onFailure{error="No browser can open this link"}}){Text("Open source")}
                                 TextButton(onClick={scope.launch{try{service.addArticle(row.title.take(160),"# ${row.title}\n\n${row.snippet}\n\nSource: ${row.url}\n\nSearch snippet fetched ${java.util.Date(fetchedAt)}. Full page not retrieved.");error="Saved search snippet to Articles"}catch(e:Exception){if(e is CancellationException) throw e;error=e.message}}}){Text("Save snippet")}}
                         }}}
@@ -100,7 +105,7 @@ import kotlinx.coroutines.*
                 } else {
                     val visible=results.filter{category==null || it.category==category}
                     LazyColumn(Modifier.weight(1f).testTag("global-search-results"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                        item{Text(if(query.isBlank()) "Search all connected app pages and options, saved model entries, the latest 40 chats, imported UTF-8 articles and approved device access records. Web is separate." else "${visible.size} local matches · up to 200 per query",style=MaterialTheme.typography.bodySmall)
+                        item{Text(if(query.isBlank()) "Search all connected app pages and options, saved model entries, the latest 40 chats, imported UTF-8 articles and approved device access records. Web is separate." else "${visible.size} results shown · ${if(category==null)results.firstOrNull()?.totalResults ?: 0 else results.firstOrNull()?.categoryTotals?.get(category) ?: 0} found · display limit 200",style=MaterialTheme.typography.bodySmall)
                             localError?.let{Text(it,color=MaterialTheme.colorScheme.error)}
                             if(query.isNotBlank() && visible.isEmpty()) Text("No local matches")
                             if(category==SearchCategory.ARTICLES) TextButton(onClick=onSettings){Text("Import or manage articles")}}
@@ -109,10 +114,12 @@ import kotlinx.coroutines.*
                             Text("Received ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(row.receivedAtMs))}; read-only snapshot, not continuous monitoring",style=MaterialTheme.typography.labelSmall)
                             row.fields.forEach{(name,value)->Text("$name: $value")}
                         }}}
-                        items(visible,key={it.id}){row->Card(onClick={if(row.articleId!=null) reader=articles.firstOrNull{it.id==row.articleId}?.text else onResult(row,query)}) {
+                        itemsIndexed(visible,key={_,it->it.id}){index,row->Card(onClick={if(row.articleId!=null) reader=row.fullText else onResult(row,query)}) {
                             Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                                Text(row.category.label,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                Text("${index+1} / ${visible.size} · ${row.category.label}${row.sourcePosition?.let{" · $it"}.orEmpty()}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
                                 Text(row.title,style=MaterialTheme.typography.titleMedium);Text(row.detail,style=MaterialTheme.typography.bodyMedium)
+                                row.textMatches?.let { found -> Text("${if(found.total==0) "Title or metadata match" else "${found.total} text matches"} · ${found.characters} characters${found.location().takeIf{it.isNotEmpty()}?.let{" · $it"}.orEmpty()}",style=MaterialTheme.typography.labelSmall) }
+                                row.fullText?.let { full -> TextButton(onClick={reader=full}){Text("Read full text and find matches")}}
                             }
                         }}
                     }

@@ -1,0 +1,46 @@
+{
+  "name": "meshlit-studio",
+  "displayName": "Meshlit Studio",
+  "version": "0.1.0",
+  "publisher": "meshlit",
+  "description": "Open a trusted VS Code workspace in Meshlit Studio.",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onCommand:meshlit.openWorkspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Opening a project launches your explicitly configured local Meshlit executable."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "meshlit.openWorkspace",
+        "title": "Meshlit: Open Workspace in Studio"
+      }
+    ],
+    "configuration": {
+      "title": "Meshlit Studio",
+      "properties": {
+        "meshlitStudio.launcher": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Absolute trusted Meshlit executable or macOS .app path. Set in user settings."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test extension.test.cjs"
+  },
+  "license": "Apache-2.0"
+}

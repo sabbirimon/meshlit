@@ -1,0 +1,61 @@
+{
+  "loadLocalMs": 6422.8327900054865,
+  "trials": [
+    {
+      "trial": 1,
+      "firstVisibleTextMs": 2086.4157759933732,
+      "completionMs": 7385.783867037389,
+      "deltaEvents": 105,
+      "characters": 554
+    },
+    {
+      "trial": 2,
+      "firstVisibleTextMs": 410.74776998721063,
+      "completionMs": 5142.764340038411,
+      "deltaEvents": 89,
+      "characters": 466
+    }
+  ],
+  "usage": {
+    "id": "4421f465-6329-4556-a450-af0e8e96dfcf",
+    "requests": 2,
+    "inputTokens": 346,
+    "outputTokens": 196,
+    "unknownUsageRequests": 0,
+    "freeOnly": false,
+    "month": "2026-11",
+    "budgets": [],
+    "history": [
+      {
+        "model": "meshlit-local",
+        "startedAt": 1793611210466,
+        "status": "complete",
+        "local": true,
+        "gateway": false,
+        "currency": "USD",
+        "input": 173,
+        "output": 90,
+        "cost": "0",
+        "elapsedMs": 4854,
+        "unresolved": false
+      },
+      {
+        "model": "meshlit-local",
+        "startedAt": 1793611203728,
+        "status": "complete",
+        "local": true,
+        "gateway": false,
+        "currency": "USD",
+        "input": 173,
+        "output": 106,
+        "cost": "0",
+        "elapsedMs": 6431,
+        "unresolved": false
+      }
+    ]
+  },
+  "providerRequests": 0,
+  "ownerVaultAccessed": false,
+  "hostSha256": "acbc11d56bd0d10257ba93b6bb589dc14b8d6f67ee19f4a2449d0c8ab2ff5719",
+  "scope": "Same synthetic prompt, new SDK session each trial, one shared local engine; default sampling, variable output length. First-text latency is not decode throughput."
+}

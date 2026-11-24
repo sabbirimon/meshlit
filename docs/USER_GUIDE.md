@@ -1,5 +1,41 @@
 # Meshlit full app guide and configuration tutorial
 
+[Desktop and Android GUI guide](GUI_WORKFLOWS.md) · [Meshlit operating rules](RULEBOOK.md)
+
+## Current Chat settings and remaining features — 2026-11-06
+
+The development main window separates General Chat from workspace IDE chats.
+Chat settings groups models/modes, reasoning, permissions, personality, read-aloud
+and live-voice setup; Bots is available in primary navigation. Message
+actions add Copy, Reply, Read aloud and explicit local chat export. Export saves
+a file selected by the user; it does not publish a public link.
+
+Local chat uses session usage without a passphrase by default. Local autonomous
+projects permit bounded reads/edits with Stop and unsaved review; protected work,
+credentials and external capabilities retain separate controls. Personality is a
+prompt preference, not model retraining or a grant of tools. Native Mac read-aloud
+is distinct from OpenLive's separate call/transcript UI. Native inline Studio
+subtitles, image/video/sound generation, persistent bot workers and actual RL
+remain open. Final packaged navigation and human-audio qualification are pending.
+
+Current request/acceptance inventory (archived).
+
+Current resource sharing, sync modes and health controls are described in the
+[detailed manual](USER_MANUAL.md#share-resources-with-external-clients) and
+[open-resource architecture](OPEN_RESOURCE_NETWORK.md). Automatic coordinator
+takeover, commercial settlement and universal WAN sharding remain open.
+
+**Illustrated walkthrough (2026-11-02):** open the [20-chapter visual guide](visual-guide.html)
+for numbered instructions, seven labeled screenshots, four vector graphics,
+expected results and troubleshooting. The offline Guide and tutorial source
+includes the same walkthrough before the extended feature reference. Its
+Tailscale chapter distinguishes the verified Samsung 4G tunnel from application
+pairing and distributed execution, which have separate acceptance gates.
+
+
+See the [current detailed user manual](USER_MANUAL.md) for the desktop workbench, project memory, companion setup, settings navigation and troubleshooting. The feature guide below retains the wider Android/Studio reference.
+
+
 Updated 2026-10-24 for the consolidated Meshlit repository. The Chat reply below was captured on Samsung build42, and the photo composer on Samsung build44. The model library and settings captures are earlier API 35 emulator images. The app packages an offline version under Settings → Guide and tutorial. Reading progress is not execution evidence.
 
 **Get started:** [download a beta build](https://github.com/sabbirimon/meshlit/releases) → [install and verify](#visual-map-and-installation) → [first-run walkthrough](#first-run-walkthrough) → [models and local chat](#local-models-downloads-and-import). Use [agent and tool controls](#tasks-agents-and-human-controls) or [device pairing](#phone-clusters-mixed-devices-and-pairing) only after the local path works. [HyperL libraries](#hyperl-local-libraries), [privacy and audit](#audit-telemetry-and-exports), and [troubleshooting](#configuration-transfer-logs-and-troubleshooting) have separate setup and limits.
@@ -10,7 +46,7 @@ Updated 2026-10-24 for the consolidated Meshlit repository. The Chat reply below
 
 Meshlit is a phone-first private AI workspace. Run a supported local model on one device; manage files, chats and tasks; explicitly connect providers and owner-approved devices when needed. Android is the working on-device target. Experimental desktop and native HarmonyOS NEXT clients are described in docs/MULTIPLATFORM_NEXT.md; NEXT local inference and HAP/device acceptance remain unavailable/unverified. A model catalog, device role claim or installed library does not establish usable inference or training.
 
-The drawer starts with four shortcuts: Models, Devices, Agents and Device management. Expand a category for other pages, or use its single search field. You can change the shortcuts under Customize menu. Devices contains discovery, the device list, pairing, saved QRs and approvals. Networking contains transport, relay and firewall controls. Settings opens on six essential destinations; Browse all shows the complete Basic list. Advanced lists optional tools and integrations. Search checks both lists and matches every entered word across names, descriptions and keywords, regardless of the selected tab.
+Open Dashboards from Settings or the workspace menu for Models, Routing, Usage & costs, and VPN & network. Android Basic settings now contain Appearance, Security and privacy, Notifications, Files and storage, Guide and tutorial, and About (subject to build availability). Studio Basic contains Appearance, Security and privacy, Help, and About. Advanced and search retain the remaining controls; search spans both modes. Existing shortcuts and preferences are preserved. The usage page shows only the latest in-memory route on Android or response on Studio, not billing history. VPN pages explain connection setup; they do not report a verified Tailscale connection or control the VPN. Studio automatic routing remains pending.
 
 Implementation status matters. Desktop layer workers have real execution evidence. Oversized-model execution across physical phones, replicated task/session failover and portable distributed KV recovery remain acceptance/implementation gates. This guide explains actual controls and labels future work explicitly. It contains no simulated devices, costs or performance charts.
 
@@ -123,6 +159,35 @@ not an Android APK. No DevEco/NDK/HAP/device test has passed here. Advanced Andr
 services, agents, SSH/VM and federation are not automatically available in the new
 clients. See docs/MULTIPLATFORM_NEXT.md for setup and qualification gates.
 
+## Current Code OSS Studio chat and workspace — 2026-11-06
+
+General Chat opens in an empty Studio window. Workspaces requests a separate
+native IDE window for a trusted project. Use Models and the composer source
+picker for the bundled model, approved provider and device APIs, or an existing
+cluster coordinator. LLM settings covers local temperature, output length, and
+recent history. Explicit workspace agent modes retain local tool review.
+
+Use the coordinator to pair workers and verify native layer assignment. A
+Studio route selects its approved model API. See the [current desktop
+walkthrough](USER_MANUAL.md#start-a-desktop-conversation) and
+[layer execution evidence](layer-pipeline-and-recovery.md#use-a-coordinator-from-studio).
+
+## Optional Ollama and LM Studio hosts — 2026-11-02
+
+Android Settings → Model connections now has **Connect Ollama host** and **Connect
+LM Studio host**. Enter the host's authenticated HTTPS API base, or a tunnel ending
+on this phone's loopback, refresh the model catalog and enable the chosen profile.
+The desktop's `127.0.0.1` address is not the phone's address. Inference runs on that
+host. Keep phone-local inference selected for offline use.
+
+Studio Models offers named **Ollama** and **LM Studio** sources using their existing
+OpenAI-compatible APIs. Defaults are `http://127.0.0.1:11434/v1` and
+`http://127.0.0.1:1234/v1`. Ollama does not enforce placeholder API keys on its normal
+local server; remote use needs an authenticated HTTPS proxy or tunnel. Current
+LM Studio hosting excludes Intel Macs; Ollama on Intel Mac is CPU only. Neither
+connection installs an Android engine or automatically combines RAM/GPU resources.
+See [platform decision and verification](LOCAL_INFERENCE_HOSTS_2026-11-02.md).
+
 ## First-run walkthrough
 
 1. Review optional setup permissions. Grant camera only for camera/QR work, microphone for voice, nearby/location permissions for supported discovery, notifications for ongoing work and Storage Access Framework grants for selected files/folders. Accessibility is a separate explicit opt-in. You can decline optional permissions and request them later.
@@ -191,15 +256,19 @@ flowchart LR
 
 **Mesh chat** in the drawer is a separate, foreground, one-peer text channel over an actually connected WebRTC path. Both sides enable P2P, manually exchange signed pairing information and approve the connection. A local agent may read/send only with saved grants and the chat's separate peer-tool switch. Incoming peer text is untrusted content. The channel confirms local queueing, not remote delivery. It does not yet provide multi-member rooms, persisted conversation history or offline message delivery; the membership relay does not carry these chat messages. Use **Network and pairing → Host relay / Join cluster** for membership, and **Mesh chat** for the separate live direct conversation.
 
-For experimental local tools, open **+ → Chat options and model routing** and separately enable **Allow web page tools** or **Allow phone tools**. Both default off. Web-page retrieval needs your configured HTTPS Crawl4AI companion and domain approval; no crawler or search account is created automatically. Phone tools need saved autonomy, app scope and Android Accessibility. The loop allows up to eight actions within five minutes when phone tools are selected, or three calls within 180 seconds otherwise; it rejects invalid model plans. The bundled Qwen2.5 0.5B starter is not qualified for reliable tool use. See [local tool setup and limits](LOCAL_MODEL_TOOLS.md).
+For experimental local tools, open **+ → Chat options and model routing** and separately enable **Allow web page tools** or **Allow phone tools**. Both default off. Choose **Agent** under Conversation mode and Save to run the selected tools. The composer shield menu can switch back to **Chat**, which answers without tool execution while retaining your selections. Old chats default to Chat; Agent routes short and non-English requests into the same bounded planner. Web-page retrieval needs your configured HTTPS Crawl4AI companion and domain approval; no crawler or search account is created automatically. Phone tools need saved autonomy, app scope and Android Accessibility. The loop allows up to eight actions within five minutes when phone tools are selected, or three calls within 180 seconds otherwise; it rejects invalid model plans. The bundled Qwen2.5 0.5B starter is not qualified for reliable tool use. See [local tool setup and limits](LOCAL_MODEL_TOOLS.md).
 
-**Built-in phone agent:** load a local model, open Settings → Phone agent and autonomy, enable autonomous delegation, add an installed browser to app scope and save it, then enable Meshlit Accessibility in Android settings. In the same Chat conversation, turn on Allow phone tools and ask for a task. This uses the phone model and the phone's Accessibility service; the optional OpenClaw gateway is not required. Chat shows each planning/action step and Stop cancels the run. Check the actual target app before trusting a completion message. The bundled starter model has not passed a Chrome/YouTube planning test; import a stronger compatible local model for experimental multi-step tasks if the phone has enough memory. More detail: [built-in agent design and acceptance](BUILT_IN_AGENT_DESIGN.md).
+**Built-in phone agent:** load a local model, open Settings → Phone agent and autonomy, enable autonomous delegation, add an installed browser to app scope and save it, then enable Meshlit Accessibility in Android settings. In the same Chat conversation, select phone tools, choose Agent mode, Save and ask for a task. This uses the phone model and the phone's Accessibility service; the optional OpenClaw gateway is not required. Chat shows each planning/action step and Stop cancels the run. Check the actual target app before trusting a completion message. The bundled starter model has not passed a Chrome/YouTube planning test; import a stronger compatible local model for experimental multi-step tasks if the phone has enough memory. More detail: [built-in agent design and acceptance](BUILT_IN_AGENT_DESIGN.md).
 
-In Settings → Agent management, create an agent assigned to the currently loaded local model and enable it. Chat → Conversation settings lists enabled local profiles; selecting one copies its instructions into that conversation. Then choose the tools that conversation may request. The Agent management **Run task** button runs a text generation job only, so use Chat for phone or web tool actions.
+In **Settings → Agent management**, create or edit an agent assigned to a loaded local model or an agent-approved hosted model. Enable the profile and select it under **Chat → Conversation settings** to copy its instructions. A model change disables the profile for review. Choose any chat tool permissions separately. **Run task** is a text generation job; use Chat for approved tool actions.
 
 The same chat can enable multi-node commands, GibberLink and other tool groups together while the combined list stays at or below ten tools. The settings screen shows the count and Save rejects an oversized combination. Each tool still checks its own saved permission and the receiving device's approval; enabling a switch alone does not authorize execution. Remote/online model routes do not currently host these on-device tools.
 
 Online providers support existing protocol adapters such as OpenAI/compatible, Anthropic and Gemini. Save API credentials encrypted, configure the actual endpoint/model and discover supported models when the provider offers discovery. Select whether the profile allows agents; do not assume every model accepts temperature or all modalities.
+
+For hosted **Agent web search**, review the exact OpenAI or compatible endpoint/model in **Online providers**, enable agent use, bind that reviewed connection in **Conversation settings**, and choose **Agent**. The model can propose one public query per turn. Meshlit asks before sending that query and returning search results to the same model. Phone, files and other local tools do not go to the hosted model.
+
+Use **Bots and connections** to configure your own AstrBot chat or Grok Bot routine endpoint and review each request. **Bot inbox** can also accept signed messages in the background while its notification is active. Accepted messages wait for review and can be saved as local Chat drafts. AstrBot returns a private chat reply. A Grok Bot trigger reports that it started the routine. The OpenClaw gateway and xAI model connections are separate. Setup and limits (archived).
 
 Online profiles can reference an API vault environment and variable name. The environment must match the endpoint origin and remain unexpired. A reference overrides a legacy saved key. Agent requests need both profile and environment approval; changing the API endpoint cannot redirect that bound secret.
 
@@ -210,6 +279,10 @@ You may save several installed local models and configure up to three steps in a
 Use attachment/media options appropriate to the selected backend. Text file input, vision, image generation, speech or video are separate adapters; attaching a file is not proof that the model can perceive or generate its modality. The chat menu exports the selected conversation as JSON.
 
 The compact chat layout centers the welcome message and anchors a rounded composer above the keyboard. Welcome text and the secondary caption hide while typing. The plus menu opens text files, photo/camera input, media generation and chat options. Reply Copy and Share use the clipboard and a human-initiated Android chooser. Generated media has Save and Share controls. Photo questions use the same message box and Send/Stop controls. The attachment names the selected provider/model and sharing destination; changing it never uploads the photo. The compact mobile dock links Chat, Models, Devices, Agents and Settings; it hides while the keyboard is open. Voice opens an inline panel with manual Start live / End conversation, mute, tap interruption and optional phrase captions. Detailed voice choices stay under the tune icon.
+
+Voice settings → Voice tuning saves microphone threshold and pause duration (300–2000 ms) for offline/provider PCM capture. Lower thresholds hear quieter speech and more background noise. Android recognizer controls its own endpoint detection. Android voice speed and pitch sliders multiply the selected style within 0.5–2×; Play real voice sample auditions the result. Reset voice tuning restores defaults. These controls do not change GGUF weights or give a text model vision.
+
+Natural voice choices: select Kokoro / Pocket for speech on your approved OpenLive host, or ElevenLabs with your own credential profile. Load actual voices before preview. Local engines have no speech API fee; model licence terms apply. ElevenLabs free-tier-only is on by default and checks the reported free plan/allowance before requests. Unknown or exhausted allowance blocks speech. Turning it off permits paid-account usage. These checks are not provider billing caps. Kokoro/Pocket currently run on the host, not natively inside this phone. See [setup](NATURAL_VOICES.md).
 
 ## Files, AI assets and ZIP / unzip
 
@@ -246,8 +319,8 @@ For native layers, start the worker, enter its reachable LAN, hotspot or configu
 1. On **each worker**, open **Network and pairing → Layer pipeline**. Confirm the native runtime is packaged, permit inbound TCP **50551** in Network rules for the intended peers, then tap **Start worker**.
 2. In **Reachable host**, enter the address that the coordinator can actually reach. Use a LAN/hotspot IP for an air-gapped group, a preconfigured VPN/virtual-network IP, or a reachable DNS name. Tap **Show pairing QR**. The QR contains a private token; show it only to the coordinator owner.
 3. On the **coordinator**, open the same Layer pipeline panel, create or select a **Cluster group**, then use **Scan worker QR**. If scanning is unavailable, choose **Add approved worker** and enter the worker's address, full SHA-256 certificate fingerprint and token.
-4. Compare the **Identity check code** displayed on the worker and approval screen, then tap **Verify and approve**. Approval contacts the running worker and rejects an incorrect TLS pin, token, revision or permission. Repeat for at least two distinct workers in the group.
-5. Tap **Assess workers**. Read the device class, available memory/storage, thermal state, control RTT and admission warning. Select an installed GGUF, then **Negotiate and load cluster**. The coordinator keeps the whole model file and assigns layers by live memory headroom. Use **Stop pipeline** before changing groups.
+4. Compare the **Identity check code** displayed on the worker and approval screen, then tap **Verify and approve**. Approval contacts the running worker and rejects an incorrect TLS pin, token, revision or permission. Repeat for at least two distinct workers, or enable **Use this coordinator's CPU for model layers** with one approved worker in the group.
+5. Tap **Assess workers**. Read the device class, available memory/storage, thermal state, control RTT and admission warning. Select an installed GGUF, then **Negotiate and load cluster**. The coordinator keeps the whole model file and assigns layers by live memory headroom. Use **Stop pipeline** before changing groups. For this launch, optionally enable **Reload once if a worker drops**. If the native coordinator exits and an assigned worker is unreachable, Meshlit tries the same model once on the remaining approved devices, subject to fresh capacity and identity checks. When the model is ready, send the interrupted request again.
 6. If a QR/token is exposed, stop the worker and tap **Rotate pairing token**, then reapprove it on coordinators. A worker behind NAT cannot use the built-in membership relay for layers yet. A virtual network must be configured outside Meshlit; this control does not create a VLAN or VPN.
 
 ```mermaid
@@ -298,6 +371,8 @@ Task manager supports planning, task/subtask organization, priorities/tags/dates
 To stop one running job, open **Task manager → Operations** and tap **Stop** on its row. Use **Select active → Stop selected** for several. This requests local cancellation; it cannot reverse a completed provider charge or remote command. Active jobs have no safe pause/resume checkpoint, so the dashboard labels pause unavailable and Retry creates a new attempt. For an immediate instance-wide stop, tap **Whole-app emergency stop** to open Operations, then **Emergency stop all managed operations**. That also closes supported delegated sessions but is local to this device.
 
 Human and agent control are separate. Configure saved delegation per scope, then per-provider/host/device/environment controls where applicable. Credential/policy edits remain human-only. Root remains human-only; VM activation and Android autonomy require their own saved opt-ins.
+
+**Let agents talk to each other:** On Android, open **Agents → Agent teams** and choose **Agent conversation**. In Studio, open **Agent teams** and choose the same control. Choose the members and model sources, enter a task and start the team. The conversation shows who sent each task and which request each reply answers. Pause holds new calls after active calls finish; Stop cancels the run. Approve remote model sources separately before selecting them. These are model-analysis tasks; phone actions and other tools keep their own permissions. Check the actual messages and answer: small models can skip requested workflow steps or return incorrect results.
 
 **Create an agent:** Open **Agents** from the drawer, select a currently loaded local model or a saved agent-approved online profile, name the agent and add an optional instruction. New profiles start disabled. Enable a profile, enter a task and run it as a typed model-generation job; the same screen can launch several selected profiles in parallel. A profile is a job template, not an independent background daemon. Its model scope still needs the separate global delegation, and it contains no device, tool or credential grant. Disable or delete the profile to stop future launches; cancel an already running job in Task manager.
 
@@ -656,3 +731,42 @@ Enable **Use excerpts in local chat** for on-device answers. Remote/routed/clust
 ## Built-in security references
 
 Open **Security Lab → Security skills** on Android or **Security skills** in Studio. Choose one of eight defensive references and copy it into any supported model: reporting, source/configuration/dependency review, crash triage, API authorization, mobile privacy or agent boundaries. Android agents can use `cyber_skills_list` and `cyber_skill_read` with their saved CYBER grant and selected chat tools. These are read-only references; they do not start an assessment, run scripts, change firewall settings or authorize targets. Actual lab execution remains separately scoped. Studio currently offers read/copy, not the Android MCP execution bridge. See [the scope and reviewed source](SECURITY_LAB_AND_HARDWARE_ACCESS.md).
+
+
+### Usage history, budgets and optional model gateways
+
+Dashboards → Usage & costs now records Android online-provider text calls and Studio interactive chat. Studio requires a separate encrypted usage-vault passphrase before chatting. Choose a currency, monthly allowance and per-request reservation, then save. Review direct-model input/output rates before using a budget or free-only mode; reviewed rates expire after 24 hours. Unknown prices are not free. Cancelled or missing-usage requests retain uncertain charges until you reconcile the individual attempt with your provider bill. These are device-local estimate guards, not provider billing caps or ChatGPT credit controls.
+
+OmniRoute and experimental FreeLLMAPI are optional OpenAI-compatible presets for your own deployment. No server is installed or account entitlement included. Enable network access explicitly. Opaque gateways are blocked by local free-only and currency budgets; review their downstream billing separately. Android local/Colibri/media, Studio CLI/hosting, cross-device usage and automatic invoices remain outside this ledger. See [Usage and model budgets](USAGE_AND_MODEL_BUDGETS.md) for storage, scope and setup.
+
+
+### Optional VPN dashboard
+
+Open Dashboards → VPN & network. Studio can optionally read an installed Tailscale CLI using Refresh; select a trusted executable in Advanced details if needed. Android can show its actual app-network VPN transport and open the Tailscale companion or Android VPN settings. Installed-app detection does not prove Tailscale is connected. Snapshots expire after 60 seconds; refresh after network changes. Connection, login and exit-node changes remain in the official client. Host authentication and worker approval remain separate. Basic settings are unchanged. See [Tailscale and VPN observations](TAILSCALE_AND_VPN.md).
+
+## Usage storage recovery
+
+Usage history blocks further admission after an uncertain storage failure until it is reopened. Studio users can lock/unlock the usage vault; Android users should restart and review interrupted entries. Do not erase history to recover allowance. Provider budgets remain local estimates, not invoice caps.
+
+
+## DeepSeek Harness host workspace
+
+In experimental Studio use **DeepSeek Harness** in the Meshlit rail or command
+palette. On Android use **Settings → DeepSeek Harness**, Tools and automation,
+or the Code workspace button. This opens the actual optional host UI inside
+Meshlit. Start the pinned host using
+[the setup guide](../companions/deepseek-harness/README.md), then paste its private
+launch URL. Use trusted HTTPS from a phone; phone loopback does not reach desktop
+loopback automatically. Only the clean address is saved.
+
+Harness runs on the host with its own accounts, model selection, MCP plugins,
+approvals and history. Meshlit's budgets and device permissions are not inherited.
+Disconnecting does not stop host jobs: use Harness Stop first. Android WebView
+login cookies may survive disconnect; forgetting the address is not logout.
+This is not a native Android Harness SDK or a shared Meshlit agent engine yet.
+
+## Shirudo shields
+
+Open **Settings → Privacy & permissions → Shirudo shields** on Android to inspect a Linux node’s exported status JSON. Desktop Studio also supports operator-authorized target actions. [Shirudo workflow](GUI_WORKFLOWS.md#inspect-a-linux-node-with-shirudo)
+
+Importing a Shirudo report scans its seven expected security checks. The summary counts alerts and warnings and names any missing checks. **Export original JSON** on Android or **Tools → Network security → Export Shirudo report** on desktop saves a reusable copy with the original fields.

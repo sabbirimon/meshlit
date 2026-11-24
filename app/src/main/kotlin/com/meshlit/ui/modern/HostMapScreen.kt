@@ -121,6 +121,7 @@ private data class SelfMapFocus(val latitude:Double,val longitude:Double,val req
     }
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        item { ExplainToolResult("host map") { hosts.take(100).joinToString("\n"){it.name+" · "+it.type+" · "+it.status}.ifBlank{"No hosts visible."} } }
         item { TextButton(onClick=onBack) { Text("Back") }
             Text("Global host map",style=MaterialTheme.typography.headlineSmall)
             Text("Pan and zoom the world map. Relay pins are self-reported; a manually requested public-IP lookup is an approximate network estimate.",style=MaterialTheme.typography.bodySmall) }

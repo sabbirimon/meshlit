@@ -1,5 +1,23 @@
 # Meshlit structured feature and architecture map
 
+Current 2026-11-06 increment: separate Chat/project windows, grouped Management,
+model/source identity, local session usage, scoped autonomy, message actions,
+personality/voice tuning, Bots, credentials and explicit SSH profiles. The
+structured map contains 105 feature areas with individual status/limits.
+Request inventory (archived) ·
+Platform/hosting gates (archived).
+
+
+Current resource-network increment: model/shard admission, secure pairing,
+fair bounded forwarding, scoped external resource discovery and smart replica
+path routing. Source, runtime proof, commercial settlement and physical-link
+support remain distinct. See progress (archived)
+and [architecture](docs/OPEN_RESOURCE_NETWORK.md).
+
+
+Current increment: grouped settings, project memory, optional agent companions and voice diagnostics are tracked in [the structured map](docs/feature-map.json) and the 2026-10-31 checkpoint (archived). Runtime, hardware and security acceptance remain separate.
+
+
 Updated 2026-10-09. This is the map of the separate Meshlit implementation, not the
 old Android checkout. `PROGRESS.md` records evidence; `PLAN.md` records unfinished
 acceptance. Machine-readable companion: `docs/feature-map.json`.

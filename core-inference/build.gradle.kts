@@ -3,13 +3,38 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val hostPlacement = layout.buildDirectory.dir("host-placement")
+val configureHostPlacement by tasks.registering(Exec::class) {
+    inputs.file("src/main/cpp/CMakeLists.txt")
+    outputs.file(hostPlacement.map { it.file("CMakeCache.txt") })
+    commandLine("cmake", "-S", file("src/main/cpp"), "-B", hostPlacement.get().asFile,
+        "-DMESHLIT_BUILD_JNI=ON", "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=" + hostPlacement.get().dir("lib").asFile,
+        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=" + hostPlacement.get().dir("lib").asFile, "-DJAVA_HOME:PATH=" + file(System.getProperty("java.home")).invariantSeparatorsPath)
+}
+val buildHostPlacement by tasks.registering(Exec::class) {
+    dependsOn(configureHostPlacement)
+    inputs.files(fileTree("src/main/cpp"))
+    inputs.file(hostPlacement.map { it.file("CMakeCache.txt") })
+    outputs.file(hostPlacement.map { it.file("lib/" + System.mapLibraryName("meshlit_placement")) })
+    commandLine("cmake", "--build", hostPlacement.get().asFile, "--config", "Release", "--target", "meshlit_placement")
+}
+
 android {
     compileSdk = 37
     // minSdk = 24 — RunAnywhere SDK requires API 24+ (Android 7.0+).
     // The previous floor of 23 was kept when NanoHTTPD was the only
     // third-party native surface; the RunAnywhere integration raises
     // it by one API level which has a negligible install-base impact.
-    defaultConfig { minSdk = 24 }
+    ndkVersion = "28.2.13676358"
+    defaultConfig {
+        minSdk = 24
+        consumerProguardFiles("consumer-rules.pro")
+    }
+    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
+    testOptions.unitTests.all { test ->
+        test.dependsOn(buildHostPlacement)
+        test.systemProperty("java.library.path", hostPlacement.get().dir("lib").asFile.absolutePath)
+    }
     namespace = "com.meshlit.core.inference"
     compileOptions { isCoreLibraryDesugaringEnabled = true }
 

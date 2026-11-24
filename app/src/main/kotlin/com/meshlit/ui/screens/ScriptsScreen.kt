@@ -217,19 +217,19 @@ fun ScriptsScreen(
                             scope.launch {
                                 val script = library.load(draftName.ifBlank { "untitled" })
                                     ?: return@launch
-                                runner.run(script)
+                                runner.execute(script)
                             }
                         },
                     ) { Text(stringResource(R.string.scripts_run_selected)) }
                     TextButton(
+                        enabled = false,
                         onClick = {
-                            // Phase C.3.1: uploads only logged — remote
-                            // dispatch not yet wired.
+                            // Remote script upload has no qualified transport.
                         },
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Icon(Icons.Filled.UploadFile, contentDescription = null)
-                            Text(stringResource(R.string.scripts_upload))
+                            Text(stringResource(R.string.scripts_upload) + " · unavailable")
                         }
                     }
                 }

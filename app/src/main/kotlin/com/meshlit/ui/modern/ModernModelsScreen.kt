@@ -64,7 +64,7 @@ fun ModernModelsScreen(onBack:(()->Unit)?=null) {
         if(uris.isNotEmpty()) try { uris.forEach{uri -> runCatching{context.contentResolver.takePersistableUriPermission(uri,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)}};library.importFiles(uris) } catch(e:Exception) { message=e.message }
     }
     val loadedPath=when(val s=runtime) { is CoordinatorState.Ready -> s.model.modelPath;else -> null }
-    Scaffold(topBar={ if(onBack!=null) TopAppBar(title={ Text(stringResource(R.string.modern_models)) },navigationIcon={
+    Scaffold(topBar={ if(onBack!=null) CenterAlignedTopAppBar(title={ Text(stringResource(R.string.modern_models)) },navigationIcon={
         IconButton(onClick=onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack,stringResource(R.string.modern_back)) } }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax).testTag("models-list"),
             contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)) {
@@ -76,7 +76,6 @@ fun ModernModelsScreen(onBack:(()->Unit)?=null) {
                 Text(stringResource(R.string.modern_resources,formatBytes(memory),formatBytes(storage)),style=MaterialTheme.typography.bodySmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            item { ModelRecommendationPanel(library,onError={message=it}) }
             item {
                 Row(horizontalArrangement=Arrangement.spacedBy(T.small)) {
                     OutlinedButton(onClick={ importer.launch(arrayOf("*/*")) },modifier=Modifier.weight(1f)) {
@@ -96,6 +95,7 @@ fun ModernModelsScreen(onBack:(()->Unit)?=null) {
                 }
             }
             item {HuggingFacePanel(library)}
+            item { ModelRecommendationPanel(library,onError={message=it}) }
             item {
                 OutlinedTextField(search,{search=it},Modifier.fillMaxWidth(),singleLine=true,
                     placeholder={Text(stringResource(R.string.modern_search_models))},leadingIcon={Icon(Icons.Default.Search,null)},shape=MaterialTheme.shapes.large)

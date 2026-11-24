@@ -2,13 +2,32 @@ package com.meshlit.ui.modern
 
 /** One catalog drives navigation and search. No row is allowed a no-op action. */
 data class SettingsDestination(val id:String,val title:String,val description:String,val advanced:Boolean=false,
-    val keywords:String="")
+    val keywords:String="") {
+    val group:SettingsGroup get()=SettingsGroup.entries.single { id in it.destinations }
+}
+
+/** Purpose-based navigation, independent of permission and runtime availability. */
+enum class SettingsGroup(val title:String,val description:String,val destinations:Set<String>) {
+    MANAGEMENT("Management", "Models, devices, network, health, credentials and storage dashboards", setOf("dashboards")),
+    MODELS("Models & voice", "Models, speech, online providers and numerical tools", setOf(
+        "models","voice-settings","media","providers","huggingface","router","behavior","training","acceleration","hyperl","colibri","rag","usage")),
+    AGENTS("Agents & memory", "Remember preferences, review jobs and connect approved tools", setOf(
+        "personalization","tasks","connected-capabilities","agent-catalog","agent-teams","agents","moltbook","bot-connections","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
+    CONNECTIONS("Devices and connections", "Pair devices, manage transports and inspect real capabilities", setOf(
+        "devices","network","vpn","sharding","radar","host-map","external-services","web-bridge","device-dashboard","meshchat","remotecommands","p2p","gibberlink","external","ssh","peers")),
+    PRIVACY("Privacy & permissions", "Permissions, network rules, identity and data policy", setOf(
+        "securityprivacy","guardrails","permissions","firewall","shirudo","identity-recovery","crypto","legal","search")),
+    TOOLS("System & developer tools", "Files, diagnostics, optional runtimes and host services", setOf(
+        "files","ide","device","resources","power","monitor","operations","recovery","runtime","commands","packages","securitylab","termux","crawler","cloud","audit","logs","rewards")),
+    PREFERENCES("App & help", "Appearance, shortcuts, saved configuration and guidance", setOf(
+        "appearance","notifications","menu-layout","configuration","help","about"))
+}
+
 object SettingsDestinations {
-    private val advancedIds=setOf("crypto","gibberlink","remotecommands","p2p","colibri","behavior",
-        "configuration","recovery","training","router","operations","gateway","commands","packages",
-        "securitylab","power","external","acceleration","ssh","firewall","ide","hyperl",
-        "audit","identity-recovery","openclaw","sharding","guardrails","mcp-catalog","agent-registry","agent-logs","rag")
     val all=listOf(
+        SettingsDestination("dashboards","Management","Models, devices, network, health, credentials and storage",keywords="workspace overview dashboard SSH security compute"),
+        SettingsDestination("usage","Usage & costs","Online text history, device budgets and bill reconciliation",keywords="tokens spending billing usage"),
+        SettingsDestination("vpn","VPN & network","App-network observations and optional Tailscale companion",keywords="Tailscale VPN private connection"),
         SettingsDestination("menu-layout","Customize menu","Add, remove and reorder shortcuts in Settings and the main drawer",keywords="layout rearrange quick access shortcuts navigation"),
         SettingsDestination("sharding","Sharding and workers","Pair approved model workers, assess resources and negotiate layers",keywords="cluster load balancer distributed model split QR group"),
         SettingsDestination("radar","Device radar","Topology, live discovery, saved workers and local identity",keywords="map nearby far distance devices agents search logs identity user ID"),
@@ -18,9 +37,11 @@ object SettingsDestinations {
         SettingsDestination("device-dashboard","Device management","Review and revoke saved endpoints, groups, workers, relay members and peer chat",keywords="approved group local remote single multi cluster pause stop revoke"),
         SettingsDestination("meshchat","Mesh chat","Foreground peer conversations over verified direct or relay connections",keywords="group device agent person message WhatsApp Telegram remote local chat"),
         SettingsDestination("securityprivacy","Security and privacy","Permissions, identity, guardrails, network access, audit and policy",keywords="privacy safety fraud trust auto on off customize settings"),
+        SettingsDestination("deepseek-harness","DeepSeek Harness","Connect to your host agent workspace",keywords="DeepSeek harness agents plugins remote IDE"),
         SettingsDestination("tools-automation","Tools and automation","MCP registry, Gateway routes, agent jobs and reviewed hooks",keywords="MCP A2A agents tool registry hooks scripts"),
         SettingsDestination("mcp-catalog","MCP connections","Browse common servers and enroll an approved HTTPS route",keywords="MCP filesystem fetch memory GitHub Playwright custom server tools"),
-        SettingsDestination("rag","RAG settings","Select local or remote retrieval mode; source connectors remain experimental",keywords="documents files search retrieval knowledge base vector embeddings local remote"),
+        SettingsDestination("connected-capabilities","Connected capabilities","Unified agent roles, memory and phone automation adapters",keywords="OpenViking Artemis Agency Agents context memory skills Google phone automation Strata"),
+        SettingsDestination("rag","Knowledge library","Import sources and choose what your model can recall",keywords="RAG documents files search retrieval knowledge base vector embeddings local remote"),
         SettingsDestination("huggingface","Hugging Face dashboard","Verify account access, discover GGUF files and configure hosted inference",keywords="HF Hub token login models free paid gated download inference credits"),
         SettingsDestination("agent-registry","Agent registry","Saved agents, model assignments and registered tools",keywords="agents profiles MCP inventory"),
         SettingsDestination("agent-logs","Agent logs","Agent and MCP diagnostics with export",keywords="agent MCP jobs audit history errors"),
@@ -33,6 +54,7 @@ object SettingsDestinations {
         SettingsDestination("p2p","P2P chat and commands","Direct phone-to-phone WebRTC with signed pairing and optional TURN",keywords="peer Internet no VPN STUN TURN WebRTC ICE phone long distance chat"),
         SettingsDestination("colibri","Colibri host","Optional disk-streaming engine host: Off, On or Auto",keywords="MoE NVMe tokens inference external host disk streaming Colibri"),
         SettingsDestination("models","Models and downloads","Import files, manage downloads and load local models",keywords="hugging face token storage GGUF RAM"),
+        SettingsDestination("voice-settings","Voice and speech","Choose voices, tune the microphone and test playback",keywords="natural human voice hands free conversation Kokoro Pocket Piper Whisper ElevenLabs TTS STT recognition preview audio"),
         SettingsDestination("media","Camera, vision and audio","Real image input, microphone and existing SDK media paths",keywords="CCTV webcam phone camera microphone WAV speech VLM STT TTS"),
         SettingsDestination("configuration","Configuration profiles","Export, review and apply portable device settings",keywords="import backup default custom declarative ansible terraform pulumi IaC"),
         SettingsDestination("personalization","Memory and personality","Local recall, profile and bounded self recovery",keywords="learning memories repair adaptation"),
@@ -50,8 +72,13 @@ object SettingsDestinations {
         SettingsDestination("power","Power and costs","Battery readings, download policies and electricity estimates",keywords="meter current energy charging expense thermal"),
         SettingsDestination("external","External devices and OTG","USB discovery, permissions and removable storage",keywords="gpu USB hardware peripherals drives NAS keyboard camera"),
         SettingsDestination("acceleration","Acceleration","Actual backend availability, CPU limits and platform roadmap",keywords="CUDA Vulkan OpenCL OpenGL Metal ROCm QNN CANN Intel NVIDIA AMD Huawei"),
+        SettingsDestination("agent-catalog","Agent role library","Search and adapt Agency Agents role templates",keywords="agency agent selection roles specialists"),
+        SettingsDestination("agent-teams","Agent teams","Planner, worker and reviewer teams across approved local and remote devices",keywords="multi agent teams local remote cluster"),
+        SettingsDestination("bot-connections","Bots and connections","Custom bot profiles, AstrBot chat, Grok Bot routines and OpenClaw",keywords="bots messaging automation agent custom integrations webhook Grok AstrBot"),
+        SettingsDestination("moltbook","Moltbook","Read public posts from the agent community",keywords="social agents public feed"),
         SettingsDestination("agents","Agent management","Delegated permissions, real jobs and registered tools",keywords="autonomous scopes tasks MCP"),
         SettingsDestination("ssh","SSH nodes and connections","Key-authenticated inbound node commands and pinned outbound connections",keywords="server LAN internet VM sandbox agent SSH NAS terminal external inter device"),
+        SettingsDestination("shirudo","Shirudo shields","Inspect a Linux node’s security report",keywords="network cyber security signed shield TPM Linux"),
         SettingsDestination("firewall","Network rules","Persisted Meshlit listener firewall and network status",keywords="ports security IP allow deny"),
         SettingsDestination("device","Device","Device profile, name and hardware capabilities",keywords="role chipset gpu peripherals"),
         SettingsDestination("resources","Resources and sensors","Live RAM, storage, battery, model activity and available sensors",keywords="usage CPU memory camera microphone hardware diagnostics"),
@@ -78,7 +105,9 @@ object SettingsDestinations {
         SettingsDestination("legal","Terms and privacy","Offline policies, accepted version and data controls",keywords="agreement consent privacy terms data delete IMON"),
         SettingsDestination("about","About and availability","Build information and feature implementation status",keywords="licenses version help")
     ).filter { com.meshlit.BuildProfile.routeAllowed(it.id) }.filterNot { com.meshlit.BuildConfig.PLAY_REVIEW && it.id in setOf("automation", "termux") }
-    private fun isAdvanced(entry:SettingsDestination)=entry.advanced || entry.id in advancedIds
+    private val everydayIds=com.meshlit.workspace.DashboardDirectory.androidBasic+setOf("models","voice-settings","media","providers","personalization")
+    private fun isAdvanced(entry:SettingsDestination)=entry.id !in everydayIds
+    fun groups(advanced:Boolean)=SettingsGroup.entries.filter { group -> search("",advanced).any { it.group==group } }
     fun search(query:String,advanced:Boolean):List<SettingsDestination> {
         val words=query.trim().split(Regex("\\s+")).filter(String::isNotBlank)
         return all.filter { entry ->

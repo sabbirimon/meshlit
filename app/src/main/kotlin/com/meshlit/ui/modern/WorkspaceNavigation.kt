@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -28,6 +29,7 @@ data class WorkspaceDestination(val id:String,val title:String,val description:S
 /** Shared phone/wide-window inventory of connected modern routes. */
 object WorkspaceDestinations {
     private val primary=listOf(
+        WorkspaceDestination("dashboards","Dashboards","Models, routing, usage and private connections","Workspace"),
         WorkspaceDestination("chat","Chat","Your model conversations","Workspace"),
         WorkspaceDestination("models","Models","Downloads, imports and local runtime","Workspace","catalog GGUF load"),
         WorkspaceDestination("devices","Devices","Discovery, pairing and device inventory","Workspace","nearby list QR approval cluster"),
@@ -39,11 +41,11 @@ object WorkspaceDestinations {
     )
     private fun group(id:String)=when(id) {
         "tasks","ide","files","agents","agent-registry","agent-logs" -> "Workspace"
-        "media","training","router","behavior","guardrails","acceleration","hyperl" -> "Models and media"
-        "network","sharding","radar","host-map","device-dashboard","resources","ssh","securitylab","runtime","packages","commands","operations","power","firewall","recovery","logs","audit" -> "Operations"
+        "usage","media","training","router","behavior","guardrails","acceleration","hyperl" -> "Models and media"
+        "vpn","network","sharding","radar","host-map","device-dashboard","resources","ssh","securitylab","runtime","packages","commands","operations","power","firewall","recovery","logs","audit" -> "Operations"
         "meshchat" -> "Connections"
-        "securityprivacy","guardrails","permissions","legal","identity-recovery" -> "Security & privacy"
-        "cloud","huggingface","providers","gateway","tools-automation","mcp-catalog","rag","external","external-services","web-bridge","peers","openclaw","automation","termux","crawler","hooks" -> "Connections"
+        "securityprivacy","shirudo","guardrails","permissions","legal","identity-recovery" -> "Security & privacy"
+        "cloud","huggingface","providers","gateway","tools-automation","mcp-catalog","rag","external","external-services","web-bridge","peers","openclaw","bot-connections","automation","termux","crawler","hooks" -> "Connections"
         else -> "Preferences"
     }
     val all:List<WorkspaceDestination> = primary.filter { com.meshlit.BuildProfile.routeAllowed(it.id) }+SettingsDestinations.all.filter{entry->primary.none{it.id==entry.id}}.map { entry ->
@@ -67,7 +69,7 @@ private fun workspaceIcon(id:String):ImageVector=when(id) {
     "vision"->Icons.Default.Image
     "structured","ide","hyperl"->Icons.Default.Code
     "sessions","commands","ssh"->Icons.Default.Terminal
-    "securitylab","packages","runtime"->Icons.Default.Shield
+    "securitylab","shirudo","packages","runtime"->Icons.Default.Shield
     "jobs","tasks"->Icons.Default.Checklist
     else->settingsIcon(id)
 }
@@ -91,10 +93,10 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
             }
             IconButton(onClick={onSelect("settings")}) {Icon(Icons.Default.Settings,"Settings")}
         }
-        OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("workspace-search"),singleLine=true,
+        OutlinedTextField(query,{query=it.take(600)},Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("workspace-search"),singleLine=true,
             textStyle=MaterialTheme.typography.bodyMedium,placeholder={Text("Find a page or tool")},leadingIcon={Icon(Icons.Default.Search,null)},
-            trailingIcon={if(query.isNotBlank()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear menu search")}},shape=RoundedCornerShape(16.dp))
-        FilledTonalButton(onClick=onNew,enabled=!state.running,modifier=Modifier.fillMaxWidth().padding(T.medium)) {
+            trailingIcon={if(query.isNotBlank()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear menu search")}},shape=RoundedCornerShape(8.dp))
+        TextButton(onClick=onNew,enabled=!state.running,modifier=Modifier.fillMaxWidth().padding(T.medium)) {
             Icon(Icons.Default.Add,null,Modifier.size(18.dp));Spacer(Modifier.width(T.small));Text("New chat")
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("app-drawer"),contentPadding=PaddingValues(horizontal=T.medium,vertical=T.tiny),
@@ -102,7 +104,11 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
             val matches=WorkspaceDestinations.search(query)
             if(query.isNotBlank()) {
                 if(matches.isEmpty()) item{Text("No matching workspace",style=MaterialTheme.typography.bodyMedium)}
-                items(matches,key={it.id}) {entry->WorkspaceNavigationCard(entry,current==entry.id,onSelect,Modifier.fillMaxWidth(),rows=true)}
+                itemsIndexed(matches,key={_,it->it.id}) {index,entry->
+                    val found=com.meshlit.search.textSearchMatches("${entry.title}\n${entry.description}\n${entry.keywords}",query,words=true,maxPositions=1)
+                    Text("${index+1} / ${matches.size} · ${found.total} matches · ${found.location()}",style=MaterialTheme.typography.labelSmall,color=colors.primary)
+                    WorkspaceNavigationCard(entry,current==entry.id,onSelect,Modifier.fillMaxWidth(),rows=true,searchQuery=query)
+                }
             } else {
                 item{Text("Quick access",style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant)}
                 items(shortcuts,key={"quick:$it"}) {id ->
@@ -150,15 +156,20 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
     }
 }
 
-@Composable private fun WorkspaceNavigationCard(entry:WorkspaceDestination,selected:Boolean,onSelect:(String)->Unit,modifier:Modifier,rows:Boolean=false) {
+@Composable private fun WorkspaceNavigationCard(entry:WorkspaceDestination,selected:Boolean,onSelect:(String)->Unit,modifier:Modifier,rows:Boolean=false,searchQuery:String="") {
     val colors=MaterialTheme.colorScheme
-    Surface(onClick={onSelect(entry.id)},modifier=modifier.testTag("workspace-${entry.id}"),shape=RoundedCornerShape(14.dp),
-        color=if(selected) colors.secondaryContainer else colors.surfaceContainerLow,
-        border=BorderStroke(1.dp,if(selected) colors.primary.copy(alpha=0.55f) else colors.outlineVariant.copy(alpha=0.28f))) {
+    Surface(onClick={onSelect(entry.id)},modifier=modifier.testTag("workspace-${entry.id}"),shape=RoundedCornerShape(6.dp),
+        color=if(selected) colors.surfaceContainerHigh else colors.surface) {
         if(rows) Row(Modifier.heightIn(min=T.touch).padding(horizontal=T.medium,vertical=T.small),verticalAlignment=Alignment.CenterVertically,
             horizontalArrangement=Arrangement.spacedBy(T.medium)) {
             SettingsIconTile(entry.id)
-            Text(entry.title,Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium)
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Text(entry.title,style=MaterialTheme.typography.bodyMedium)
+                if(searchQuery.isNotBlank()) {
+                    Text(entry.description,style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)
+                    if(entry.keywords.isNotBlank())Text("Keywords: ${entry.keywords}",style=MaterialTheme.typography.labelSmall,color=colors.onSurfaceVariant)
+                }
+            }
         } else Column(Modifier.heightIn(min=88.dp).padding(10.dp),verticalArrangement=Arrangement.spacedBy(T.small)) {
             SettingsIconTile(entry.id)
             Text(entry.title,style=MaterialTheme.typography.labelLarge)

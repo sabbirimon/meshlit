@@ -1,0 +1,27 @@
+{
+  "format": "meshlit-samsung-ui-host-check/1",
+  "device": "Samsung SM-A207F Android11",
+  "apkSha256": "59523256140aa842332d3a4cdbf5f9636dc3b67a0924900d8a60f753397f8b59",
+  "apkBytes": 569543608,
+  "instrumentationTests": 2,
+  "failures": 0,
+  "durationSeconds": 19.091,
+  "chatFollow": {
+    "longStreamTail": true,
+    "viewportResize": true,
+    "manualHistoryPreserved": true,
+    "latestResumes": true,
+    "scope": "Production follow helper in isolated Compose fixture; no fixture text stored in owner chats."
+  },
+  "compatibleHost": {
+    "runtime": "Ollama0.40.13 isolated CPU host",
+    "model": "Bundled Qwen2.5 0.5B Q4_K_M",
+    "client": "Actual Android OnlineModelClient",
+    "catalog": true,
+    "arithmeticCorrect": true,
+    "actualInputOutputUsagePositive": true,
+    "transport": "Explicit ADB reverse loopback tunnel",
+    "wanVerified": false,
+    "savedProfilesChanged": false
+  }
+}

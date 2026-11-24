@@ -1,0 +1,184 @@
+{
+  "metalBufferStorage": "Local native MTL0 backend plus phone RPC0; local CPU handles unsupported GPU operations",
+  "format": "meshlit-physical-cluster/1",
+  "phone": "SM-A207F Android11",
+  "computer": "Intel Mac Radeon Pro560X",
+  "wanVerified": false,
+  "oversizedModelProof": false,
+  "timingComparison": false,
+  "transportOffered": "mobile-ipv6",
+  "wanEnrollment": {
+    "success": false,
+    "seconds": 0.4934460779768415,
+    "failure": "Request failed: NoRouteToHostException"
+  },
+  "controlTransport": "USB ADB forward, not WAN",
+  "pendingDenied": true,
+  "approvedStatusSeconds": 0.6645221370272338,
+  "observeCommandDenied": true,
+  "resourceRequestWallSecondsIncludingJvmStartup": [
+    0.7628786190180108,
+    0.6760254639666528,
+    0.6591963089886121
+  ],
+  "phoneCapabilities": {
+    "nodeId": "72ff5a2a-150e-4362-bf71-42ffb0a67707",
+    "abi": "arm64-v8a",
+    "freeMemoryBytes": 1465176064,
+    "freeDiskBytes": 21471223808,
+    "runtimeRevision": "4df29be4f4c3673f428170fda944a5b19f743bb8",
+    "workerAllowed": true,
+    "observedAtMs": 1793635827037,
+    "cpuThreads": 6,
+    "workerStartedAtMs": 1793635820552
+  },
+  "phoneWorkerBefore": [
+    {
+      "pid": 30778,
+      "rssKiB": 2524,
+      "cpuTicks": 3
+    }
+  ],
+  "phoneRpcInventory": {
+    "code": 0,
+    "stdout": "Available devices:\n  RPC0: 127.0.0.1:59586 (3542 MiB, 3542 MiB free)\n",
+    "stderr": ""
+  },
+  "phoneWorkerLoaded": [
+    {
+      "pid": 30778,
+      "rssKiB": 196416,
+      "cpuTicks": 662
+    }
+  ],
+  "completion": {
+    "format": "meshlit-mixed-native-result/1",
+    "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+    "tokens": [
+      19,
+      151645
+    ],
+    "text": "4",
+    "tokensPredicted": 2,
+    "tokensEvaluated": 28,
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 28,
+      "prompt_ms": 6703.357,
+      "prompt_per_token_ms": 239.40560714285715,
+      "prompt_per_second": 4.177011607766079,
+      "predicted_n": 2,
+      "predicted_ms": 5625.862,
+      "predicted_per_token_ms": 5625.862,
+      "predicted_per_second": 0.17775053849525638
+    },
+    "startup_seconds": 15.519693302980158,
+    "request_seconds": 13.48265723203076,
+    "native": {
+      "process_id": 88580,
+      "assigned_layers": {
+        "0": "MTL0",
+        "1": "MTL0",
+        "2": "MTL0",
+        "3": "MTL0",
+        "4": "MTL0",
+        "5": "MTL0",
+        "6": "MTL0",
+        "7": "MTL0",
+        "8": "MTL0",
+        "9": "MTL0",
+        "10": "MTL0",
+        "11": "MTL0",
+        "12": "MTL0",
+        "13": "MTL0",
+        "14": "MTL0",
+        "15": "MTL0",
+        "16": "MTL0",
+        "17": "MTL0",
+        "18": "MTL0",
+        "19": "RPC0",
+        "20": "RPC0",
+        "21": "RPC0",
+        "22": "RPC0",
+        "23": "RPC0",
+        "24": "RPC0"
+      },
+      "model_buffers_mib": {
+        "CPU_Mapped": 325.02,
+        "MTL0_Mapped": 235.64,
+        "RPC0[127.0.0.1:59586]": 186.51
+      },
+      "metalEncodedOperations": {
+        "MUL": 114,
+        "ADD": 282,
+        "ROPE": 114,
+        "SET_ROWS": 114,
+        "CONT": 57
+      }
+    }
+  },
+  "macGpuExecution": {
+    "process_id": 88580,
+    "assigned_layers": {
+      "0": "MTL0",
+      "1": "MTL0",
+      "2": "MTL0",
+      "3": "MTL0",
+      "4": "MTL0",
+      "5": "MTL0",
+      "6": "MTL0",
+      "7": "MTL0",
+      "8": "MTL0",
+      "9": "MTL0",
+      "10": "MTL0",
+      "11": "MTL0",
+      "12": "MTL0",
+      "13": "MTL0",
+      "14": "MTL0",
+      "15": "MTL0",
+      "16": "MTL0",
+      "17": "MTL0",
+      "18": "MTL0",
+      "19": "RPC0",
+      "20": "RPC0",
+      "21": "RPC0",
+      "22": "RPC0",
+      "23": "RPC0",
+      "24": "RPC0"
+    },
+    "model_buffers_mib": {
+      "CPU_Mapped": 325.02,
+      "MTL0_Mapped": 235.64,
+      "RPC0[127.0.0.1:59586]": 186.51
+    },
+    "metalEncodedOperations": {
+      "MUL": 114,
+      "ADD": 282,
+      "ROPE": 114,
+      "SET_ROWS": 114,
+      "CONT": 57
+    }
+  },
+  "phoneWorkerAfter": [
+    {
+      "pid": 30778,
+      "rssKiB": 198852,
+      "cpuTicks": 2101
+    }
+  ],
+  "arithmeticCorrect": true,
+  "physicalExecutionTransport": "certificate-pinned authenticated TLS over USB ADB forward",
+  "twoWorkerBuffers": true,
+  "phoneCpuTicksIncreased": true,
+  "nativeStartupErrors": [],
+  "rpcBridgeErrors": "",
+  "instrumentationTail": "INSTRUMENTATION_STATUS: class=com.meshlit.qualification.DistributedWanDeviceTest\nINSTRUMENTATION_STATUS: current=1\nINSTRUMENTATION_STATUS: id=AndroidJUnitRunner\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS: stream=\ncom.meshlit.qualification.DistributedWanDeviceTest:\nINSTRUMENTATION_STATUS: test=holdAuthenticatedServicesForPhysicalPeer\nINSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_STATUS: class=com.meshlit.qualification.DistributedWanDeviceTest\nINSTRUMENTATION_STATUS: current=1\nINSTRUMENTATION_STATUS: id=AndroidJUnitRunner\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS: stream=.\nINSTRUMENTATION_STATUS: test=holdAuthenticatedServicesForPhysicalPeer\nINSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_RESULT: stream=\n\nTime: 52.903\n\nOK (1 test)\n\n\nINSTRUMENTATION_CODE: -1\n",
+  "startupPreferenceRestored": true,
+  "qualificationHarnessCorrection": {
+    "originalFailure": "AssertionError: physical shard placement/generation did not qualify",
+    "reason": "The native buffer name is MTL0_Mapped; Radeon executed supported Metal MUL/ADD/ROPE operations while unsupported matrix work stayed on the local CPU. The original checker assumed a Metal0 prefix and GPU MUL_MAT support.",
+    "recheck": "Saved actual native placement/buffers/encoded operations and phone CPU samples all satisfy the supported mixed path."
+  },
+  "physicalExecutionVerified": true,
+  "scope": "Single real Qwen2.5 completion across local Mac Metal/CPU and Samsung CPU/RAM over pinned authenticated USB-forwarded TLS. No WAN, oversized-model, speedup or private-VRAM-pooling proof."
+}

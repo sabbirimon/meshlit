@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-11-02",
+  "sources": [
+    {
+      "id": "agency-agents",
+      "name": "Agency Agents",
+      "repository": "https://github.com/msitarzewski/agency-agents",
+      "revision": "b37b5bb33b78f2c1d6567d98e25ca818e3259219",
+      "license": "MIT",
+      "capability": "Editable role templates",
+      "integration": "Bounded data catalog; no tool grants or upstream runtime"
+    },
+    {
+      "id": "openviking",
+      "name": "OpenViking",
+      "repository": "https://github.com/volcengine/OpenViking",
+      "revision": "9925e819e52ff2c589da9ae1bbac16cd8d9a00bc",
+      "license": "AGPL-3.0 (server)",
+      "capability": "Context, knowledge and memory",
+      "integration": "Original read-only HTTP adapter to an optional service; no server code bundled"
+    },
+    {
+      "id": "artemis",
+      "name": "Google Artemis",
+      "repository": "https://github.com/google/artemis",
+      "revision": "351ca8422f7b5b54e80a9c1ce03a222e02415b6b",
+      "license": "Apache-2.0",
+      "capability": "Phone automation",
+      "integration": "Original HTTP adapter; human-reviewed device-host tasks with durable admission and Stop"
+    },
+    {
+      "id": "strata",
+      "name": "Strata",
+      "repository": "https://github.com/Niko1221/Strata",
+      "revision": "c62d5e3a15b40ea51c96aae9e8d36928965f53ab",
+      "license": "MIT (models and components separate)",
+      "capability": "Host inference",
+      "integration": "Existing OpenAI-compatible model route; engines and weights stay on the configured host"
+    },
+    {
+      "id": "claude-mem",
+      "name": "Claude-Mem",
+      "repository": "https://github.com/thedotmack/claude-mem",
+      "revision": "70aa40042cfb8157a0d84954b9c0d2b30b50af80",
+      "license": "Apache-2.0",
+      "capability": "Search persistent observations, session summaries and their timeline in your installed memory worker.",
+      "integration": "Existing optional Studio companion; upstream owns its runtime, accounts and approvals"
+    },
+    {
+      "id": "openmausbot",
+      "name": "OpenMausBot",
+      "repository": "https://github.com/milind-soni/OpenMausBot",
+      "revision": "21628af229abe8100cdd1f8761ccca391ff56bff",
+      "license": "Apache-2.0",
+      "capability": "Use bot teams, channels, approvals, computers, voice and connected apps in the full companion.",
+      "integration": "Existing optional Studio companion; upstream owns its runtime, accounts and approvals"
+    },
+    {
+      "id": "openbot",
+      "name": "OpenBot",
+      "repository": "https://github.com/CopilotKit/OpenBot",
+      "revision": "743649efc3f21d7bf0badbe6af2bcd5daedd97ce",
+      "license": "MIT",
+      "capability": "Open your self-hosted coworkers, governed browser computers, routines, policy and audit workspace.",
+      "integration": "Existing optional Studio companion; upstream owns its runtime, accounts and approvals"
+    }
+  ]
+}

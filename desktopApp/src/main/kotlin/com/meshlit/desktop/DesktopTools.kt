@@ -1,6 +1,7 @@
 package com.meshlit.desktop
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -25,18 +26,24 @@ import javax.swing.JOptionPane
 @Composable internal fun DesktopMenu(selected: String, onSelect: (String) -> Unit, compact: Boolean = false, advanced: Boolean = false) {
     var query by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth()) {
-        OutlinedTextField(query, { query = it.take(200) }, singleLine = true, placeholder = { Text("Find settings or features") }, modifier = Modifier.fillMaxWidth())
+        TextButton({ onSelect("management") }, Modifier.fillMaxWidth()) { Text("Open dashboards") }
+        OutlinedTextField(query, { query = it.take(200) }, singleLine = true, label = { Text("Find settings") },
+            modifier = Modifier.fillMaxWidth(), trailingIcon = {
+                if (query.isNotEmpty()) TextButton({ query = "" }) { Text("Clear") }
+            })
         Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-            val matches = DesktopSearch.settings().filter { query.isBlank() || DesktopSearch.find(listOf(it), query, SearchType.SETTINGS).isNotEmpty() }.map { entry -> DesktopDestinations.all.first { it.id == entry.id } }.filter { query.isNotBlank() || advanced || it.id in BASIC_DESKTOP_SECTIONS }
+            val matches = DesktopSearch.settings().filter { query.isBlank() || DesktopSearch.find(listOf(it), query, SearchType.SETTINGS).isNotEmpty() }.map { entry -> DesktopDestinations.all.first { it.id == entry.id } }.filter { query.isNotBlank() || it.id == selected || if (advanced) it.id !in BASIC_DESKTOP_SECTIONS else it.id in BASIC_DESKTOP_SECTIONS }
             val groups = matches.groupBy { desktopGroup(it.id) }
+            if (matches.isEmpty()) Text("No matching settings.", Modifier.padding(8.dp))
             groups.forEach { (group, entries) ->
-                var expanded by remember(group, advanced) { mutableStateOf(!advanced || group in setOf("Models & inference", "Devices & clusters")) }
+                var expanded by remember(group, advanced, desktopGroup(selected)) { mutableStateOf(group == desktopGroup(selected) || !advanced || group in setOf("Models & inference", "Devices & clusters")) }
                 TextButton({ expanded = !expanded }, Modifier.fillMaxWidth()) {
                     Text("${if (expanded || query.isNotBlank()) "▾" else "▸"} $group", Modifier.fillMaxWidth(), color = MaterialTheme.colors.primary)
                 }
                 if (expanded || query.isNotBlank()) entries.filter { query.isNotBlank() || it.available || advanced && !compact }.forEach { item ->
-                    TextButton({ onSelect(item.id) }, Modifier.fillMaxWidth()) {
-                        Text((if (selected == item.id) "• " else "") + item.title + (if (item.available) "" else " · port pending"), Modifier.fillMaxWidth(), color = MaterialTheme.colors.onSurface.copy(alpha = if (item.available) 1f else .5f))
+                    TextButton({ onSelect(item.id) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.textButtonColors(backgroundColor = if(selected == item.id) MaterialTheme.colors.primary.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent)) {
+                        Text(item.title + (if (item.available) "" else " · port pending"), Modifier.fillMaxWidth(), color = MaterialTheme.colors.onSurface.copy(alpha = if (item.available) 1f else .5f))
                     }
                 }
             }
@@ -44,15 +51,15 @@ import javax.swing.JOptionPane
     }
 }
 internal fun desktopGroup(id: String) = when (id) {
-    "discover", "models", "providers", "tokens", "guardrails", "dolphin", "behavior", "router", "training", "media", "colibri", "acceleration", "personalization", "engine" -> "Models & inference"
-    "nodes", "device-dashboard", "radar", "meshchat", "device", "health", "memory", "monitor", "power", "external", "network", "p2p", "peers", "remotecommands", "sharding" -> "Devices & clusters"
+    "usage", "discover", "models", "providers", "tokens", "guardrails", "dolphin", "behavior", "router", "training", "media", "colibri", "acceleration", "personalization", "engine" -> "Models & inference"
+    "vpn", "nodes", "device-dashboard", "radar", "meshchat", "device", "health", "memory", "monitor", "power", "external", "network", "p2p", "peers", "remotecommands", "sharding" -> "Devices & clusters"
     "agents", "hooks", "gateway", "runners", "gibberlink", "openclaw", "automation" -> "Agents & integrations"
     "ssh", "crypto", "securityprivacy", "securitylab", "firewall", "packets", "permissions", "audit" -> "Security & access"
     "terminal", "commands", "containers", "kubernetes", "hyperl", "runtime", "packages", "operations", "recovery", "logs", "termux" -> "Runtime & operations"
     "files", "ide", "tasks", "configuration", "search", "cloud", "crawler" -> "Workspace & services"
     else -> "Preferences & help"
 }
-internal val BASIC_DESKTOP_SECTIONS = setOf("rag", "crypto", "management", "terminal", "models", "discover", "providers", "appearance", "tokens", "nodes", "device-dashboard", "securityprivacy", "health", "search", "help", "legal", "about")
+internal val BASIC_DESKTOP_SECTIONS = com.meshlit.workspace.DashboardDirectory.desktopBasic
 
 internal fun hostReadings(): List<Pair<String, String>> {
     fun bytes(value: Long?) = value?.takeIf { it >= 0 }?.let { "%.2f GiB".format(it / 1073741824.0) } ?: "Unavailable"

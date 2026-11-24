@@ -1,4 +1,4 @@
-Meshlit Intel Mac desktop preview - application version 2.0.40, desktop Studio build40.1
+Meshlit Intel Mac desktop preview - application version 2.0.45, desktop Studio build45.1
 
 Choose ONE installation method:
 DMG: open the disk image and drag MeshlitPreview.app onto Applications.
@@ -63,3 +63,12 @@ saved models and devices. Browser web search has its own switch and human button
 Inference engine controls CPU threads/context/batches/f16 or q8_0 KV keys and idle unload (5 minutes
 by default). Send on an unloaded local model loads it before generation. No new
 agent, VM, OS-firewall or desktop worker enrollment is implied by these controls.
+
+Usage & budgets offers an optional passphrase-unlocked encrypted local journal.
+History records the supported interactive chat paths only. Budget guards use local
+price estimates and are not provider billing caps or cross-device spending limits.
+Back up the passphrase securely; credentials remain separate from the usage vault.
+OmniRoute and FreeLLMAPI are optional gateway presets, not bundled services or free
+entitlements. VPN & network offers default-off observation of an existing Tailscale
+CLI through bounded status reads. Install/login and network changes remain explicit
+human actions in the companion; no live tailnet qualification is implied.

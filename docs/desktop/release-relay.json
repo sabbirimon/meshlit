@@ -1,0 +1,556 @@
+{
+  "format": "meshlit-release-relay/1",
+  "repository": "sabbirimon/meshlit",
+  "tag": "v2.0.0-beta.5",
+  "artifacts": [
+    {
+      "name": "Meshlit-v2-build45-arm64-v8a-debug.apk",
+      "size": 561770801,
+      "sha256": "3ee2bd1ad24b32228ceefa1ddd44e192511e92c220d1309c52efc0c5d294f808",
+      "parts": [
+        {
+          "name": "relay-beta5-android-0000.part",
+          "size": 16777216,
+          "sha256": "e13ad4a811dcc60c70a9650c532bbd2dc31e55879b377045b647ed2dcd0c05d2"
+        },
+        {
+          "name": "relay-beta5-android-0001.part",
+          "size": 16777216,
+          "sha256": "1018d975ce4655b5e26bcfe71755da057f0726b2210be5e083b4c02956d001a3"
+        },
+        {
+          "name": "relay-beta5-android-0002.part",
+          "size": 16777216,
+          "sha256": "2b8a97233dc892bb6ff83e6235f53e85d0553cebc8ec2616b2351bef6a4bedc8"
+        },
+        {
+          "name": "relay-beta5-android-0003.part",
+          "size": 16777216,
+          "sha256": "cf842f9be45c5478dc8dade2c43ad2a7a006b54df62f671b7d12895342e9e38c"
+        },
+        {
+          "name": "relay-beta5-android-0004.part",
+          "size": 16777216,
+          "sha256": "4b9ace8b70bd57d5438fcd1ddba94a946b1c7dec16653744c51aaed0069c7bb3"
+        },
+        {
+          "name": "relay-beta5-android-0005.part",
+          "size": 16777216,
+          "sha256": "d9e9b76d04f9f2843ce7134aa964ae539996c447115132a690fad363f663a327"
+        },
+        {
+          "name": "relay-beta5-android-0006.part",
+          "size": 16777216,
+          "sha256": "d4886dc17c9f00ba3d8cc21de6039ae30fa4ed8d9c5c684eae59cb4767e6a1b5"
+        },
+        {
+          "name": "relay-beta5-android-0007.part",
+          "size": 16777216,
+          "sha256": "034769d9bcbe1b331e44de7d0a8d250a4ff04a14c0e552689524a9963970d119"
+        },
+        {
+          "name": "relay-beta5-android-0008.part",
+          "size": 16777216,
+          "sha256": "224bbdd33b7a8eb7092d3126aba7228b00627a29c566d2816f58b6549e309df8"
+        },
+        {
+          "name": "relay-beta5-android-0009.part",
+          "size": 16777216,
+          "sha256": "9bebde34142b77c0570e8c3349b1b88749ce258064ee3bc7f4581eaf6bf25d53"
+        },
+        {
+          "name": "relay-beta5-android-0010.part",
+          "size": 16777216,
+          "sha256": "8f821029ef4d4e7450766f8afc8aa677440de744aa0d84c0ac460231c8d05528"
+        },
+        {
+          "name": "relay-beta5-android-0011.part",
+          "size": 16777216,
+          "sha256": "7f422ae83a1f37b1ddf5c13ca14103c6b7e8e34f85830c7bb7b7022829a3e4c0"
+        },
+        {
+          "name": "relay-beta5-android-0012.part",
+          "size": 16777216,
+          "sha256": "f85e29273e128e1e01d71e6e1539191779af428270614ebe9d7bb39f3179b81c"
+        },
+        {
+          "name": "relay-beta5-android-0013.part",
+          "size": 16777216,
+          "sha256": "a67f4d07f430fee3bf41a52961e82e9ae2fb9bf9e8c4380147974742d9569fba"
+        },
+        {
+          "name": "relay-beta5-android-0014.part",
+          "size": 16777216,
+          "sha256": "730f53655aeb41160d48a5c5b69ba1364144e19cad57169bc55b58de82d2a1fe"
+        },
+        {
+          "name": "relay-beta5-android-0015.part",
+          "size": 16777216,
+          "sha256": "bb3a12d7eba5deb21f369450986153ca5f2ffb90e6ede0ad75181c3c5e3c3dbe"
+        },
+        {
+          "name": "relay-beta5-android-0016.part",
+          "size": 16777216,
+          "sha256": "3093d09eb01b105c043a3e66f9671bff056ab8f13219670249c5b73d165f524e"
+        },
+        {
+          "name": "relay-beta5-android-0017.part",
+          "size": 16777216,
+          "sha256": "fe6195ed54f16a83d6f068133a2ff440bf081a1ece5f2bc74c1f3f155563c683"
+        },
+        {
+          "name": "relay-beta5-android-0018.part",
+          "size": 16777216,
+          "sha256": "ec9df2dbd4d6564641bf24d2bfaf8a7db9a23692200d567c3adafeaa0e6142a1"
+        },
+        {
+          "name": "relay-beta5-android-0019.part",
+          "size": 16777216,
+          "sha256": "221231fc65701a9582950763693b795719485043e64c0364ac71bd282a925930"
+        },
+        {
+          "name": "relay-beta5-android-0020.part",
+          "size": 16777216,
+          "sha256": "22ac603fb6dcdbac4d230b48213bf6c62c79df5164be1e8df09e61280f078826"
+        },
+        {
+          "name": "relay-beta5-android-0021.part",
+          "size": 16777216,
+          "sha256": "a676d5df7d86ad4f15865db7ce7e96ed474eec473d748113c41d83615a24f4d6"
+        },
+        {
+          "name": "relay-beta5-android-0022.part",
+          "size": 16777216,
+          "sha256": "37215b5fbb5e6882fe4f2eb5a5f13fc813e9740715a6f20fcbcd7ed61b0c0e87"
+        },
+        {
+          "name": "relay-beta5-android-0023.part",
+          "size": 16777216,
+          "sha256": "ddd77fa3685d8fb030226aa5373a486d236c2672abf880ab4bfd2e02087d145b"
+        },
+        {
+          "name": "relay-beta5-android-0024.part",
+          "size": 16777216,
+          "sha256": "015ddd79d09845f2f3896bdb3602a073857eebd54aab95bcc357f27b9429abc4"
+        },
+        {
+          "name": "relay-beta5-android-0025.part",
+          "size": 16777216,
+          "sha256": "4b3f772762bd439fa385ffdb32b0b3964995f0485eb1bb0944c85de80103cd79"
+        },
+        {
+          "name": "relay-beta5-android-0026.part",
+          "size": 16777216,
+          "sha256": "1b1c3ae1ea468bdf3bd2a7beecb0feb88a7ed4845f61897594c430e2b4d9600b"
+        },
+        {
+          "name": "relay-beta5-android-0027.part",
+          "size": 16777216,
+          "sha256": "7369e8165dcbeeaf41c94a020e954f471705ab42c9f53124116ae05c1f7a7085"
+        },
+        {
+          "name": "relay-beta5-android-0028.part",
+          "size": 16777216,
+          "sha256": "806ab1974f7356a43fbee7df80448dc8d7f8458cc79b70b0d5b7ff2ef13510b3"
+        },
+        {
+          "name": "relay-beta5-android-0029.part",
+          "size": 16777216,
+          "sha256": "2108acd05ee97775a7da91dc0c674f0a9c5f3b97f74d41c976a6b37afec329a2"
+        },
+        {
+          "name": "relay-beta5-android-0030.part",
+          "size": 16777216,
+          "sha256": "ea1665d77106e4c6212f330dd1a1cf8df89478562611b6b48a1a8db2f9abe491"
+        },
+        {
+          "name": "relay-beta5-android-0031.part",
+          "size": 16777216,
+          "sha256": "0ff8e6afc31c5b60780febf4a82b86a23d0a79ad52468d8858d02141729accfe"
+        },
+        {
+          "name": "relay-beta5-android-0032.part",
+          "size": 16777216,
+          "sha256": "5edb4c1f426b8647d7feae5745b742c58011f18ec4efeb5b5d73d8759177aa08"
+        },
+        {
+          "name": "relay-beta5-android-0033.part",
+          "size": 8122673,
+          "sha256": "2546221ede44d2e1b0f026ebd6b57df20336be2af2aded6db8a0c51e5176efda"
+        }
+      ]
+    },
+    {
+      "name": "MeshlitPreview-2.0.45-studio.45.1-macos-intel.dmg",
+      "size": 1210940277,
+      "sha256": "4cc5ea004ecc2d9b2685547e7fdb2b99d68eedef2869f60f8e154a047aa0fe79",
+      "parts": [
+        {
+          "name": "relay-beta5-macos-0000.part",
+          "size": 16777216,
+          "sha256": "0bf5db30d7bd2302d60198cc8d27956d1e5d9b0c07e7864dfa49497b16d62eef"
+        },
+        {
+          "name": "relay-beta5-macos-0001.part",
+          "size": 16777216,
+          "sha256": "295da2c814e05d74a03888cd27d0e81cd3287e073910f762414052521b13798f"
+        },
+        {
+          "name": "relay-beta5-macos-0002.part",
+          "size": 16777216,
+          "sha256": "81efdde86ebf2a60d1a90084c1cf6b49be87698df38afca8bfc3b6294a579135"
+        },
+        {
+          "name": "relay-beta5-macos-0003.part",
+          "size": 16777216,
+          "sha256": "57c6dc37e0869d82a0aba58c79dccded324e4edfe84af7b884f7259450143f35"
+        },
+        {
+          "name": "relay-beta5-macos-0004.part",
+          "size": 16777216,
+          "sha256": "82106d20a6b4276429ed4391575453ff2ea314e050663d9674889ea5f831dcd4"
+        },
+        {
+          "name": "relay-beta5-macos-0005.part",
+          "size": 16777216,
+          "sha256": "17de4b89d9d9346833c135447031bc92e3b7c7076514005029d706e08335e698"
+        },
+        {
+          "name": "relay-beta5-macos-0006.part",
+          "size": 16777216,
+          "sha256": "47a7a8461d0862c0a548c68d465d5f3c117a775a350bf8c38a7f0e7b34cc3c09"
+        },
+        {
+          "name": "relay-beta5-macos-0007.part",
+          "size": 16777216,
+          "sha256": "e696c43d2c3eef464c5e90798342ccc2e59c179d6366bf6cb7b5f13c1df637f8"
+        },
+        {
+          "name": "relay-beta5-macos-0008.part",
+          "size": 16777216,
+          "sha256": "d62c97d74e818f0f7f27c77617ca71656fb795c71e5c176a7ecd78c76e4acfae"
+        },
+        {
+          "name": "relay-beta5-macos-0009.part",
+          "size": 16777216,
+          "sha256": "6f6d327d9d9a385f4bb587ca000c7e8132149a63584ee340eeb06485b413a576"
+        },
+        {
+          "name": "relay-beta5-macos-0010.part",
+          "size": 16777216,
+          "sha256": "a6022816458fb366f8c588007e5fb989552f96952c51c5fe67d3751a3d3eff14"
+        },
+        {
+          "name": "relay-beta5-macos-0011.part",
+          "size": 16777216,
+          "sha256": "20e3cb5a21d6e2cd44fcf87a9ceedc411d605786b251cce00620e11da1c654bb"
+        },
+        {
+          "name": "relay-beta5-macos-0012.part",
+          "size": 16777216,
+          "sha256": "2cdbea065a43f933ddce248468b842103b0ae9d431b9087b08607c35790e765c"
+        },
+        {
+          "name": "relay-beta5-macos-0013.part",
+          "size": 16777216,
+          "sha256": "d2c5af9a9965c02dbe3beea996b1c45cb88df3d5d2a4f5135343092a629798bf"
+        },
+        {
+          "name": "relay-beta5-macos-0014.part",
+          "size": 16777216,
+          "sha256": "605bc7b6c0d397c9f99e854235fa029a7def1b559fcd835172d72a5574d37132"
+        },
+        {
+          "name": "relay-beta5-macos-0015.part",
+          "size": 16777216,
+          "sha256": "04692b613e95183edd02ffb744e1f81702706255b295557d247539b2d2b635b1"
+        },
+        {
+          "name": "relay-beta5-macos-0016.part",
+          "size": 16777216,
+          "sha256": "4fd788e00efd92bd304d749eba635432925d3b40e962fbe7e305602a770fddd4"
+        },
+        {
+          "name": "relay-beta5-macos-0017.part",
+          "size": 16777216,
+          "sha256": "8d2f9e28f93f8ebb5b1a832a63f1a866f3904a518fd03597b48e59ce67b7b6b2"
+        },
+        {
+          "name": "relay-beta5-macos-0018.part",
+          "size": 16777216,
+          "sha256": "bf7d008f1f7da1bbaa84faca25ba9868b16a804c67717709de406269c2be3896"
+        },
+        {
+          "name": "relay-beta5-macos-0019.part",
+          "size": 16777216,
+          "sha256": "8c28f4555220571a66ea299500093d928e68e2b620dbb3b8f3f51fb5c77e0962"
+        },
+        {
+          "name": "relay-beta5-macos-0020.part",
+          "size": 16777216,
+          "sha256": "b7d037a3d43bdbafcbb77ee589c15db72a50362bd5d53f9a818339232a756a97"
+        },
+        {
+          "name": "relay-beta5-macos-0021.part",
+          "size": 16777216,
+          "sha256": "441fff0a1ca64c09186d83bd2dd6925b3100b20604e52cc765316fc4a9e39f26"
+        },
+        {
+          "name": "relay-beta5-macos-0022.part",
+          "size": 16777216,
+          "sha256": "c9e5babf402622f2440d48d38362973405811924cb4324d1dd21d8520912f832"
+        },
+        {
+          "name": "relay-beta5-macos-0023.part",
+          "size": 16777216,
+          "sha256": "75384fdd11e55faa4bb694e8ebef615472aae7f7eeb952993de6314698f9c957"
+        },
+        {
+          "name": "relay-beta5-macos-0024.part",
+          "size": 16777216,
+          "sha256": "cf38982c3c523b507ab90428dcfab84875a260e43b0870eab617c3cd638236b0"
+        },
+        {
+          "name": "relay-beta5-macos-0025.part",
+          "size": 16777216,
+          "sha256": "7eaf12cb650b18d42bb9767042fb7f2fe55b9df69119969b8612a11b6c7a60a8"
+        },
+        {
+          "name": "relay-beta5-macos-0026.part",
+          "size": 16777216,
+          "sha256": "5fec8cabe915b35a277db3b4e284cf2e40ffca1eda5abe8db659f96c1f6c76e4"
+        },
+        {
+          "name": "relay-beta5-macos-0027.part",
+          "size": 16777216,
+          "sha256": "cfa1389b797ff06ddf6e3c6e305bc361a87b42582c808e2b76b95e52a1387ada"
+        },
+        {
+          "name": "relay-beta5-macos-0028.part",
+          "size": 16777216,
+          "sha256": "f9e088bc949e6e9f64c74f57513a482cdeac2642b42bb4197a253d5c3ede1bea"
+        },
+        {
+          "name": "relay-beta5-macos-0029.part",
+          "size": 16777216,
+          "sha256": "89850a0c9bb0ba60167dd7428882de31384ac743154d9c30ca167d3c5523433c"
+        },
+        {
+          "name": "relay-beta5-macos-0030.part",
+          "size": 16777216,
+          "sha256": "eeadc3aa549f82f24c7708e3413179d6f7636833a2301c93376930eeca316435"
+        },
+        {
+          "name": "relay-beta5-macos-0031.part",
+          "size": 16777216,
+          "sha256": "85e250fd09034bed536010dd548106e2fba0fa6cca50ad5512a58aeef0d01389"
+        },
+        {
+          "name": "relay-beta5-macos-0032.part",
+          "size": 16777216,
+          "sha256": "7b031393afe450de3c3f27b4adcb812c1658dd13bae73f395a71f5e15694ca1a"
+        },
+        {
+          "name": "relay-beta5-macos-0033.part",
+          "size": 16777216,
+          "sha256": "e3e69cad29dfde3628704b39d3180eab4d46ed220fffe8151c7306ea35433aec"
+        },
+        {
+          "name": "relay-beta5-macos-0034.part",
+          "size": 16777216,
+          "sha256": "09b6cfa30fa3786029bfd7862898a2716f2198623db827369c30c6247bf728b5"
+        },
+        {
+          "name": "relay-beta5-macos-0035.part",
+          "size": 16777216,
+          "sha256": "e2eaa0741e767e4b1e1727e3123d113e173d495cf3bca715f4d43fb396a1a02d"
+        },
+        {
+          "name": "relay-beta5-macos-0036.part",
+          "size": 16777216,
+          "sha256": "493db8a2269f6a776e5c28255f8725bd4bb44e00474db3859cb365c1d1489061"
+        },
+        {
+          "name": "relay-beta5-macos-0037.part",
+          "size": 16777216,
+          "sha256": "a33eb7a2e96f65f4c73a304b5641c8d2d2ac7f8f6e4ff3aa1aea724cee3f1230"
+        },
+        {
+          "name": "relay-beta5-macos-0038.part",
+          "size": 16777216,
+          "sha256": "1be8e5cf9b60593e0257746fb8cda7b678adb98c844d14426a004a97a76cd6ad"
+        },
+        {
+          "name": "relay-beta5-macos-0039.part",
+          "size": 16777216,
+          "sha256": "f3d5e9bbba2615ab53901fc21247eaeb7ec7fd6ae49ded85d77fab4d0d3a6b97"
+        },
+        {
+          "name": "relay-beta5-macos-0040.part",
+          "size": 16777216,
+          "sha256": "8f8646416176571ea061016d60d7c6e0aa9067a94cb5b5d98a69f031ff87e04d"
+        },
+        {
+          "name": "relay-beta5-macos-0041.part",
+          "size": 16777216,
+          "sha256": "994722b41ffca9c9d5cb3a715a04650c1975e45060161dc12b00672d4e7d8118"
+        },
+        {
+          "name": "relay-beta5-macos-0042.part",
+          "size": 16777216,
+          "sha256": "7163a29119a4a3335e6e29c6e0cf62f3372f878246912a5caa7775f2a4c13d88"
+        },
+        {
+          "name": "relay-beta5-macos-0043.part",
+          "size": 16777216,
+          "sha256": "a3783201b383087f04eb0557348c313e859c4cbb7e88f1cf9199edf3b6bb2b25"
+        },
+        {
+          "name": "relay-beta5-macos-0044.part",
+          "size": 16777216,
+          "sha256": "65cf45fa11ffbc215a18fb6c98d2c1903003ef07d448abc885f430e3e484cc30"
+        },
+        {
+          "name": "relay-beta5-macos-0045.part",
+          "size": 16777216,
+          "sha256": "c6e27d085a4efe6d86a13c145e9370873af96f6de7a99cf07787cc1e1cca65e2"
+        },
+        {
+          "name": "relay-beta5-macos-0046.part",
+          "size": 16777216,
+          "sha256": "643503505ec4306908ccb197c945d44c2a557f41d480bbfb50cc47c5142669ab"
+        },
+        {
+          "name": "relay-beta5-macos-0047.part",
+          "size": 16777216,
+          "sha256": "f78199987fdce8c03db0d4bdc387e982cb33e1858ea8fddd478a7ec65fbdee24"
+        },
+        {
+          "name": "relay-beta5-macos-0048.part",
+          "size": 16777216,
+          "sha256": "32b68029250cb584ce71508912b43321cada7e239601054763318a37d5206952"
+        },
+        {
+          "name": "relay-beta5-macos-0049.part",
+          "size": 16777216,
+          "sha256": "ceb14df39ba4e1bef40123e87fd2fd1a0706c3d3f4ad070ac78bb6dacebeabcb"
+        },
+        {
+          "name": "relay-beta5-macos-0050.part",
+          "size": 16777216,
+          "sha256": "acb3a459f5caab685c4ada1f723cbd09ccc0b5c60fb4d8088bc7f890ab01c55d"
+        },
+        {
+          "name": "relay-beta5-macos-0051.part",
+          "size": 16777216,
+          "sha256": "ba067e5c1e8f4258a44e61186a17fed947bfab3938b1fc52573af06bba694c72"
+        },
+        {
+          "name": "relay-beta5-macos-0052.part",
+          "size": 16777216,
+          "sha256": "42ead5ec3340ab830fe5d5c0a2ca319b3d91fc723977434774da2affcb2ba640"
+        },
+        {
+          "name": "relay-beta5-macos-0053.part",
+          "size": 16777216,
+          "sha256": "09489708f71df3adf49d02b00311659368a22c2a831bb521335ce287024be32f"
+        },
+        {
+          "name": "relay-beta5-macos-0054.part",
+          "size": 16777216,
+          "sha256": "b1349ebca09bc5d265047a3f55726a6c69198e3ac83bbc38a89a0410fbeda99c"
+        },
+        {
+          "name": "relay-beta5-macos-0055.part",
+          "size": 16777216,
+          "sha256": "b083ed5126aa34f7dce5fd4b195516ac8e805bea78114e5f00010fe1c94ee446"
+        },
+        {
+          "name": "relay-beta5-macos-0056.part",
+          "size": 16777216,
+          "sha256": "605f8f26e270b39e711692330b0a3f3882e9e2e25a9326976ae3c1111579c2f7"
+        },
+        {
+          "name": "relay-beta5-macos-0057.part",
+          "size": 16777216,
+          "sha256": "febb4369a6da712e8f52265025da7100762234406413e5d82691d7def8c40c06"
+        },
+        {
+          "name": "relay-beta5-macos-0058.part",
+          "size": 16777216,
+          "sha256": "3c0664f3cf3f8a168166e2135be743e64655fc4441c776d0890d1be8799a0464"
+        },
+        {
+          "name": "relay-beta5-macos-0059.part",
+          "size": 16777216,
+          "sha256": "7797da097c6eb840c253ee4e8dbfdb152187f9fd8f09f82ba634f1c5b5735640"
+        },
+        {
+          "name": "relay-beta5-macos-0060.part",
+          "size": 16777216,
+          "sha256": "595c48af0e6ac7c18c33e3873cf14977bee21d789262a7b55a9d563722094757"
+        },
+        {
+          "name": "relay-beta5-macos-0061.part",
+          "size": 16777216,
+          "sha256": "4eabfbd48d15fb6065f729c19db11b7a3cba3db87696318f158bfb3cd7325858"
+        },
+        {
+          "name": "relay-beta5-macos-0062.part",
+          "size": 16777216,
+          "sha256": "80613625f07d247b9b1064475f8f8d53c0964857e63ff486a18d03a9bef444f7"
+        },
+        {
+          "name": "relay-beta5-macos-0063.part",
+          "size": 16777216,
+          "sha256": "e225ec9d378dd803b835f86dd3f7ea9968a25c46c70e532793b2725bfcab48f0"
+        },
+        {
+          "name": "relay-beta5-macos-0064.part",
+          "size": 16777216,
+          "sha256": "e7392dd27cf01b745a9fd1f6d3ec0aabfe4bc830126a56597708984d5fc17b1e"
+        },
+        {
+          "name": "relay-beta5-macos-0065.part",
+          "size": 16777216,
+          "sha256": "761a94111a1db30eeeafe4255f02bcb430ab5bad0160f053979291568b110683"
+        },
+        {
+          "name": "relay-beta5-macos-0066.part",
+          "size": 16777216,
+          "sha256": "9664ab13a3720b83f72815e4ea0c0ec79cae6bf3f18928987a830e83963e7898"
+        },
+        {
+          "name": "relay-beta5-macos-0067.part",
+          "size": 16777216,
+          "sha256": "0c378a8dbe8f3a8da4bd703c19a3257459a7e94591b35299d30ea2a9c556fb59"
+        },
+        {
+          "name": "relay-beta5-macos-0068.part",
+          "size": 16777216,
+          "sha256": "2323b443fa4758d0049357e3d087a91ff4de0602e71a3f23288305bc861c0d0e"
+        },
+        {
+          "name": "relay-beta5-macos-0069.part",
+          "size": 16777216,
+          "sha256": "951f70b90010fa4c2c60fc57ce71ecb744b7e8e87b9f2d76115f077443152220"
+        },
+        {
+          "name": "relay-beta5-macos-0070.part",
+          "size": 16777216,
+          "sha256": "0ad8ec0466450f75f4142a9ce5b08443e00e5367384985b6e6858120030a6a27"
+        },
+        {
+          "name": "relay-beta5-macos-0071.part",
+          "size": 16777216,
+          "sha256": "93fe483e4e4840beb4f0249c12d502ff5191faeb774dc8824eeeb4a5cce6880b"
+        },
+        {
+          "name": "relay-beta5-macos-0072.part",
+          "size": 2980725,
+          "sha256": "64eb75c194da63f1de0c81bc77dd6a9fcefcd4b42f9565d1adfd851473438944"
+        }
+      ]
+    }
+  ]
+}

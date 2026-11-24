@@ -37,7 +37,8 @@ import javax.security.auth.x500.X500Principal
 
 @Serializable data class PipelinePeer(val host:String,val port:Int,val fingerprint:String,val token:String,val weight:Int=1,val group:String="default")
 data class PipelineStatus(val worker:Boolean=false,val coordinator:Boolean=false,val starting:Boolean=false,
-    val error:String?=null,val log:List<String> = emptyList(),val coordinatorId:String?=null,val memoryBudgetBytes:Long=0,val local:Boolean=false,val estimatedKvBytes:Long=0,val estimatedWorkerBytes:List<Long> = emptyList())
+    val error:String?=null,val log:List<String> = emptyList(),val coordinatorId:String?=null,val memoryBudgetBytes:Long=0,val local:Boolean=false,val estimatedKvBytes:Long=0,val estimatedWorkerBytes:List<Long> = emptyList(),val plannedCoordinatorLayers:Int=0,val plannedWorkerLayers:List<Int> = emptyList(),
+    val repairing:Boolean=false,val repairNotice:String?=null)
 data class WorkerAssessment(val peer:PipelinePeer,val offer:NodeOffer?,val latencyMs:Long?,val riskScore:Int,val reason:String)
 
 internal fun requirePairableWorker(remote:NodeOffer,localNodeId:String) {
@@ -60,12 +61,23 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     }
     private val checkpoints by lazy{NativeCheckpointStore(context)}
     private var worker:Process?=null
+    @Volatile var workerThreadHint:Int?=null
+        private set
     @Volatile private var workerStartedAtMs:Long?=null
-    private var server:Process?=null
+    @Volatile private var server:Process?=null
     private var workerTunnel:RpcTunnel?=null
     private val bridges=mutableListOf<RpcTunnel>()
     private var keyFile:File?=null
-    private var negotiatedPeers:List<PipelinePeer> = emptyList()
+    private val repairState=Any()
+    @Volatile private var launchRevision=0L
+    private var repairJob:Job?=null
+
+    private fun beginLaunchIntent():Long=synchronized(repairState) {
+        repairJob?.cancel()
+        repairJob=null
+        _status.update{it.copy(repairing=false,repairNotice=null)}
+        ++launchRevision
+    }
     val publicPort=50551
     private fun executable(name:String):File=File(context.applicationInfo.nativeLibraryDir,"libmeshlit_pipeline_$name.so").also {
         require(it.isFile && it.canExecute()) {"Pipeline native runtime is unavailable for this ABI; build and install it first"}
@@ -75,13 +87,25 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
     }
     fun agentControlAllowed()=context.getSharedPreferences("pipeline-policy",0).getBoolean("agent-control",false)
     fun setAgentControlAllowed(allowed:Boolean){context.getSharedPreferences("pipeline-policy",0).edit().putBoolean("agent-control",allowed).apply()}
+    fun coordinatorCpuLayersAllowed()=context.getSharedPreferences("pipeline-policy",0).getBoolean("coordinator-cpu-layers",false)
+    /** Explicit human topology choice, never an inferred device capability or agent grant. */
+    fun setCoordinatorCpuLayersAllowed(allowed:Boolean){
+        check(!status.value.coordinator && !status.value.starting && !status.value.repairing){"Stop the cluster before changing layer placement"}
+        check(context.getSharedPreferences("pipeline-policy",0).edit().putBoolean("coordinator-cpu-layers",allowed).commit()){"Layer placement choice could not be saved"}
+    }
+    fun workerInternetAllowed()=context.getSharedPreferences("pipeline-policy",0).getBoolean("worker-internet",false)
+    /** Human-only control; stop closes existing channels before changing this grant. */
+    fun setWorkerInternetAllowed(allowed:Boolean){
+        check(worker==null && !status.value.starting){"Stop the worker before changing coordinator access"}
+        check(context.getSharedPreferences("pipeline-policy",0).edit().putBoolean("worker-internet",allowed).commit()){"Coordinator access could not be saved"}
+    }
     fun peers():List<PipelinePeer> = credentials.get("peers")?.let { runCatching{Json.decodeFromString<List<PipelinePeer>>(it)}.getOrNull() }.orEmpty()
     fun activeGroup():String=credentials.get("active-group")?.takeIf(::validGroupName) ?: "default"
     fun groups():List<String> = (peers().map{it.group}+activeGroup()+"default").distinct().sorted()
     fun groupPeers():List<PipelinePeer> = peers().filter{it.group==activeGroup()}
     fun setActiveGroup(name:String):List<PipelinePeer> {
         val selected=name.trim();require(validGroupName(selected)) { "Group name must be 1–32 letters, numbers, spaces, underscores or hyphens" }
-        credentials.put("active-group",selected)
+        credentials.putCommitted("active-group",selected)
         return groupPeers()
     }
     private fun validGroupName(name:String)=name.length in 1..32 && name.all{it.isLetterOrDigit() || it in " _-"}
@@ -193,21 +217,28 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
         try {
             service()
             val nativePort=port()
-            worker=launch("worker",listOf("-H","127.0.0.1","-p","$nativePort","--device","CPU","-t","2"))
+            val threads=com.meshlit.models.AccelerationPreferences(context).effectiveThreads()
+            worker=launch("worker",listOf("-H","127.0.0.1","-p","$nativePort","--device","CPU","-t",threads.toString()))
+            workerThreadHint=threads
             delay(500);check(running(worker!!)){"Native worker exited"}
-            workerTunnel=RpcTunnel.server(certificate().first,publicPort,nativePort,pairingToken(),::log,capabilities={Json.encodeToString(offer())},networkAllowed={remote->(context.applicationContext as com.meshlit.MeshlitApplication).meshlitFirewall.decide(remote,null,null,publicPort).allowed})
+            val internetAllowed=workerInternetAllowed()
+            workerTunnel=RpcTunnel.server(certificate().first,publicPort,nativePort,pairingToken(),::log,
+                capabilities={Json.encodeToString(offer())},
+                networkAllowed={remote->(context.applicationContext as com.meshlit.MeshlitApplication).meshlitFirewall.decide(
+                    remote,null,if(internetAllowed) com.meshlit.core.trust.TrustTier.LOCAL_TRUSTED else null,publicPort).allowed},
+                authenticateBeforeNetworkCheck=internetAllowed)
             workerStartedAtMs=System.currentTimeMillis()
             _status.update{it.copy(worker=true)}
             val process=worker!!
             scope.launch(Dispatchers.IO) {
                 process.waitFor()
-                if(worker===process) {workerTunnel?.close();worker=null;workerStartedAtMs=null;_status.update{it.copy(worker=false,error="Native worker stopped")}}
+                if(worker===process) {workerTunnel?.close();worker=null;workerStartedAtMs=null;workerThreadHint=null;_status.update{it.copy(worker=false,error="Native worker stopped")}}
             }
         } catch(cancelled:CancellationException) {stopWorkerInternal();throw cancelled}
         catch(e:Exception) {stopWorkerInternal();_status.update{it.copy(error=e.message)};throw e}
         finally {_status.update{it.copy(starting=false)};stopServiceIfIdle()}
     } }
-    private fun stopWorkerInternal(){workerTunnel?.close();workerTunnel=null;val process=worker;worker=null;workerStartedAtMs=null;process?.destroy();_status.update{it.copy(worker=false)}}
+    private fun stopWorkerInternal(){workerTunnel?.close();workerTunnel=null;val process=worker;worker=null;workerStartedAtMs=null;workerThreadHint=null;process?.destroy();_status.update{it.copy(worker=false)}}
     suspend fun stopWorker()=lock.withLock {stopWorkerInternal();stopServiceIfIdle()}
     private fun offer():NodeOffer {
         val memory=ActivityManager.MemoryInfo().also{context.getSystemService(ActivityManager::class.java).getMemoryInfo(it)}
@@ -216,48 +247,81 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
             ClusterNegotiation.REVISION,workerAllowed=worker!=null,
             thermalStatus=if(Build.VERSION.SDK_INT>=29) context.getSystemService(PowerManager::class.java).currentThermalStatus else 0,
             deviceClass=if(context.resources.configuration.smallestScreenWidthDp>=600) "tablet" else "phone",
-            backend="CPU",cpuThreads=2,workerStartedAtMs=workerStartedAtMs)
+            backend="CPU",cpuThreads=workerThreadHint ?: com.meshlit.models.AccelerationPreferences(context).effectiveThreads(),workerStartedAtMs=workerStartedAtMs)
     }
     /** Query only explicitly paired workers. Local model ownership limits current
      * activation to this coordinator; the election contract also supports remote owners. */
-    suspend fun negotiate(path:String,contextSize:Int=2048,keyCacheType:String="f16")=withContext(Dispatchers.IO) {
+    suspend fun negotiate(path:String,contextSize:Int=2048,keyCacheType:String="f16") =
+        negotiateAdmission(path,contextSize,keyCacheType).workers
+    private suspend fun negotiateAdmission(path:String,contextSize:Int,keyCacheType:String,
+        repairFrom:PipelineLaunchAdmission?=null)=withContext(Dispatchers.IO) {
         val file=File(path);ModelFiles.validateGguf(file)
         val metadata=GgufMetadata.read(file)
         ModelRuntimeOptions(LocalModelBackend.NATIVE_LOCAL,contextSize,keyCacheType).validate(metadata.maxContext)
         val kv=metadata.kvBytes(contextSize,keyCacheType) ?: error("KV memory cannot be estimated for this architecture; cluster admission is unavailable")
         val hash=ModelFiles.sha256(file)
-        require(groupPeers().size<=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit){"Lowered worker capacity; edit the paired workers first"}
-        val peerOffers=groupPeers().map { peer -> peer to wireJson.decodeFromString<NodeOffer>(
-            RpcTunnel.queryCapabilities(peer.host,peer.port,peer.fingerprint,peer.token)).copy(observedAtMs=System.currentTimeMillis()) }
+        val groupName=activeGroup()
+        val approvedGroup=peers().filter{it.group==groupName}
+        val localCpu=coordinatorCpuLayersAllowed()
+        if(repairFrom!=null) {
+            require(hash==repairFrom.modelSha256){"The cluster model changed"}
+            require(groupName==repairFrom.groupName && approvedGroup==repairFrom.approvedGroup &&
+                localCpu==(repairFrom.coordinatorLayers>0)){"Cluster approvals or placement policy changed"}
+        }
+        require(approvedGroup.size<=com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit){"Lowered worker capacity; edit the paired workers first"}
+        val observedAtElapsedMs=android.os.SystemClock.elapsedRealtime()
+        val scan=withTimeoutOrNull(25_000) {
+            scanPipelineOffers(approvedGroup,allowUnreachable=repairFrom!=null) { peer ->
+                val response=runInterruptible { RpcTunnel.queryCapabilities(peer.host,peer.port,peer.fingerprint,peer.token) }
+                wireJson.decodeFromString<NodeOffer>(response).copy(observedAtMs=System.currentTimeMillis())
+            }
+        } ?: error("Approved worker checks exceeded the admission time limit")
+        if(repairFrom!=null) require(scan.unreachable.any { unavailable ->
+            repairFrom.workers.any { it.host==unavailable.host && it.port==unavailable.port }
+        }){"No previously assigned worker was confirmed unreachable"}
+        val peerOffers=scan.verified
         val local=offer().copy(coordinatorAllowed=true,coordinatorModelSha256=hash,workerAllowed=false)
-        val plan=ClusterNegotiation.plan(peerOffers.map{it.second}+local,hash,file.length(),kvBytes=kv,blocks=metadata.blocks)
-        negotiatedPeers=plan.workers.mapIndexed { index,node -> peerOffers.first{it.second.nodeId==node.nodeId}.first.copy(weight=plan.weights[index]) }
-        _status.update{it.copy(coordinatorId=plan.coordinatorId,memoryBudgetBytes=plan.memoryBudgetBytes,estimatedKvBytes=plan.estimatedKvBytes,estimatedWorkerBytes=plan.estimatedWorkerBytes,error=null)}
+        val plan=ClusterNegotiation.plan(peerOffers.map{it.second}+local,hash,file.length(),kvBytes=kv,blocks=metadata.blocks,coordinatorParticipates=localCpu)
+        val negotiatedPeers=plan.workers.mapIndexed { index,node -> peerOffers.first{it.second.nodeId==node.nodeId}.first.copy(weight=plan.weights[index]) }
+        _status.update{it.copy(coordinatorId=plan.coordinatorId,memoryBudgetBytes=plan.memoryBudgetBytes,estimatedKvBytes=plan.estimatedKvBytes,estimatedWorkerBytes=plan.estimatedWorkerBytes,plannedCoordinatorLayers=plan.coordinatorLayers,plannedWorkerLayers=if(metadata.blocks!=null)plan.weights else emptyList(),error=null)}
         log("Negotiated ${plan.workers.size} workers; capacity estimate ${plan.memoryBudgetBytes} bytes")
-        negotiatedPeers
+        PipelineLaunchAdmission(negotiatedPeers,approvedGroup,observedAtElapsedMs,plan.coordinatorLayers,metadata.blocks,groupName,hash)
     }
-    suspend fun startPipeline(path:String,contextSize:Int=2048,keyCacheType:String="f16") {
+    suspend fun startPipeline(path:String,contextSize:Int=2048,keyCacheType:String="f16",recoverOnWorkerLoss:Boolean=false) {
         com.meshlit.operations.OperationsControl.get(context).gate.requireAllowed(com.meshlit.core.common.control.ManagedFeature.CLUSTER)
-        val paired=negotiate(path,contextSize,keyCacheType)
-        require(paired.size>=2){"Pair at least two approved workers"}
-        startNative(path,ModelRuntimeOptions(LocalModelBackend.NATIVE_LOCAL,contextSize,keyCacheType),paired)
+        val revision=beginLaunchIntent()
+        val admission=negotiateAdmission(path,contextSize,keyCacheType)
+        startNative(path,ModelRuntimeOptions(LocalModelBackend.NATIVE_LOCAL,contextSize,keyCacheType),revision,admission,recoverOnWorkerLoss=recoverOnWorkerLoss)
     }
     suspend fun startLocal(path:String,options:ModelRuntimeOptions) {
         require(options.backend==LocalModelBackend.NATIVE_LOCAL)
-        startNative(path,options,emptyList())
+        startNative(path,options,beginLaunchIntent())
     }
-    private suspend fun startNative(path:String,options:ModelRuntimeOptions,paired:List<PipelinePeer>) {
+    private suspend fun startNative(path:String,options:ModelRuntimeOptions,revision:Long,
+        admission:PipelineLaunchAdmission?=null,expected:InferenceEngine?=null,recoverOnWorkerLoss:Boolean=false) {
+        val paired=admission?.workers.orEmpty()
+        fun requireCurrentAdmission() {
+            check(revision==launchRevision){"A newer load or stop replaced this launch"}
+            if(admission!=null) {
+                com.meshlit.operations.OperationsControl.get(context).gate.requireAllowed(com.meshlit.core.common.control.ManagedFeature.CLUSTER)
+                require(activeGroup()==admission.groupName){"Active cluster group changed"}
+                admission.requireCurrent(android.os.SystemClock.elapsedRealtime(),groupPeers(),
+                    com.meshlit.operations.ClusterControls.get(context).state.value.pipelineWorkerLimit,coordinatorCpuLayersAllowed())
+            }
+        }
         options.validate(GgufMetadata.read(File(path)).maxContext)
         val contextSize=options.contextSize
         ModelFiles.validateGguf(File(path))
+        requireCurrentAdmission()
         _status.update{it.copy(starting=true,error=null)}
         try {
-            val result=inference.loadExternalEngine(path,contextSize) {
+            val result=inference.loadExternalEngine(path,contextSize,expected) {
                 lock.withLock { withContext(Dispatchers.IO) {
+                    requireCurrentAdmission()
                     stopServerInternal();service()
                     try {
                         paired.forEach { bridges+=RpcTunnel.client(it.host,it.port,it.fingerprint,it.token,::log) }
-                        val endpoints=bridges.joinToString(","){"127.0.0.1:${it.port}"}
+                        val endpoints=bridges.map{"127.0.0.1:${it.port}"}
                         val httpPort=port();val token=randomToken()
                         keyFile=File(context.filesDir,"pipeline-api-key").apply{writeText(token);setReadable(false,false);setReadable(true,true)}
                         com.meshlit.power.PowerRepository(context).loadBlockReason()?.let{error(it)}
@@ -265,12 +329,12 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
                             "--host","127.0.0.1","--port","$httpPort","--api-key-file",keyFile!!.absolutePath,
                             "--cache-type-k",options.keyCacheType,"--cache-type-v","f16",
                             "--no-webui","--no-warmup","--fit","off","--slots","--slot-save-path",slotDirectory.absolutePath+"/")
-                        if(paired.isEmpty()) args+=listOf("--device","none","-ngl","0")
-                        else args+=listOf("--rpc",endpoints,"--device",paired.indices.joinToString(","){"RPC$it"},
-                            "--split-mode","layer","--tensor-split",paired.joinToString(","){"${it.weight}"},"-ngl","99")
+                        args+=nativePlacementArgs(endpoints,paired.map{it.weight},admission?.coordinatorLayers ?: 0,admission?.totalLayers)
+                        requireCurrentAdmission()
                         server=launch("server",args)
                         nativeSession=NativeSession(httpPort,token,path,options,paired.isEmpty())
-                        val client=OkHttpClient.Builder().callTimeout(2,java.util.concurrent.TimeUnit.SECONDS).build()
+                        val client=OkHttpClient.Builder().proxy(java.net.Proxy.NO_PROXY)
+                            .callTimeout(2,java.util.concurrent.TimeUnit.SECONDS).build()
                         withTimeout(180000) {
                             while(true) {
                                 ensureActive();check(running(server!!)){"Native pipeline server exited; see runtime log"}
@@ -286,8 +350,12 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
                         scope.launch(Dispatchers.IO) {
                             process.waitFor()
                             if(server===process) {
-                                _status.update{it.copy(coordinator=false,local=false,error="Native model process stopped; load again")}
-                                inference.reportExternalFailure(selected,"Native pipeline stopped; recovery replay is not yet implemented")
+                                val message="Native model process stopped"
+                                if(recoverOnWorkerLoss && admission!=null) {
+                                    repairPlacement(path,options,revision,admission,selected)
+                                } else if(inference.reportExternalFailure(selected,message) && revision==launchRevision) {
+                                    _status.update{it.copy(error="$message; load the model again")}
+                                }
                             }
                         }
                         selected
@@ -298,6 +366,42 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
         } catch(cancelled:CancellationException){throw cancelled}
         catch(e:Exception){_status.update{it.copy(error=e.message)};throw e}
         finally {_status.update{it.copy(starting=false)};stopServiceIfIdle()}
+    }
+
+    private suspend fun repairPlacement(path:String,options:ModelRuntimeOptions,revision:Long,
+        previous:PipelineLaunchAdmission,failedEngine:InferenceEngine) {
+        val job=currentCoroutineContext().job
+        val allowed=synchronized(repairState) {
+            (revision==launchRevision).also { current ->
+                if(current) {
+                    repairJob=job
+                    _status.update{it.copy(repairing=true,error=null,repairNotice=null)}
+                }
+            }
+        }
+        try {
+            if(!inference.reportExternalFailure(failedEngine,"Native layer pipeline stopped") || !allowed) return
+            com.meshlit.operations.OperationsControl.get(context).gate.requireAllowed(com.meshlit.core.common.control.ManagedFeature.CLUSTER)
+            val admission=negotiateAdmission(path,options.contextSize,options.keyCacheType,repairFrom=previous)
+            currentCoroutineContext().ensureActive()
+            startNative(path,options,revision,admission,expected=failedEngine)
+            synchronized(repairState) {
+                if(revision==launchRevision) _status.update{it.copy(repairNotice="Cluster reloaded with ${admission.workers.size} approved workers. Send the interrupted request again when ready.")}
+            }
+        } catch(cancelled:CancellationException){throw cancelled}
+        catch(error:Exception) {
+            synchronized(repairState) {
+                if(revision==launchRevision) _status.update{it.copy(repairNotice=null,error="Cluster recovery stopped: ${error.message ?: "approved workers could not be reloaded"}")}
+            }
+        } finally {
+            synchronized(repairState) {
+                if(repairJob===job) {
+                    repairJob=null
+                    _status.update{it.copy(repairing=false)}
+                }
+            }
+            stopServiceIfIdle()
+        }
     }
     private fun stopServerInternal(){val process=server;server=null;nativeSession=null;process?.destroy();bridges.forEach{it.close()};bridges.clear();keyFile?.delete();keyFile=null;_status.update{it.copy(coordinator=false,local=false)}}
     suspend fun checkpointList()=lock.withLock{withContext(Dispatchers.IO){checkpoints.list()}}
@@ -351,9 +455,9 @@ class PipelineHost(private val context:Context,private val inference:InferenceCo
             Json.parseToJsonElement(source.readUtf8()).jsonObject
         }} finally{watcher.cancel();client.connectionPool.evictAll();client.dispatcher.executorService.shutdown()}
     }
-    suspend fun stopPipeline(){inference.unloadModel();lock.withLock{stopServerInternal();stopServiceIfIdle()}}
+    suspend fun stopPipeline(){beginLaunchIntent();inference.unloadModel();lock.withLock{stopServerInternal();stopServiceIfIdle()}}
     suspend fun stopAll(){inference.cancel();stopPipeline();stopWorker()}
-    fun active()=worker!=null || server!=null || status.value.starting
+    fun active()=worker!=null || server!=null || status.value.starting || status.value.repairing
     private fun stopServiceIfIdle()=synchronized(serviceState){
         if(!active() && serviceRequested){
             // The service checks live state and startId before stopping. A delayed

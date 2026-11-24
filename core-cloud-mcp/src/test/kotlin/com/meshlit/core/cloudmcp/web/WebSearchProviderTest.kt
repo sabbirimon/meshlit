@@ -40,6 +40,77 @@ class WebSearchProviderTest {
     }
 
     @Test
+    fun duckduckgo_parses_html_zero_setup() = runBlocking {
+        server.enqueue(MockResponse().setBody(DUCKDUCKGO_HTML_RESPONSE))
+        val provider = WebSearchProvider.DuckDuckGo(
+            providerId = "ddg-test",
+            endpoint = server.url("/html/").toString(),
+        )
+        val results = dispatcher.search(provider, "meshlit agent", 5)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals(1, results.size)
+        assertEquals("Meshlit AI Workspace", results[0].title)
+        assertEquals("https://github.com/sabbirimon/meshlit", results[0].url)
+        assertTrue(results[0].snippet.contains("distributed compute"))
+    }
+
+    @Test
+    fun custom_provider_supports_custom_headers_and_any_api_key() = runBlocking {
+        server.enqueue(MockResponse().setBody(CUSTOM_RESPONSE))
+        val provider = WebSearchProvider.Custom(
+            providerId = "custom-test",
+            endpoint = server.url("/api/search").toString(),
+            apiKey = "custom-secret-key-123",
+            headerName = "X-Universal-Key",
+            authPrefix = "Token ",
+            queryParam = "query",
+            isPost = false,
+        )
+        val results = dispatcher.search(provider, "distributed nodes", 3)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("Token custom-secret-key-123", request.getHeader("X-Universal-Key"))
+        assertTrue(request.path!!.contains("query=distributed%20nodes"))
+        assertEquals(1, results.size)
+        assertEquals("Custom Node Title", results[0].title)
+        assertEquals("https://custom.org/node", results[0].url)
+    }
+
+    @Test
+    fun perplexity_sends_chat_format_and_parses_citations() = runBlocking {
+        server.enqueue(MockResponse().setBody(PERPLEXITY_RESPONSE))
+        val provider = WebSearchProvider.Perplexity(
+            providerId = "sonar-test",
+            apiKey = "pplx-secret",
+            endpoint = server.url("/").toString().removeSuffix("/"),
+        )
+        val results = dispatcher.search(provider, "latest papers", 3)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("Bearer pplx-secret", request.getHeader("Authorization"))
+        assertEquals(1, results.size)
+        assertEquals("Source 1", results[0].title)
+        assertEquals("https://arxiv.org/abs/2401.00001", results[0].url)
+    }
+
+    @Test
+    fun searxng_sends_get_and_parses_results() = runBlocking {
+        server.enqueue(MockResponse().setBody(SEARXNG_RESPONSE))
+        val provider = WebSearchProvider.SearXNG(
+            providerId = "searx-test",
+            endpoint = server.url("/").toString().removeSuffix("/"),
+        )
+        val results = dispatcher.search(provider, "open source", 3)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertTrue(request.path!!.contains("/search?q=open%20source&format=json"))
+        assertEquals(1, results.size)
+        assertEquals("SearXNG Title", results[0].title)
+        assertEquals("https://searx.example/page", results[0].url)
+    }
+
+    @Test
     fun bing_sends_correct_headers_and_parses_response() = runBlocking {
         server.enqueue(MockResponse().setBody(BING_RESPONSE))
         val provider = WebSearchProvider.Bing(
@@ -161,6 +232,37 @@ class WebSearchProviderTest {
     }
 
     companion object {
+        private const val DUCKDUCKGO_HTML_RESPONSE = """
+            <!DOCTYPE html>
+            <html>
+            <body>
+            <div class="result">
+                <a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fgithub.com%2Fsabbirimon%2Fmeshlit&amp;rut=1"><b>Meshlit</b> AI Workspace</a>
+                <a class="result__snippet" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fgithub.com%2Fsabbirimon%2Fmeshlit&amp;rut=1">Adaptive AI workspace and experimental distributed compute.</a>
+            </div>
+            </body>
+            </html>
+        """
+
+        private const val CUSTOM_RESPONSE = """
+            {"results": [
+                {"title": "Custom Node Title", "url": "https://custom.org/node", "snippet": "A custom node snippet"}
+            ]}
+        """
+
+        private const val PERPLEXITY_RESPONSE = """
+            {
+                "choices": [{"message": {"content": "Here are the top papers."}}],
+                "citations": ["https://arxiv.org/abs/2401.00001"]
+            }
+        """
+
+        private const val SEARXNG_RESPONSE = """
+            {"results": [
+                {"title": "SearXNG Title", "url": "https://searx.example/page", "content": "SearXNG content"}
+            ]}
+        """
+
         private const val BING_RESPONSE = """
             {"webPages": {"value": [
                 {"name": "Result 1", "url": "https://example.com/1", "snippet": "snippet 1"}

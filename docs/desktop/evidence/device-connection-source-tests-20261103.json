@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-02T18:36:18.469728+00:00",
+  "scope": "Connection assistance source and automated-test checkpoint; physical qualification is separate",
+  "tests": {
+    "coreMcp": {
+      "tests": 194,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktopDevice": {
+      "tests": 38,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktopApp": {
+      "tests": 91,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "androidV1": {
+      "tests": 328,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "androidV2": {
+      "tests": 328,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "javascript": {
+    "tests": 95,
+    "failures": 0,
+    "log": "/tmp/meshlit-connections-js-tests.log",
+    "finalChatViewSyntaxAndPolicyTests": 4
+  },
+  "pythonAgentHost": {
+    "tests": 8,
+    "failures": 0,
+    "runtime": "Packaged Python 3.12",
+    "log": "/tmp/meshlit-connections-python-tests.log"
+  },
+  "sourceSha256": {
+    "core-mcp/src/main/kotlin/com/meshlit/core/mcp/control/DeviceConnectionCoordinator.kt": "ffddfb1d437a92316c5d07c5888a757ce91938e0da32b290acebb23d0b1b7da0",
+    "app/src/main/kotlin/com/meshlit/devices/DeviceConnectionHost.kt": "471076e620693a2e83a9f1bdd90b7c0e3c5ca8d91642ca78f1de57e78c0ff48b",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopDeviceConnections.kt": "ee1231b68ce9d8d0f7a6a27bd4eb5d647d04c335dff0adaf4c833c6198eac69c",
+    "companions/studio-runtime/extension/device-connections.cjs": "f09aae5c0b008445fd7b54bae547d45b6a06bbf05324ae8deb01a00ee59d2bf8",
+    "companions/studio-runtime/extension/chat-view.cjs": "8c780b9527b2110233d719b793a323999dd462298898adf01bdc8f58a29939e8",
+    "core-cloud-mcp/src/main/kotlin/com/meshlit/core/cloudmcp/android/MeshlitAccessibilityService.kt": "18f2e67d5ff334f8763cfd214cdaa70ec3eaaf132a456ba1583cbf1afff09d72"
+  },
+  "androidPackaging": {
+    "status": "passed",
+    "log": "/tmp/meshlit-connections-final-build.log",
+    "finalInstallOwnerChat": "01a19b01-de0c-7e30-80f9-40de41aed61e",
+    "buildDuration": "7m54s",
+    "note": "Both debug flavors built; peer owns final guide-asset comparison/reassemble, lint and phone install",
+    "artifacts": [
+      {
+        "path": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-arm64-v8a-debug.apk",
+        "bytes": 569569364,
+        "sha256": "b22ee3085b28b4b4076a5402ddc8f76086c597760cf1f8e9b59956dc5cef13d3",
+        "scope": "Root combined checkpoint before peer final guide-asset comparison"
+      },
+      {
+        "path": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+        "bytes": 569569250,
+        "sha256": "75d008aca7eeb5dc46c179d62f8599ede1553ee39c301d6127cf332654d4cf23",
+        "scope": "Root combined checkpoint before peer final guide-asset comparison"
+      }
+    ]
+  },
+  "finalLint": "handoff pending",
+  "physicalNewConnectionWorkflow": "not qualified",
+  "limits": [
+    "Contact checks only; no implicit command grants, model route switch or worker enrollment",
+    "No continuous shared-memory sync",
+    "No seamless WiFi/4G recovery proof",
+    "MCP/unverified nearby/address-only sources remain setup-only"
+  ],
+  "separatePhysicalEvidence": [
+    "agent-dialogue-samsung-passed-20261102.json",
+    "agent-dialogue-studio-passed-20261102.json",
+    "chat-agents-samsung-20261102.json",
+    "mixed-mac-samsung-wan-native-20261103.json"
+  ],
+  "desktopCandidate": {
+    "path": "/Users/code/Documents/Codex/output/Meshlit Studio Hosts 2026-11-02/Meshlit Studio.app",
+    "status": "refreshed-and-signature-verified",
+    "signing": "ad-hoc development",
+    "launched": false,
+    "log": "/tmp/meshlit-connections-candidate-refresh.log"
+  }
+}

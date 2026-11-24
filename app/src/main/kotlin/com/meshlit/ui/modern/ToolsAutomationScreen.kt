@@ -28,6 +28,7 @@ import com.meshlit.settings.SettingsRepository
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("tools-automation-screen"),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item { TextButton(onClick=onBack) { Text("Back to settings") };Text("Tools & automation",style=MaterialTheme.typography.headlineSmall)
             Text("A tool being registered does not grant an agent permission to run it. Saved scopes, operation switches, provider access and per-chat tools remain separate.") }
+        item { OutlinedButton(onClick={onOpen("deepseek-harness")}) { Text("DeepSeek Harness workspace") } }
         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("MCP · ${tools.size} registered tools",style=MaterialTheme.typography.titleMedium)
             Text(if(running) "Agent Gateway running on this device" else "Agent Gateway stopped")

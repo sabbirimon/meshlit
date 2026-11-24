@@ -7,22 +7,31 @@ package com.meshlit.core.cloudmcp.web
  * `cloud-mcp/web-search-<vendor>/token` in
  * [com.meshlit.core.trust.CloudCredentialStore].
  *
- * `cx` is Google-CSE only; the dispatcher ignores it for every
- * other vendor. Keeping it here (rather than on the vendor
- * sealed class) means swapping the active vendor doesn't
- * require a round-trip through Settings.
+ * For [WebSearchVendor.DuckDuckGo], search is completely free with
+ * zero setup — no API key or token is required.
+ *
+ * `cx` is Google-CSE only; `customEndpoint` and `customHeaderName`
+ * apply to Custom / universal provider.
  *
  * `kDefault` is the default number of results the
  * `web_search` tool returns when the LLM doesn't override.
  */
 data class WebSearchSettings(
-    val vendor: WebSearchVendor,
-    val apiKeyRef: String,
+    val vendor: WebSearchVendor = WebSearchVendor.DuckDuckGo,
+    val apiKeyRef: String = "",
     val cx: String? = null,
+    val customEndpoint: String? = null,
+    val customHeaderName: String? = null,
     val kDefault: Int = 5,
 ) {
     val isConfigured: Boolean
-        get() = vendor != WebSearchVendor.GoogleCse || cx != null
+        get() = when (vendor) {
+            WebSearchVendor.DuckDuckGo -> true
+            WebSearchVendor.GoogleCse -> !cx.isNullOrBlank()
+            WebSearchVendor.Custom -> !customEndpoint.isNullOrBlank()
+            WebSearchVendor.SearXNG -> true
+            else -> apiKeyRef.isNotBlank()
+        }
 
     companion object {
         const val DEFAULT_PROVIDER_ID = "web-search"

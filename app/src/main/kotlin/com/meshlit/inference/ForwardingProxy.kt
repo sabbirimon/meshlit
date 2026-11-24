@@ -39,11 +39,12 @@ class ForwardingProxy(
         onDone: suspend (InferDoneEvent) -> Unit,
         onError: suspend (InferErrorEvent) -> Unit,
     ): Result<Unit> {
-        val client = factory.build(peerBaseUrl)
         return try {
+            val forwardedHints = (hints ?: RequestHints()).afterForward()
+            val client = factory.build(peerBaseUrl)
             when (val r = client.streamInfer(
                 request = request,
-                hints = hints,
+                hints = forwardedHints,
                 onToken = { ev -> onToken(ev) },
                 onDone = { ev -> onDone(ev) },
                 onError = { ev -> onError(ev) },
@@ -60,6 +61,8 @@ class ForwardingProxy(
                     Result.failure(RuntimeException("peer failed: ${r.error.tag}"))
                 }
             }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (t: Throwable) {
             log.warn("forward.exception", "forward threw", mapOf("peer" to peerBaseUrl, "err" to (t.message ?: "")))
             onError(InferErrorEvent(tag = "forward.exception", message = t.message ?: ""))

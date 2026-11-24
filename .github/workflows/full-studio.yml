@@ -1,0 +1,141 @@
+name: Full Studio offline development suite
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/desktop-inference-profiles, studio/device-pairing-and-model-sharing]
+    paths:
+      - '.github/workflows/full-studio.yml'
+      - 'scripts/*studio-suite.py'
+      - 'desktopApp/distribution/studio-tools.json'
+      - 'companions/native-studio/**'
+      - 'companions/studio-relay/**'
+      - 'scripts/brand-studio.py'
+      - 'desktopApp/distribution/icons/**'
+      - 'ohosApp/AppScope/resources/base/media/app_icon.svg'
+      - 'companions/studio-runtime/prepare_workbench.py'
+      - 'companions/studio-runtime/extension/brand.cjs'
+      - 'companions/studio-runtime/extension/shell.cjs'
+      - 'companions/studio-runtime/extension/media/meshlit.svg'
+      - 'companions/studio-runtime/prepare_shell.py'
+      - 'companions/studio-runtime/extension/ssh-dashboard.cjs'
+      - 'companions/studio-runtime/extension/memory*.cjs'
+      - 'scripts/*desktop-inference.py'
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-15-intel, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix companions/studio-relay --ignore-scripts
+      - run: npm ci --prefix companions/native-studio/catalog-sdk --ignore-scripts
+      - run: node --test companions/native-studio/extension/studio.test.cjs companions/native-studio/extension/model-adapters.test.cjs companions/native-studio/extension/connections.test.cjs companions/native-studio/extension/chat-export.test.cjs companions/native-studio/extension/device.test.cjs companions/native-studio/extension/flux-image.test.cjs companions/native-studio/extension/model-handoff.test.cjs companions/native-studio/extension/system-dictation.test.cjs
+        env:
+          MESHLIT_RELAY_TEST: '1'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/checkout@v4
+        with:
+          repository: ggml-org/llama.cpp
+          ref: 4df29be4f4c3673f428170fda944a5b19f743bb8
+          path: vendored/runanywhere-llama
+          persist-credentials: false
+      - run: python scripts/stage-desktop-inference.py
+      - name: Assemble relocatable workbench and verify upstream payloads
+        run: python scripts/package-studio-suite.py desktopApp/build/package-resources/common dist --cache archives
+      - name: Archive, re-extract and exercise the shipped suite
+        shell: python
+        run: |
+          import os, pathlib, subprocess, shutil
+          dist = pathlib.Path('dist')
+          suite = dist / 'Meshlit-Studio'
+          windows = os.name == 'nt'
+          name = 'Meshlit-Studio-' + os.environ['RUNNER_OS'] + '-' + os.environ['RUNNER_ARCH'] + ('.zip' if windows else '.tar.gz')
+          archive = dist / name
+          subprocess.run(['tar', '-a' if windows else '-z', '-cf', str(archive.resolve()), '-C', str(dist), suite.name], check=True)
+          # Windows app images contain read-only executables. Extract into a fresh directory.
+          extracted = dist / 'acceptance'
+          extracted.mkdir()
+          if not windows:
+              shutil.rmtree(suite)
+          subprocess.run(['tar','-xf',str(archive),'-C',str(extracted)],check=True)
+          suite = extracted / 'Meshlit-Studio'
+          if os.environ['RUNNER_OS'] == 'Linux':
+              installed = pathlib.Path('/opt/meshlit-studio')
+              subprocess.run(['sudo','mv',str(suite),str(installed)],check=True)
+              subprocess.run(['sudo','chown','-R','root:root',str(installed)],check=True)
+              subprocess.run(['sudo','apparmor_parser','-r',str(installed / 'meshlit-studio.apparmor')],check=True)
+              suite = installed
+          prefix = ['xvfb-run','-a'] if os.environ['RUNNER_OS']=='Linux' else []
+          subprocess.run(prefix + ['python','scripts/check-studio-suite.py',str(suite)],check=True)
+          shutil.copy2(suite / 'STUDIO-CONTENTS.json', dist)
+          import hashlib
+          with archive.open('rb') as stream:
+              digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+          (dist/'SHA256SUMS.txt').write_text(digest + '  ' + name + '\n')
+          with open(os.environ['GITHUB_ENV'],'a') as env:
+              print('SUITE_ARCHIVE=' + archive.as_posix(),file=env)
+      - name: Build and exercise the single-file Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
+          if (!(Test-Path $iscc)) {
+            $compilerSetup = Join-Path $env:RUNNER_TEMP 'innosetup-6.4.3.exe'
+            curl.exe -fLsS --retry 3 --retry-all-errors -o $compilerSetup https://github.com/jrsoftware/issrc/releases/download/is-6_4_3/innosetup-6.4.3.exe
+            if ($LASTEXITCODE -or (Get-FileHash $compilerSetup).Hash.ToLowerInvariant() -ne 'f3c42116542c4cc57263c5ba6c4feabfc49fe771f2f98a79d2f7628b8762723b') { throw 'Inno Setup download failed verification' }
+            $compilerDir = Join-Path $env:RUNNER_TEMP 'Inno Setup'
+            $p = Start-Process $compilerSetup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="' + $compilerDir + '"') -Wait -PassThru
+            if ($p.ExitCode) { exit $p.ExitCode }
+            $iscc = Join-Path $compilerDir 'ISCC.exe'
+          }
+          & $iscc companions/native-studio/windows/studio.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $setup = (Resolve-Path dist/Meshlit-Studio-Windows-X64-Setup.exe).Path
+          $installed = Join-Path $env:RUNNER_TEMP 'Installed Meshlit Studio'
+          $p = Start-Process $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="' + $installed + '"')) -Wait -PassThru
+          if ($p.ExitCode) { exit $p.ExitCode }
+          python scripts/check-studio-suite.py "$installed" --home-only
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $p = Start-Process (Join-Path $installed 'unins000.exe') -ArgumentList '/VERYSILENT','/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -or (Test-Path (Join-Path $installed 'Meshlit.exe'))) { throw 'Uninstall failed' }
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
+          Add-Content dist/SHA256SUMS.txt "$hash  Meshlit-Studio-Windows-X64-Setup.exe" -Encoding utf8
+      - name: Attest the Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: dist/Meshlit-Studio-Windows-X64-Setup.exe
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ env.SUITE_ARCHIVE }}
+      - name: Upload the single-file Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Meshlit-Studio-Windows-X64-Installer
+          path: dist/Meshlit-Studio-Windows-X64-Setup.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: runner.os != 'Windows'
+        with:
+          name: Meshlit-Full-Studio-${{ runner.os }}-${{ runner.arch }}
+          compression-level: 0
+          path: |
+            ${{ env.SUITE_ARCHIVE }}
+            dist/STUDIO-CONTENTS.json
+            dist/SHA256SUMS.txt
+          retention-days: 14

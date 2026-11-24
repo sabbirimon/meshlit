@@ -1,0 +1,59 @@
+{
+  "format": "meshlit-desktop-chat-controls/1",
+  "date": "2026-11-03",
+  "effort": [
+    "auto",
+    "low",
+    "medium",
+    "high"
+  ],
+  "localEffort": "auto-only",
+  "support": "Human-reviewed exact endpoint/model declaration, not provider acceptance proof",
+  "workspaceApprovalModes": [
+    "ask",
+    "read-only",
+    "selected"
+  ],
+  "mcpAndAppAccessKeepPerCallApproval": true,
+  "editApplyAndSaveRemainHuman": true,
+  "extensionSuite": {
+    "passed": 107,
+    "failed": 0,
+    "includesFinalRevocationRegression": true
+  },
+  "pythonRealSdkHostTests": {
+    "passed": 10,
+    "failed": 0
+  },
+  "kotlinBuildVerified": true,
+  "packagedCandidateUpdated": true,
+  "nativeDesktopVisualVerified": false,
+  "liveExternalProviderVerified": false,
+  "sources": {
+    "companions/studio-runtime/extension/reasoning-effort.cjs": "99b8cc14b38176138906cad435204de00b3ea0c9c2477ade99af44110e26db7f",
+    "companions/studio-runtime/extension/approval-policy.cjs": "e469ceb4072f141c38b43aebb1fe93feb39af5146f577a885e36a91ed6d6b91c",
+    "companions/studio-runtime/extension/extension.cjs": "82d5e3a1c15b838100163ed058d325581978a898c900670f858644efa6db2431",
+    "companions/studio-runtime/extension/connections.cjs": "84e88ea881b5c4b8af95597052358201f011a49d645f44b36672d575964a0e1d",
+    "companions/studio-runtime/extension/chat-view.cjs": "191bba8c40d757227d7aca7e3bf30121bb93ae5d461a64506c45874f5a7314a5",
+    "companions/studio-runtime/agent_host.py": "13b5ad77305f2c8ca6076f4e94c73657b29e19410a4f2dbc0000fabe7f92081c",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/IdeReasoningEffort.kt": "901b86c7d15bacf93be4609dd4c55a4cf421e1c868212a4f407d75f4597ed3a3",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/IdeBackend.kt": "f1ed0e947c54573d6a9d0294986b2bd5d212e9ce3af290b097191bc6317ac838"
+  },
+  "firstPackagingAttempt": "Compose checkRuntime rejected Homebrew JDK; retry uses bundled verified Temurin JDK without disabling vendor validation",
+  "packagingJdk": "Explicit meshlit.packagingJdk selects bundled verified Eclipse Temurin 21.0.12.1; vendor validation remains enabled",
+  "desktopTests": {
+    "total": 95,
+    "passed": 94,
+    "skipped": 1,
+    "errors": 0,
+    "failures": 0,
+    "effortContractTestsPassed": 4
+  },
+  "finalBuildLog": "/tmp/meshlit-desktop-effort-build-final.log",
+  "initialPackagingAttempts": "Compose toolchain vendor check rejected Homebrew until explicit meshlit.packagingJdk was supplied; no vendor check disabled",
+  "developmentSignatureVerified": true,
+  "candidate": "/Users/code/Documents/Codex/output/Meshlit Studio Hosts 2026-11-02/Meshlit Studio.app",
+  "packagingLog": "/tmp/meshlit-desktop-effort-candidate-refresh.log",
+  "candidateLaunched": false,
+  "candidateBackendSha256": "5d296ac451bca4428a4b50306e0be76af6383a675e6ed8566274b281323becd0"
+}

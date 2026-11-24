@@ -13,6 +13,7 @@ import kotlin.coroutines.CoroutineContext
     val id:String,val name:String,val keyHash:String,val expiresAtMs:Long,
     val scopes:Set<GatewayScope>,val modelIds:Set<String>,val toolNames:Set<String> = emptySet(),
     val maxOutputTokens:Int=512,val requestsPerMinute:Int=30,val revoked:Boolean=false,
+    val maxRequests:Long=1000,val usedRequests:Long=0,
 ) {
     fun validate() {
         require(id.matches(Regex("[a-f0-9-]{36}")) && name.isNotBlank() && name.length<=80)
@@ -20,6 +21,7 @@ import kotlin.coroutines.CoroutineContext
         require(scopes.isNotEmpty() && modelIds.size<=32 && toolNames.size<=64)
         require(modelIds.all{it.isNotBlank() && it.length<=160} && toolNames.all{it.matches(Regex("[A-Za-z0-9_-]{1,160}"))})
         require(maxOutputTokens in 16..1024 && requestsPerMinute in 1..120)
+        require(maxRequests in 1..1_000_000 && usedRequests in 0..maxRequests)
         require(GatewayScope.CHAT !in scopes && GatewayScope.A2A !in scopes || modelIds.isNotEmpty())
     }
 }
@@ -37,7 +39,10 @@ suspend fun currentGatewayClient()=checkNotNull(currentCoroutineContext()[Gatewa
 
 /** High-entropy API keys, hashed verifier records and bounded per-key admission.
  * Opaque bearer keys are not JWTs or an OAuth authorization server. */
-class GatewayClientAccess(private val records:()->List<GatewayClient>,private val clock:()->Long={System.currentTimeMillis()}) {
+class GatewayClientAccess(private val records:()->List<GatewayClient>,private val clock:()->Long={System.currentTimeMillis()},
+    /** Atomically persist only when the current record still equals expected. Never dispatch on failed storage. */
+    private val commit:(expected:GatewayClient,updated:GatewayClient)->Boolean,
+) {
     private data class Window(var start:Long,var count:Int=0,var active:Int=0)
     private val windows=mutableMapOf<String,Window>()
     fun authenticate(key:String):GatewayPrincipal? {
@@ -49,10 +54,16 @@ class GatewayClientAccess(private val records:()->List<GatewayClient>,private va
     @Synchronized fun acquire(principal:GatewayPrincipal):Boolean {
         val now=clock()
         val current=records().firstOrNull{it.id==principal.id && !it.revoked && it.expiresAtMs>now} ?: return false
+        // A principal authenticated before a grant edit must not keep its previous authority.
+        if(current.scopes!=principal.scopes || current.modelIds!=principal.modelIds ||
+            current.toolNames!=principal.toolNames || current.maxOutputTokens!=principal.maxOutputTokens ||
+            current.expiresAtMs!=principal.expiresAtMs || current.usedRequests>=current.maxRequests) return false
         windows.keys.retainAll(records().map{it.id}.toSet())
         val window=windows.getOrPut(principal.id){Window(now)}
         if(now<window.start || now-window.start>=60_000){window.start=now;window.count=0}
         if(window.count>=current.requestsPerMinute || window.active>=1) return false
+        val saved=try {commit(current,current.copy(usedRequests=current.usedRequests+1))} catch(_:Exception){false}
+        if(!saved) return false
         window.count++;window.active++;return true
     }
     @Synchronized fun release(principal:GatewayPrincipal){windows[principal.id]?.let{it.active=(it.active-1).coerceAtLeast(0)}}
@@ -60,11 +71,11 @@ class GatewayClientAccess(private val records:()->List<GatewayClient>,private va
     companion object {
         fun hash(key:String)=MessageDigest.getInstance("SHA-256").digest(key.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
         fun issue(name:String,modelIds:Set<String>,scopes:Set<GatewayScope> = setOf(GatewayScope.MODELS,GatewayScope.CHAT),
-            toolNames:Set<String> = emptySet(),lifetimeMs:Long=3_600_000,maxOutputTokens:Int=512,requestsPerMinute:Int=30,now:Long=System.currentTimeMillis()):IssuedGatewayKey {
+            toolNames:Set<String> = emptySet(),lifetimeMs:Long=3_600_000,maxOutputTokens:Int=512,requestsPerMinute:Int=30,now:Long=System.currentTimeMillis(),maxRequests:Long=1000):IssuedGatewayKey {
             require(lifetimeMs in 60_000..2_592_000_000 && now>0 && now<=Long.MAX_VALUE-lifetimeMs)
             val bytes=ByteArray(32).also{SecureRandom().nextBytes(it)}
             val key="mlc_"+bytes.joinToString(""){"%02x".format(it)}
-            val client=GatewayClient(UUID.randomUUID().toString(),name.trim(),hash(key),now+lifetimeMs,scopes,modelIds,toolNames,maxOutputTokens,requestsPerMinute)
+            val client=GatewayClient(UUID.randomUUID().toString(),name.trim(),hash(key),now+lifetimeMs,scopes,modelIds,toolNames,maxOutputTokens,requestsPerMinute,maxRequests=maxRequests)
             client.validate();return IssuedGatewayKey(client,key)
         }
     }

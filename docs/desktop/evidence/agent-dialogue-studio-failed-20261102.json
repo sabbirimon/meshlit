@@ -1,0 +1,81 @@
+{
+  "status": "failed-live-handoff-acceptance",
+  "scope": "studio",
+  "actualRun": {
+    "id": "8ca4644e-cb7a-4908-8647-5c84a852913e",
+    "plan": {
+      "goal": "Calculate two plus two using a handoff. Lead agent-1 must first delegate the arithmetic to agent-2. Agent-2 must reply with the answer. The lead must then reply with the received answer, using the reply/delegate JSON protocol.",
+      "mode": "SINGLE_DEVICE",
+      "members": [
+        {
+          "id": "agent-1",
+          "role": "planner",
+          "sourceId": "local",
+          "modelId": "meshlit-local",
+          "profileId": null,
+          "guidance": "Follow the reply/delegate JSON protocol. Delegate arithmetic to agent-2 first when you are the lead; after receiving its answer, reply with that answer."
+        },
+        {
+          "id": "agent-2",
+          "role": "worker",
+          "sourceId": "local",
+          "modelId": "meshlit-local",
+          "profileId": null,
+          "guidance": "Answer arithmetic with a concise reply JSON object."
+        },
+        {
+          "id": "agent-3",
+          "role": "worker",
+          "sourceId": "local",
+          "modelId": "meshlit-local",
+          "profileId": null,
+          "guidance": "Answer arithmetic with a concise reply JSON object."
+        },
+        {
+          "id": "agent-4",
+          "role": "reviewer",
+          "sourceId": "local",
+          "modelId": "meshlit-local",
+          "profileId": null,
+          "guidance": "Answer arithmetic with a concise reply JSON object."
+        }
+      ],
+      "control": "AGENT_DIALOGUE",
+      "maxRounds": 1,
+      "parallelWorkers": 1
+    },
+    "phase": "SUCCEEDED",
+    "agentInitiated": false,
+    "outputs": [
+      {
+        "memberId": "agent-1",
+        "sourceId": "local",
+        "text": "The answer is 4.",
+        "callIndex": 1,
+        "round": 1
+      }
+    ],
+    "active": [],
+    "messages": [
+      {
+        "id": "3cc08e3a-8bf7-4429-ae67-d6d2b12d74b7",
+        "from": "human",
+        "to": "agent-1",
+        "kind": "TASK",
+        "body": "Calculate two plus two using a handoff. Lead agent-1 must first delegate the arithmetic to agent-2. Agent-2 must reply with the answer. The lead must then reply with the received answer, using the reply/delegate JSON protocol.",
+        "replyTo": null,
+        "callIndex": 0
+      },
+      {
+        "id": "06785bc2-052d-4ddb-bd07-e5cac48efeb2",
+        "from": "agent-1",
+        "to": "human",
+        "kind": "REPLY",
+        "body": "The answer is 4.",
+        "replyTo": "3cc08e3a-8bf7-4429-ae67-d6d2b12d74b7",
+        "callIndex": 1
+      }
+    ]
+  },
+  "reason": "No correlated peer task/reply was executed; runtime phase alone is not task acceptance."
+}

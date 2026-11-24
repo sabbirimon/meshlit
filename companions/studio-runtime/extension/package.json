@@ -1,0 +1,475 @@
+{
+  "name": "meshlit-workbench",
+  "displayName": "Meshlit",
+  "publisher": "meshlit",
+  "version": "0.3.1",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "license": "Apache-2.0",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "meshlit.deviceConnections",
+        "title": "Meshlit: Device Connection Assistance"
+      },
+      {
+        "command": "meshlit.chat",
+        "title": "Meshlit: New Chat",
+        "icon": "$(add)"
+      },
+      {
+        "command": "meshlit.generalChat",
+        "title": "Meshlit: General Chat"
+      },
+      {
+        "command": "meshlit.workspaces",
+        "title": "Meshlit: Workspaces"
+      },
+      {
+        "command": "meshlit.workspaceAgents",
+        "title": "Meshlit: Workspace Agents"
+      },
+      {
+        "command": "meshlit.bots",
+        "title": "Meshlit: Bots"
+      },
+      {
+        "command": "meshlit.llmSettings",
+        "title": "Meshlit: LLM Settings"
+      },
+      {
+        "command": "meshlit.openIde",
+        "title": "Meshlit: Open IDE"
+      },
+      {
+        "command": "meshlit.startupView",
+        "title": "Meshlit: Startup View"
+      },
+      {
+        "command": "meshlit.forgetUsageUnlock",
+        "title": "Meshlit: Forget Saved Usage Unlock"
+      },
+      {
+        "command": "meshlit.agent",
+        "title": "Meshlit: New Coding Agent",
+        "icon": "$(code)"
+      },
+      {
+        "command": "meshlit.unlockUsage",
+        "title": "Meshlit: Unlock Usage"
+      },
+      {
+        "command": "meshlit.usage",
+        "title": "Meshlit: Usage and Budgets"
+      },
+      {
+        "command": "meshlit.addConnection",
+        "title": "Meshlit: Add Model Connection"
+      },
+      {
+        "command": "meshlit.addMcp",
+        "title": "Meshlit: Add MCP Connector"
+      },
+      {
+        "command": "meshlit.home",
+        "title": "Meshlit: Home"
+      },
+      {
+        "command": "meshlit.models",
+        "title": "Meshlit: Model Connections"
+      },
+      {
+        "command": "meshlit.connectors",
+        "title": "Meshlit: MCP Directory"
+      },
+      {
+        "command": "meshlit.checkConnection",
+        "title": "Meshlit: Check API Connection"
+      },
+      {
+        "command": "meshlit.gateway.OmniRoute",
+        "title": "Meshlit: OmniRoute Dashboard"
+      },
+      {
+        "command": "meshlit.gateway.FreeLLMAPI",
+        "title": "Meshlit: FreeLLMAPI Dashboard"
+      },
+      {
+        "command": "meshlit.deepseekHarness",
+        "title": "Meshlit: DeepSeek Harness"
+      },
+      {
+        "command": "meshlit.addModelSource",
+        "title": "Meshlit: Choose Model Source"
+      },
+      {
+        "command": "meshlit.protocols",
+        "title": "Meshlit: APIs and Protocols"
+      },
+      {
+        "command": "meshlit.resourceSharing",
+        "title": "Meshlit: Resource Sharing"
+      },
+      {
+        "command": "meshlit.appAccess",
+        "title": "Meshlit: Agent App Access"
+      },
+      {
+        "command": "meshlit.stopAppAccess",
+        "title": "Meshlit: Stop All App Access"
+      },
+      {
+        "command": "meshlit.gateway.Hugging Face",
+        "title": "Meshlit: Hugging Face Dashboard"
+      },
+      {
+        "command": "meshlit.voice",
+        "title": "Meshlit: Voice and Vision Tuning"
+      },
+      {
+        "command": "meshlit.settings",
+        "title": "Meshlit: Settings"
+      },
+      {
+        "command": "meshlit.manual",
+        "title": "Meshlit: User Manual"
+      },
+      {
+        "command": "meshlit.memory",
+        "title": "Meshlit: Project Memory"
+      },
+      {
+        "command": "meshlit.contextPreview",
+        "title": "Meshlit: Preview Project Context"
+      },
+      {
+        "command": "meshlit.actionHistory",
+        "title": "Meshlit: Reviewed Action History"
+      },
+      {
+        "command": "meshlit.companions",
+        "title": "Meshlit: Memory and Computer Companions"
+      },
+      {
+        "command": "meshlit.agentTeams",
+        "title": "Meshlit: Agent teams and role library"
+      },
+      {
+        "command": "meshlit.connectedCapabilities",
+        "title": "Meshlit: Connected capabilities (OpenViking and Artemis)"
+      },
+      {
+        "command": "meshlit.systemMonitor",
+        "title": "Meshlit: System resources and CPU scheduling"
+      },
+      {
+        "command": "meshlit.workspaceChanges",
+        "title": "Meshlit: Workspace Changes",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "meshlit.file.open",
+        "title": "Open file",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.file.review",
+        "title": "Review file changes",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.file.undo",
+        "title": "Undo last Meshlit edit",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.file.external",
+        "title": "Open in default app",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.file.saveAs",
+        "title": "Save as\u2026",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.file.copyPath",
+        "title": "Copy path",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.file.copyText",
+        "title": "Copy file contents",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.file.reveal",
+        "title": "Reveal in file manager",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.permissions",
+        "title": "Tools and Permissions",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.projectSecurity",
+        "title": "Project Security and Permissions",
+        "category": "Meshlit"
+      },
+      {
+        "command": "meshlit.chatPersonality",
+        "title": "Meshlit: Chat Personality"
+      },
+      {
+        "command": "meshlit.chatVoice",
+        "title": "Meshlit: Chat Voice"
+      },
+      {
+        "command": "meshlit.botDashboard",
+        "title": "Meshlit: Bots Dashboard"
+      },
+      {
+        "command": "meshlit.management",
+        "title": "Meshlit: Management"
+      },
+      {
+        "command": "meshlit.credentialsDashboard",
+        "title": "Meshlit: Credentials"
+      },
+      {
+        "command": "meshlit.sshDashboard",
+        "title": "Meshlit: SSH and Terminals"
+      },
+      {
+        "command": "meshlit.openBotDetails",
+        "title": "Meshlit: Open Bot Details"
+      },
+      {
+        "command": "meshlit.manageBots",
+        "title": "Meshlit: Manage Bot Profiles"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "meshlit.chat"
+        },
+        {
+          "command": "meshlit.agent"
+        },
+        {
+          "command": "meshlit.file.open",
+          "when": "false"
+        },
+        {
+          "command": "meshlit.file.review",
+          "when": "false"
+        },
+        {
+          "command": "meshlit.file.external",
+          "when": "false"
+        },
+        {
+          "command": "meshlit.file.saveAs",
+          "when": "false"
+        },
+        {
+          "command": "meshlit.file.copyPath",
+          "when": "false"
+        },
+        {
+          "command": "meshlit.file.copyText",
+          "when": "false"
+        },
+        {
+          "command": "meshlit.file.reveal",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "meshlit.chat",
+          "when": "view == meshlit.sessions",
+          "group": "navigation@1"
+        },
+        {
+          "command": "meshlit.agent",
+          "when": "view == meshlit.workspaceSessions",
+          "group": "navigation@2"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "meshlit.file.open",
+          "when": "(webviewId == 'meshlit.chat' || webviewId == 'meshlit.workspaceChanges') && webviewSection == 'meshlitFile'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "meshlit.file.review",
+          "when": "(webviewId == 'meshlit.chat' || webviewId == 'meshlit.workspaceChanges') && webviewSection == 'meshlitFile'",
+          "group": "navigation@2"
+        },
+        {
+          "command": "meshlit.file.undo",
+          "when": "webviewId == 'meshlit.workspaceChanges' && webviewSection == 'meshlitFile' && meshlitCanUndo",
+          "group": "meshlit@8"
+        },
+        {
+          "command": "meshlit.file.external",
+          "when": "(webviewId == 'meshlit.chat' || webviewId == 'meshlit.workspaceChanges') && webviewSection == 'meshlitFile'",
+          "group": "navigation@3"
+        },
+        {
+          "command": "meshlit.file.saveAs",
+          "when": "(webviewId == 'meshlit.chat' || webviewId == 'meshlit.workspaceChanges') && webviewSection == 'meshlitFile'",
+          "group": "meshlit@4"
+        },
+        {
+          "command": "meshlit.file.copyPath",
+          "when": "(webviewId == 'meshlit.chat' || webviewId == 'meshlit.workspaceChanges') && webviewSection == 'meshlitFile'",
+          "group": "meshlit@5"
+        },
+        {
+          "command": "meshlit.file.copyText",
+          "when": "(webviewId == 'meshlit.chat' || webviewId == 'meshlit.workspaceChanges') && webviewSection == 'meshlitFile'",
+          "group": "meshlit@6"
+        },
+        {
+          "command": "meshlit.file.reveal",
+          "when": "(webviewId == 'meshlit.chat' || webviewId == 'meshlit.workspaceChanges') && webviewSection == 'meshlitFile'",
+          "group": "meshlit@7"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "meshlit.file.review",
+          "when": "!explorerResourceIsFolder && resourceScheme == file && isWorkspaceTrusted",
+          "group": "meshlit@1"
+        },
+        {
+          "command": "meshlit.file.copyText",
+          "when": "!explorerResourceIsFolder && resourceScheme == file && isWorkspaceTrusted",
+          "group": "meshlit@2"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "meshlit",
+          "title": "Meshlit",
+          "icon": "media/meshlit.svg"
+        }
+      ]
+    },
+    "views": {
+      "meshlit": [
+        {
+          "id": "meshlit.navigation",
+          "name": "Studio"
+        },
+        {
+          "id": "meshlit.sessions",
+          "name": "Open chats"
+        },
+        {
+          "id": "meshlit.workspaceSessions",
+          "name": "Workspace agent sessions",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "meshlit.sessions",
+        "contents": "Your open conversations appear here.\n[New chat](command:meshlit.chat)\n[General chat](command:meshlit.generalChat)"
+      },
+      {
+        "view": "meshlit.workspaceSessions",
+        "contents": "Open a workspace to run a coding agent.\n[Workspace agents](command:meshlit.workspaceAgents)"
+      }
+    ],
+    "configurationDefaults": {
+      "workbench.startupEditor": "none",
+      "workbench.colorTheme": "Meshlit Dark",
+      "workbench.activityBar.location": "default",
+      "workbench.browser.dataStorage": "ephemeral",
+      "workbench.browser.enableChatTools": false
+    },
+    "themes": [
+      {
+        "label": "Meshlit Dark",
+        "uiTheme": "vs-dark",
+        "path": "./media/dark.json"
+      }
+    ],
+    "configuration": {
+      "title": "Meshlit",
+      "properties": {
+        "meshlit.startupView": {
+          "type": "string",
+          "enum": [
+            "chat",
+            "welcome",
+            "editor"
+          ],
+          "default": "chat",
+          "scope": "application",
+          "description": "Choose the first screen for a Studio window without an open workspace.",
+          "enumDescriptions": [
+            "Open a general conversation with the bundled local model.",
+            "Open the Studio management dashboard.",
+            "Open the native editor workbench."
+          ]
+        },
+        "meshlit.chat.temperature": {
+          "type": "number",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 2,
+          "scope": "application",
+          "description": "Sampling temperature for bundled-model chats. Lower values favor more predictable replies. Hosted models use their provider defaults."
+        },
+        "meshlit.chat.maxOutputTokens": {
+          "type": "integer",
+          "default": 1024,
+          "minimum": 1,
+          "maximum": 1024,
+          "scope": "application",
+          "description": "Maximum output tokens per chat reply. The runtime may lower this limit to fit the model."
+        },
+        "meshlit.chat.historyTurns": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 0,
+          "maximum": 10,
+          "scope": "application",
+          "description": "Maximum completed turns to include in each chat request. Zero sends the current message only. Long conversations can use fewer turns to fit context."
+        },
+        "meshlit.chat.requireUnlock": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Require a passphrase before local chat on the next window launch. Off uses session-only local usage without opening protected history. Online spending and protected records still require the encrypted usage ledger."
+        },
+        "meshlit.workspace.openChatOnLaunch": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Open a separate project chat pane after reviewing a workspace security setup."
+        }
+      }
+    }
+  }
+}

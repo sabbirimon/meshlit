@@ -1,5 +1,8 @@
 # HyperL experimental foundation
 
+[Native Studio model management](docs/desktop/FULL_STUDIO.md#managing-models-in-native-studio) covers local GGUF discovery and import, providers, authenticated local serving and device pairing. HyperL owns accelerator translation.
+
+
 HyperL began in source commit `cdb06b6`, and the owner merged it into
 `main` through [PR #1](https://github.com/sabbirimon/meshlit-v2/pull/1), merge
 `851576bdd0c9daaea71f32f5daac8720671c6453`, on 2026-10-08. It remains an
@@ -58,3 +61,7 @@ explicit skipped host check, not proof of another backend.
 The shared workbench now uses the separately licensed `core-hyperl` module for
 Kotlin/native C99 execution, precise sums and encrypted dataset operations. The
 old Apache `core-gpu` port is preserved. Read the [alpha.6 integration guide](docs/hyperl/ANDROID_ALPHA6.md) for licence opt-in, Android/API limits, safety boundaries and validation.
+
+## HyperL-owned model engine continuation — 2026-11-06
+
+See Studio engine plan (archived). The engine belongs to standalone HyperL; Studio consumes its versioned interface. Expert accounting is implemented and tested in HyperL; expert paging and Studio integration remain planned. AMD partial offload is a correctness prototype with a measured slowdown, not a shipping performance feature. Desktop first-run agreements are deferred by the owner until engine work.

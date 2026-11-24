@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-26",
+  "baseCommit": "5a7c5167ce6a32880c4e6354fde26af50773eb2c",
+  "workingTree": true,
+  "scope": "First dashboard/navigation increment; no installed-app, live provider or VPN qualification",
+  "sourceSha256": {
+    "app/src/main/kotlin/com/meshlit/BuildProfile.kt": "299a8f45ff3af9ea31c2e0789a3279170a2f62f47abd4289b5fffeedd41ead3c",
+    "app/src/main/kotlin/com/meshlit/ui/modern/ModernSettingsScreen.kt": "e1ffa5e5aebde89a6e8d37e26f0fd92a390aaac0b4f3cd8b011b953088f949d6",
+    "app/src/main/kotlin/com/meshlit/ui/modern/SettingsDestinations.kt": "a3450cb9ef8d21adc2181818589a96056bf20b5f864c2e6151d30fc1caae4552",
+    "app/src/main/kotlin/com/meshlit/ui/modern/WorkspaceDashboards.kt": "81b13c0d7de7ba7560fee38bb6902d4cfdcb7e38183bd2c92abffc0a1148fb08",
+    "app/src/main/kotlin/com/meshlit/ui/modern/WorkspaceNavigation.kt": "5aa54c46d39a2c61b4936eb6a699ea84d307ce271838d8a9c3d5a47357a8dda3",
+    "app/src/test/kotlin/com/meshlit/BuildProfileTest.kt": "2c49c4581083cf5b7e239677f29bd9dd93771601154ee2971759d7839750a6b3",
+    "app/src/test/kotlin/com/meshlit/ui/modern/SettingsDestinationsTest.kt": "1e72ebf52148008e1bed93e2f57c2f7167134dc6f88b1479713615db81c9d9cf",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/Dashboards.kt": "a3125878a78ef36cda6eac1ef223a5eb3f3f58a83cd4607ebcb44b6c4e87f7c3",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopDestinations.kt": "5130ff53d7b889dfc30f8197587f40c2d434eb03f600c987e5ac658ddc9258f6",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopTools.kt": "58f4810d30f600b4ee4949c8a5d3840c68aa6d269886fa0b7f6b1f4c61f76dc2",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/HeroMenu.kt": "a4434ce2dd7320893c84e5ee28a8b847b8260243f9f0001bda9067b44bbd4902",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt": "2f2017b24a52f04ea69211c8f3cc09e7f5c95252d8e0df8d37e542c2546a5d68",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/RenderCheck.kt": "892273e343d7a2071e424bddc2182c0272ba5e070739923670c29f08f80dc6ec",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/Search.kt": "c0b5a89690841faf80268a06ba86a4d1cdac830ef62fd997622796b74e6e47ce",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/WorkspaceChrome.kt": "863d7074702e05fb194fb0291153352d279b9b60d8fc725eadd3c0cbedd0f8fd",
+    "desktopApp/src/test/kotlin/com/meshlit/desktop/DesktopSearchTest.kt": "cdb76c132156256e860f9437244a96d7b79b334ca2ccfeecf079cea1f1b2df6f",
+    "desktopApp/src/test/kotlin/com/meshlit/desktop/WorkspacePreviewTest.kt": "ef84cdcb323578d744e380c3e4c22731c988ab81f3c1bff92397f18c7dbc1b6e",
+    "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/DashboardDirectory.kt": "90e074ab05d912ddd953a739e68a891dd2cb4063061accf2cac45ecc8251c465"
+  },
+  "testSuites": {
+    "shared-workspace/build/test-results/jvmTest": {
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktop-engine/build/test-results/test": {
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktop-ssh/build/test-results/test": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktopApp/build/test-results/test": {
+      "tests": 39,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "app/build/test-results/testMeshlitV1DebugUnitTest": {
+      "tests": 242,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app/build/test-results/testMeshlitV2DebugUnitTest": {
+      "tests": 242,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-mcp/build/test-results/testDebugUnitTest": {
+      "tests": 139,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-sandbox/build/test-results/testDebugUnitTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-net/build/test-results/testDebugUnitTest": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-inference/build/test-results/testDebugUnitTest": {
+      "tests": 284,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app/build/test-results/testMeshlitV2ProductionCandidateUnitTest": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "crawler": {
+    "tests": 9,
+    "failures": 0,
+    "environment": "existing crawler-live-venv"
+  },
+  "debugAssemblies": [
+    "meshlitV1Debug",
+    "meshlitV2Debug"
+  ],
+  "lint": {
+    "meshlitV1Debug": {
+      "Warning": 399,
+      "Hint": 19
+    },
+    "meshlitV2Debug": {
+      "Warning": 399,
+      "Hint": 19
+    }
+  },
+  "coreCandidateScope": "BuildProfileTest only; no full candidate APK/lint or CI timeout resolution",
+  "renders": [
+    420,
+    600,
+    1060
+  ],
+  "remaining": [
+    "Physical Android UI and installed Studio acceptance",
+    "Persistent usage, spend admission and credentials",
+    "Automatic routing and optional gateway adapters",
+    "Verified Tailscale client integration",
+    "Full CI Core Candidate timeout"
+  ]
+}

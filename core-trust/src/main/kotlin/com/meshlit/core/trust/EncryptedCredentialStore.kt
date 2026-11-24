@@ -53,6 +53,9 @@ open class EncryptedCredentialStore(
         check(prefs.edit().putString(key,value).commit()) { "Encrypted storage commit failed" }
     }
 
+    /** One durable transaction for a profile and its endpoint-bound credential. */
+    fun updateCommitted(changes: Map<String, String?>) = commitCredentialChanges(prefs, changes)
+
     fun get(key: String): String? = prefs.getString(key, null)
 
     fun remove(key: String) {
@@ -66,4 +69,10 @@ open class EncryptedCredentialStore(
     fun clear() {
         prefs.edit().clear().apply()
     }
+}
+
+internal fun commitCredentialChanges(prefs: SharedPreferences, changes: Map<String, String?>) {
+    val editor = prefs.edit()
+    changes.forEach { (key, value) -> if(value == null) editor.remove(key) else editor.putString(key, value) }
+    check(editor.commit()) { "Encrypted storage commit failed" }
 }

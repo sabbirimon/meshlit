@@ -8,9 +8,11 @@ object BuildProfile {
     val name = if (coreCandidate) "Core candidate" else "Experimental"
     val features = if (coreCandidate) setOf(ManagedFeature.INFERENCE, ManagedFeature.MODEL_TRANSFERS, ManagedFeature.FILES)
         else ManagedFeature.entries.toSet()
-    private val coreRoutes = setOf("chat", "models", "monitor", "settings", "appearance", "crypto", "files", "ide",
+    private val coreRoutes = setOf("chat", "dashboards", "models", "monitor", "settings", "appearance", "crypto", "files", "ide",
         "search", "personalization", "behavior", "operations", "device", "resources", "logs", "notifications", "legal", "help", "about")
-    fun routeAllowed(id: String) = !coreCandidate || id in coreRoutes
+    /** Retired surfaces do not belong in the current AI/workspace flow. Saved data is preserved. */
+    val retiredRoutes=setOf("gibberlink","rewards","packages","securitylab")
+    fun routeAllowed(id: String) = id !in retiredRoutes && (!coreCandidate || id in coreRoutes)
     fun requireChat(options: com.meshlit.chat.ChatOptions) {
         check(!coreCandidate || (options.onlineProfileId == null && options.routeId == null && !options.usesLocalTools && options.colibriMode=="OFF" && !options.colibriAgentAllowed)) {
             "Core candidate supports local chat without experimental tools or online routes"

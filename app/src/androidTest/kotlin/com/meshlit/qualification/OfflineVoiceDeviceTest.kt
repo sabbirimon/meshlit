@@ -1,5 +1,7 @@
 package com.meshlit.qualification
 
+import androidx.test.core.app.ActivityScenario
+import com.meshlit.MainActivity
 import androidx.core.content.FileProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -53,6 +55,13 @@ class OfflineVoiceDeviceTest {
                 start=System.nanoTime();val audio=adapter.synthesize("Hello. Meshlit can use an offline voice adapter.",VoiceStyle.NATURAL);times["synthesisMs"]=(System.nanoTime()-start)/1e6
                 assertEquals(22050,audio.rate);assertTrue(audio.bytes.size>22050);assertTrue(voiceEnergy(audio.bytes,audio.bytes.size)>0.001)
                 pcmBytes=audio.bytes.size;pcmRate=audio.rate
+                val wavOutput=java.nio.ByteBuffer.allocate(44+audio.bytes.size).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                wavOutput.put("RIFF".toByteArray()).putInt(36+audio.bytes.size).put("WAVEfmt ".toByteArray()).putInt(16)
+                wavOutput.putShort(1).putShort(1).putInt(audio.rate).putInt(audio.rate*2).putShort(2).putShort(16)
+                wavOutput.put("data".toByteArray()).putInt(audio.bytes.size).put(audio.bytes)
+                File(context.filesDir,"qualification/voice-sample.wav").apply{parentFile!!.mkdirs();writeBytes(wavOutput.array())}
+                val playbackActivity=ActivityScenario.launch(MainActivity::class.java)
+                try{playVoice(audio)}finally{playbackActivity.close()}
                 assertEquals("Speech model must not replace the owner's chat model",chatBefore,inference.loadedModel()?.modelPath)
                 start=System.nanoTime()
                 val name=library.models.value.firstOrNull{it.path==chatBefore}?.name.orEmpty()
@@ -69,7 +78,7 @@ class OfflineVoiceDeviceTest {
                 report=buildJsonObject{put("format","meshlit-offline-voice/1");put("timestampEpochMs",System.currentTimeMillis());put("status","passed-listed-cases")
                     put("recognition","Whisper Tiny English INT8 / ONNX");put("synthesis","Piper Lessac medium / ONNX");put("transcript",text)
                     put("pcmBytes",audio.bytes.size);put("pcmSampleRate",audio.rate);put("microphoneTested",false);put("liveConversationTested",false);put("providerTested",false)
-                    put("chatModelPreserved",true);put("localLlmExecutedWithSpeechLoaded",true)
+                    put("syntheticSampleSaved",true);put("speakerPlaybackCompleted",true);put("audibilityVerified",false);put("chatModelPreserved",true);put("localLlmExecutedWithSpeechLoaded",true)
                     put("timingsMs",buildJsonObject{times.forEach{(name,value)->put(name,value)}})}
             }
         }finally{try{adapter.close()}finally{

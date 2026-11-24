@@ -1,0 +1,70 @@
+{
+  "phone": "Samsung Galaxy A20s SM-A207F, Android 11/API 30, ARM64",
+  "model": "Qwen2.5 0.5B Instruct Q4_K_M",
+  "modelSha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "apkWorkerSha256": "3b967bd3079e153eb7d12141c2e952dbb7737204900c3909dcdc7bdab248c541",
+  "physicalHosts": 2,
+  "rpcWorkers": 2,
+  "transport": "Samsung loopback raw RPC via scoped USB ADB port forward, Mac loopback for Mac worker",
+  "workspaceUiTested": false,
+  "phoneAppUpdated": false,
+  "phonePermissionsChanged": false,
+  "managedPairingTested": false,
+  "tlsTested": false,
+  "oversizedModelTested": false,
+  "MacAssignedLayers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+  ],
+  "SamsungAssignedLayers": [
+    20,
+    21,
+    22,
+    23,
+    24
+  ],
+  "MacBufferMiB": [
+    197.58
+  ],
+  "SamsungBufferMiB": [
+    176.13
+  ],
+  "SamsungWorker": {
+    "beforePlacement": {
+      "rssKiB": 2564,
+      "cpuTicks": 4
+    },
+    "afterPlacement": {
+      "rssKiB": 186364,
+      "cpuTicks": 135
+    },
+    "afterInference": {
+      "rssKiB": 190316,
+      "cpuTicks": 355
+    }
+  },
+  "nativeStartupSeconds": 8.167,
+  "StudioRequestSeconds": 1.878,
+  "StudioAnswer": "4",
+  "StudioUsageRequests": 1,
+  "USBForwardRemoved": true,
+  "PhoneWorkerFixtureRemoved": true
+}

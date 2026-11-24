@@ -1,0 +1,4 @@
+ddgs>=9.0.0
+duckduckgo_search>=8.0.0
+fastapi>=0.110.0
+pydantic>=2.0.0

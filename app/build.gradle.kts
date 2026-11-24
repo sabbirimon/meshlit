@@ -91,10 +91,10 @@ android {
             applicationIdSuffix = ".v2"
             // Keep this preview version in step with the release evidence.
             // so Play Store and F-Droid see a fresh artifact.
-            versionName = "2.0.0-v2build45"
-            versionCode = 45
+            versionName = "2.0.48"
+            versionCode = 48
             buildConfigField("boolean", "USE_NEW_UI", "true")
-            resValue("string", "app_name", "Meshlit v2")
+            resValue("string", "app_name", "Meshlit")
         }
     }
 
@@ -313,6 +313,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    // Legacy feature modules still use Material 2; share the selected readable palette.
+    implementation("androidx.compose.material:material")
     // V2 UI — `currentWindowAdaptiveInfo` lives in `material3-adaptive`,
     // `WindowWidthSizeClass` lives in `androidx.window.core`. Both
     // are required by `MeshlitAppV2.kt` to branch the drawer between
@@ -343,6 +345,7 @@ dependencies {
     // supported minSdk (pure-Java), unlike Ktor 3 client which needs
     // DEX 040 bytecode from API 33.
     implementation(libs.okhttp.core)
+    implementation("org.jsoup:jsoup:1.21.2")
     implementation(libs.nanohttpd.core)
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
 
@@ -398,14 +401,18 @@ dependencies {
     // without spinning up an emulator.
     testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.runanywhere.sdk)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 // Restricted build environments may choose a writable Robolectric dependency home.
+val placementTestLibraries = project(":core-inference").layout.buildDirectory.dir("host-placement/lib")
 val meshlitTestHome = providers.gradleProperty("meshlit.testHome")
 tasks.withType<Test>().configureEach {
+    dependsOn(":core-inference:buildHostPlacement")
+    systemProperty("java.library.path", placementTestLibraries.get().asFile.absolutePath)
     if (meshlitTestHome.isPresent) systemProperty("user.home", meshlitTestHome.get())
 }
 
@@ -497,3 +504,5 @@ androidComponents.onVariants { variant ->
 androidComponents.beforeVariants(androidComponents.selector().withBuildType("productionCandidate")) { variant ->
     checkNotNull(variant.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]).enable = true
 }
+
+android.sourceSets.getByName("main").assets.srcDir(rootProject.file("shared-workspace/src/jvmMain/resources"))

@@ -22,9 +22,9 @@ internal class DesktopKnowledge(private val directory: Path = Path.of(System.get
     @Synchronized fun isUnlocked() = corpus != null
     @Synchronized fun lockedCorpus() = checkNotNull(corpus) { "Unlock the knowledge library first" }
     @Synchronized fun lock() { revision++; key?.fill(0); key = null; salt?.fill(0); salt = null; corpus = null }
-    fun context(query: String, remote: Boolean): String {
+    fun context(query: String, remote: Boolean, agent: Boolean = false): String {
         val current = synchronized(this) { revision to corpus }
-        val result = current.second?.context(query, remote).orEmpty()
+        val result = current.second?.context(query.take(12_000), remote, agent).orEmpty()
         return synchronized(this) { if (revision == current.first) result else "" }
     }
     @Synchronized fun unlock(password: CharArray) {

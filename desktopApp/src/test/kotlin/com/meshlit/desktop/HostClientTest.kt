@@ -10,6 +10,22 @@ import kotlin.test.*
 
 /** Loopback protocol/failure contracts; these fixtures are never model-generation evidence. */
 class HostClientTest {
+    @Test fun boundedLargeCatalogSupportsGatewayMetadata() = host { server, address ->
+        server.createContext("/v1/models") { e ->
+            val data = "{\"data\":[{\"id\":\"fixture-model\",\"description\":\"" + "x".repeat(300_000) + "\"}]}"
+            val bytes = data.toByteArray(); e.sendResponseHeaders(200, bytes.size.toLong()); e.responseBody.use { it.write(bytes) }
+        }
+        HostClient(HostEndpoint.parse(address), "").use { assertEquals(listOf("fixture-model"), it.models()) }
+        assertFails { boundedJson("{\"x\":\"" + "x".repeat(300_000) + "\"}") }
+    }
+
+    @Test fun officialGatewayBasePathsAreBoundWithoutArbitraryPathSupport() {
+        assertEquals("https://openrouter.ai/api/v1/models", HostEndpoint.parse("https://openrouter.ai/api/v1").route("models").toString())
+        assertEquals("https://router.huggingface.co/v1/chat/completions", HostEndpoint.parse("https://router.huggingface.co/v1").route("chat/completions").toString())
+        assertFails { HostEndpoint.parse("https://example.invalid/api/v1") }
+        assertFails { HostEndpoint.parse("https://openrouter.ai/api/v1?key=secret") }
+    }
+
     private fun host(block: (HttpServer, String) -> Unit) {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val pool = Executors.newCachedThreadPool()
@@ -32,14 +48,14 @@ class HostClientTest {
         }
         server.createContext("/v1/chat/completions") { exchange ->
             val request = exchange.requestBody.bufferedReader().readText(); assertTrue(request.contains("\"max_tokens\":128")); assertTrue(request.contains("\"stream\":true"))
-            val event = "data: {\"choices\":[{\"delta\":{\"content\":\"你好 🌍\"}}]}\n\ndata: {\"choices\":[],\"usage\":{\"completion_tokens\":7}}\n\ndata: [DONE]\n\n".toByteArray()
+            val event = "data: {\"choices\":[{\"delta\":{\"content\":\"你好 🌍\"}}]}\n\ndata: {\"choices\":[],\"usage\":{\"completion_tokens\":7,\"prompt_tokens\":11}}\n\ndata: [DONE]\n\n".toByteArray()
             exchange.responseHeaders.add("Content-Type", "text/event-stream; charset=utf-8"); exchange.sendResponseHeaders(200, 0)
             exchange.responseBody.use { stream -> event.forEach { stream.write(it.toInt()); stream.flush() } }
         }
         HostClient(HostEndpoint.parse(address), "test-key").use { client ->
             assertEquals(listOf("fixture-model"), client.models())
             val text = StringBuilder(); val usage = client.generate("fixture-model", listOf(ChatTurn("user", "test")), GenerationBudget(128)) { text.append(it) }
-            assertEquals("你好 🌍", text.toString()); assertEquals(7L, usage.outputTokens); assertTrue(usage.tokensPerSecond!! > 0)
+            assertEquals("你好 🌍", text.toString()); assertEquals(7L, usage.outputTokens); assertEquals(11L, usage.inputTokens); assertTrue(usage.tokensPerSecond!! > 0)
         }
     }
     @Test fun localSystemPromptIsSerializedSeparatelyFromSharedChatTurns() = host { server, address ->
@@ -88,7 +104,7 @@ class HostClientTest {
         assertFails { HostClient(endpoint, "") }
         HostClient(endpoint, "scoped-node-key").use { client ->
             val out = StringBuilder(); val usage = client.generate("node-model", listOf(ChatTurn("user", "hello")), GenerationBudget(128)) { out.append(it) }
-            assertEquals("buffered contract", out.toString()); assertNull(usage.outputTokens)
+            assertEquals("buffered contract", out.toString()); assertNull(usage.outputTokens); assertNull(usage.inputTokens)
         }
     }
     @Test fun openWebuiUsesItsDistinctAuthenticatedApiRoutes() = host { server, address ->
@@ -111,7 +127,7 @@ class HostClientTest {
             assertEquals(listOf("webui-fixture"), client.models())
             val text = StringBuilder()
             val usage = client.generate("webui-fixture", listOf(ChatTurn("user", "test")), GenerationBudget(128)) { text.append(it) }
-            assertEquals("API contract only", text.toString()); assertNull(usage.outputTokens)
+            assertEquals("API contract only", text.toString()); assertNull(usage.outputTokens); assertNull(usage.inputTokens)
         }
     }
     @Test fun redirectsNeverForwardBearerToken() = host { server, address ->

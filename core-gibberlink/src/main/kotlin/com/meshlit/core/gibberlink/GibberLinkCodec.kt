@@ -2,6 +2,8 @@ package com.meshlit.core.gibberlink
 
 /** Actual local PCM modem; not an LLM, identity verifier or encryption layer. */
 class GibberLinkCodec {
+    /** Writes up to 32 normalized frequency bins from little-endian PCM16. */
+    external fun spectrum(pcm: ByteArray, bins: FloatArray)
     external fun open(): Int
     external fun close(handle: Int)
     external fun encode(handle: Int, english: ByteArray): ShortArray

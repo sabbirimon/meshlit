@@ -8,6 +8,13 @@ import com.meshlit.core.common.HookTrigger
 import com.meshlit.core.common.logger
 import com.meshlit.scripts.ConfigScriptRunner
 import com.meshlit.scripts.ScriptLibrary
+import com.meshlit.scripts.ScriptExecutionRevoked
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,8 +50,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  *    the failure and just logs.
  *
  * Failure model:
- *  - A failing hook NEVER throws to the caller. All exceptions are
- *    caught, audited, and surfaced as [HookResult.failure].
+ *  - Script failures are audited and surfaced as [HookResult.failure].
+ *    Caller cancellation propagates; permission revocation returns a denied result.
  *  - Timeouts are coerced to [HookAuditSink.Outcome.TIMEOUT] with
  *    `lastError = "timeout"`.
  */
@@ -59,6 +66,7 @@ class HookEngine(
     private val log = logger("HookEngine")
 
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    @Volatile private var closed = false
 
     /**
      * Snapshot of the current hook list. The engine never mutates
@@ -74,7 +82,7 @@ class HookEngine(
      * immediately.
      */
     fun fire(trigger: HookTrigger, vars: Map<String, String>) {
-        if (!masterEnabledFlow.value) return
+        if (closed || !masterEnabledFlow.value) return
         val ctx = HookContext.now(trigger, vars)
         val matching = hooksFlow.value.filter { it.enabled && it.trigger == trigger }
         if (matching.isEmpty()) return
@@ -89,7 +97,7 @@ class HookEngine(
      * via [HookResult] but never thrown to the caller.
      */
     suspend fun firePre(trigger: HookTrigger, vars: Map<String, String>): HookResult {
-        if (!masterEnabledFlow.value) return HookResult.NoOp
+        if (closed || !masterEnabledFlow.value) return HookResult.NoOp
         val ctx = HookContext.now(trigger, vars)
         val matching = hooksFlow.value.filter { it.enabled && it.trigger == trigger }
         if (matching.isEmpty()) return HookResult.NoOp
@@ -100,8 +108,9 @@ class HookEngine(
         return lastResult
     }
 
-    /** Stop accepting new hooks. Existing in-flight runs continue. */
+    /** Stop new hooks and cancel owned runs; suspending callers recheck this grant. */
     fun shutdown() {
+        closed = true
         scope.coroutineContext[Job]?.cancel()
     }
 
@@ -139,7 +148,15 @@ class HookEngine(
                 )
                 HookResult.failure("step failed")
             }
-        } catch (t: Throwable) {
+        } catch (revoked: ScriptExecutionRevoked) {
+            auditSink.append(hook.id, hook.name, ctx.trigger.tag(), HookAuditSink.Outcome.DENIED,
+                System.currentTimeMillis() - started, ctx.vars, "permission revoked")
+            HookResult.failure("permission revoked")
+        } catch (cancelled: CancellationException) {
+            auditSink.append(hook.id, hook.name, ctx.trigger.tag(), HookAuditSink.Outcome.ERROR,
+                System.currentTimeMillis() - started, ctx.vars, "cancelled")
+            throw cancelled
+        } catch (t: Exception) {
             val duration = System.currentTimeMillis() - started
             log.warn("hook.fail", "hook ${hook.name} failed: ${t.message}",
                 mapOf("err" to (t.message ?: "")))
@@ -155,23 +172,19 @@ class HookEngine(
     }
 
     /**
-     * Register [hook]'s script with the library and run it. Returns
-     * the final `success` flag from the runner's [com.meshlit.core.common.ScriptEvent.Done].
+     * Run in the caller's coroutine, with a live permission monitor. Results are
+     * invocation-local; the UI event stream is never used to infer completion.
      */
-    private suspend fun executeScript(hook: HookDefinition, ctx: HookContext): Boolean {
-        // Register the script so the runner's `Step` shape can find
-        // it. Re-registering on every run is idempotent — the library
-        // dedupes by name.
-        scriptLibrary.upsert(hook.script)
-        val job = runner.run(hook.script)
-        job.join()
-        val last = runner.events.value
-        if (last is com.meshlit.core.common.ScriptEvent.Done) return last.success
-        // If we never reached Done (rare — should only happen if the
-        // runner's scope was cancelled), default true so the line
-        // doesn't lie. The audit sink will still record a non-error
-        // duration.
-        return true
+    private suspend fun executeScript(hook: HookDefinition, ctx: HookContext): Boolean = coroutineScope {
+        fun allowed() = !closed && masterEnabledFlow.value && hooksFlow.value.any { it == hook && it.enabled }
+        if (!allowed()) throw ScriptExecutionRevoked()
+        val owner = currentCoroutineContext()[Job]!!
+        val revocation = launch(start = CoroutineStart.UNDISPATCHED) {
+            combine(masterEnabledFlow, hooksFlow) { master, hooks -> master && hooks.any { it == hook && it.enabled } }.first { !it }
+            owner.cancel(ScriptExecutionRevoked())
+        }
+        try { runner.execute(hook.script, ctx.vars, ::allowed).success }
+        finally { revocation.cancel() }
     }
 
     private fun HookTrigger.tag(): String = when (this) {

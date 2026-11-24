@@ -62,6 +62,7 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: Strin
     val scope = rememberCoroutineScope()
     val hosting by com.meshlit.inference.InferenceForegroundService.hostingState.collectAsStateWithLifecycle()
     val animateScan = LocalMeshlitThemeConfig.current.animationsEnabled
+    val deviceList = rememberLazyListState()
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
     var add by rememberSaveable { mutableStateOf(false) }
@@ -213,7 +214,7 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: Strin
         }
     }
     val unreadEvents = deviceEvents.count { it.atMs > lastReadAt }
-    val nearby = nearbyState.grouped.values.flatten().map { it.advertisement }
+    val nearby = remember(nearbyState.grouped,app.nodeIdHex) { nearbyState.grouped.values.flatten().map { it.advertisement }
         .filter { it.nodeId != app.nodeIdHex && it.host.isNotBlank() && it.port in 1..65535 &&
             it.transport in setOf("nsd", "ble", "lan") }
         .groupBy { it.nodeId }.values.map { copies -> copies.maxBy { candidate ->
@@ -221,7 +222,7 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: Strin
                 (if (candidate.manufacturer.isNotBlank()) 2 else 0) +
                 (if (candidate.model.isNotBlank()) 2 else 0) +
                 (if (candidate.transport == "nsd") 1 else 0)
-        } }
+        } } }
     LaunchedEffect(initialPeerNodeId,nearby) {
         val candidate=nearby.firstOrNull { it.nodeId==initialPeerNodeId && initialPeerNodeId!=handledInitialPeer }
         if(candidate!=null) {
@@ -230,14 +231,17 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: Strin
             else notice="This device is already saved. Review it in the list below."
         }
     }
-    val radarMarkers = nearby.map { candidate ->
+    val savedFingerprints=remember(endpoints) { endpoints.associate { saved ->
+        val key=saved.notes.substringAfter("identity.key=", "").substringBefore('\n')
+        saved.id to if(saved.trusted && key.isNotBlank())PeerCrypto.fingerprint(key) else ""
+    } }
+    val radarMarkers = remember(nearby,savedFingerprints) { nearby.map { candidate ->
         val saved = endpoints.firstOrNull { it.id == "node-${candidate.nodeId}" }
-        val key = saved?.notes?.substringAfter("identity.key=", "")?.substringBefore('\n').orEmpty()
-        RadarMarker(0, saved?.trusted == true && key.isNotBlank() &&
-            PeerCrypto.fingerprint(key) == candidate.fingerprint, false, false)
-    }
-    val radarNames=nearby.map { it.displayName.ifBlank { "Nearby Meshlit device" } }
+        RadarMarker(0, saved?.trusted == true && savedFingerprints[saved.id]?.takeIf{it.isNotBlank()} == candidate.fingerprint, false, false)
+    } }
+    val radarNames=remember(nearby){nearby.map { it.displayName.ifBlank { "Nearby Meshlit device" } }}
     LazyColumn(
+        state=deviceList,
         modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -256,6 +260,9 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: Strin
             Button({ add = true }, Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Add device") }
             OutlinedButton({ qr = true }, Modifier.fillMaxWidth(), enabled = own != null) { Icon(Icons.Default.QrCode, null); Spacer(Modifier.width(8.dp)); Text("QR / paste") }
         } }
+        item { OutlinedButton(onClick = { onNavigate("studio-internet") }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Computer, null); Spacer(Modifier.width(8.dp)); Text("Pair Studio desktop by ID")
+        } }
         item { OutlinedButton(onClick = { onNavigate("scan") }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Devices, null); Spacer(Modifier.width(8.dp)); Text("Browse nearby devices")
         } }
@@ -264,7 +271,7 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: Strin
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Pairing radar", style = MaterialTheme.typography.titleLarge)
-                    RadarTopology(radarMarkers, nearbyState.scanning, animateScan, radarNames) {
+                    RadarTopology(radarMarkers, nearbyState.scanning, animateScan && !deviceList.isScrollInProgress, radarNames) {
                         selectedRadarMarker=it
                         nearby.getOrNull(it)?.let(::reviewNearby)
                     }

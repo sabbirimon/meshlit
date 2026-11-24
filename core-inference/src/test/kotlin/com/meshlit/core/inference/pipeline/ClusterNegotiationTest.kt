@@ -38,4 +38,30 @@ class ClusterNegotiationTest {
         val master=node("m").copy(coordinatorAllowed=true,coordinatorModelSha256=hash)
         assertTrue(runCatching{ClusterNegotiation.plan(listOf(master,node("a"),node("b")),hash,20L*1024*1024*1024,1000)}.isFailure)
     }
+    @Test fun explicitCoordinatorCpuPlacementAllowsOneRemoteWithoutDuplicatingLayers() {
+        val master=node("master").copy(workerAllowed=false,coordinatorAllowed=true,coordinatorModelSha256=hash)
+        val offers=listOf(master,node("worker"))
+        assertThrows(IllegalArgumentException::class.java){ClusterNegotiation.plan(offers,hash,500000000,1000,blocks=24)}
+        val plan=ClusterNegotiation.plan(offers,hash,500000000,1000,blocks=24,coordinatorParticipates=true)
+        assertEquals(listOf("worker"),plan.workers.map{it.nodeId})
+        assertTrue(plan.coordinatorLayers>0 && plan.weights.single()>0)
+        assertEquals(24,plan.coordinatorLayers+plan.weights.sum())
+        assertTrue(plan.estimatedCoordinatorBytes<=ClusterNegotiation.budget(master))
+        assertTrue(plan.estimatedWorkerBytes.single()<=ClusterNegotiation.budget(offers.last()))
+        assertEquals(plan,ClusterNegotiation.plan(offers.reversed(),hash,500000000,1000,blocks=24,coordinatorParticipates=true))
+    }
+    @Test fun coordinatorPlacementRejectsUnknownBlocksWeakLocalMemoryAndStaleRemote() {
+        val master=node("master").copy(workerAllowed=false,coordinatorAllowed=true,coordinatorModelSha256=hash)
+        assertThrows(IllegalArgumentException::class.java){ClusterNegotiation.plan(listOf(master,node("w")),hash,500000000,1000,coordinatorParticipates=true)}
+        assertThrows(IllegalArgumentException::class.java){ClusterNegotiation.plan(listOf(master.copy(freeMemoryBytes=800000000),node("w")),hash,1000000000,1000,blocks=24,coordinatorParticipates=true)}
+        assertThrows(IllegalArgumentException::class.java){ClusterNegotiation.plan(listOf(master.copy(observedAtMs=31001),node("w").copy(observedAtMs=0)),hash,500000000,31001,blocks=24,coordinatorParticipates=true)}
+    }
+    @Test fun coordinatorPlacementFiltersWeakWorkersAndAccountsForKvAndGraphMemory() {
+        val master=node("master").copy(workerAllowed=false,coordinatorAllowed=true,coordinatorModelSha256=hash)
+        val plan=ClusterNegotiation.plan(listOf(master,node("good"),node("weak",500000000)),hash,1000000000,1000,kvBytes=500000000,blocks=24,coordinatorParticipates=true)
+        assertEquals(listOf("good"),plan.workers.map{it.nodeId})
+        assertEquals(24,plan.coordinatorLayers+plan.weights.sum())
+        assertThrows(IllegalArgumentException::class.java){ClusterNegotiation.plan(listOf(master,node("good")),hash,1000000000,1000,kvBytes=8000000000,blocks=24,coordinatorParticipates=true)}
+    }
+
 }

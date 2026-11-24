@@ -12,15 +12,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 private fun verifyHyperLNative() {
-    val resources = Path.of(System.getProperty("compose.application.resources.dir", "desktopApp/build/local-resources"))
-    val library = resources.resolve("local/${System.mapLibraryName("meshlit_hyperl")}")
-    check(Files.isRegularFile(library, java.nio.file.LinkOption.NOFOLLOW_LINKS) && Files.size(library) <= 16 * 1024 * 1024) { "Bundled HyperL library unavailable or oversized" }
-    val manifestBytes = Files.newInputStream(resources.resolve("local/hyperl-engine.json"), java.nio.file.LinkOption.NOFOLLOW_LINKS).use { it.readNBytes(262145) }
-    require(manifestBytes.size <= 262144) { "HyperL manifest exceeds its limit" }
-    val manifest = boundedJson(manifestBytes.decodeToString(throwOnInvalidSequence = true))
-    val bytes = Files.newInputStream(library, java.nio.file.LinkOption.NOFOLLOW_LINKS).use { it.readNBytes(16 * 1024 * 1024 + 1) }.also { require(it.size <= 16 * 1024 * 1024) }
-    val actual = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-    check(actual == manifest["sha256"]!!.jsonPrimitive.content) { "HyperL native checksum mismatch" }
+    verifiedHyperLLibrary()
 }
 
 @Composable internal fun HyperLPanel() {

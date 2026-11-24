@@ -9,14 +9,15 @@ import kotlinx.serialization.Serializable
     val deviceClass:String="phone",val backend:String="CPU",val cpuThreads:Int=2,
     val workerStartedAtMs:Long?=null,
 )
-data class NegotiatedCluster(val coordinatorId:String,val workers:List<NodeOffer>,val weights:List<Int>,val memoryBudgetBytes:Long,val estimatedWorkerBytes:List<Long> = emptyList(),val estimatedKvBytes:Long=0,val estimatedCoordinatorBytes:Long=0)
+data class NegotiatedCluster(val coordinatorId:String,val workers:List<NodeOffer>,val weights:List<Int>,val memoryBudgetBytes:Long,val estimatedWorkerBytes:List<Long> = emptyList(),val estimatedKvBytes:Long=0,val estimatedCoordinatorBytes:Long=0,val coordinatorLayers:Int=0)
 
 /** Deterministic capability election. Device labels never imply computation.
  * Capability snapshots are admission estimates, not memory reservations. */
 object ClusterNegotiation {
     const val REVISION="4df29be4f4c3673f428170fda944a5b19f743bb8"
     fun budget(offer:NodeOffer):Long=(offer.freeMemoryBytes*0.65).toLong().minus(256L*1024*1024).coerceAtLeast(0)
-    fun plan(offers:List<NodeOffer>,modelSha256:String,modelBytes:Long,nowMs:Long=System.currentTimeMillis(),kvBytes:Long=0,blocks:Int?=null,manualLayers:Map<String,Int>?=null):NegotiatedCluster {
+    fun plan(offers:List<NodeOffer>,modelSha256:String,modelBytes:Long,nowMs:Long=System.currentTimeMillis(),kvBytes:Long=0,blocks:Int?=null,manualLayers:Map<String,Int>?=null,coordinatorParticipates:Boolean=false):NegotiatedCluster {
+        require(!coordinatorParticipates || blocks!=null && manualLayers==null){"Coordinator CPU placement needs block metadata and automatic layer allocation"}
         require(nowMs in 0..Long.MAX_VALUE-5000) {"Invalid capability observation time"}
         require(manualLayers==null || manualLayers.size in 2..64) {"Manual placement needs 2–64 workers"}
         require(offers.size<=64){"Too many cluster offers"}
@@ -33,7 +34,7 @@ object ClusterNegotiation {
             ?: error("No approved coordinator has the selected model")
         var workers=compatible.filter{it.workerAllowed && it.nodeId!=master.nodeId && budget(it)>0}
             .sortedBy{it.nodeId}
-        require(workers.size>=2){"Need at least two fresh, compatible, approved workers"}
+        require(workers.size>=if(coordinatorParticipates)1 else 2){"Not enough fresh, compatible, approved workers for this placement mode"}
         // Rounded integer arithmetic keeps estimates conservative and avoids
         // floating-point loss on large models/KV caches.
         fun scaled(value:Long,numerator:Long):Long = Math.addExact(
@@ -42,6 +43,21 @@ object ClusterNegotiation {
         require(shared<=Long.MAX_VALUE/4) {"Memory estimate exceeds supported bounds"}
         val coordinatorEstimate=Math.addExact(Math.addExact(modelBytes/10,kvBytes/20),256L*1024*1024)
         require(budget(master)>=coordinatorEstimate){"Coordinator lacks estimated embedding/scheduling memory"}
+        if(coordinatorParticipates) {
+            val count=requireNotNull(blocks)
+            val perLayer=shared/count + if(shared%count!=0L)1 else 0
+            val overhead=256L*1024*1024
+            workers=workers.filter{budget(it)>=overhead+2*perLayer}
+                .sortedWith(compareByDescending<NodeOffer>{budget(it)}.thenBy{it.nodeId})
+                .take(minOf(63,count-1)).sortedBy{it.nodeId}
+            require(workers.isNotEmpty()){"No approved worker has room for a layer with headroom"}
+            val localCapacity=budget(master)-coordinatorEstimate
+            require(localCapacity>=overhead+2*perLayer){"Coordinator lacks memory for its CPU layers and scheduling headroom"}
+            val placement=LayerPlacement.allocate(listOf(localCapacity)+workers.map(::budget),shared,count,overhead)
+            return NegotiatedCluster(master.nodeId,workers,placement.counts.drop(1),
+                budget(master)+workers.sumOf(::budget),placement.estimatedBytes.drop(1),kvBytes,
+                Math.addExact(coordinatorEstimate,placement.estimatedBytes.first()),placement.counts.first())
+        }
         if(blocks!=null) {
             val layerBytes=shared/blocks + if(shared%blocks!=0L) 1 else 0
             val reserve=256L*1024*1024+layerBytes

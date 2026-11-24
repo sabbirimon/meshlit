@@ -8,16 +8,41 @@ import javax.net.ssl.*
 import java.util.concurrent.Executors
 class RpcTunnelTest {
     private fun unusedPort()=ServerSocket(0).use{it.localPort}
-    private fun bindTestTunnel(tls:SSLContext,nativePort:Int,token:String):RpcTunnel {
+    private fun bindTestTunnel(tls:SSLContext,nativePort:Int,token:String,networkAllowed:(String)->Boolean={true},authenticateFirst:Boolean=false):RpcTunnel {
         // The API takes an explicit public port. Reserving then releasing an
         // ephemeral test port cannot reserve it across the actual TLS bind.
         // Retry only allocation conflicts, retaining every TLS/auth assertion.
         var conflict:BindException?=null
         repeat(20) {
-            try { return RpcTunnel.server(tls,unusedPort(),nativePort,token,capabilities={"{\"workerAllowed\":true}"}) }
+            try { return RpcTunnel.server(tls,unusedPort(),nativePort,token,capabilities={"{\"workerAllowed\":true}"},networkAllowed=networkAllowed,authenticateBeforeNetworkCheck=authenticateFirst) }
             catch(e:BindException) { conflict=e }
         }
         throw requireNotNull(conflict)
+    }
+    @Test fun authenticatedNetworkCheckDoesNotAdmitWrongTokenOrDeniedPolicy() {
+        val fixture=requireNotNull(javaClass.getResourceAsStream("/pipeline-test-only.p12"))
+        val keys=KeyStore.getInstance("PKCS12").apply{fixture.use{load(it,"test-only".toCharArray())}}
+        val managers=KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply{init(keys,"test-only".toCharArray())}
+        val tls=SSLContext.getInstance("TLS").apply{init(managers.keyManagers,null,null)}
+        val pin=RpcTunnel.fingerprint(keys.getCertificate("worker") as X509Certificate)
+        val token="t".repeat(64)
+        val calls=java.util.concurrent.atomic.AtomicInteger()
+        ServerSocket(0,4,InetAddress.getByName("127.0.0.1")).use { native ->
+            native.soTimeout=300
+            bindTestTunnel(tls,native.localPort,token,{calls.incrementAndGet();true},true).use { server ->
+                assertTrue(runCatching{RpcTunnel.queryCapabilities("127.0.0.1",server.port,pin,"x".repeat(64))}.isFailure)
+                assertEquals("Unverified clients must not receive paired trust",0,calls.get())
+                assertEquals("{\"workerAllowed\":true}",RpcTunnel.queryCapabilities("127.0.0.1",server.port,pin,token))
+                assertEquals(1,calls.get())
+                assertTrue("Capabilities must not connect native RPC",runCatching{native.accept()}.exceptionOrNull() is SocketTimeoutException)
+            }
+            bindTestTunnel(tls,native.localPort,token,{false},true).use { server ->
+                assertTrue("A valid token must not bypass listener policy",runCatching{RpcTunnel.queryCapabilities("127.0.0.1",server.port,pin,token)}.isFailure)
+            }
+            bindTestTunnel(tls,native.localPort,token,{false}).use { server ->
+                assertTrue("Default listeners keep their pre-authentication deny",runCatching{RpcTunnel.queryCapabilities("127.0.0.1",server.port,pin,token)}.isFailure)
+            }
+        }
     }
     @Test fun authenticatedTunnelForwardsAndWrongPinFails() {
         // This keystore is a public, disposable TEST FIXTURE, never a deployment identity.

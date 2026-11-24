@@ -1,0 +1,9 @@
+{
+  "name": "meshlit-catalog-sdk",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@lmstudio/sdk": "2.1.0",
+    "node-html-parser": "7.0.1"
+  }
+}

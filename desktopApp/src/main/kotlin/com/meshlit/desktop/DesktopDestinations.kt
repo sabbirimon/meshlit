@@ -4,8 +4,10 @@ data class DesktopDestination(val id: String, val title: String, val description
 object DesktopDestinations {
     // Names audited against current Android inventory and build 98faaf0. Desktop availability is independent.
     val all = listOf(
+        DesktopDestination("usage", "Usage & costs", "Encrypted chat history, device budgets and bill reconciliation", true),
+        DesktopDestination("vpn", "VPN & network", "Optional Tailscale status, peer observations and host checks", true),
         DesktopDestination("engine", "Inference engine", "CPU threads, context, batch/KV options, memory admission and idle unloading", true),
-        DesktopDestination("management", "Management dashboards", "All management features grouped by category and type", true),
+        DesktopDestination("management", "Dashboards", "Models, routing, observed usage and private connection setup", true),
         DesktopDestination("containers", "Containers and incubator", "Docker/Podman runtime, images and workload isolation · desktop port pending", false),
         DesktopDestination("kubernetes", "Kubernetes management", "Contexts, namespaces, workloads, quotas and reviewed deployments · port pending", false),
         DesktopDestination("terminal", "Terminal", "Built-in human shell commands; optional Ghostty interactive SSH", true),
@@ -45,11 +47,11 @@ object DesktopDestinations {
         DesktopDestination("commands", "Commands and instructions", "Human shell commands with bounded output and cancellation", true),
         DesktopDestination("packages", "Lab packages", "Install, list and uninstall packages inside a ready VM", false),
         DesktopDestination("securitylab", "Security Lab", "Defensive skill references; execution companions remain unavailable", true),
-        DesktopDestination("providers", "Online providers", "Compatible /v1 and Open WebUI /api hosts; separate service-bound session keys", true),
+        DesktopDestination("providers", "Online models & gateways", "OpenRouter, Hugging Face, OmniRoute, FreeLLMAPI and compatible services", true),
         DesktopDestination("power", "Power and costs", "Local battery readings when OS reports them; cost accounting pending", true),
         DesktopDestination("external", "External devices and OTG", "USB discovery, permissions and removable storage", false),
         DesktopDestination("acceleration", "Acceleration", "Observed CPU/GPU inventory; accelerator execution qualification pending", true),
-        DesktopDestination("agents", "Agent management", "Delegated permissions, real jobs and registered tools", false),
+        DesktopDestination("agents", "Assistant modes", "Shared Plan, Edit and bounded Autopilot with action approvals", true),
         DesktopDestination("ssh", "SSH nodes and connections", "Pinned outbound SSH and approved-key inbound status", true),
         DesktopDestination("firewall", "Network rules", "Persisted Meshlit listener firewall and network status", false),
         DesktopDestination("device", "Device", "Observed local hardware and process inventory", true),

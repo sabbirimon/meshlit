@@ -27,8 +27,9 @@ class HostEndpoint private constructor(val base: URI, val protocol: HostProtocol
             require(uri.host != null && uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null)
             require(uri.scheme == "https" || (uri.scheme == "http" && uri.host in setOf("127.0.0.1", "::1", "[::1]"))) { "Remote hosts require HTTPS with a trusted certificate." }
             require(uri.port == -1 || uri.port in 1..65535)
-            require(uri.rawPath.isNullOrEmpty() || uri.rawPath == "/" || uri.rawPath == protocol.basePath || uri.rawPath == protocol.basePath + "/") { "Wrong API base path." }
-            return HostEndpoint(URI(uri.scheme, null, uri.host, uri.port, protocol.basePath, null, null), protocol)
+            val basePath = if (protocol == HostProtocol.OPENAI && uri.host.equals("openrouter.ai", ignoreCase = true)) "/api/v1" else protocol.basePath
+            require(uri.rawPath.isNullOrEmpty() || uri.rawPath == "/" || uri.rawPath == basePath || uri.rawPath == basePath + "/") { "Wrong API base path." }
+            return HostEndpoint(URI(uri.scheme, null, uri.host, uri.port, basePath, null, null), protocol)
         }
     }
 }
@@ -105,11 +106,11 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
         }
     }
     fun models(): List<String> = response(request("models").GET().build()) { stream, _ ->
-        val bytes = stream.readNBytes(262145)
-        require(bytes.size <= 262144) { "Model list exceeds 256 KiB." }
-        val root = boundedJson(bytes.decodeToString(throwOnInvalidSequence = true))
+        val bytes = stream.readNBytes(4_194_305)
+        require(bytes.size <= 4_194_304) { "Model list exceeds 4 MiB." }
+        val root = boundedJson(bytes.decodeToString(throwOnInvalidSequence = true), 4_194_304)
         val list = root["data"]?.jsonArray ?: error("Missing model list")
-        require(list.size <= 512)
+        require(list.size <= 2048)
         list.map { it.jsonObject["id"]?.jsonPrimitive?.content ?: error("Missing model id") }
             .onEach { require(it.length in 1..512 && it.none(Char::isISOControl)) }.distinct()
     }
@@ -148,10 +149,12 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
                 val tokens = (root["usage"] as? JsonObject)?.get("completion_tokens")?.jsonPrimitive?.longOrNull
                 require(tokens == null || tokens in 0..10_000_000)
                 onText(text)
-                return@response GenerationUsage(tokens, System.nanoTime() - start)
+                val input = (root["usage"] as? JsonObject)?.get("prompt_tokens")?.jsonPrimitive?.longOrNull
+                require(input == null || input in 0..10_000_000)
+                return@response GenerationUsage(tokens, System.nanoTime() - start, input)
             }
             require(type.substringBefore(';').trim().lowercase() == "text/event-stream") { "Host did not return a token stream." }
-            var total = 0; var outputSize = 0; var tokens: Long? = null; var finished = false
+            var total = 0; var outputSize = 0; var tokens: Long? = null; var input: Long? = null; var finished = false
             val event = StringBuilder()
             fun dispatch(): Boolean {
                 if (event.isEmpty()) return false
@@ -161,6 +164,9 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
                 if (json["error"] != null) error("Host reported a generation error; details withheld.")
                 json["usage"]?.takeIf { it is JsonObject }?.jsonObject?.get("completion_tokens")?.jsonPrimitive?.longOrNull?.let {
                     require(it in 0..10_000_000); tokens = it
+                }
+                json["usage"]?.takeIf { it is JsonObject }?.jsonObject?.get("prompt_tokens")?.jsonPrimitive?.longOrNull?.let {
+                    require(it in 0..10_000_000); input = it
                 }
                 json["choices"]?.jsonArray?.forEach { choice ->
                     val delta = choice.jsonObject["delta"]?.jsonObject
@@ -185,7 +191,7 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
             }
             require(finished) { "Host closed the stream before completion." }
             require(outputSize > 0) { "Host returned no text." }
-            GenerationUsage(tokens, System.nanoTime() - start)
+            GenerationUsage(tokens, System.nanoTime() - start, input)
         }
     }
     override fun close() {
@@ -195,8 +201,8 @@ class HostClient(private val endpoint: HostEndpoint, private val token: String) 
 }
 
 /** Bound nesting before the provider-controlled JSON reaches the recursive parser. */
-internal fun boundedJson(text: String): JsonObject {
-    require(text.length <= 262144)
+internal fun boundedJson(text: String, maxChars: Int = 262144): JsonObject {
+    require(maxChars in 1..4_194_304 && text.length <= maxChars)
     var depth = 0; var quoted = false; var escaped = false
     text.forEach { character ->
         if (quoted) {

@@ -1,0 +1,422 @@
+{
+  "date": "2026-10-26",
+  "baselineCommit": "5a7c5167ce6a32880c4e6354fde26af50773eb2c",
+  "evidence": "Declared destination inventory cross-checked with Main.kt dispatch; available means scoped source, not runtime qualification",
+  "source": "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopDestinations.kt",
+  "destinations": [
+    {
+      "id": "engine",
+      "title": "Inference engine",
+      "boundary": "CPU threads, context, batch/KV options, memory admission and idle unloading",
+      "availableInSource": true
+    },
+    {
+      "id": "management",
+      "title": "Management dashboards",
+      "boundary": "All management features grouped by category and type",
+      "availableInSource": true
+    },
+    {
+      "id": "containers",
+      "title": "Containers and incubator",
+      "boundary": "Docker/Podman runtime, images and workload isolation \u00b7 desktop port pending",
+      "availableInSource": false
+    },
+    {
+      "id": "kubernetes",
+      "title": "Kubernetes management",
+      "boundary": "Contexts, namespaces, workloads, quotas and reviewed deployments \u00b7 port pending",
+      "availableInSource": false
+    },
+    {
+      "id": "terminal",
+      "title": "Terminal",
+      "boundary": "Built-in human shell commands; optional Ghostty interactive SSH",
+      "availableInSource": true
+    },
+    {
+      "id": "guardrails",
+      "title": "Response policy and guardrails",
+      "boundary": "Local system prompt selection; model and provider restrictions remain independent",
+      "availableInSource": true
+    },
+    {
+      "id": "dolphin",
+      "title": "Dolphin speech and chat",
+      "boundary": "DataoceanAI speech adapter pending; compatible chat GGUF imports use Models",
+      "availableInSource": false
+    },
+    {
+      "id": "runners",
+      "title": "Tool runners",
+      "boundary": "Bounded desktop/server execution and lifecycle management \u00b7 port pending",
+      "availableInSource": false
+    },
+    {
+      "id": "discover",
+      "title": "Discover models",
+      "boundary": "Hugging Face search and revision-pinned verified GGUF downloads",
+      "availableInSource": true
+    },
+    {
+      "id": "packets",
+      "title": "Packet capture",
+      "boundary": "Scoped local interface capture with packet and time limits",
+      "availableInSource": false
+    },
+    {
+      "id": "nodes",
+      "title": "Nodes and devices",
+      "boundary": "Saved authenticated phone, desktop and cluster API addresses",
+      "availableInSource": true
+    },
+    {
+      "id": "device-dashboard",
+      "title": "Device dashboard",
+      "boundary": "Saved endpoints, last verified contact and local host capacity; no inferred online status",
+      "availableInSource": true
+    },
+    {
+      "id": "securityprivacy",
+      "title": "Security and privacy",
+      "boundary": "Review connection consent, session keys, local storage and response policy",
+      "availableInSource": true
+    },
+    {
+      "id": "sharding",
+      "title": "Model sharding",
+      "boundary": "Readiness and worker requirements; desktop layer pipeline pending",
+      "availableInSource": false
+    },
+    {
+      "id": "meshchat",
+      "title": "Mesh chat",
+      "boundary": "Multi-device messaging transport and offline delivery \u00b7 desktop port pending",
+      "availableInSource": false
+    },
+    {
+      "id": "radar",
+      "title": "Device radar",
+      "boundary": "Nearby discovery and map require desktop discovery backend \u00b7 port pending",
+      "availableInSource": false
+    },
+    {
+      "id": "health",
+      "title": "Device health",
+      "boundary": "Observed host memory, storage and CPU load",
+      "availableInSource": true
+    },
+    {
+      "id": "memory",
+      "title": "Memory and storage",
+      "boundary": "Physical memory, app heap and free disk",
+      "availableInSource": true
+    },
+    {
+      "id": "tokens",
+      "title": "Token management",
+      "boundary": "Request output limit and measured usage",
+      "availableInSource": true
+    },
+    {
+      "id": "search",
+      "title": "Global search",
+      "boundary": "Search settings, current chat, saved models/devices; optional browser web handoff",
+      "availableInSource": true
+    },
+    {
+      "id": "appearance",
+      "title": "Appearance",
+      "boundary": "Saved desktop themes, English/Chinese and font scale",
+      "availableInSource": true
+    },
+    {
+      "id": "crypto",
+      "title": "Local cryptography",
+      "boundary": "Offline hashes, random keys, HMAC and authenticated encryption",
+      "availableInSource": true
+    },
+    {
+      "id": "gibberlink",
+      "title": "GibberLink and English transcript",
+      "boundary": "Optional foreground agent audio packets with readable text",
+      "availableInSource": false
+    },
+    {
+      "id": "remotecommands",
+      "title": "Device and cluster commands",
+      "boundary": "Scoped multi-node chat commands with human and agent switches",
+      "availableInSource": false
+    },
+    {
+      "id": "p2p",
+      "title": "P2P chat and commands",
+      "boundary": "Direct phone-to-phone WebRTC with signed pairing and optional TURN",
+      "availableInSource": false
+    },
+    {
+      "id": "colibri",
+      "title": "Colibri host",
+      "boundary": "Off/On/Auto routing to an explicitly configured compatible host",
+      "availableInSource": true
+    },
+    {
+      "id": "models",
+      "title": "Models and downloads",
+      "boundary": "Import files, manage downloads and load local models",
+      "availableInSource": true
+    },
+    {
+      "id": "rag",
+      "title": "Knowledge library",
+      "boundary": "Encrypted document import, offline retrieval and opt-in chat grounding",
+      "availableInSource": true
+    },
+    {
+      "id": "media",
+      "title": "Camera, vision and audio",
+      "boundary": "Real image input, microphone and existing SDK media paths",
+      "availableInSource": false
+    },
+    {
+      "id": "configuration",
+      "title": "Configuration profiles",
+      "boundary": "Export, review and apply portable device settings",
+      "availableInSource": false
+    },
+    {
+      "id": "personalization",
+      "title": "Memory and personality",
+      "boundary": "Local recall, profile and bounded self recovery",
+      "availableInSource": false
+    },
+    {
+      "id": "behavior",
+      "title": "Custom local model behavior",
+      "boundary": "Custom weights and your own local instructions",
+      "availableInSource": true
+    },
+    {
+      "id": "recovery",
+      "title": "Checkpoints and recovery",
+      "boundary": "Encrypted native CPU KV snapshots and honest cluster recovery status",
+      "availableInSource": false
+    },
+    {
+      "id": "training",
+      "title": "Fine-tuning",
+      "boundary": "Real Soup LoRA/QLoRA jobs on a paired training host",
+      "availableInSource": false
+    },
+    {
+      "id": "router",
+      "title": "Model router",
+      "boundary": "Scenario rules, model chains and answer comparisons",
+      "availableInSource": false
+    },
+    {
+      "id": "cloud",
+      "title": "Cloud and credentials",
+      "boundary": "Vendor resources, costs, environments and separate human/agent controls",
+      "availableInSource": false
+    },
+    {
+      "id": "operations",
+      "title": "Operations dashboard",
+      "boundary": "Stop this chat request and unload the local process owned by Meshlit",
+      "availableInSource": true
+    },
+    {
+      "id": "gateway",
+      "title": "Agent Gateway",
+      "boundary": "Built-in MCP, A2A and model endpoints; content policy",
+      "availableInSource": false
+    },
+    {
+      "id": "commands",
+      "title": "Commands and instructions",
+      "boundary": "Human shell commands with bounded output and cancellation",
+      "availableInSource": true
+    },
+    {
+      "id": "packages",
+      "title": "Lab packages",
+      "boundary": "Install, list and uninstall packages inside a ready VM",
+      "availableInSource": false
+    },
+    {
+      "id": "securitylab",
+      "title": "Security Lab",
+      "boundary": "Defensive skill references; execution companions remain unavailable",
+      "availableInSource": true
+    },
+    {
+      "id": "providers",
+      "title": "Online providers",
+      "boundary": "Compatible /v1 and Open WebUI /api hosts; separate service-bound session keys",
+      "availableInSource": true
+    },
+    {
+      "id": "power",
+      "title": "Power and costs",
+      "boundary": "Local battery readings when OS reports them; cost accounting pending",
+      "availableInSource": true
+    },
+    {
+      "id": "external",
+      "title": "External devices and OTG",
+      "boundary": "USB discovery, permissions and removable storage",
+      "availableInSource": false
+    },
+    {
+      "id": "acceleration",
+      "title": "Acceleration",
+      "boundary": "Observed CPU/GPU inventory; accelerator execution qualification pending",
+      "availableInSource": true
+    },
+    {
+      "id": "agents",
+      "title": "Agent management",
+      "boundary": "Delegated permissions, real jobs and registered tools",
+      "availableInSource": false
+    },
+    {
+      "id": "ssh",
+      "title": "SSH nodes and connections",
+      "boundary": "Pinned outbound SSH and approved-key inbound status",
+      "availableInSource": true
+    },
+    {
+      "id": "firewall",
+      "title": "Network rules",
+      "boundary": "Persisted Meshlit listener firewall and network status",
+      "availableInSource": false
+    },
+    {
+      "id": "device",
+      "title": "Device",
+      "boundary": "Observed local hardware and process inventory",
+      "availableInSource": true
+    },
+    {
+      "id": "tasks",
+      "title": "Task manager",
+      "boundary": "Live local processes, CPU/RSS readings and scoped human Stop",
+      "availableInSource": true
+    },
+    {
+      "id": "ide",
+      "title": "Code workspace",
+      "boundary": "User-selected UTF-8 editor, search and Save As; IDE tooling pending",
+      "availableInSource": true
+    },
+    {
+      "id": "hyperl",
+      "title": "HyperL libraries",
+      "boundary": "Native CPU recipes, bounded custom graphs and precise sums; separate licence",
+      "availableInSource": true
+    },
+    {
+      "id": "permissions",
+      "title": "App permissions",
+      "boundary": "Explicit session grants for selected desktop inference hosts",
+      "availableInSource": true
+    },
+    {
+      "id": "files",
+      "title": "Files and storage",
+      "boundary": "User-selected UTF-8 files and Save As; full file/archive management pending",
+      "availableInSource": true
+    },
+    {
+      "id": "termux",
+      "title": "Termux integration",
+      "boundary": "Probe an installed shell, manage delegation and view its audit",
+      "availableInSource": false
+    },
+    {
+      "id": "notifications",
+      "title": "Notifications",
+      "boundary": "System notification permission and channels",
+      "availableInSource": false
+    },
+    {
+      "id": "monitor",
+      "title": "Monitoring and layer pipeline",
+      "boundary": "Live local CPU/RAM charts and process sampling; remote pipeline monitor pending",
+      "availableInSource": true
+    },
+    {
+      "id": "audit",
+      "title": "Audit and telemetry",
+      "boundary": "Encrypted audit history, device metrics, OTLP collector and exports",
+      "availableInSource": false
+    },
+    {
+      "id": "logs",
+      "title": "Logs and export",
+      "boundary": "Search logs; filter severity and source; export TXT or JSONL",
+      "availableInSource": false
+    },
+    {
+      "id": "network",
+      "title": "Network and pairing",
+      "boundary": "Save trusted HTTPS API addresses; discovery and worker enrollment pending",
+      "availableInSource": true
+    },
+    {
+      "id": "peers",
+      "title": "Forwarding peers",
+      "boundary": "Manage peers for the existing inference router",
+      "availableInSource": false
+    },
+    {
+      "id": "runtime",
+      "title": "Linux runtime and sandbox",
+      "boundary": "VM configuration and agent activation consent",
+      "availableInSource": false
+    },
+    {
+      "id": "crawler",
+      "title": "Web crawler",
+      "boundary": "Configure the optional Crawl4AI companion",
+      "availableInSource": false
+    },
+    {
+      "id": "openclaw",
+      "title": "OpenClaw and autonomy",
+      "boundary": "Gateway agent, phone model sharing and Android delegation",
+      "availableInSource": false
+    },
+    {
+      "id": "automation",
+      "title": "Android automation",
+      "boundary": "Accessibility automation and app allowlists",
+      "availableInSource": false
+    },
+    {
+      "id": "hooks",
+      "title": "Agent hooks",
+      "boundary": "Enable and edit user-authored lifecycle scripts",
+      "availableInSource": false
+    },
+    {
+      "id": "help",
+      "title": "Guide and tutorial",
+      "boundary": "Desktop connection instructions and implementation boundaries",
+      "availableInSource": true
+    },
+    {
+      "id": "legal",
+      "title": "Terms and privacy",
+      "boundary": "Offline policies, accepted version and data controls",
+      "availableInSource": true
+    },
+    {
+      "id": "about",
+      "title": "About and availability",
+      "boundary": "Build information and feature implementation status",
+      "availableInSource": true
+    }
+  ]
+}

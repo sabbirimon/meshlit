@@ -17,7 +17,7 @@ import zipfile
 from pathlib import Path
 
 # jdeps over the complete packaged classpath, plus reflective TLS/management use.
-MODULES = "java.base,java.desktop,java.instrument,java.logging,java.net.http,java.prefs,java.rmi,java.security.jgss,java.management,jdk.management,jdk.crypto.ec,jdk.unsupported"
+MODULES = "jdk.jfr,jdk.xml.dom,jdk.httpserver,jdk.jsobject,java.scripting,java.xml,jdk.unsupported.desktop,java.base,java.desktop,java.instrument,java.logging,java.net.http,java.prefs,java.rmi,java.security.jgss,java.management,jdk.management,jdk.crypto.ec,jdk.unsupported"
 
 
 def run(*args):
@@ -42,14 +42,26 @@ def main():
     parser.add_argument("--fast-server", type=Path)
     parser.add_argument("--cpu-probe", type=Path)
     parser.add_argument("--hyperl-library", type=Path, required=True)
+    parser.add_argument("--llama-source", type=Path, default=Path(__file__).resolve().parents[1] / "vendored/runanywhere-llama")
+    parser.add_argument("--version", default="2.0.45")
+    parser.add_argument("--build", default="45.1")
     args = parser.parse_args()
+    if not re.fullmatch(r"[1-9][0-9]*\.[0-9]+\.[0-9]+", args.version) or not re.fullmatch(r"[0-9]+\.[0-9]+", args.build):
+        parser.error("Expected numeric major.minor.patch version and build.revision")
     if platform.system() != "Darwin" or platform.machine() != "x86_64":
         parser.error("This preview packager requires an Intel Mac.")
     if bool(args.fast_server) != bool(args.cpu_probe):
         parser.error("Optimized engine and CPU probe must be supplied together")
     repo = Path(__file__).resolve().parents[1]
+    pin = json.loads((repo / "vendored/sources.lock.json").read_text())["sources"]["runanywhere-llama"]["revision"]
+    revision = subprocess.check_output(["git", "-C", str(args.llama_source), "rev-parse", "HEAD"], text=True).strip()
+    if revision != pin:
+        parser.error("llama source differs from pinned revision")
+    pinned_license = subprocess.check_output(["git", "-C", str(args.llama_source), "show", pin + ":LICENSE"])
+    if (args.llama_source / "LICENSE").read_bytes() != pinned_license:
+        parser.error("llama licence differs from pinned source")
     app_input = args.app_image.resolve() / "Contents/app"
-    jars = list(app_input.glob("desktopApp-*.jar"))
+    jars = list(app_input.glob("desktopApp-*.jar")) + list(app_input.glob("desktopApp.jar"))
     if len(jars) != 1:
         parser.error("Expected exactly one compiled desktopApp jar.")
     provenance = json.loads(args.runtime_provenance.read_text(encoding="utf-8"))
@@ -67,30 +79,30 @@ def main():
         "--strip-debug", "--no-man-pages", "--no-header-files", "--output", runtime)
     image_dir = args.scratch / "image"
     run(args.jdk_home / "bin/jpackage", "--type", "app-image", "--dest", image_dir,
-        "--input", clean_input, "--runtime-image", runtime, "--name", "MeshlitPreview",
+        "--input", clean_input, "--runtime-image", runtime, "--name", "Meshlit",
         "--main-jar", jars[0].name, "--main-class", "com.meshlit.desktop.MainKt",
-        "--app-version", "2.0.40", "--vendor", "Sabbir Hassan Imon",
+        "--app-version", args.version, "--vendor", "Sabbir Hassan Imon",
         "--description", "Experimental Meshlit desktop studio with offline CPU inference",
         "--mac-package-identifier", "com.meshlit.desktop",
-        "--icon", args.app_image / "Contents/Resources/MeshlitPreview.icns",
+        "--icon", args.app_image / "Contents/Resources/Meshlit.icns",
         "--java-options", "-Dcompose.application.resources.dir=$APPDIR/resources",
         "--java-options", "-Dcompose.application.configure.swing.globals=true",
         "--java-options", "-Dskiko.library.path=$APPDIR",
         "--java-options", "-Djava.library.path=$APPDIR/resources/local")
     # The native HyperL bridge is loaded only by an explicit enabled CPU action.
-    app = image_dir / "MeshlitPreview.app"
+    app = image_dir / "Meshlit.app"
     plist = app / "Contents/Info.plist"
     metadata = plistlib.loads(plist.read_bytes())
     # Conservative distribution floor; only macOS 15.8.1 is physically qualified.
     metadata["LSMinimumSystemVersion"] = "11.0"
-    metadata["CFBundleVersion"] = "40.1"
+    metadata["CFBundleVersion"] = args.build
     plist.write_bytes(plistlib.dumps(metadata))
     resources = app / "Contents/Resources"
     notices = resources / "licenses"
     notices.mkdir()
     for source in (repo / "desktopApp/distribution/notices").iterdir():
         shutil.copy2(source, notices / source.name)
-    shutil.copy2(repo / "vendored/runanywhere-llama/LICENSE", notices / "LLAMA-LICENSE.txt")
+    shutil.copy2(args.llama_source / "LICENSE", notices / "LLAMA-LICENSE.txt")
     license_cpp = args.server.parent.parent / "license.cpp"
     native_notices = "\n\n".join(re.findall(r'R"=L=\((.*?)\)=L="', license_cpp.read_text(), re.S))
     if not native_notices:
@@ -161,12 +173,12 @@ def main():
     }, indent=2) + "\n", encoding="utf-8")
     run("/usr/bin/codesign", "--force", "--sign", "-", app)
     run("/usr/bin/codesign", "--verify", "--deep", "--strict", app)
-    stem = "MeshlitPreview-2.0.40-studio.1-macos-intel"
+    stem = f"MeshlitPreview-{args.version}-studio.{args.build}-macos-intel"
     pkg = args.output / (stem + ".pkg")
     # Root packaging does not depend on LaunchServices recognizing a new bundle.
     # image_dir contains exactly this app; no scripts or other install payloads.
     run("/usr/bin/pkgbuild", "--root", image_dir, "--install-location", "/Applications",
-        "--identifier", "com.meshlit.desktop.preview.pkg", "--version", "2.0.40.1",
+        "--identifier", "com.meshlit.desktop.preview.pkg", "--version", args.version + "." + args.build.split(".")[-1],
         "--ownership", "recommended", pkg)
     staging = args.scratch / "dmg-root"
     staging.mkdir()
@@ -183,7 +195,7 @@ def main():
     shutil.copy2(repo / "docs/MACOS_PREVIEW_INSTALL.txt", args.output / "INSTALL.txt")
     shutil.copy2(args.runtime_provenance, args.output / "RUNTIME_SOURCE.json")
     shutil.copy2(args.runtime_source, args.output / args.runtime_source.name)
-    report = {"architecture": "x86_64", "appVersion": "2.0.40",
+    report = {"architecture": "x86_64", "appVersion": args.version,
               "nativeFilesChecked": native_dependencies,
               "externalNativeDependencies": [], "developerIdSigned": False,
               "notarized": False, "appSignature": "ad-hoc", "installerScripts": False,

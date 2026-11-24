@@ -26,12 +26,12 @@ import com.meshlit.core.inference.models.OnlineProtocol
 import kotlinx.coroutines.*
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun MediaGenerationScreen(initialKind:String="vision",onBack:()->Unit) {
+@Composable fun MediaGenerationScreen(initialKind:String="vision",initialPrompt:String="",returnMediaToChat:Boolean=false,onAddToChat:(suspend (java.io.File)->Unit)?=null,onBack:()->Unit) {
     val media=koinInject<MediaGeneration>();val videos by media.videos.collectAsStateWithLifecycle()
     val providers=koinInject<OnlineProviders>();val profiles by providers.profiles.collectAsStateWithLifecycle()
     val scope=rememberCoroutineScope();val context=LocalContext.current
     var kind by remember{mutableStateOf(initialKind)};var profile by remember{mutableStateOf<String?>(null)}
-    var model by remember{mutableStateOf("")};var prompt by remember{mutableStateOf("")};var voice by remember{mutableStateOf("coral")}
+    var model by remember{mutableStateOf("")};var prompt by remember{mutableStateOf(initialPrompt)};var voice by remember{mutableStateOf("coral")}
     var image by remember{mutableStateOf<Uri?>(null)};var result by remember{mutableStateOf<MediaResult?>(null)}
     var error by remember{mutableStateOf<String?>(null)};var job by remember{mutableStateOf<Job?>(null)}
     var running by remember{mutableStateOf(false)};var files by remember{mutableStateOf(media.files())}
@@ -54,7 +54,7 @@ import kotlinx.coroutines.*
         if(kind=="speech") OutlinedTextField(voice,{voice=it},label={Text("Voice ID")},singleLine=true)
         if(kind=="vision") {OutlinedButton(enabled=!running,onClick={pick.launch(arrayOf("image/*"))}){Text(if(image==null) "Upload an image" else "Replace selected image")};if(image!=null) Text("Image selected · resized locally before upload")}
         OutlinedTextField(prompt,{prompt=it},Modifier.fillMaxWidth(),label={Text(if(kind=="speech") "Text to speak" else "Prompt / question")},minLines=3,maxLines=7)
-        Row{Button(enabled=!running && profile!=null && prompt.isNotBlank(),onClick={run{result=media.generate(profile!!,kind,model,prompt,voice,image)}}){Text(if(kind=="video") "Create 4-second video job" else "Run")};TextButton(enabled=running,onClick={job?.cancel()}){Text("Stop request")}}
+        Row{Button(enabled=!running && profile!=null && prompt.isNotBlank(),onClick={run{val output=media.generate(profile!!,kind,model,prompt,voice,image);result=output;if(returnMediaToChat && output.file!=null)onAddToChat?.invoke(output.file)}}){Text(if(kind=="video") "Create 4-second video job" else "Run")};TextButton(enabled=running,onClick={job?.cancel()}){Text("Stop request")}}
         if(running) LinearProgressIndicator(Modifier.fillMaxWidth())
         result?.text?.let{SelectionContainer{Text(it)};MessageActions(it)}
         result?.file?.let{file->
@@ -75,13 +75,18 @@ import kotlinx.coroutines.*
                 OutlinedButton(onClick={export.launch(file.name)}){Text("Save output")}
                 FilledTonalButton(onClick={try{shareGeneratedFile(context,file)}catch(e:Exception){error="Output could not be shared"}}){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Share")}
             }
+            onAddToChat?.let { add -> TextButton(enabled=!running,onClick={run{add(file)}}){Text("Add file to chat")} }
             if(file.extension=="wav") TextButton(onClick={try{player?.release();player=android.media.MediaPlayer().apply{setDataSource(file.absolutePath);setOnPreparedListener{it.start()};setOnErrorListener{_,_,_->error="Audio playback failed";true};prepareAsync()}}catch(e:Exception){error=e.message}}){Text("Play AI-generated speech")}
         }
         videos.forEach{video->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){
             Text("${video.job.id} · ${video.job.status} · progress ${video.job.progress?.let{"$it%"} ?: "unknown"}")
             video.job.error?.let{Text(it)}
             Row{TextButton(enabled=!running,onClick={run{media.refresh(video)}}){Text("Check status")}
-                if(video.job.status=="completed") TextButton(enabled=!running,onClick={run{result=media.download(video)}}){Text("Download MP4")}}
+                if(video.job.status=="completed") TextButton(enabled=!running,onClick={run{
+                    val output=media.download(video)
+                    result=output
+                    if(returnMediaToChat && output.file!=null)onAddToChat?.invoke(output.file)
+                }}){Text(if(returnMediaToChat)"Preview in chat" else "Preview video")}}
             TextButton(enabled=!running,onClick={media.forget(video)}){Text("Forget local reference (keeps remote job)")}
         }}}
         if(files.isNotEmpty()) Text("Local generated files",style=MaterialTheme.typography.titleMedium)

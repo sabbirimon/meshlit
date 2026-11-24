@@ -27,11 +27,11 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "c83702d5a3fa08c82de11b7ff7681ceabe69ff92c75634939cf6eb432e42ebdc"
+      "sha256": "b2843537f9806a9d2679f09f079bcc10c3725cc9b82c35f351b686ac84a8d873"
     },
     {
       "path": "AGENT_BUILD.md",
-      "sha256": "16a45d176e317f1264e6889825bb773fa5ebd76c933bd7b9f0e3d6d491362163"
+      "sha256": "0b6e2c20364381558bcb9fcb84ff6ce8f2691cc53152bd9931323d912c02685e"
     },
     {
       "path": "AUTHORS.md",
@@ -47,15 +47,15 @@
     },
     {
       "path": "FEATURE_MAP.md",
-      "sha256": "40cf69367c8492b8f56178d5404d94e0d018cf15f8ba7f0e7f226f11f33d281f"
+      "sha256": "c6df87690c8449f974f8ec57031e278e0499986ef67bdc01b3ad58afa5e0d670"
     },
     {
       "path": "HYPERL.md",
-      "sha256": "399b75e49d30ed8416aabb6b6bc446fc86ffab5c12f0300925defba26a9336eb"
+      "sha256": "76d3c5d91c829607462114ef17fcdab66e134e9bcc98bf733a9a93a8531432f3"
     },
     {
       "path": "README.md",
-      "sha256": "04cf9c2972aabe4258ce214d5b90644854feba9ab81677b37173584e506d80d9"
+      "sha256": "a10ad41c3fe31b6909a9513121713fb9888c7bf8213c649e1e41a4265bab33d1"
     },
     {
       "path": "SECURITY.md",
@@ -63,7 +63,7 @@
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
-      "sha256": "937d5cadd8c7a74221176b43ab19f64fb2d6bf3c9c2b3efc7b041fd477c8c2bc"
+      "sha256": "c3c27eb4f0ddb850f64477ee4cc073d3937ed131d5f46cd682e363e95755beac"
     },
     {
       "path": "app/BUILD_GUIDE.md",
@@ -118,6 +118,10 @@
       "sha256": "6508714dad71d36220d949ea0f19db05da2b8e89dba3d75ca884a670a1d6fbf0"
     },
     {
+      "path": "companions/deepseek-harness/README.md",
+      "sha256": "80791f434c5cf7a8fd127c1898ac9a8664bdd616ba1bcbadee14e48a2460150e"
+    },
+    {
       "path": "companions/deployment/README.md",
       "sha256": "e7a71fbeb9e466c758045eb3bc66f013d4e93cda488a48d871c1452137fe2caa"
     },
@@ -127,11 +131,31 @@
     },
     {
       "path": "companions/pipeline/README.md",
-      "sha256": "a2b646752f4d8ea1a9eee2a07cccf126089931110c8682b2c286d7f0d4b68ffd"
+      "sha256": "0763f414c59dd971a89796cb7c10ba4725b1fb93e957619b879c5bb5f3d5b06d"
+    },
+    {
+      "path": "companions/search/README.md",
+      "sha256": "10239ba608854c68443a915f2ee56fa3501b157cf349fa8c25e082e7fb0d32b6"
+    },
+    {
+      "path": "companions/studio-relay/README.md",
+      "sha256": "ef2db43f85798c2a1808febd31930f6ccc304e6f2a31aa916940918c6917f129"
+    },
+    {
+      "path": "companions/studio-runtime/README.md",
+      "sha256": "758ead808717c3e950032583be8651cd2290bde254ce645e1a6c5f70f4d21fc8"
     },
     {
       "path": "companions/training/README.md",
       "sha256": "96e6b4677c7c746c7566f7cdc21da1d6026ee1264c168a7d91d6565df35ae099"
+    },
+    {
+      "path": "companions/voice/README.md",
+      "sha256": "497b2355c266994f8f39feca6ce481caea2819b84305ddae41993a74187040c2"
+    },
+    {
+      "path": "companions/vscode/README.md",
+      "sha256": "181dbd1d53f6805e69155c0b1aa8241d4e4c36c21a26e2fc656cd275f0d21a63"
     },
     {
       "path": "configuration/README.md",
@@ -147,7 +171,7 @@
     },
     {
       "path": "core-hyperl/MODIFICATIONS.md",
-      "sha256": "7429b8d86717dc9873410a0d2949d5c4c2825aeb2df9852da3d4482d9dc45969"
+      "sha256": "b8aa035d3b0a2ad321a2dc3c67c23e8cce4b575eb5915ab42bf7d068a477d304"
     },
     {
       "path": "core-hyperl/src/main/assets/hyperl/LICENSE_HISTORY.md",
@@ -182,16 +206,28 @@
       "sha256": "d8c896ecc827f97ee33c776cb6564fceaaf09fe27f94f103819ee757ef258e83"
     },
     {
+      "path": "docs/CHAT_EFFORT_AND_APPROVALS_2026-11-03.md",
+      "sha256": "f6b9c24b3e325aad8febadc58d234a025e9822f448c5ee0004360f1be072f5b5"
+    },
+    {
       "path": "docs/CHAT_PRESENTATION.md",
       "sha256": "8ac2ca9009b3b9ec11a0d093521686c9da29aa31cdfa18e59e98732a14cbbdcc"
     },
     {
       "path": "docs/CLIENT_HUB.md",
-      "sha256": "ac9bcb00f2a1acdf3604e92f21b9fb6c5f57ec041af4b343bc2ee7ef6b9868f7"
+      "sha256": "0def9c041db0d523d485bd5fa4533bba4ac46568f92fbf57a4845e965ebc31c9"
     },
     {
       "path": "docs/COLIBRI.md",
       "sha256": "507bc48f8ba47bc21d67c0e14fc6f23258e5ea265498b6daee88e04f21387309"
+    },
+    {
+      "path": "docs/CONNECTED_CAPABILITIES_2026-11-02.md",
+      "sha256": "52581b349e0e59cef6677cf063fc67eaa91210a911da8b1f73ac1bb2c8c0721f"
+    },
+    {
+      "path": "docs/DESKTOP_COMPANIONS.md",
+      "sha256": "0750c159ea34de7cd9161a4d864cd6f6b51b2d5d18a1fb2ec39c7e1ec40d58ce"
     },
     {
       "path": "docs/DEVICE_COMPATIBILITY.md",
@@ -210,24 +246,52 @@
       "sha256": "91505b580d037e3bf0b440b42d2884e3f32838febfa962c354ca40db6e5234b9"
     },
     {
+      "path": "docs/GUI_WORKFLOWS.md",
+      "sha256": "a430b95292d0a8afdcd704812ed4edad2857a7e7183b0f015a224547806a93d8"
+    },
+    {
       "path": "docs/LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md",
       "sha256": "20c2d525cdf6cbeefb8aaa379bbfc241633a811cfbb5868e4da89179d41d8cde"
     },
     {
+      "path": "docs/LOCAL_INFERENCE_HOSTS_2026-11-02.md",
+      "sha256": "f2236aa0cd610977327e48de94efedc877dcb1d6ed670d657be17243aae1438a"
+    },
+    {
       "path": "docs/LOCAL_MODEL_TOOLS.md",
-      "sha256": "592c124d9c3047dbf1a98688907b6c0884b901249ce57fb156cc39b6da0dc4b4"
+      "sha256": "07bd02ef9b57fb6d5092dda0b418c740d6b96901e318024b5768209bec3b8a68"
     },
     {
       "path": "docs/MACOS_OFFLINE.md",
       "sha256": "c31ad92ddcae38cb7b8e13644decbf3a3f7a117b7be3b136260d534532483ca2"
     },
     {
+      "path": "docs/MATH_RESEARCH_2026-10-26.md",
+      "sha256": "fa45d92ea2c529349d6561a7826e5e248284330beba4d358b2097b6d4a30dbc1"
+    },
+    {
       "path": "docs/MEMORY_AND_VOICE.md",
       "sha256": "00aa8b8b013fdbc4e0b7cdb8219b19b4b77684c8282d5b3ce5b49f6e7401b0aa"
     },
     {
+      "path": "docs/MIXED_NATIVE_EXECUTION_2026-11-02.md",
+      "sha256": "94b1db30002b37d87ade049a1117e3bf91a78936ed332c941dd0da86f1e0dad4"
+    },
+    {
+      "path": "docs/MULTIDEVICE_TEAM_BUILD_2026-11-02.md",
+      "sha256": "358c6f2b0d7d4379052a27054fc55d83c831b012208e647fc009cc6c02e1a5a6"
+    },
+    {
+      "path": "docs/NATURAL_VOICES.md",
+      "sha256": "bf2cbcb3cb24ca19f00f37dfe0a1cc227ac36b763d038acdd7770c1fb36b2a96"
+    },
+    {
       "path": "docs/NEMOTRON_AND_HETEROGENEOUS_SHARDING_2026-10-23.md",
       "sha256": "fa592f0eae189ae35393a1aa0c6c33a799c7a84ecb8b323b73f885d08935bd52"
+    },
+    {
+      "path": "docs/OPEN_RESOURCE_NETWORK.md",
+      "sha256": "64d7b5873b7079e21cb6e86dfd66a4e3c08bb5d93dbba90787c711df962cb0ce"
     },
     {
       "path": "docs/P2P_AND_CRYPTO.md",
@@ -247,11 +311,15 @@
     },
     {
       "path": "docs/RELEASE_EVIDENCE.md",
-      "sha256": "499dbca615e51863dc7627aa6a13e6bb8a247da945c8f323c7a4081f74e873b2"
+      "sha256": "46e5c84e69ab6c20f849066fc48da1cfb4bdd099ff9acb9342dacaec9a8edaf5"
     },
     {
       "path": "docs/REWARD_METERING_AND_SETTLEMENT.md",
-      "sha256": "c86ab4d96636c1afde2d0df08550e24f3e8989217b15ba0390d354335f9fbc86"
+      "sha256": "f498fbaf8c44ab9f050d79f7c7ce454d42f1171264ebb7365bbe2aaba6dd0ac6"
+    },
+    {
+      "path": "docs/RULEBOOK.md",
+      "sha256": "2152c4be261ee97cfb799b19a331342e1cb6f8f7849d8d4088471f24bc557610"
     },
     {
       "path": "docs/SEARCH_AND_CLUSTER_OUTPUT.md",
@@ -262,12 +330,28 @@
       "sha256": "1f3dea4264d206e5eaf574c1ec5fe2e9ccc664a321d206789522313c816c1a5a"
     },
     {
+      "path": "docs/SETTINGS_MANAGEMENT_REVIEW.md",
+      "sha256": "6b18f1bdf8c8b717048b9336aa3db3b443cdf849a45137b7ca427641fd524654"
+    },
+    {
+      "path": "docs/SMALL_MODEL_MAINTENANCE_GUIDE.md",
+      "sha256": "5439935e9c5b26e2852e167589607627b723721cd69d9207b519ddd0b1510b84"
+    },
+    {
       "path": "docs/SSH_NODE.md",
       "sha256": "c9b891423f1e56eca77015a383267188504795ead18e4960a03c4f2cd4dd575c"
     },
     {
       "path": "docs/STITCH_GLASS_UI.md",
       "sha256": "006d4e7f83138aae80ea3f2ff22d2326f60ca17049d9c4a3006ed7522df56a0c"
+    },
+    {
+      "path": "docs/STUDIO_ANDROID_SETTINGS_PARITY_2026-11-06.md",
+      "sha256": "505dfe7653456dfce3e6a99791e2b23fa3818cde424f12b68fe029e504c6b06c"
+    },
+    {
+      "path": "docs/TAILSCALE_AND_VPN.md",
+      "sha256": "ba3c85d6f2e4221d03488085c758128243b878124570a662b9c8d103761ad1a2"
     },
     {
       "path": "docs/TERMS_OF_USE.md",
@@ -282,8 +366,20 @@
       "sha256": "f383a38550e470df611e8e15707c4eafd4a282a3ce1636451ab20009f3e23c01"
     },
     {
+      "path": "docs/UPSTREAM_SECURITY_REVIEW.md",
+      "sha256": "16792ebadda76b9c59e1e37f9f4e4caea3ab84863abd764a9ccd780e7683118d"
+    },
+    {
+      "path": "docs/USAGE_AND_MODEL_BUDGETS.md",
+      "sha256": "12936c59e2be01ea473f0de851ff77693d4c2781f505ec3e88420b42be75215f"
+    },
+    {
       "path": "docs/USER_GUIDE.md",
-      "sha256": "f4c67e69b6ca1811553e3541faaac3463f53dd019d71dd2316055b1d3a7886f4"
+      "sha256": "ff6d77d99b62af063f75179e94d7f4e3cd7692d6b5b738685630e897ae2c2f32"
+    },
+    {
+      "path": "docs/USER_MANUAL.md",
+      "sha256": "392c83f2c8ee9ece087ed2ada6050d089457da2cc4086edae04bffaeaf43aa76"
     },
     {
       "path": "docs/VALIDATION_BUILD_38.md",
@@ -292,6 +388,14 @@
     {
       "path": "docs/VALIDATION_BUILD_40.md",
       "sha256": "b70ba71260c63ea1cbcb4f2add5d5664e68b7eb1dfab4a1f60a05db769d383d6"
+    },
+    {
+      "path": "docs/VERIFICATION_2026-11-02.md",
+      "sha256": "847211443c9bf0e5d790f5018d3d8a41508f683b9a1463741ba83067957e4d65"
+    },
+    {
+      "path": "docs/VOICE_AND_VISION.md",
+      "sha256": "078fc324acef76a87d33884944c7910a7b86d143b0fcc396568ca2db7e75ebbd"
     },
     {
       "path": "docs/architecture/PRODUCTION_CHANNELS.md",
@@ -303,7 +407,11 @@
     },
     {
       "path": "docs/architecture/current-state.md",
-      "sha256": "f794a67f46b247123c40b426d5f12a83fa78c4efaa28d75c78562e6512a97259"
+      "sha256": "610c944b9737db6065b462da51bd82bbd3aaf8c9809d3c22724955e9b309c360"
+    },
+    {
+      "path": "docs/architecture/deepseek-harness.md",
+      "sha256": "45f8dc57fa70b80adbd0e447692e1b5ccd9d21a46accab6e347230013a7aaf8a"
     },
     {
       "path": "docs/architecture/federation.md",
@@ -312,6 +420,10 @@
     {
       "path": "docs/architecture/hooks.md",
       "sha256": "48d9c4cecc2af4307e9b3231ff82071ce6e021466b083ed461cabdcaf7d797c6"
+    },
+    {
+      "path": "docs/architecture/meshlit-inference-clusters.md",
+      "sha256": "92983a0ba33416ed52dcedb95fa962116b352048f552100e76f65723e90f4af5"
     },
     {
       "path": "docs/cloud-and-credential-management.md",
@@ -326,12 +438,32 @@
       "sha256": "b72a9b9ebd3b15fe623c43d0d7eef26f0f0f8f06a00265af3208b00119fc47e9"
     },
     {
+      "path": "docs/desktop/CROSS_PLATFORM_PRERELEASE.md",
+      "sha256": "6284a5e8058b33beb2193133c8a5459bf044dd1bda72daa2f1b41e6328228d85"
+    },
+    {
       "path": "docs/desktop/DOLPHIN.md",
       "sha256": "a840eb240c8a4495c8dd1ad3725b057a980e450acd42f5b33a847bccb45d0aa6"
     },
     {
       "path": "docs/desktop/ENGINE_AND_SHARDING.md",
       "sha256": "da5caf35c61bd1bc122fa18d8047a186b93361e546512143c488b9bc32fcf5da"
+    },
+    {
+      "path": "docs/desktop/FULL_STUDIO.md",
+      "sha256": "6c8e4d11d13da2ec51dea98adb60f430e2f5bd36018481d47405800d65de38b7"
+    },
+    {
+      "path": "docs/desktop/INFERENCE_PROFILES.md",
+      "sha256": "67290a94829c8fe9bff56174f027664ec112834cec5611df68a1ea5cc226bb33"
+    },
+    {
+      "path": "docs/desktop/NATIVE_MIGRATION.md",
+      "sha256": "cfde5126aac170fe970255bd2ffdd5250a9eab8deb0c076d49dc4a20686b5d11"
+    },
+    {
+      "path": "docs/desktop/ONLINE_MODELS_AND_CODE_WORKSPACE.md",
+      "sha256": "2fadfdbae00e05e2cc8482db7b4886d50bf2ddc0d59eabddf50647b8bfcb3d88"
     },
     {
       "path": "docs/desktop/RECOVERY.md",
@@ -350,6 +482,10 @@
       "sha256": "174fc5f9e5e99c9148091d4f627d92776da8c36c09049ae2d24dbdd815810c4b"
     },
     {
+      "path": "docs/desktop/STUDIO_DASHBOARD.md",
+      "sha256": "95003d4a97334f1d91c5550da0e3fe16b2e04647dd6165d86d6d4a67b90d20c1"
+    },
+    {
       "path": "docs/desktop/TERMINAL.md",
       "sha256": "03d367fd1ad592530ccc0372b5af83277cd63f994af2120e58e60e1b385ac68f"
     },
@@ -359,7 +495,7 @@
     },
     {
       "path": "docs/evidence/2026-11-24-aquos-r7/README.md",
-      "sha256": "e153f26785e2cc91f923b623bb13b5c880072cf901a9033008a86baedd18243e"
+      "sha256": "1486eb283d8f447a1d26f4ffbe20324ef231cb549bfbc380b267fde17951886c"
     },
     {
       "path": "docs/hugging-face-integration.md",
@@ -367,7 +503,7 @@
     },
     {
       "path": "docs/hyperl/ANDROID_ALPHA6.md",
-      "sha256": "1224629551713bf1c9d72278c1f57b0c6a5109ffb8df14f5dc6d00b0d2c36ced"
+      "sha256": "8cc1c6ada2cd260626ef444bc2efb1438c42c90d0fe6203fe6d39e1b6e6a40c5"
     },
     {
       "path": "docs/hyperl/APP_AND_LIBRARY.md",
@@ -387,11 +523,11 @@
     },
     {
       "path": "docs/layer-pipeline-and-recovery.md",
-      "sha256": "69946d2ac9e7037a803b88a6da3213b7a8f2d6a7b717705e5c7d9ece43d59b62"
+      "sha256": "1c064ad9a9b22ee8bdd9a8e365a296c68745f255632739a0f1183db7047fe909"
     },
     {
       "path": "docs/local-model-behavior-and-training.md",
-      "sha256": "81cc293f539058fe418a500ead578b4ee616f345520f880ef9ba1747470d3996"
+      "sha256": "f1f6549c7db1d62ee5e8b0da88a1fc54fc26fef535824a84331a0c24d9f81e42"
     },
     {
       "path": "docs/mcp/bring-your-own-server.md",
@@ -403,7 +539,7 @@
     },
     {
       "path": "docs/model-router-and-media.md",
-      "sha256": "d147c640e8ef865bd50c58da4db7660cf1a9ad2b237a6f09e580da08553ef62c"
+      "sha256": "30415823ed08bed2026d9cc53051129b6a2d461cd831f567105de2aa7ec0c823"
     },
     {
       "path": "docs/models/catalog-classification.md",
@@ -423,7 +559,7 @@
     },
     {
       "path": "docs/physical-device-test-guide.md",
-      "sha256": "e9abbacaf07081f225ffe9fc7f4d10662d7006aa9d46419f289c87ceb1b78e9c"
+      "sha256": "4716565a474e0d1b16ab988f520ff2f0f1d152c93b3884a3d7f2033e9b9ba47a"
     },
     {
       "path": "docs/platform-and-backend-contract.md",
@@ -487,7 +623,7 @@
     },
     {
       "path": "vendored/README.md",
-      "sha256": "fdf0f68ca38e6b5c5e40dfaa4c5a2a2f0f594a954703f274e2083fb4d14d153f"
+      "sha256": "71735dd0f0d15c545edacd4ea3dbeb6bf56e9139c5c9eb10d00ca1303b4d3f32"
     },
     {
       "path": "vendored/licenses/colibri/THIRD_PARTY_NOTICES.md",

@@ -55,3 +55,13 @@ Local same-owner credits can remain a nontransferable activity record. A marketp
 6. **Exchange or transferable asset:** separate product decision after the above gates. Do not convert historical local credits into money automatically.
 
 The economic formula is `charge = sum(verified units × accepted unit prices) + disclosed fees − refunds`; use fixed-point integer minor currency units and an immutable quote version. Capacity and performance affect whether a seller can accept a job and the price they offer; they are not themselves proof that service was delivered.
+
+## Desktop MeshCoin preview, 2026-11-24
+
+Open **MeshCoin** in General Chat’s sidebar or under **Devices**. Recording starts off. A successful paired-device inference stream with a positive native completion count can create a local contribution receipt. Its P-256 signature and fields follow Android ContributionLedger v1. The full SHA-256 public-key fingerprint identifies the contributor. A networking session has its own random UUID. **Devices → Node identity and audit** shows both identifiers.
+
+Each desktop contributor maintains one signed, hash-linked chain in SQLite. An approved peer can retrieve bounded pages over the paired TLS connection and verify the receipt signature, previous receipt hash, block signature, height and previous block hash. A repeated job ID or synchronization cannot credit the same receipt twice in the chain. Each generated-token unit has a 128-hex-character serial derived from its receipt hash and ordinal. The receipt signature covers the original meter reading. This identifies the reporting host. Independent proof of useful work and network consensus remain open.
+
+Self-recording has zero fees. A contributor may assign a paired recordkeeper and a percentage for future jobs. The block fixes the allocation before replication. The share rounds down to whole MeshCoin units and stays reserved until the keeper signs acknowledgment of that block. Both nodes can verify the signature. A keeper earns its share from the original reward. MeshCoin in this preview is a local non-transferable unit, with no exchange rate or redemption mechanism.
+
+Desktop wallet backup and restore merge signed blocks and recordkeeper acknowledgments only for the same local identity. Divergent history rolls back the import. The separate receipt export preserves the Android receipt format. Each receipt unit has a deterministic 128-hex-character serial in both implementations.

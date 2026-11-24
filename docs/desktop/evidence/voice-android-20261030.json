@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-30",
+  "kind": "debug-source-increment",
+  "androidUnitTests": {
+    "core-inference": {
+      "tests": 293,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "v1": {
+      "tests": 252,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "v2": {
+      "tests": 252,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "studioExtensionTests": 36,
+  "physicalVoiceQualification": {
+    "device": "SM-A207F",
+    "api": 30,
+    "instrumentationTestsPassed": 2,
+    "reports": {
+      "offline-voice": {
+        "format": "meshlit-offline-voice/1",
+        "timestampEpochMs": 1793338401037,
+        "status": "passed-listed-cases",
+        "recognition": "Whisper Tiny English INT8 / ONNX",
+        "synthesis": "Piper Lessac medium / ONNX",
+        "transcript": "After early nightfall, the yellow lamps would light up here and there the squalid quarter of the brothels.",
+        "pcmBytes": 126790,
+        "pcmSampleRate": 22050,
+        "microphoneTested": false,
+        "liveConversationTested": false,
+        "providerTested": false,
+        "syntheticSampleSaved": true,
+        "speakerPlaybackCompleted": true,
+        "audibilityVerified": false,
+        "chatModelPreserved": true,
+        "localLlmExecutedWithSpeechLoaded": true,
+        "timingsMs": {
+          "recognitionLoadMs": 4096.93505,
+          "transcriptionMs": 5357.917863,
+          "synthesisLoadMs": 8509.39708,
+          "synthesisMs": 2651.642864,
+          "localLlmWithSpeechLoadedMs": 4612.552029
+        }
+      },
+      "voice-microphone": {
+        "status": "passed-capture-and-cancel",
+        "timestampEpochMs": 1793338406104,
+        "captureCycles": 2,
+        "cancelledCycles": 2,
+        "pcmCallbacks": 100,
+        "callbacksWithSpeechDetected": 0,
+        "microphoneTested": true,
+        "recordingSaved": false,
+        "transcriptProduced": false,
+        "liveConversationTested": false,
+        "providerTested": false
+      }
+    },
+    "sample": {
+      "channels": 1,
+      "sampleRate": 22050,
+      "sampleWidth": 2,
+      "frames": 63395,
+      "durationSeconds": 2.8750566893424034
+    },
+    "limits": [
+      "Microphone audio was discarded, not transcribed or sent to an LLM.",
+      "Full live conversation, automatic acoustic interruption, provider speech, and speaker audibility are not qualified.",
+      "Legacy streaming Stop ownership is covered by regression tests; native legacy streaming playback needs a separate device test."
+    ]
+  },
+  "lint": {
+    "v1": {
+      "Warning": 399,
+      "Hint": 19
+    },
+    "v2": {
+      "Warning": 399,
+      "Hint": 19
+    },
+    "core-inference": {
+      "Warning": 7,
+      "Hint": 2
+    }
+  },
+  "artifacts": [
+    {
+      "path": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-arm64-v8a-debug.apk",
+      "bytes": 561884783,
+      "sha256": "d14d73b532448cb6090c983434a1ebd7e6d9c9a570f1620ef9fe0bbcb04ec256",
+      "signatureVerified": true,
+      "containsVoiceTuning": true,
+      "containsPlaybackFormatValidation": true,
+      "containsPlaybackStopLease": true
+    },
+    {
+      "path": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+      "bytes": 561884698,
+      "sha256": "59150464a4c40465dfb4c3908bcd239020749267ca94a5ddcff8370861fabf4d",
+      "signatureVerified": true,
+      "containsVoiceTuning": true,
+      "containsPlaybackFormatValidation": true,
+      "containsPlaybackStopLease": true
+    }
+  ],
+  "sourceState": "Uncommitted source increment; debug APKs, not a published release."
+}

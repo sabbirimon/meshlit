@@ -29,18 +29,20 @@ import java.util.UUID
     fun validate() { require(round in 1..Long.MAX_VALUE - 1 && proposer.matches(ID)) }
 }
 @Serializable enum class JournalAction { ACQUIRE, SNAPSHOT, COMPLETE }
-@Serializable enum class JournalContent { INFERENCE, JOB_METADATA }
+@Serializable enum class JournalContent { INFERENCE, JOB_METADATA, CHAT_TRANSCRIPT }
 @Serializable data class JournalEntry(
     val requestId: String, val taskId: String, val owner: String, val epoch: Long,
     val action: JournalAction, val offset: Long = 0, val modelSha256: String = "",
     val checkpointSha256: String = "", val replayText: String = "", val content: JournalContent = JournalContent.INFERENCE,
+    val expectedTaskHead: String? = null,
 ) {
     fun validate() {
         require(requestId.matches(ID) && taskId.matches(ID) && owner.matches(ID) && epoch > 0 && offset >= 0)
         require(modelSha256.isEmpty() || modelSha256.matches(SHA))
         require(checkpointSha256.isEmpty() || checkpointSha256.matches(SHA))
         require(replayText.toByteArray().size <= 8192)
-        require(action != JournalAction.ACQUIRE || offset == 0L && replayText.isEmpty() && checkpointSha256.isEmpty() && modelSha256.isEmpty())
+        require(expectedTaskHead==null || expectedTaskHead.matches(ID))
+        require(action != JournalAction.ACQUIRE || content!=JournalContent.CHAT_TRANSCRIPT && offset == 0L && replayText.isEmpty() && checkpointSha256.isEmpty() && modelSha256.isEmpty())
     }
 }
 @Serializable data class JournalValue(val slot: Int, val previous: String, val entry: JournalEntry) {
@@ -93,17 +95,28 @@ fun validateAppend(commits: List<JournalCommit>, value: JournalValue) {
     require(commits.none { it.value.entry.requestId == value.entry.requestId }) { "Duplicate request ID" }
     val entry = value.entry
     val prior = commits.lastOrNull { it.value.entry.taskId == entry.taskId }?.value?.entry
+    require(entry.expectedTaskHead==null || entry.expectedTaskHead==prior?.requestId) { "Task head changed; read quorum and review the latest checkpoint" }
     require(prior?.action != JournalAction.COMPLETE) { "Task is terminal" }
     when (entry.action) {
-        JournalAction.ACQUIRE -> require(entry.epoch == (prior?.epoch ?: 0) + 1) { "Ownership epoch must advance" }
+        JournalAction.ACQUIRE -> {
+            require(entry.epoch == (prior?.epoch ?: 0) + 1) { "Ownership epoch must advance" }
+            val priorChat=commits.any{it.value.entry.taskId==entry.taskId && it.value.entry.content==JournalContent.CHAT_TRANSCRIPT}
+            require(!priorChat || entry.expectedTaskHead!=null) { "Chat recovery requires the reviewed task head" }
+        }
         else -> {
             require(prior != null && entry.owner == prior.owner && entry.epoch == prior.epoch) { "Stale task owner" }
             val checkpoint = commits.lastOrNull { it.value.entry.taskId == entry.taskId && it.value.entry.action != JournalAction.ACQUIRE }?.value?.entry
             require(entry.offset >= (checkpoint?.offset ?: 0)) { "Output offset regressed" }
             require(checkpoint?.modelSha256.isNullOrEmpty() || entry.modelSha256 == checkpoint?.modelSha256) { "Model identity changed" }
             require(checkpoint == null || entry.content == checkpoint.content) { "Journal content type changed" }
-            if (entry.content == JournalContent.INFERENCE) require(entry.modelSha256.matches(SHA)) { "Inference snapshot needs a verified model identity" }
-            else require(entry.modelSha256.isEmpty() && entry.checkpointSha256.isEmpty() && entry.offset == 0L) { "Job metadata must not claim model/KV/stream evidence" }
+            when(entry.content) {
+                JournalContent.INFERENCE -> require(entry.modelSha256.matches(SHA)) { "Inference snapshot needs a verified model identity" }
+                JournalContent.JOB_METADATA -> require(entry.modelSha256.isEmpty() && entry.checkpointSha256.isEmpty() && entry.offset == 0L) { "Job metadata must not claim model/KV/stream evidence" }
+                JournalContent.CHAT_TRANSCRIPT -> {
+                    require(entry.action==JournalAction.SNAPSHOT && entry.modelSha256.matches(SHA) && entry.offset==(checkpoint?.offset ?: 0L)+1) { "Invalid chat checkpoint sequence or model identity" }
+                    require(entry.expectedTaskHead!=null && entry.replayText.isNotBlank() && entry.checkpointSha256==hash(entry.replayText)) { "Chat checkpoint must bind the transcript and current task head" }
+                }
+            }
         }
     }
 }

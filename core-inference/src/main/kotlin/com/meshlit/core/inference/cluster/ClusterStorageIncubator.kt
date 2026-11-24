@@ -67,10 +67,12 @@ class ClusterStorageIncubator(
                 ?: error("bundled model $modelId is not installed")
         }
 
-        // Reassembled cache hit. The app-side installer / cleanup UI
-        // owns lifecycle; we only check for existence here.
-        val cached = File(reassembledDir(), "$modelId.gguf")
-        if (cached.exists() && cached.length() == source.sizeBytes) {
+        require(source.modelId == modelId && source.sizeBytes > 0 && source.sha256.matches(Regex("[a-fA-F0-9]{64}"))) {
+            "Cluster recovery requires exact size and trusted SHA-256 metadata; use Models download for sources without an integrity manifest"
+        }
+        // A same-size corrupt cache must never reach the engine.
+        val cached = assembler.verifiedCachedModel(modelId, source.sizeBytes, source.sha256)
+        if (cached != null) {
             return@withContext cached
         }
 
@@ -90,7 +92,7 @@ class ClusterStorageIncubator(
                     "falling back to whole-model download",
                     mapOf("modelId" to modelId, "reason" to plan.reason),
                 )
-                wholeModelDownloader(source)
+                assembler.requireVerifiedModel(wholeModelDownloader(source), source.sizeBytes, source.sha256)
             }
             is ClusterShardPlanner.Plan.SingleShard -> acquireFromAssignments(
                 source = source,
@@ -119,6 +121,8 @@ class ClusterStorageIncubator(
             expectedSha256 = source.sha256,
             peerBaseUrl = peerBaseUrl,
             onProgress = onProgress,
+            expectedShardSha256 = source.shardSha256,
+            expectedSizeBytes = source.sizeBytes,
         )
     }
 
@@ -131,6 +135,8 @@ class ClusterStorageIncubator(
         val bundled: Boolean,
         val downloadUrl: String?,
         val preferredTier: CapabilityTier = CapabilityTier.MID,
+        /** Digests from the model's trusted manifest, never learned from a failed transfer. */
+        val shardSha256: Map<String, String> = emptyMap(),
     )
 
     companion object {

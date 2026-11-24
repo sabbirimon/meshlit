@@ -7,6 +7,12 @@ import java.security.MessageDigest
 @Serializable
 data class ContributionReceipt(val jobId: String, val nodeId: String, val generatedTokens: Int,
     val awardedAtMs: Long, val previousHash: String, val publicKey: String, val signature: String) {
+    fun coinSerial(index: Int): String {
+        require(index in 1..generatedTokens)
+        val message = "meshlit.meshcoin.v1\ncoin\n${hash()}\n$index"
+        return PeerCrypto.hex(MessageDigest.getInstance("SHA-512").digest(message.toByteArray(Charsets.UTF_8)))
+    }
+
     fun message() = "meshlit.contribution.v1\n$jobId\n$nodeId\n$generatedTokens\n$awardedAtMs\n$previousHash\n$publicKey".toByteArray(Charsets.UTF_8)
     fun hash() = PeerCrypto.hex(MessageDigest.getInstance("SHA-256").digest(message() + PeerCrypto.bytes(signature)))
 }

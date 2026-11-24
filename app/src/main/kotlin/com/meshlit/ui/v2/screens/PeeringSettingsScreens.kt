@@ -257,16 +257,23 @@ fun RewardsScreen(onBack: (() -> Unit)? = null) {
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Mesh rewards", style = MaterialTheme.typography.headlineMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.meshlit.R.drawable.ic_meshcoin),
+                        contentDescription = null, modifier = Modifier.size(42.dp))
+                    Text("MeshCoin", style = MaterialTheme.typography.headlineMedium)
+                }
                 Text("Your local contribution record", style = MaterialTheme.typography.bodyMedium)
             }
             if (onBack != null) TextButton(onClick = onBack) { Text("Back") }
         }
         ElevatedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("LOCAL CREDITS", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            Text("MESHCOIN", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             Text("${state.credits}", style = MaterialTheme.typography.displayMedium)
             Text("${state.jobs} completed hosted jobs", style = MaterialTheme.typography.bodyMedium)
-            Text(if (state.walletId.isBlank()) "Loading wallet identity…" else "Wallet ${state.walletId.take(24)}", style = MaterialTheme.typography.bodySmall)
+            val application = context.applicationContext as MeshlitApplication
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text("App ${context.packageName}\nNode ${application.nodeIdHex}\nSession ${application.liveSessionId}\nWallet ${state.walletId}", style = MaterialTheme.typography.bodySmall)
+            }
         } }
         Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -287,6 +294,16 @@ fun RewardsScreen(onBack: (() -> Unit)? = null) {
                 }
                 Text("+${receipt.generatedTokens}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             } }
+            var ordinal by rememberSaveable(receipt.jobId) { mutableStateOf("") }
+            OutlinedTextField(value = ordinal, onValueChange = { value ->
+                if (value.length <= 5 && value.all(Char::isDigit)) ordinal = value
+            }, singleLine = true, label = { Text("Coin number (1–${receipt.generatedTokens})") })
+            ordinal.toIntOrNull()?.takeIf { it in 1..receipt.generatedTokens }?.let { index ->
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(receipt.coinSerial(index), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
         }
         Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Backup & restore", style = MaterialTheme.typography.titleMedium)

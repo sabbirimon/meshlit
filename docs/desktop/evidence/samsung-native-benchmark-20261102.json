@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "format": "meshlit-device-qualification/1",
+    "package": "com.meshlit.v2.debug",
+    "model": "SM-A207F",
+    "androidApi": 30,
+    "androidRelease": "11",
+    "abi": "arm64-v8a",
+    "timestampEpochMs": 1793609035434,
+    "debugBuild": true
+  },
+  "status": "failed",
+  "modelSha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "modelBytes": 491400032,
+  "maxGeneratedTokens": 16,
+  "warmupsPerEngine": 1,
+  "samplesPerEngine": 3,
+  "loads": [],
+  "samples": [],
+  "cancellation": [],
+  "pssScope": "App process only; owned native child process is excluded",
+  "gpuInferenceQualified": false,
+  "onDeviceOnly": true,
+  "chatEventsPublished": false,
+  "failure": "Owned native runtime is not packaged for this ABI"
+}

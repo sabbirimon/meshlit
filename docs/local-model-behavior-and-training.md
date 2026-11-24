@@ -1,5 +1,14 @@
 # Custom local models and real fine-tuning
 
+## Current request reconciliation — 2026-11-06
+
+The Chat/Studio request inventory (archived)
+reconciles this plan with the current main shell, passwordless local chat, bounded
+project autonomy, bots, personalities, voice/translation and media requests.
+Earlier architecture choices and completion labels below retain their dated
+scope. Studio settings parity, durable history/RAG, training, media adapters,
+managed device execution and release acceptance remain separate gates.
+
 Reviewed 2026-10-06; current source contracts, not a claim of hosted-policy bypass.
 
 ## Custom/uncensored model controls

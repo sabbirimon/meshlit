@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Inspect Core packaging; manifest/data separation does not imply device qualification."""
-import argparse, hashlib, json, zipfile, xml.etree.ElementTree as E
+import argparse, hashlib, json, os, shutil, subprocess, zipfile, xml.etree.ElementTree as E
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--apk',type=Path,required=True);p.add_argument('--manifest',type=Path);p.add_argument('--output',type=Path,required=True);args=p.parse_args()
 root=Path(__file__).resolve().parents[1]
@@ -15,7 +15,13 @@ services={x.get(a+'name') for x in m.findall('application/service')}
 allowed_services={'com.meshlit.models.ModelDownloadService','com.meshlit.chat.ChatInferenceService','androidx.room.MultiInstanceInvalidationService'}
 permissions={x.get(a+'name') for x in m.findall('uses-permission')}
 forbidden={'android.permission.SEND_SMS','android.permission.REQUEST_INSTALL_PACKAGES','android.permission.REQUEST_DELETE_PACKAGES','android.permission.MANAGE_EXTERNAL_STORAGE','com.termux.permission.RUN_COMMAND'}
-r={'package':m.get('package'),'label':m.find('application').get(a+'label'),'debuggable':m.find('application').get(a+'debuggable','false')=='true','missingServices':sorted(allowed_services-services),'unexpectedServices':sorted(services-allowed_services),'forbiddenPermissions':sorted(permissions&forbidden),'productionQualified':False,'physicalDeviceTested':False,'signing':'developer candidate; production signing not asserted','sharedInactiveCodePresent':True}
+sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+aapt = Path(sdk) / "build-tools/37.0.0" / ("aapt.exe" if os.name == "nt" else "aapt") if sdk else shutil.which("aapt")
+if not aapt:
+    raise SystemExit("The Android SDK aapt executable is required to inspect the packaged label")
+badging = subprocess.check_output([str(aapt), "dump", "badging", str(args.apk)], text=True, encoding="utf-8")
+[label] = [line.removeprefix("application-label:'").removesuffix("'") for line in badging.splitlines() if line.startswith("application-label:'")]
+r={'package':m.get('package'),'label':label,'debuggable':m.find('application').get(a+'debuggable','false')=='true','missingServices':sorted(allowed_services-services),'unexpectedServices':sorted(services-allowed_services),'forbiddenPermissions':sorted(permissions&forbidden),'productionQualified':False,'physicalDeviceTested':False,'signing':'developer candidate; production signing not asserted','sharedInactiveCodePresent':True}
 model=json.loads((root/'app/src/main/assets/models/bundled-model.json').read_text())
 with zipfile.ZipFile(args.apk) as z:
  name='assets/models/'+model['filename'];digest=hashlib.sha256()

@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "recordedDate": "2026-11-06",
+  "timezone": "Asia/Dhaka",
+  "scope": "Native Intel macOS candidate, isolated synthetic HOME/profile/project. No owner conversation, credential, external account or SSH connection used.",
+  "candidate": "Meshlit Studio 2026-11-06 Chat Settings QA",
+  "checkpoint": "Final signed candidate with Management, settings, detached bot details/chat and normal-profile General chat launch",
+  "packaging": {
+    "adHocSignatureVerified": true,
+    "integrityEntriesVerified": 10,
+    "extensionModulesMatchedSource": 51,
+    "backendJarSha256": "ea04a1616692c29564461d379c8d04cfa7e3a73a984a5eefb6ae27b9819acd6f",
+    "notarized": false,
+    "sourceHashFile": "Private QA packaging.json includes hashes for 51 production extension modules",
+    "finalNativeBotToastFixIncluded": true
+  },
+  "mainWindow": {
+    "emptyWorkspace": true,
+    "dedicatedShell": true,
+    "ideActivityAndStatusBarsHidden": true,
+    "corruptWarningObserved": false,
+    "localModelLabel": "Qwen2.5 1.5B Instruct \u00b7 Q4_K_M \u00b7 Local \u25be",
+    "passwordPromptHidden": true
+  },
+  "localInference": {
+    "prompt": "In two sentences: what model are you running, is inference local, and can you browse the internet?",
+    "reply": "I am running the Qwen2.5 1.5B Instruct model. Inference is local. I cannot browse the internet.",
+    "nativeModelFile": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "nativeOfflineFlagsObserved": true,
+    "runtimeProcessesAfterOpeningProject": 2,
+    "sharedAcrossWindows": false
+  },
+  "messageActions": {
+    "copyExactSyntheticReply": true,
+    "markdownExportContainsExactReply": true,
+    "exportThroughSaveDialog": true,
+    "saveDialog": "Code OSS simple file dialog, fixture-only configuration",
+    "nativeMacSavePanelTested": false,
+    "speechPlaybackTested": false
+  },
+  "settings": {
+    "personalitySavedAndReloaded": {
+      "preset": "teacher",
+      "contentStyle": "direct",
+      "custom": "Use one short example when explaining."
+    },
+    "modelsReportsObservedReady": true,
+    "botsDashboardOpened": true,
+    "permissionsDashboardOpened": true,
+    "localRequireUnlockOff": true,
+    "protectedUsageFileCreated": false,
+    "registeredDestinationCount": 36,
+    "unregisteredDestinations": [],
+    "nativeNavigation": [
+      {
+        "id": "management",
+        "heading": "Management",
+        "shell": true
+      },
+      {
+        "id": "model-dashboard",
+        "heading": "Models",
+        "shell": true
+      },
+      {
+        "id": "llm-settings",
+        "heading": "LLM settings",
+        "shell": true
+      },
+      {
+        "id": "permissions",
+        "heading": "Tools & permissions",
+        "shell": true
+      },
+      {
+        "id": "bots",
+        "heading": "Bots",
+        "shell": true
+      },
+      {
+        "id": "voice",
+        "heading": "Voice and vision",
+        "shell": true
+      },
+      {
+        "id": "credentials",
+        "heading": "Credentials",
+        "shell": true
+      },
+      {
+        "id": "ssh",
+        "heading": "SSH & terminals",
+        "shell": true
+      },
+      {
+        "id": "system",
+        "heading": "System resources",
+        "shell": true
+      },
+      {
+        "id": "usage",
+        "heading": "Usage & budgets",
+        "shell": true
+      }
+    ],
+    "credentialsPageOpenedWithoutKeyLookup": true,
+    "sshPageOpenedWithoutConnecting": true,
+    "managementCredentialsSshScreenshotsVisuallyInspected": true,
+    "sshSystemTerminalOptionDocumented": true
+  },
+  "projectWindow": {
+    "separateNativeWindow": true,
+    "mainWindowRetained": true,
+    "projectRetainsIde": true,
+    "localAutonomousChoice": true,
+    "savedMode": "local",
+    "savedApproval": {
+      "mode": "workspace",
+      "tools": []
+    },
+    "passphraseRequired": false,
+    "workspaceWritesPerformed": false
+  },
+  "notQualified": [
+    "Credential save/check/rotation and secure storage behavior",
+    "Live external providers and dashboards",
+    "macOS System Terminal handoff and remote SSH authentication",
+    "SSH host connection",
+    "Native app actions under task grants",
+    "Always-on bots or autonomous skill installation",
+    "Managed cluster workflow",
+    "Production signing/notarization"
+  ],
+  "rawArtifacts": "Temporary isolated QA fixture; screenshots were visually inspected but are not embedded in this evidence file.",
+  "bots": {
+    "botName": "QA Local Helper",
+    "createdViaNativeInput": true,
+    "detailShowsModelAndCapabilityBoundaries": true,
+    "separateNativeWindow": true,
+    "mainWindowRetained": true,
+    "botChatInDetachedWindow": true,
+    "localChatWithoutPassphrase": true,
+    "backgroundBotStarted": false,
+    "externalConnectionUsed": false,
+    "pages": 2,
+    "saveToastBusyIssueObserved": true,
+    "saveToastBusyIssueFixed": true,
+    "immediateDetailsAndChatWhileSaveToastVisible": true
+  },
+  "normalProfileLaunch": {
+    "dedicatedShell": true,
+    "corruptionWarning": false,
+    "heading": "General chat",
+    "emptyComposer": true,
+    "managementVisible": true,
+    "noSyntheticBot": true,
+    "noUnlockPrompt": true,
+    "localLabelPresent": true,
+    "foregroundLaunchRequested": true,
+    "visualScreenshotInspected": true,
+    "normalUserHomeAndProfile": true,
+    "syntheticQaExtensionAbsent": true,
+    "existingUserAppPreserved": true,
+    "userChatMessageSent": false
+  }
+}

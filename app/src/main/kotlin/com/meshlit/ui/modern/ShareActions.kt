@@ -9,7 +9,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.meshlit.chat.ChatTokenUsage
@@ -36,7 +38,7 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     context.startActivity(Intent.createChooser(send,"Share output"))
 }
 
-@Composable internal fun MessageActions(text:String,usage:ChatTokenUsage?=null) {
+@Composable internal fun MessageActions(text:String,usage:ChatTokenUsage?=null,showMetrics:Boolean=false,onReply:(()->Unit)?=null) {
     val clipboard=LocalClipboardManager.current
     val context=LocalContext.current
     var error by remember{mutableStateOf<String?>(null)}
@@ -52,27 +54,88 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     }}
     if(reader) ReplyReader(text){reader=false}
     if(details) TokenUsageDetails(usage){details=false}
-    Surface(shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) { Row {
+    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
         IconButton(onClick={clipboard.setText(AnnotatedString(text))}){
             Icon(Icons.Default.ContentCopy,"Copy response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        IconButton(onClick={try {
-            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT,text),"Share response"))
-        }catch(e:Exception){error="No sharing app is available"}}){
-            Icon(Icons.Default.Share,"Share response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick={reader=true}){
             Icon(Icons.Default.OpenInFull,"Read full response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        IconButton(enabled=!busy,onClick={export.launch("meshlit-response.md")}) { Icon(Icons.Default.FileDownload,"Download reply",Modifier.size(18.dp)) }
+        androidx.compose.foundation.layout.Box {
         IconButton(onClick={menu=true}){
             Icon(Icons.Default.MoreVert,"Response actions",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(menu,{menu=false}) {
+            onReply?.let { reply -> DropdownMenuItem(text={Text("Reply")},onClick={menu=false;reply()}) }
+            DropdownMenuItem(text={Text("Share response")},onClick={menu=false;try {
+                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,text),"Share response"))
+            } catch(e:Exception){error="No sharing app is available"}})
             DropdownMenuItem(text={Text("Save response as Markdown")},enabled=!busy,onClick={menu=false;export.launch("meshlit-response.md")})
             DropdownMenuItem(text={Text("Response token details")},onClick={menu=false;details=true})
         }
-    } }
+        }
+    }
+    if(showMetrics && usage!=null) TextButton(onClick={details=true}) {
+        val rate=usage.tokensPerSecond?.let{java.lang.String.format(java.util.Locale.ROOT,"%.1f tok/s %s",it,if(usage.rateBasis?.startsWith("Runtime")==true)"decode" else "overall")}
+        val elapsed=java.lang.String.format(java.util.Locale.ROOT,"%.1f s elapsed",usage.elapsedMs/1000.0)
+        Text(listOfNotNull(rate ?: "Speed unreported",elapsed,usage.output?.let{"$it output tokens"},usage.contextCapacity?.let{"$it ctx"}).joinToString(" · "),
+            color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium)
+    }
     error?.let{AlertDialog(onDismissRequest={error=null},title={Text("Cannot share")},text={Text(it)},
         confirmButton={TextButton(onClick={error=null}){Text("OK")}})}
+}
+
+@Composable internal fun DownloadGeneratedFile(filename:String) {
+    val context=LocalContext.current
+    val media=com.meshlit.di.koinInject<com.meshlit.media.MediaGeneration>()
+    val scope=rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var status by remember(filename) { mutableStateOf<String?>(null) }
+    val mime=media.mimeFor(filename)
+    val source by produceState<File?>(null,filename) {
+        value=withContext(Dispatchers.IO){media.files().firstOrNull {it.name==filename}}
+    }
+    source?.let { ChatFilePreview(it,mime) }
+    val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mime)) { uri ->
+        if(uri!=null) scope.launch {
+            busy=true
+            try {
+                withContext(Dispatchers.IO) {
+                    val file=media.files().firstOrNull { it.name==filename } ?: error("The original file is no longer in Media studio.")
+                    file.inputStream().use { input ->
+                        val stream=context.contentResolver.openOutputStream(uri,"wt") ?: error("Cannot open the selected location")
+                        stream.use { output -> input.copyTo(output) }
+                    }
+                }
+                status="File saved"
+            } catch(e:CancellationException) {throw e}
+            catch(e:Exception) {status=e.message ?: "Download failed"}
+            finally {busy=false}
+        }
+    }
+    TextButton(enabled=!busy && source!=null,onClick={save.launch(File(filename).name)}) {
+        Icon(Icons.Default.FileDownload,null)
+        Text("Download file")
+    }
+    status?.let { Text(it,style=MaterialTheme.typography.bodySmall) }
+}
+
+@Composable internal fun DownloadCode(language:String,source:String) {
+    val context=LocalContext.current
+    val scope=rememberCoroutineScope()
+    val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->
+        if(uri!=null)scope.launch {
+            try {withContext(Dispatchers.IO){
+                requireNotNull(context.contentResolver.openOutputStream(uri,"wt")).bufferedWriter().use{it.write(source)}
+            }} catch(e:CancellationException){throw e}
+            catch(e:Exception){android.widget.Toast.makeText(context,"Could not save code",android.widget.Toast.LENGTH_SHORT).show()}
+        }
+    }
+    val extension=when(language.lowercase()){
+        "python"->"py";"javascript"->"js";"typescript"->"ts";"rust"->"rs";"kotlin"->"kt";"bash","sh"->"sh";"c++"->"cpp"
+        "go","html","css","json","c","cpp","java","sql","yaml"->language.lowercase()
+        else->"txt"
+    }
+    IconButton(onClick={save.launch("source.$extension")}){Icon(Icons.Default.FileDownload,"Download code")}
 }

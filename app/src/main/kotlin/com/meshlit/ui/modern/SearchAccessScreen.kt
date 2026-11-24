@@ -42,7 +42,7 @@ import kotlinx.coroutines.*
                 if(!com.meshlit.BuildProfile.coreCandidate) {
                 Text("Internet search",style=MaterialTheme.typography.titleLarge)
                 Row{Text("Internet search",Modifier.weight(1f));Switch(access.webEnabled,{value->action{service.access.saveHuman(service.access.state.value.copy(webEnabled=value))}},enabled=!busy,modifier=Modifier.testTag("search-web-access"))}
-                Text("Off by default. Queries go to api.search.brave.com when you tap Search web or an authorized agent invokes web_search. Your whole chat is not uploaded by this adapter. Results contain source URLs and snippets; opening a page or using the separate crawler may send data to that host.")
+                Text("Off by default. Queries go to api.search.brave.com when a Brave key is stored, or html.duckduckgo.com without a key, when you tap Search web or an authorized agent invokes web_search. Your whole chat is not uploaded by this adapter. Results contain source URLs and snippets; opening a page or using the separate crawler may send data to that host.")
                 Row{Text("Allow agents to use Internet search",Modifier.weight(1f));Switch(access.agentWeb,{value->action{service.access.saveHuman(service.access.state.value.copy(agentWeb=value))}},enabled=!busy && access.webEnabled,modifier=Modifier.testTag("search-agent-web"))}
                 Text("Requires your Internet switch, this agent grant and each chat's web tools grant. Agents can pause/resume their search through search_access only within these saved grants; they cannot grant access or change the API key.")
                 if(access.agentWebPaused) {Text("Agent Internet search is paused");TextButton(enabled=!busy,onClick={action{service.access.saveHuman(service.access.state.value.copy(agentWebPaused=false))}}){Text("Resume within current grants")}}
@@ -50,7 +50,7 @@ import kotlinx.coroutines.*
                 OutlinedTextField(key,{key=it.take(512)},Modifier.fillMaxWidth().testTag("search-api-key"),label={Text("Brave Search API key")},visualTransformation=PasswordVisualTransformation(),singleLine=true,supportingText={Text(if(hasKey) "A key is stored; leave blank to retain it" else "No key stored")})
                 Row{Button(enabled=!busy && key.isNotBlank(),onClick={action{service.saveKeyHuman(key);key="";message="Key stored in Android encrypted storage"}}){Text("Save API key")}
                     TextButton(enabled=!busy && hasKey,onClick={action{service.deleteKeyHuman();message="API key deleted"}}){Text("Delete key")}}
-                Text("A provider account/API key is required and may incur charges. No account is created or bundled. Keys are encrypted on this device, used only with the fixed Brave API origin and excluded from search results and exports.")
+                Text("DuckDuckGo works without an API key. Optional Brave search requires a provider account/API key and may incur charges. No account is created or bundled. Keys are encrypted on this device, used only with the fixed Brave API origin and excluded from search results and exports.")
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 } else Text("Core candidate uses offline human search. Internet and agent tools remain in Experimental.")
                 Text("Articles",style=MaterialTheme.typography.titleLarge)
@@ -66,4 +66,36 @@ import kotlinx.coroutines.*
             }}}
         }
     }
+}
+
+@Composable internal fun ResearchDialog(draft:String,onSettings:()->Unit,onClose:()->Unit) {
+    val service=koinInject<AppSearchService>()
+    val access by service.access.state.collectAsStateWithLifecycle()
+    val resultToChat=LocalResultToChat.current
+    val scope=rememberCoroutineScope()
+    var query by remember { mutableStateOf(draft.take(600)) }
+    var busy by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<String?>(null) }
+    AlertDialog(onDismissRequest=onClose,title={Text("Research a topic")},text={
+        Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(query,{query=it.take(600)},enabled=!busy,label={Text("Search the web")})
+            if (!access.webEnabled) TextButton(onClick=onSettings){Text("Enable Internet search")}
+            if (busy) LinearProgressIndicator()
+            problem?.let { Text(it,color=MaterialTheme.colorScheme.error) }
+        }
+    },confirmButton={TextButton(enabled=access.webEnabled && query.isNotBlank() && !busy,onClick={
+        busy=true
+        scope.launch {
+            try {
+                val rows=service.web(query)
+                if(rows.isEmpty()) problem="No results. Try another query."
+                else {
+                    resultToChat("web search", rows.joinToString("\n\n") { "${it.title}\n${it.url}\n${it.snippet}" })
+                    onClose()
+                }
+            } catch (e:CancellationException) { throw e }
+            catch (e:Exception) { problem=e.message ?: "Search failed" }
+            finally { busy=false }
+        }
+    }){Text("Search")}},dismissButton={TextButton(onClick=onClose){Text("Close")}})
 }

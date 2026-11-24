@@ -2,7 +2,7 @@ package com.meshlit.desktop
 import com.meshlit.workspace.*
 import java.util.prefs.Preferences
 
-/** Appearance only. Prompts, conversation history and bearer credentials are session-only. */
+/** Appearance only. Prompts and conversation history are session-only. Optional credentials use a separate encrypted vault. */
 class DesktopPreferences(private val store: Preferences = Preferences.userRoot().node("com/meshlit/desktop-preview")) {
     fun language() = WorkspaceLanguage.fromTag(store.get("language", "en"))
     fun look() = WorkspaceLook.entries.firstOrNull { it.name == store.get("look", "STUDIO") } ?: WorkspaceLook.STUDIO

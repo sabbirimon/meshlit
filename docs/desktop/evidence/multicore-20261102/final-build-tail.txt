@@ -1,0 +1,15 @@
+
+> Task :app:lintReportMeshlitV1Debug
+Wrote HTML report to file:///Users/code/Documents/Codex/meshlit-unified/app/build/reports/lint-results-meshlitV1Debug.html
+
+> Task :app:lintMeshlitV1Debug
+> Task :app:lintAnalyzeMeshlitV2DebugAndroidTest
+> Task :app:lintAnalyzeMeshlitV2DebugUnitTest
+
+> Task :app:lintReportMeshlitV2Debug
+Wrote HTML report to file:///Users/code/Documents/Codex/meshlit-unified/app/build/reports/lint-results-meshlitV2Debug.html
+
+> Task :app:lintMeshlitV2Debug
+
+BUILD SUCCESSFUL in 14m 40s
+1398 actionable tasks: 59 executed, 1339 up-to-date

@@ -31,9 +31,25 @@ def main():
     parser.add_argument('--model',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--bin',type=Path,default=ROOT/'build/pipeline-host/bin')
+    parser.add_argument('--goose-planner',type=Path,help='Explicitly built Meshlit layer-placement executable')
+    parser.add_argument('--worker-budget-bytes',type=int,nargs=2,metavar=('FIRST','SECOND'))
+    parser.add_argument('--blocks',type=int,help='Transformer block count from the selected GGUF')
+    parser.add_argument('--kv-bytes',type=int,help='Combined KV estimate at the configured context')
     args=parser.parse_args();model=args.model.resolve();out=args.output.resolve();out.mkdir(parents=True,exist_ok=True)
     with model.open('rb') as check:
         if check.read(4)!=b'GGUF':parser.error('Supply a real GGUF model')
+    split = [1, 1]
+    if any(value is not None for value in (args.goose_planner,args.worker_budget_bytes,args.blocks,args.kv_bytes)):
+        if not (args.goose_planner and args.worker_budget_bytes and args.blocks and args.kv_bytes is not None and args.kv_bytes >= 0):
+            parser.error('Supply the planner, two worker budgets, block count and KV estimate together')
+        shared = model.stat().st_size + args.kv_bytes
+        output = subprocess.check_output([str(args.goose_planner.resolve()), str(args.blocks),
+            str(shared), str(256*1024**2), *map(str,args.worker_budget_bytes)], timeout=5, text=True)
+        split = [int(line) for line in output.splitlines()]
+        layer_bytes = (shared + args.blocks-1)//args.blocks
+        if len(split)!=2 or sum(split)!=args.blocks or any(
+            n<1 or (n+1)*layer_bytes+256*1024**2>cap for n,cap in zip(split,args.worker_budget_bytes)):
+            parser.error('Planner returned an inadmissible split')
     used=set();worker_ports=[free_port(used),free_port(used)];remote_port=free_port(used);baseline_port=free_port(used)
     processes=[];logs=[]
     with tempfile.TemporaryDirectory() as scratch:
@@ -48,7 +64,7 @@ def main():
             common=['llama-server','-m',str(model),'-c','512','-t','2','--parallel','1','--host','127.0.0.1',
                 '--api-key-file',str(keyfile),'--no-webui','--no-warmup','--fit','off']
             remote=launch('distributed',common+['--port',str(remote_port),'--rpc',','.join(f'127.0.0.1:{p}' for p in worker_ports),
-                '--device','RPC0,RPC1','--split-mode','layer','--tensor-split','1,1','-ngl','99','--verbose'])
+                '--device','RPC0,RPC1','--split-mode','layer','--tensor-split',','.join(map(str,split)),'-ngl','99','--verbose'])
             baseline=launch('baseline',common+['--port',str(baseline_port),'-ngl','0'])
             for port,process in [(remote_port,remote),(baseline_port,baseline)]:
                 deadline=time.monotonic()+120
@@ -72,7 +88,7 @@ def main():
             with model.open('rb') as stream:
                 for block in iter(lambda:stream.read(1024*1024),b''):digest.update(block)
             proof={'model_sha256':digest.hexdigest(),'model_bytes':model.stat().st_size,'prompt':payload['prompt'],'seed':42,
-                'tokens':32,'identical_output':True,'two_remote_layer_placements':True,'physical_phone_proof':False,'oversized_model_proof':False,
+                'requested_split':split,'planner':'Goose' if args.goose_planner else 'equal','tokens':32,'identical_output':True,'two_remote_layer_placements':True,'physical_phone_proof':False,'oversized_model_proof':False,
                 'native_revision':'4df29be4f4c3673f428170fda944a5b19f743bb8'}
             (out/'proof.json').write_text(json.dumps(proof,indent=2)+'\n');print(json.dumps(proof))
         finally:

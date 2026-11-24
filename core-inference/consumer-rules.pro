@@ -1,0 +1,1 @@
+-keepclasseswithmembernames,includedescriptorclasses class com.meshlit.core.inference.pipeline.LayerPlacement { native <methods>; }

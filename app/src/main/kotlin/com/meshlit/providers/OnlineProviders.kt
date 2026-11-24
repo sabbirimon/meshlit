@@ -1,6 +1,8 @@
 package com.meshlit.providers
 
 import android.content.Context
+import com.meshlit.workspace.*
+import kotlinx.coroutines.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import com.meshlit.core.inference.models.*
 import com.meshlit.core.trust.EncryptedCredentialStore
@@ -10,17 +12,42 @@ import kotlinx.serialization.json.Json
 
 /** Profile configuration and keys use encrypted app storage. Keys never enter chat history or tool results. */
 class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudManagement) {
+    private val appContext = context.applicationContext
     private val operations = com.meshlit.operations.OperationsControl.get(context).gate
     private val store=EncryptedCredentialStore(context,"online-provider-profiles")
     private val json=Json{ignoreUnknownKeys=true}
     private val _profiles=MutableStateFlow(runCatching{store.get("profiles")?.let{json.decodeFromString<List<OnlineProfile>>(it)}}.getOrNull().orEmpty())
     val profiles:StateFlow<List<OnlineProfile>> = _profiles.asStateFlow()
     val client=OnlineModelClient()
-    fun token(id:String)=store.get("key-$id").orEmpty()
+    @Volatile private var storageFailed = false
+    private fun commit(changes: Map<String, String?>) {
+        check(!storageFailed) { "Provider storage failed; restart and review saved settings" }
+        try { store.updateCommitted(changes) } catch(e: Exception) { storageFailed = true; throw e }
+    }
+    @Synchronized fun token(id:String): String { check(!storageFailed) { "Provider storage is unavailable" }; return store.get("key-$id").orEmpty() }
+    @Synchronized fun tokenFor(profile: OnlineProfile): String {
+        val saved = _profiles.value.firstOrNull { it.id == profile.id }
+        return if(saved?.endpoint == profile.endpoint && saved.protocol == profile.protocol) token(profile.id) else ""
+    }
+    fun hasStoredKey(profile:OnlineProfile)=tokenFor(profile).isNotBlank()
+    @Synchronized fun dashboardAddress():String {
+        check(!storageFailed) { "Provider storage is unavailable" }
+        return store.get("dashboard-omniroute").orEmpty()
+    }
+    @Synchronized fun saveDashboardAddress(value:String) {
+        val url=GatewayDashboardEndpoint.parse(value).url
+        commit(mapOf("dashboard-omniroute" to url))
+    }
+    @Synchronized fun removeStoredKey(id:String) {
+        require(_profiles.value.any { it.id==id }) { "Save this profile first" }
+        val updated=_profiles.value.map { if(it.id==id) it.copy(enabled=false) else it }
+        commit(mapOf("profiles" to json.encodeToString(updated),"key-$id" to null))
+        _profiles.value=updated
+    }
     suspend fun resolveToken(profile:OnlineProfile,agent:Boolean=false):String {
         require(!agent || profile.agentAllowed) { "Online provider is not delegated" }
         if(!profile.requiresApiKey) return ""
-        val envId=profile.credentialEnvironmentId ?: return token(profile.id)
+        val envId=profile.credentialEnvironmentId ?: return tokenFor(profile)
         val url=profile.endpoint.toHttpUrl()
         require(url.port==443) { "Vault API credentials require an HTTPS origin on port 443" }
         val values=vault.serviceCredentials(envId,com.meshlit.core.cloudmcp.management.EnvironmentPurpose.API,"https://${url.host}",if(agent) com.meshlit.core.cloudmcp.management.CloudActor.AGENT else com.meshlit.core.cloudmcp.management.CloudActor.HUMAN)
@@ -28,15 +55,96 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
     }
     @Synchronized fun save(profile:OnlineProfile,key:String?=null) {
         profile.validate();require(_profiles.value.size<20 || _profiles.value.any{it.id==profile.id}) { "At most 20 provider profiles" }
-        key?.let{require(it.length<=4096 && it.none{c->c.isWhitespace()});if(it.isBlank()) store.remove("key-${profile.id}") else store.put("key-${profile.id}",it)}
-        val updated=_profiles.value.filterNot{it.id==profile.id}+profile
-        store.put("profiles",json.encodeToString(updated));_profiles.value=updated
+        val previous = _profiles.value.firstOrNull { it.id == profile.id }
+        val changes = mutableMapOf<String, String?>()
+        if(previous?.endpoint != profile.endpoint || previous.protocol != profile.protocol) changes["key-${profile.id}"] = null
+        key?.let { require(it.length <= 4096 && it.none(Char::isWhitespace)); changes["key-${profile.id}"] = it.takeIf(String::isNotBlank) }
+        val updated = _profiles.value.filterNot { it.id == profile.id } + profile.copy(hostedToolSupport=profile.reviewedHostedTools())
+        changes["profiles"] = json.encodeToString(updated)
+        commit(changes)
+        _profiles.value = updated
     }
-    @Synchronized fun remove(id:String) { val updated=_profiles.value.filterNot{it.id==id};store.put("profiles",json.encodeToString(updated));store.remove("key-$id");_profiles.value=updated }
-    suspend fun generate(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false):Pair<OnlineProfile,OnlineReply> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,agent) { generateManaged(id,messages,system,maxTokens,temperature,agent) }
-    private suspend fun generateManaged(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false):Pair<OnlineProfile,OnlineReply> {
+    @Synchronized fun remove(id:String) {
+        val updated = _profiles.value.filterNot { it.id == id }
+        commit(mapOf("profiles" to json.encodeToString(updated), "key-$id" to null))
+        _profiles.value = updated
+    }
+    @Synchronized private fun requireCurrent(profile: OnlineProfile, credential: String) {
+        check(!storageFailed) { "Provider storage is unavailable" }
+        require(_profiles.value.firstOrNull { it.id == profile.id } == profile) { "Provider changed or was revoked before dispatch" }
+        if(profile.requiresApiKey && profile.credentialEnvironmentId == null) require(tokenFor(profile) == credential) { "Provider credential changed before dispatch" }
+    }
+    /** Read-only contact check using the existing endpoint-bound credential and agent scope. */
+    suspend fun probeConnection(id:String,authorize:()->Unit):List<String> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,true) {
+        authorize()
+        val profile=_profiles.value.single{it.id==id}
+        require(profile.enabled && profile.agentAllowed){"Model profile agent access is not approved"}
+        profile.validate();val credential=resolveToken(profile,true)
+        authorize();requireCurrent(profile,credential)
+        val result=client.models(profile,credential)
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        authorize();requireCurrent(profile,credential);result
+    }
+    suspend fun generate(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort=ReasoningEffort.AUTO,expectedProfile:OnlineProfile?=null,authorize:()->Unit={}):Pair<OnlineProfile,OnlineReply> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,agent) { generateManaged(id,messages,system,maxTokens,temperature,agent,effort,expectedProfile,authorize) }
+    private suspend fun generateManaged(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort,expectedProfile:OnlineProfile?,authorize:()->Unit):Pair<OnlineProfile,OnlineReply> {
         val profile=_profiles.value.firstOrNull{it.id==id} ?: error("Online profile no longer exists")
+        require(expectedProfile==null || expectedProfile==profile){"Provider changed before dispatch. Review it again."}
         require(!agent || profile.agentAllowed) { "This profile does not allow agent cloud requests" }
-        return profile to client.generate(profile,resolveToken(profile,agent),messages,system,maxTokens,temperature)
+        profile.validate()
+        require(profile.enabled)
+        val credential = resolveToken(profile, agent)
+        client.validateGeneration(profile, credential, messages, system, maxTokens, temperature,effort)
+        val reply=metered<OnlineReply>(profile,(messages.sumOf{it.text.length.toLong()}+system.length)*4+1024,maxTokens,{it.inputTokens to it.outputTokens}) {
+            requireCurrent(profile,credential)
+            currentCoroutineContext().ensureActive()
+            authorize()
+            client.generate(profile,credential,messages,system,maxTokens,temperature,effort)
+        }
+        return profile to reply
+    }
+
+    internal suspend fun requireHostedProfile(profile:OnlineProfile,reviewId:String):String {
+        operations.requireAllowed(com.meshlit.core.common.control.ManagedFeature.CLOUD,true)
+        require(profile.hostedToolsAllowed(reviewId)){"Review and enable hosted web search for this exact provider model"}
+        val credential=resolveToken(profile,true)
+        requireCurrent(profile,credential)
+        require(!profile.requiresApiKey || credential.isNotBlank()){ "Save a provider key before using hosted tools" }
+        return credential
+    }
+
+    internal suspend fun hostedWebRound(profile:OnlineProfile,reviewId:String,boundCredential:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,
+        temperature:Float,effort:ReasoningEffort,evidence:HostedSearchEvidence?=null):HostedWebTurn =
+        operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,true) {
+            val credential=requireHostedProfile(profile,reviewId)
+            require(credential==boundCredential){"Provider credentials changed during this Agent turn"}
+            val prepared=client.prepareHostedWebRound(profile,credential,messages,system,maxTokens,temperature,effort,reviewId,evidence)
+            val reply=metered<HostedWebTurn>(profile,prepared.inputTokenEstimate,maxTokens,{it.inputTokens to it.outputTokens}) {
+                require(requireHostedProfile(profile,reviewId)==credential){"Provider credential changed before dispatch"}
+                currentCoroutineContext().ensureActive()
+                client.hostedWebRound(credential,prepared)
+            }
+            require(requireHostedProfile(profile,reviewId)==credential){"Provider authorization changed during the request"}
+            reply
+        }
+
+    private suspend fun <T> metered(profile:OnlineProfile,inputEstimate:Long,maxTokens:Int,counts:(T)->Pair<Long?,Long?>,dispatch:suspend()->T):T {
+        val ledger = withContext(Dispatchers.IO) { UsageHistory.get(appContext) }
+        val price = UsagePrice(profile.currency,
+            profile.inputPricePerMillion?.let { UsageMoney.parse(java.math.BigDecimal.valueOf(it).setScale(9, java.math.RoundingMode.CEILING).stripTrailingZeros().toPlainString()) },
+            profile.outputPricePerMillion?.let { UsageMoney.parse(java.math.BigDecimal.valueOf(it).setScale(9, java.math.RoundingMode.CEILING).stripTrailingZeros().toPlainString()) },
+            profile.pricingSource ?: "User configured rates", profile.priceCheckedAtMs ?: 0, profile.gateway != OnlineGateway.DIRECT)
+        var attempt: String? = null
+        try {
+            withContext(Dispatchers.IO) {
+                attempt = ledger.begin(UsageLedger.route(profile.endpoint + "/" + profile.protocol, profile.model), profile.model, price,inputEstimate,maxTokens.toLong())
+            }
+            val reply=dispatch()
+            val (input,output)=counts(reply)
+            withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", input,output) }
+            return reply
+        } catch (e: Exception) {
+            withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, if (e is CancellationException) "cancelled" else "failed") } }
+            throw e
+        }
     }
 }

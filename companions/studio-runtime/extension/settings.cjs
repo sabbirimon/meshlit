@@ -1,0 +1,82 @@
+const vscode=require('vscode');
+const crypto=require('node:crypto');
+const groups=[
+ {id:'management',title:'Management dashboards',description:'Models, devices, network, health, credentials and terminals in one place.',items:[
+  ['management','Management overview','Inspect runtime status and open model, device, network and resource controllers.','meshlit.management','dashboard models devices network health compute storage'],
+  ['credentials','Credentials','Manage model API keys and inspect protected-storage availability.','meshlit.credentialsDashboard','secrets password keychain TPM biometrics'],
+  ['ssh','SSH and terminals','Manage explicit remote login profiles and open a reviewed terminal connection.','meshlit.sshDashboard','OpenSSH remote terminal host key']
+ ]},
+ {id:'studio',title:'General',description:'Choose how Studio opens and what it remembers on this device.',items:[
+  ['startup','Startup view','Choose the dashboard, General Chat, or Editor for windows without an open workspace.','meshlit.startupView','default chat launch home'],
+  ['model-dashboard','Models and modes dashboard','Inspect local runtime status, model connections, provider dashboards and chat/agent modes.','meshlit.models','model local remote offline modes'],
+  ['permissions','Tools and permissions','Review workspace autonomy, app Accessibility, devices and MCP access.','meshlit.permissions','tools scopes approvals security'],
+  ['llm-settings','LLM settings','Set local sampling temperature, output length and how much chat history is sent with each request.','meshlit.llmSettings','sampling temperature token context history'],
+  ['personality','Chat personality','Choose a tone, custom instructions and local content style.','meshlit.chatPersonality','friendly teacher concise direct creative'],
+  ['chat-voice','Chat read aloud','Choose an installed voice and speaking speed for message playback.','meshlit.chatVoice','speech sound rate voice'],
+  ['bots','Bots','Create and manage reusable chat profiles with their own model and instructions.','meshlit.botDashboard','assistant custom local provider'],
+ ]},
+ {id:'models',title:'Models and voice',description:'Choose where inference runs and how you talk to it.',items:[
+  ['models','Model connections','Choose a local model, an approved host, or an online provider.','meshlit.models','Meta Llama Google Gemini Anthropic Claude OpenAI Mistral DeepSeek Ollama'],
+  ['voice','Voice and vision','Configure OpenLive, discover installed voices and preview speech.','meshlit.voice','Kokoro Pocket ElevenLabs camera speech'],
+  ['usage','Usage and budgets','Inspect recorded model usage and set request limits. Unknown costs stay unknown.','meshlit.usage','tokens billing allowance'],
+  ['check','Check a model connection','Read the configured model catalog without generating a response.','meshlit.checkConnection','health test API']
+ ]},
+ {id:'context',title:'Studio tools · Agents and memory',description:'Control retained context, tools and reviewed actions.',items:[
+  ['memory','Project memory','Save, search and forget encrypted notes for the current workspace. Recall starts off.','meshlit.memory','private remember knowledge'],
+  ['context','Preview recalled context','Inspect which saved notes match a query before using them in a chat.','meshlit.contextPreview','prompt provenance'],
+  ['history','Reviewed action history','Inspect recorded tool outcomes. Recording is opt-in; arguments and secrets are excluded.','meshlit.actionHistory','receipts audit'],
+  ['mcp','MCP connectors','Select installed or remote tools per agent. Each tool call still requires review.','meshlit.connectors','plugins server'],
+  ['connected','Connected capabilities','Connect OpenViking memory and Google Artemis phone automation to existing Meshlit workflows.','meshlit.connectedCapabilities','OpenViking Artemis Google memory knowledge skills phone automation'],
+  ['device-connect','Device connection assistance','Approve exact saved model APIs for bounded agent contact checks; review setup-only devices and connectors.','meshlit.deviceConnections','device connect local remote automatic source approval identity'],
+  ['teams','Agent teams and role library','Run user-directed or supervised autonomous teams; adapt and manage role templates.','meshlit.agentTeams','agency manager workers reviewer multi device cluster'],
+  ['access','Agent app access','Review macOS app grants and native operator capabilities.','meshlit.appAccess','permissions automation'],
+  ['stop','Stop app access','Revoke ongoing Meshlit app access. Completed external actions are not undone.','meshlit.stopAppAccess','cancel revoke']
+ ]},
+ {id:'services',title:'Studio tools · Devices and integrations',description:'Connect optional companions; their setup and accounts remain explicit.',items:[
+  ['system','System resources and CPU','Live local CPU/RAM charts, process status and guarded workload modes.','meshlit.systemMonitor','monitor dashboard performance Overdrive memory pressure battery'],
+  ['resources','Resource sharing','Inspect an authorized host’s advertised models over HTTPS. Capacity and prices remain unverified.','meshlit.resourceSharing','LAN WAN internet remote users teams organizations hosting resources'],
+  ['companions','Memory and computer companions','Configure claude-mem, OpenMausBot and OpenBot; check availability and open their full interfaces.','meshlit.companions','bots AG-UI computers'],
+  ['protocols','APIs and protocols','Inspect existing protocol connections and their supported operations.','meshlit.protocols','endpoint gateway'],
+  ['omni','OmniRoute','Manage an owner-installed model gateway.','meshlit.gateway.OmniRoute','router'],
+  ['free','FreeLLMAPI','Open or manage the configured gateway. The service name is not a free-usage guarantee.','meshlit.gateway.FreeLLMAPI','provider'],
+  ['hf','Hugging Face','Open the provider dashboard and review model access.','meshlit.gateway.Hugging Face','weights catalog'],
+  ['harness','DeepSeek Harness','Configure the optional installed coding harness.','meshlit.deepseekHarness','coding']
+ ]},
+ {id:'workspace',title:'Workspace and appearance',description:'Meshlit controls live here; editor preferences have their own screen.',items:[
+  ['project-security','Project security','Choose project protection and approve a reusable workspace permission preset.','meshlit.projectSecurity','unlock permissions autonomous ask'],
+  ['review','Workspace changes','Filter files and compare the last agent turn or Git working tree.','meshlit.workspaceChanges','diff review changes'],
+ ['folder','Open a workspace','Choose a local folder for project tools and project-scoped memory.','meshlit.workspaces','files'],
+  ['editor','Editor settings','Fonts, theme, keyboard and Code OSS preferences.','workbench.action.openSettings','appearance accessibility'],
+  ['help','User manual','Setup, data controls, platform limits and troubleshooting.','meshlit.manual','help guide documentation']
+ ]}
+];
+const entries=groups.flatMap(g=>g.items.map(([id,title,description,command,keywords])=>({id,title,description,command,keywords,group:g.id})));
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function search(query){const words=String(query).toLowerCase().trim().split(/\s+/).filter(Boolean);return entries.filter(e=>words.every(w=>(e.title+' '+e.description+' '+e.keywords).toLowerCase().includes(w)));}
+function render(){const nonce=crypto.randomBytes(24).toString('hex');return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'nonce-${nonce}';script-src 'nonce-${nonce}'"><style nonce="${nonce}">
+*{box-sizing:border-box}body{margin:0;color:var(--vscode-foreground);background:var(--vscode-editor-background);font:14px/1.55 var(--vscode-font-family)}.find{display:flex;gap:8px}main{max-width:1000px;margin:auto;padding:32px}h1{font-size:26px;line-height:1.25;margin:0 0 8px}p{max-width:70ch;margin:8px 0 20px}input,button{font:inherit}input{width:100%;padding:11px 12px;color:var(--vscode-input-foreground);background:var(--vscode-input-background);border:1px solid var(--vscode-input-border,var(--vscode-panel-border));border-radius:4px}input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--vscode-focusBorder);outline-offset:3px}.layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:32px;margin-top:28px}nav{position:sticky;top:20px;align-self:start}nav button{display:block;width:100%;text-align:left;margin:2px 0;background:transparent;color:var(--vscode-foreground)}nav button[aria-pressed=true]{background:var(--vscode-list-activeSelectionBackground);color:var(--vscode-list-activeSelectionForeground)}nav a{display:block;color:var(--vscode-textLink-foreground);padding:8px 0;text-decoration:none}nav a:hover{text-decoration:underline}section{scroll-margin-top:20px;margin:0 0 28px;padding:22px;border:1px solid var(--vscode-panel-border);border-radius:10px;background:var(--vscode-sideBar-background,var(--vscode-editor-background))}h2{font-size:18px;margin:0 0 8px;color:var(--vscode-textLink-foreground)}section>p{color:var(--vscode-descriptionForeground);margin:0 0 16px}.row{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:16px 0;border-bottom:1px solid var(--vscode-panel-border)}.row h3{font-size:14px;margin:0 0 3px;font-weight:600}.row p{color:var(--vscode-descriptionForeground);margin:0;max-width:62ch}button{flex-shrink:0;border:1px solid var(--vscode-button-border,transparent);border-radius:4px;padding:7px 13px;color:var(--vscode-button-secondaryForeground);background:var(--vscode-button-secondaryBackground);cursor:pointer}button:hover{background:var(--vscode-button-secondaryHoverBackground)}button:disabled{opacity:.6;cursor:wait}#result{color:var(--vscode-descriptionForeground);margin:12px 0}#error{color:var(--vscode-errorForeground)}[hidden]{display:none!important}@media(max-width:680px){main{padding:24px 18px}.layout{display:block}nav{position:static;display:flex;flex-wrap:wrap;gap:0 18px;margin-bottom:24px}.row{gap:12px;align-items:flex-start}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style></head><body><main><h1>Settings</h1><p>Set up your models, keep control of your data, and choose which tools agents can use.</p><label for="search">Find a setting</label><div class="find"><input id="search" type="search" placeholder="Try voice, memory, tokens, or permissions" autocomplete="off"><button id="clear" type="button">Clear</button></div><p id="result" role="status">${entries.length} settings and setup destinations</p><p id="error" role="alert"></p><div class="layout"><nav aria-label="Settings categories"><button type="button" data-category="">All settings</button>${groups.map(g=>`<button type="button" data-category="${g.id}">${escape(g.title)}</button>`).join('')}</nav><div id="settings-groups">${groups.map(g=>`<section id="${g.id}"><h2>${escape(g.title)}</h2><p>${escape(g.description)}</p>${entries.filter(e=>e.group===g.id).map(e=>`<div class="row" data-search="${escape(e.title+' '+e.description+' '+e.keywords)}"><div><h3>${escape(e.title)}</h3><p>${escape(e.description)}</p></div><button data-id="${e.id}" aria-label="Open ${escape(e.title)}">Open</button></div>`).join('')}</section>`).join('')}<p id="empty" hidden>No matching settings. Try a feature name such as voice, models or memory.</p></div></div></main><script nonce="${nonce}">const api=acquireVsCodeApi();const input=document.querySelector('#search');const filters=[...document.querySelectorAll('[data-category]')];
+const previous=api.getState()||{};
+let category=filters.some(button=>button.dataset.category===previous.category)?previous.category:'';
+function filter(){
+ const words=input.value.trim().toLowerCase().split(/\\s+/).filter(Boolean);
+ let total=0;
+ for(const section of document.querySelectorAll('#settings-groups section')){
+  let matches=0;
+  for(const row of section.querySelectorAll('.row')){
+   row.hidden=!!(category&&category!==section.id)||!words.every(word=>row.dataset.search.toLowerCase().includes(word));
+   if(!row.hidden)matches++;
+  }
+  section.hidden=matches===0;total+=matches;
+ }
+ for(const button of filters)button.setAttribute('aria-pressed',String(button.dataset.category===category));
+ document.querySelector('#result').textContent=total+' matching destinations';
+ document.querySelector('#empty').hidden=total!==0;
+ api.setState({...api.getState(),query:input.value,category});
+}
+for(const button of filters)button.onclick=()=>{category=button.dataset.category;filter();};
+document.querySelector('#clear').onclick=()=>{input.value='';category='';filter();input.focus();};
+input.addEventListener('input',filter);input.value=previous.query||'';filter();
+document.querySelectorAll('[data-id]').forEach(button=>button.onclick=()=>{document.querySelector('#error').textContent='';api.postMessage({open:button.dataset.id})});window.addEventListener('message',({data})=>{if(data.error)document.querySelector('#error').textContent=data.error});</script></body></html>`;}
+function register(context){let panel;context.subscriptions.push(vscode.commands.registerCommand('meshlit.settings',()=>{if(panel){panel.reveal();return;}panel=require('./shell.cjs').createPanel(vscode,'meshlit.settings','Meshlit Settings',vscode.ViewColumn.One,{enableScripts:true,retainContextWhenHidden:true,localResourceRoots:[]});panel.webview.html=render();panel.webview.onDidReceiveMessage(async message=>{const entry=entries.find(e=>e.id===message?.open);if(!entry)return;try{await vscode.commands.executeCommand(entry.command);}catch{panel?.webview.postMessage({error:'This destination could not open. Check the service setup or restart Meshlit.'});}});panel.onDidDispose(()=>panel=undefined);context.subscriptions.push(panel);}));context.subscriptions.push(vscode.commands.registerCommand('meshlit.manual',async()=>{const file=vscode.Uri.joinPath(context.extensionUri,'USER_MANUAL.md');try{await vscode.commands.executeCommand('markdown.showPreview',file);}catch{await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(file));}}));}
+module.exports={groups,entries,search,render,register};

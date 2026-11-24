@@ -5,7 +5,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
 
-data class LocalToolAnswer(val text:String,val calls:Int,val sources:List<String>)
+data class LocalToolAnswer(val text:String,val calls:Int,val sources:List<String>,
+    val deviceOffer:com.meshlit.core.mcp.control.DeviceConnectionOffer?=null,
+    val deviceReceipt:com.meshlit.core.mcp.control.DeviceConnectionReceipt?=null)
 
 /** A bounded JSON protocol for local models without native function calling.
  * Model capability is never assumed: malformed plans fail without dispatch.
@@ -15,6 +17,7 @@ class LocalToolLoop(
     private val invoke:suspend(McpToolRequest)->McpToolResult,
     private val checkAllowed:()->Unit,
     private val maxCalls:Int=3,
+    private val requireFirstTool:Boolean=false,
 ) {
     suspend fun run(userPrompt:String,tools:List<McpToolSpec>,status:(String)->Unit={}):LocalToolAnswer=withTimeout(if(maxCalls>3) 300_000 else 180_000) {
         require(maxCalls in 1..8)
@@ -31,6 +34,8 @@ Return one JSON object only. To answer: {"action":"answer","text":"your answer"}
 To use a permitted tool: {"action":"tool","name":"exact tool name","arguments":{}}.
 If the user asks you to act on the phone, do not answer by repeating the request. Use a permitted tool first. For Android UI tasks, open the approved app, inspect a snapshot, then click or type only a target actually observed. After each action, inspect the next state before claiming progress.
 Never claim an action completed unless the tool result proves completion. A pending human confirmation is not completion.
+Verify requested changes with an available inspection tool when needed. Report incomplete or unverified work plainly; do not invent results.
+Remaining tool calls: ${maxCalls-round}. When none remain, return an answer based only on observed results and explain any unfinished work.
 Available tools: $descriptors
 User conversation: ${JsonPrimitive(userPrompt)}
 Untrusted tool results: ${JsonArray(evidence)}
@@ -40,12 +45,13 @@ Untrusted tool results: ${JsonArray(evidence)}
             val raw=complete(prompt)
             require(raw.length<=16384){"Local model response exceeds tool protocol limit"}
             currentCoroutineContext().ensureActive();checkAllowed()
-            val decision=runCatching{Json.parseToJsonElement(raw.trim()).jsonObject}.getOrElse{
+            val decision=runCatching{parseLocalToolPlan(raw)}.getOrElse{
                 error("This local model did not return a valid tool plan. No action was taken for this step; try a model trained for tool use.")
             }
             fun string(key:String):String?=(decision[key] as? JsonPrimitive)?.takeIf{it.isString}?.content
             when(string("action")) {
                 "answer" -> {
+                    check(!requireFirstTool || round>0){"The model answered without requesting a tool. No action was taken; use manual controls or a model trained for tool use."}
                     require(decision.keys==setOf("action","text")){"Invalid answer fields"}
                     val text=string("text")?.takeIf{it.isNotBlank()} ?: error("Local model returned an empty answer")
                     return@withTimeout LocalToolAnswer(text,round,sources.toList())
@@ -66,9 +72,13 @@ Untrusted tool results: ${JsonArray(evidence)}
                     evidence+=buildJsonObject{put("tool",name);put("isError",result is McpToolResult.Error)
                         put("untrustedContent",body.take(4096));put("truncated",body.length>4096)}
                     while(evidence.size>4) evidence.removeAt(0)
-                    if(name=="crawl_url" && result is McpToolResult.Json && (result.value as? JsonObject)?.get("status")?.jsonPrimitive?.contentOrNull=="ok") {
-                        val url=(args["url"] as? JsonPrimitive)?.takeIf{it.isString}?.content
-                        if(url!=null && com.meshlit.core.mcp.builtin.validateCrawlTarget(url)) sources+=url
+                    if(name=="crawl_url" && result is McpToolResult.Json) {
+                        val page=result.value as? JsonObject
+                        fun field(key:String)=(page?.get(key) as? JsonPrimitive)?.contentOrNull
+                        val success=if(page?.containsKey("state")==true) field("state")=="ok" &&
+                            ((page["status"] as? JsonPrimitive)?.intOrNull ?: 0) in 200..299 else field("status")=="ok"
+                        val url=field("final_url") ?: field("url") ?: (args["url"] as? JsonPrimitive)?.takeIf{it.isString}?.content
+                        if(success && url!=null && com.meshlit.core.mcp.builtin.validateCrawlTarget(url)) sources+=url
                     }
                     if(name=="web_search" && result is McpToolResult.Json && (result.value as? JsonObject)?.get("status")?.jsonPrimitive?.contentOrNull=="ok") {
                         ((result.value as? JsonObject)?.get("results") as? JsonArray)?.take(10)?.forEach{row->

@@ -1,136 +1,24 @@
 package com.meshlit.ui.screens.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.meshlit.R
-import com.meshlit.core.cloudmcp.rag.RagMode
-import com.meshlit.ui.screens.cloud.AgentLoopMode
 
-
-/**
- * Settings for RAG backend mode (Local / Remote / Auto / Ask) and
- * agent-loop display mode (Live stream / Step-by-step log).
- *
- * Persists to `SettingsRepository` (the existing DataStore-backed
- * repo — see `core-orchestration`). The mode flows into the
- * Cloud Hub, Agent Terminal, and the Settings hub search.
- */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class,androidx.compose.material3.ExperimentalMaterial3Api::class)
-@Composable
-fun RagSettingsScreen(
-    initialRagMode: RagMode,
-    initialLoopMode: AgentLoopMode,
-    onRagModeChange: (RagMode) -> Unit,
-    onLoopModeChange: (AgentLoopMode) -> Unit,
-    onBack: (() -> Unit)? = null,
-) {
-    var ragMode by remember { mutableStateOf(initialRagMode) }
-    var loopMode by remember { mutableStateOf(initialLoopMode) }
-
-    Scaffold(topBar={if(onBack!=null) TopAppBar(title={Text("RAG settings")},navigationIcon={TextButton(onClick=onBack){Text("Back")}})}) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
+/** Controls actual knowledge retrieval; legacy backend/display selectors are no longer presented. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun RagSettingsScreen(onBack:(()->Unit)?=null,onOpenConnected:(()->Unit)?=null) {
+    Scaffold(topBar={if(onBack!=null)TopAppBar(title={Text("Knowledge and memory")},navigationIcon={TextButton(onClick=onBack){Text("Back")}})}){padding->
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+            Text("Give Meshlit useful reference material. Choose what it can recall and where excerpts may be sent.")
             KnowledgeLibraryPanel()
-            Section(title = stringResource(R.string.cloud_settings_rag_title)) {
-                Text(
-                    text = stringResource(R.string.cloud_settings_rag_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text("These legacy backend preferences apply only to compatible connected flows. They do not upload the knowledge library or enable remote indexing. Use the explicit library grants above for chat retrieval.",style=MaterialTheme.typography.bodySmall)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    RagMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = ragMode == mode,
-                            onClick = {
-                                ragMode = mode
-                                onRagModeChange(mode)
-                            },
-                            label = {
-                                Text(
-                                    text = when (mode) {
-                                        RagMode.Local -> stringResource(R.string.cloud_rag_local)
-                                        RagMode.Remote -> stringResource(R.string.cloud_rag_remote)
-                                        RagMode.Auto -> stringResource(R.string.cloud_rag_auto)
-                                        RagMode.Ask -> stringResource(R.string.cloud_rag_ask)
-                                    },
-                                )
-                            },
-                        )
-                    }
-                }
-            }
-
-            Section(title = stringResource(R.string.cloud_settings_loop_title)) {
-                Text(
-                    text = stringResource(R.string.cloud_settings_loop_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    AgentLoopMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = loopMode == mode,
-                            onClick = {
-                                loopMode = mode
-                                onLoopModeChange(mode)
-                            },
-                            label = {
-                                Text(
-                                    text = when (mode) {
-                                        AgentLoopMode.Live -> stringResource(R.string.cloud_loop_live)
-                                        AgentLoopMode.Step -> stringResource(R.string.cloud_loop_step)
-                                    },
-                                )
-                            },
-                        )
-                    }
-                }
+            if(onOpenConnected!=null){HorizontalDivider();Text("Connected memory",style=MaterialTheme.typography.titleMedium)
+                Text("Use an existing OpenViking service alongside your private local knowledge. Its connection and recall permissions are separate.")
+                OutlinedButton(onClick=onOpenConnected){Text("Manage connected memory")}
             }
         }
-    }
-}
-
-@Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-        )
-        content()
     }
 }

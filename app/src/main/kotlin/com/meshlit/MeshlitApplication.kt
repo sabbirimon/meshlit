@@ -54,6 +54,7 @@ import java.io.File
  * that survives lives in `AppModule.kt`, the DI definition site).
  */
 class MeshlitApplication : android.app.Application() {
+    val liveSessionId: String = java.util.UUID.randomUUID().toString()
 
     private val log = AppLoggerFactory.appLogger("MeshlitApplication")
 
@@ -202,6 +203,7 @@ class MeshlitApplication : android.app.Application() {
 
     // ---- lifecycle ----
     override fun onCreate() {
+        com.meshlit.core.inference.AndroidCpuBudget.initialize(this)
         super.onCreate()
         AppLoggerFactory.install()
         startKoin {
@@ -256,6 +258,7 @@ class MeshlitApplication : android.app.Application() {
         RunAnywhereCatalogEngine.install(offlineFallback = ::catalogFallback)
 
         val appScope: kotlinx.coroutines.CoroutineScope = get()
+        com.meshlit.resources.CpuAlerts.start(this,appScope)
         val inferenceCoordinator: InferenceCoordinator = get()
         val notificationCenter: com.meshlit.notifications.NotificationCenter = get()
         notificationCenter.toString()

@@ -1,0 +1,161 @@
+{
+  "format": "meshlit-physical-wan-native/1",
+  "phone": "Samsung SM-A207F Android11",
+  "computer": "Intel Mac Radeon Pro560X",
+  "transport": "Pinned authenticated TLS over Tailscale; Samsung LTE with Wi-Fi off",
+  "nativeDataUsesUsb": false,
+  "oversizedModelProof": false,
+  "fairBenchmark": false,
+  "physicalExecutionVerified": true,
+  "managedUiExecution": false,
+  "credentialRejectionChecksConclusive": true,
+  "initialListenerAttemptDeniedAndWorkerRestarted": true,
+  "phase": "native coordinator cleanup",
+  "macInterface": "utun4",
+  "nativeAdbForwardPresent": false,
+  "phoneWorkerBefore": [
+    {
+      "pid": 30125,
+      "rssKiB": 2572,
+      "cpuTicks": 2
+    }
+  ],
+  "wrongCertificateRejected": true,
+  "wrongTokenRejected": true,
+  "phoneCapabilities": {
+    "abi": "arm64-v8a",
+    "freeMemoryBytes": 866574336,
+    "freeDiskBytes": 21325529088,
+    "runtimeRevision": "4df29be4f4c3673f428170fda944a5b19f743bb8",
+    "workerAllowed": true,
+    "observedAtMs": 1793643545489,
+    "cpuThreads": 6,
+    "workerStartedAtMs": 1793643419806
+  },
+  "phoneWorkerLoaded": [
+    {
+      "pid": 30125,
+      "rssKiB": 196408,
+      "cpuTicks": 797
+    }
+  ],
+  "completion": {
+    "format": "meshlit-mixed-native-result/1",
+    "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+    "tokens": [
+      19,
+      151645
+    ],
+    "text": "4",
+    "tokensPredicted": 2,
+    "tokensEvaluated": 28,
+    "timings": {
+      "cache_n": 0,
+      "prompt_n": 28,
+      "prompt_ms": 15642.58,
+      "prompt_per_token_ms": 558.6635714285715,
+      "prompt_per_second": 1.7899860508944179,
+      "predicted_n": 2,
+      "predicted_ms": 12136.145,
+      "predicted_per_token_ms": 12136.145,
+      "predicted_per_second": 0.08239848815253938
+    },
+    "startup_seconds": 84.40589099097997,
+    "request_seconds": 29.01089516002685,
+    "native": {
+      "process_id": 353,
+      "assigned_layers": {
+        "0": "MTL0",
+        "1": "MTL0",
+        "2": "MTL0",
+        "3": "MTL0",
+        "4": "MTL0",
+        "5": "MTL0",
+        "6": "MTL0",
+        "7": "MTL0",
+        "8": "MTL0",
+        "9": "MTL0",
+        "10": "MTL0",
+        "11": "MTL0",
+        "12": "MTL0",
+        "13": "MTL0",
+        "14": "MTL0",
+        "15": "MTL0",
+        "16": "MTL0",
+        "17": "MTL0",
+        "18": "MTL0",
+        "19": "RPC0",
+        "20": "RPC0",
+        "21": "RPC0",
+        "22": "RPC0",
+        "23": "RPC0",
+        "24": "RPC0"
+      },
+      "model_buffers_mib": {
+        "CPU_Mapped": 325.02,
+        "MTL0_Mapped": 235.64,
+        "RPC0[127.0.0.1:63318]": 186.51
+      },
+      "metalEncodedOperations": {
+        "MUL": 114,
+        "ADD": 282,
+        "ROPE": 114,
+        "SET_ROWS": 114,
+        "CONT": 57
+      }
+    }
+  },
+  "phoneWorkerAfter": [
+    {
+      "pid": 30125,
+      "rssKiB": 198848,
+      "cpuTicks": 2140
+    }
+  ],
+  "arithmeticCorrect": true,
+  "twoDeviceBuffers": true,
+  "phoneCpuTicksIncreased": true,
+  "sameWorkerProcess": true,
+  "disconnectTrial": {
+    "remoteCpuActivityObservedBeforeDisconnect": true,
+    "requestPendingBeforeDisconnect": true,
+    "outcomeWithin35Seconds": true,
+    "coordinatorAliveAfterDisconnect": false,
+    "errorType": "RemoteDisconnected",
+    "wallSeconds": 3.577,
+    "automaticGenerationRetryMade": false,
+    "phoneWorkerAfterDisconnect": [
+      {
+        "pid": 30125,
+        "rssKiB": 3232,
+        "cpuTicks": 2147
+      }
+    ],
+    "freshAuthenticatedCapabilityCheckSucceeded": true,
+    "scope": "Controlled Mac TLS bridge termination with active remote CPU work; not an OS Wi-Fi/cellular handover test."
+  },
+  "coordinatorErrors": "",
+  "elapsedSeconds": 122.125,
+  "cleanup": {
+    "ownedMacCoordinatorStopped": true,
+    "ownedRpcBridgeStopped": true,
+    "phoneWorkerStopped": true,
+    "nativeTlsListenerStopped": true,
+    "originalFirewallPolicyRestoredExactly": true,
+    "temporaryRuleRemoved": true,
+    "workerInternetAccessRestoredToFalse": true,
+    "ownedCrashCorePresent": false,
+    "temporaryCredentialFilesRemoved": true,
+    "modelAndKeyboardPreferencesChanged": false,
+    "accessibilityStillBound": true,
+    "ownerModelReadyObservedInModels": true
+  },
+  "testedAtLocal": "2026-11-03T00:35:19.175139+06:00",
+  "scope": "One real development native completion across local Mac Metal/CPU and one Samsung CPU worker over Tailscale LTE; no native USB data forwarding. Managed cluster UI, oversized model, fair speedup benchmark and automatic distributed recovery are not established.",
+  "testedAndroidApkSha256": "7e9cd64908113993f6b0cf739b8482aae59760c4219ae4fc180ae3743d8d20c0",
+  "testedNativeSourceSha256": {
+    "core-inference/src/main/kotlin/com/meshlit/core/inference/pipeline/RpcTunnel.kt": "4c692fa160f7a5d5bbf08c88b916b36bd0703383d63f0d25ba3ff1ddb70bd677",
+    "app/src/main/kotlin/com/meshlit/pipeline/PipelineHost.kt": "fc91dcae3a845f1d3bc394f6ce63760bbd6e05d6371b977eae2bc9a2b51cb074",
+    "app/src/main/kotlin/com/meshlit/pipeline/PipelinePanel.kt": "39e99c3d1939f21a291f1128c69013eb52c5cb6f65bd25b7e1f4d0d7eb73bbdd"
+  }
+}

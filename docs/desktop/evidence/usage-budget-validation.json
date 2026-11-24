@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-26",
+  "workingTree": true,
+  "baseCommit": "5a7c5167ce6a32880c4e6354fde26af50773eb2c",
+  "status": "Local tests, both Android builds/lints, provenance and documentation checks passed; live/device qualification open",
+  "sourceSha256": {
+    "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/UsageLedger.kt": "f2890908edd18380bab706969eaaf4433beea29660afda32a0760832c37d9298",
+    "app/src/main/kotlin/com/meshlit/providers/OnlineProviders.kt": "70f62f893da884c6a07f3d1def2046744ebf0ceecbdc783034644fe5bf1bbaaf",
+    "app/src/main/kotlin/com/meshlit/providers/UsageHistory.kt": "49d57109c244d8a4dd3f4386eac25d408691a21cdab6b6acb298e9b3d3426429",
+    "app/src/main/kotlin/com/meshlit/ui/modern/UsageDashboard.kt": "6c606e9548187a3277d387fea70697f69c3250007ab45f9752177ae16be7dfcb",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/DesktopUsage.kt": "864ac5bc3143ffccae1c857435ef5812908fcf2a268160fae55f418012ec5fe5",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/UsageHistoryDashboard.kt": "af93c32299bc0b095bd97a8002deb729c5c4a1701301eeb7cbe2c53bfe2bd8b7",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/HostClient.kt": "297334ba96a83858df6b6a3f57a6fa8262264ff147ff3b8a0e0e6d6cf98ef861",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/Main.kt": "7dfbf9fc902d9674669aa1d85b371bf6e7638e90024981cf66522888ae6c8caa",
+    "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/UsagePresentation.kt": "e102270f464aa4b6e384496cc97fd671ac732a2066b3f362a30e9a95b997e0d3",
+    "core-inference/src/main/kotlin/com/meshlit/core/inference/models/OnlineModelClient.kt": "262c80159ee28a6274d6d7a808ad61764483debfa97b8ff0a9149625cf7d7d35",
+    "app/src/main/kotlin/com/meshlit/ui/modern/OnlineProvidersScreen.kt": "8bc46a5ce112fc595fcd3bc3d7db9b31cfc952793b45630ed1dee79856417ef2"
+  },
+  "scope": [
+    "Android OnlineProviders text requests",
+    "Studio interactive chat"
+  ],
+  "notQualified": [
+    "Live providers or gateway deployments",
+    "Physical Android devices",
+    "Cross-device billing",
+    "Other inference adapters"
+  ],
+  "tests": {
+    "ledgerContracts": 12,
+    "desktopVaultContracts": 2,
+    "gatewayProfileContracts": 3,
+    "crawler": 9
+  },
+  "testSuites": {
+    "shared-workspace:jvmTest": {
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktopApp:test": {
+      "tests": 41,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "core-mcp:testDebugUnitTest": {
+      "tests": 139,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-sandbox:testDebugUnitTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-net:testDebugUnitTest": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-inference:testDebugUnitTest": {
+      "tests": 287,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV1DebugUnitTest": {
+      "tests": 242,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV2DebugUnitTest": {
+      "tests": 242,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "androidBuilds": {
+    "meshlitV1Debug": "passed",
+    "meshlitV2Debug": "passed"
+  },
+  "lint": {
+    "meshlitV1Debug": {
+      "errors": 0,
+      "warnings": 399,
+      "hints": 19
+    },
+    "meshlitV2Debug": {
+      "errors": 0,
+      "warnings": 399,
+      "hints": 19
+    }
+  },
+  "skipped": "PhysicalPhoneSshTest: no physical phone SSH fixture configured",
+  "preview": "docs/desktop/evidence/usage-dashboard-hub.png",
+  "qualificationDuration": "20m19s Android/shared/Studio qualification; final desktop-only follow-up 45s",
+  "provenance": {
+    "hyperlPortable": "passed",
+    "hyperlAlpha6": "passed"
+  }
+}

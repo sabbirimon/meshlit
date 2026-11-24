@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "d4361ab9cfdea85e1dcbc8bb524fa5262d97f8cc",
+  "workingTreeDirty": true,
+  "apkArtifacts": [
+    {
+      "path": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-arm64-v8a-debug.apk",
+      "bytes": 569539917,
+      "sha256": "054c4cac7ed3721185f58f77ac57c55dfb9a2ef633cd0c3c412f567c3374fdd9"
+    },
+    {
+      "path": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+      "bytes": 569539806,
+      "sha256": "3da73a0a90ecfdde48ee22ab3498d2d2c9e8b794d7c91e6b5176b5c641db19c6"
+    }
+  ],
+  "samsung": {
+    "model": "SM-A207F",
+    "androidApi": 30,
+    "savedCpuMode": "PERFORMANCE",
+    "savedWorkerCap": 6,
+    "startupPreferenceRestored": true,
+    "keepAwakePreferenceRestored": true,
+    "physicalChecks": [
+      "native-generation-cancel-recovery",
+      "12-HyperL-recipes-including-8192-elements",
+      "Overdrive-modes-and-persistent-warning",
+      "saved-drafts-and-chat-switching",
+      "live-dashboard-navigation",
+      "editor-source-and-validation-controls",
+      "settings-search-and-permissions-screen"
+    ],
+    "finalPreferenceRestorationChecked": true
+  },
+  "androidLints": {
+    "errors": 0,
+    "warningsPerFlavor": 410,
+    "hintsPerFlavor": 19
+  },
+  "appUnitTestsPerFlavor": 311,
+  "studioNodeTests": 90,
+  "packagedPythonTests": 21,
+  "crawlerTests": 9,
+  "studioPackagedTeamContexts": [
+    1024,
+    4096
+  ],
+  "studioColdTeamPassed": true,
+  "studioGuiQualified": false,
+  "wanLiveTest": "owner-deferred",
+  "optionalServicesLiveQualified": false,
+  "sharedRamGpuRuntimeComplete": false,
+  "dashboardSpacingReviewed": true,
+  "finalLayoutBuildLog": "/tmp/meshlit-final-dashboard-spacing.log",
+  "dashboardScreenshot": "samsung-resource-dashboard.png",
+  "finalLayoutBuildResult": "BUILD SUCCESSFUL in 14m 40s",
+  "finalAndroidLintsPassed": true
+}

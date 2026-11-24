@@ -1,0 +1,68 @@
+{
+  "id": "3813ccbe-8575-4498-9e22-b3a41799f6d2",
+  "plan": {
+    "goal": "Agent-1 delegates addition to agent-2. The operands are in the role guidance for agent-1 only. Agent-2 must request the operands from agent-1 before adding them. Agent-1 responds with the operands, agent-2 calculates their sum, then agent-1 returns that result.",
+    "mode": "SINGLE_DEVICE",
+    "members": [
+      {
+        "id": "agent-1",
+        "role": "planner",
+        "sourceId": "local",
+        "modelId": "meshlit-local",
+        "profileId": null,
+        "guidance": "Your operands are 2 and 2. First delegate only this task: Request the operands from agent-1, then add them. Do not include operand values in that first task. When agent-2 asks for operands, reply 2 and 2. Finally return its sum."
+      },
+      {
+        "id": "agent-2",
+        "role": "worker",
+        "sourceId": "local",
+        "modelId": "meshlit-local",
+        "profileId": null,
+        "guidance": "You have not received the operands yet. First delegate to agent-1 asking for the operands. After its reply, calculate and return their sum."
+      },
+      {
+        "id": "agent-3",
+        "role": "worker",
+        "sourceId": "local",
+        "modelId": "meshlit-local",
+        "profileId": null,
+        "guidance": "Answer arithmetic with a concise reply JSON object."
+      },
+      {
+        "id": "agent-4",
+        "role": "reviewer",
+        "sourceId": "local",
+        "modelId": "meshlit-local",
+        "profileId": null,
+        "guidance": "Answer arithmetic with a concise reply JSON object."
+      }
+    ],
+    "control": "AGENT_DIALOGUE",
+    "maxRounds": 2,
+    "parallelWorkers": 1
+  },
+  "phase": "FAILED",
+  "agentInitiated": false,
+  "outputs": [
+    {
+      "memberId": "agent-1",
+      "sourceId": "local",
+      "text": "```json\n{\n  \"action\": \"delegate\",\n  \"memberId\": \"agent-1\",\n  \"task\": \"Agent-1 delegates addition to agent-2. The operands are in the role guidance for agent-1 only. Agent-2 must request the operands from agent-1 before adding them. Agent-1 responds with the operands, agent-2 calculates their sum, then agent-1 returns that result.\"\n}\n```",
+      "callIndex": 1,
+      "round": 1
+    }
+  ],
+  "active": [],
+  "messages": [
+    {
+      "id": "69339ed3-8a98-46a8-b79d-5daa44d2f5dc",
+      "from": "human",
+      "to": "agent-1",
+      "kind": "TASK",
+      "body": "Agent-1 delegates addition to agent-2. The operands are in the role guidance for agent-1 only. Agent-2 must request the operands from agent-1 before adding them. Agent-1 responds with the operands, agent-2 calculates their sum, then agent-1 returns that result.",
+      "replyTo": null,
+      "callIndex": 0
+    }
+  ],
+  "error": "Check model readiness, Usage, manager JSON and connection permissions. Remote cancellation is best effort; inspect the receiving server."
+}

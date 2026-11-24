@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-30T05:02:01.793Z",
+  "reviewedRevision": "c9121ebe6ed8217f5b8e7b77c78cb36620c1a252",
+  "observedRevision": "c9121ebe6ed8217f5b8e7b77c78cb36620c1a252",
+  "platform": "darwin",
+  "architecture": "x64",
+  "nodeVersion": "v24.18.0",
+  "checks": {
+    "health": true,
+    "settingsRead": true,
+    "providerList": true,
+    "settingsWrite": true,
+    "settingsPersistAfterRestart": true,
+    "webPage": true,
+    "agentStopped": true,
+    "webStopped": true
+  },
+  "limits": [
+    "No microphone, camera, screen, speech-model, LLM or hosted-provider execution.",
+    "Separate disposable OpenLive data store; no existing settings modified."
+  ],
+  "startupMs": 6264,
+  "passed": true
+}

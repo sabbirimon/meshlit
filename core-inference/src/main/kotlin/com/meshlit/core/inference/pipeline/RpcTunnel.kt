@@ -66,19 +66,24 @@ class RpcTunnel private constructor(
         private class CapabilityComplete: Exception()
         fun fingerprint(cert:X509Certificate):String=MessageDigest.getInstance("SHA-256").digest(cert.encoded)
             .joinToString(""){"%02x".format(it)}
-        fun server(context:SSLContext, publicPort:Int, nativePort:Int,token:String,onError:(String)->Unit={},capabilities:()->String={"{}"},networkAllowed:(String)->Boolean={true}):RpcTunnel {
+        fun server(context:SSLContext, publicPort:Int, nativePort:Int,token:String,onError:(String)->Unit={},capabilities:()->String={"{}"},networkAllowed:(String)->Boolean={true},authenticateBeforeNetworkCheck:Boolean=false):RpcTunnel {
             validateToken(token)
             require(publicPort in 1024..65535 && nativePort in 1024..65535 && publicPort!=nativePort)
             val listener=context.serverSocketFactory.createServerSocket(publicPort,4) as SSLServerSocket
             listener.enabledProtocols=listener.supportedProtocols.filter {it in setOf("TLSv1.2","TLSv1.3")}.toTypedArray()
             return RpcTunnel(listener,connect={Socket().apply{connect(java.net.InetSocketAddress("127.0.0.1",nativePort),5000)}},
                 authenticate={incoming ->
-                    require(networkAllowed(incoming.inetAddress.hostAddress ?: "")){"Network policy denied"}
+                    val remoteAddress=incoming.inetAddress.hostAddress ?: ""
+                    // Opt-in WAN listeners authenticate before applying the paired
+                    // trust tier. Neither native forwarding nor capabilities may
+                    // be reached until BOTH authentication and policy succeed.
+                    if(!authenticateBeforeNetworkCheck) require(networkAllowed(remoteAddress)){"Network policy denied"}
                     (incoming as SSLSocket).startHandshake()
                     val input=DataInputStream(incoming.inputStream)
                     val protocol=readBounded(input)
                     require(protocol==MAGIC || protocol==CAPS) {"Protocol mismatch"}
                     require(MessageDigest.isEqual(readBounded(input).toByteArray(),token.toByteArray())) {"Peer authentication rejected"}
+                    require(networkAllowed(remoteAddress)){"Network policy denied"}
                     DataOutputStream(incoming.outputStream).apply {
                         writeUTF("OK")
                         if(protocol==CAPS) {val body=capabilities();require(body.toByteArray().size<=16000);writeUTF(body)}

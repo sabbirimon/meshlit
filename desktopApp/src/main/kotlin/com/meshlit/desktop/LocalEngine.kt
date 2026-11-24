@@ -5,15 +5,11 @@ import kotlinx.serialization.json.*
 import oshi.SystemInfo
 import java.net.InetAddress
 import java.net.ServerSocket
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.Path
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.time.Duration
 import java.util.Base64
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
@@ -24,7 +20,7 @@ internal object DesktopStarter {
     const val sha256 = "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
     const val label = "Qwen2.5 1.5B Instruct · Q4_K_M"
     const val alias = "meshlit-local"
-    const val prompt = "You are Meshlit, a helpful assistant running locally on the user's Mac. " +
+    const val prompt = "You are Meshlit, a helpful assistant running locally on the user's computer. " +
         "Give clear, accurate answers with useful detail. Use Markdown headings, lists and code blocks " +
         "where helpful. Say when you do not know. You cannot access the Internet or execute tools."
 }
@@ -32,24 +28,25 @@ internal object DesktopStarter {
 internal data class LocalSession(val endpoint: HostEndpoint, val token: String, val context: Int, val admission: EngineAdmission, val backend: String)
 
 /** Owns only the bundled CPU process. No downloads, persistent listener or remote fallback. */
-internal class LocalEngine(private val resources: Path = Path.of(
-    System.getProperty("compose.application.resources.dir", "desktopApp/build/local-resources")
-), registerShutdownHook: Boolean = true) : AutoCloseable {
+internal class LocalEngine(private val resources: Path = desktopResourceDirectory(), registerShutdownHook: Boolean = true) : AutoCloseable {
     private val lock = Any()
     @Volatile private var revision = 0L
     private var process: Process? = null
-    private var privateDirectory: Path? = null
+    @Volatile var appliedCpuThreads:Int?=null
+        private set
+    private var copiedServer: Path? = null
+    private val exeSuffix = if (System.getProperty("os.name").startsWith("Windows")) ".exe" else ""
     private val hook = Thread({ stop() }, "meshlit-local-shutdown")
     init { if (registerShutdownHook) Runtime.getRuntime().addShutdownHook(hook) }
-    fun available() = Files.isExecutable(resources.resolve("local/llama-server")) &&
+    fun available() = Files.isRegularFile(resources.resolve("local/llama-server$exeSuffix")) &&
         Files.isRegularFile(resources.resolve("models/${DesktopStarter.filename}"))
 
-    fun start(customModel: Path? = null, expectedModelSha256: String? = null, options: EngineOptions = EngineOptions()): LocalSession {
+    fun start(customModel: Path? = null, expectedModelSha256: String? = null, options: EngineOptions = EngineOptions(), thinkingTemplates: Boolean = false): LocalSession {
         options.validate()
         stop()
         val expectedRevision = synchronized(lock) { revision }
-        var server = resources.resolve("local/llama-server").toAbsolutePath()
-        check(Files.isExecutable(server)) { "Packaged local engine is unavailable" }
+        var server = resources.resolve("local/llama-server$exeSuffix").toAbsolutePath()
+        check(Files.isRegularFile(server)) { "Missing packaged engine at $server" }
         val model = (customModel ?: resources.resolve("models/${DesktopStarter.filename}")).toAbsolutePath()
         validateModel(model, customModel == null) { checkCurrent(expectedRevision) }
         if (expectedModelSha256 != null) {
@@ -78,55 +75,56 @@ internal class LocalEngine(private val resources: Path = Path.of(
         }
         val variant=selectCpuVariant(options.cpuMode,features,fast!=null)
         if (variant=="llama-server-avx2") {
-            server=resources.resolve("local/$variant").toAbsolutePath()
+            server=resources.resolve("local/$variant$exeSuffix").toAbsolutePath()
             val fastHash=fast!!["sha256"]?.jsonPrimitive?.content ?: error("Optimized engine checksum missing")
             check(Files.isExecutable(server) && hash(server) {checkCurrent(expectedRevision)}==fastHash) {"Optimized engine integrity failed"}
         }
         checkCurrent(expectedRevision)
-        val backend=if(variant=="llama-server-avx2") "CPU AVX2/FMA/F16C" else "CPU SSE4.2"
+        val backend=if(variant=="llama-server-avx2") "CPU AVX2/FMA/F16C" else "CPU baseline (" + System.getProperty("os.arch") + ")"
         val token = ByteArray(32).also { SecureRandom().nextBytes(it) }
             .let { Base64.getUrlEncoder().withoutPadding().encodeToString(it) }
         val port = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { it.localPort }
         val host = HostEndpoint.parse("http://127.0.0.1:$port/v1")
         synchronized(lock) {
             checkCurrent(expectedRevision)
-            val directory = Files.createTempDirectory("meshlit-local-",
-                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")))
-            privateDirectory = directory
-            val secret = Files.createFile(directory.resolve("access-key"),
-                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
-            Files.writeString(secret, token + "\n")
             try {
+                // Some Unix distribution tools normalize application data files to 0644.
+                // Launch a verified private copy if the installed payload lost its mode.
+                if (!Files.isExecutable(server) && exeSuffix.isEmpty()) {
+                    val file = Files.createTempFile("meshlit-server-", ".bin",
+                        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
+                    copiedServer = file
+                    Files.newInputStream(server).use { src -> Files.newOutputStream(file).use { src.copyTo(it) } }
+                    val expected = if (variant == "llama-server-avx2") fast!!.getValue("sha256").jsonPrimitive.content else serverHash
+                    check(hash(file) { checkCurrent(expectedRevision) } == expected)
+                    Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("r-x------"))
+                    server = file
+                }
                 val builder = ProcessBuilder(listOf(server.toString(), "--model", model.toString(),
-                    "--host", "127.0.0.1", "--port", port.toString(), "--api-key-file", secret.toString(),
-                    "--alias", DesktopStarter.alias, "--parallel", "1") + options.nativeArgs())
+                    "--host", "127.0.0.1", "--port", port.toString(),
+                    "--alias", DesktopStarter.alias, "--parallel", "1") + options.nativeArgs() +
+                    (if (thinkingTemplates) listOf("--jinja", "--reasoning-format", "deepseek") else emptyList()))
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD)
                 // Explicit app options win over inherited llama/ggml runtime variables.
                 builder.environment().keys.removeIf { it.startsWith("LLAMA_") || it.startsWith("GGML_") }
+                builder.environment()["LLAMA_API_KEY"] = token
                 process = builder.start()
             } catch (error: Exception) { stop(); throw error }
         }
-        val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2))
-            .followRedirects(HttpClient.Redirect.NEVER).build()
+        val client = HostClient(host, token)
         try {
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120)
             while (System.nanoTime() < deadline) {
                 checkCurrent(expectedRevision)
                 check(synchronized(lock) { process?.isAlive == true }) { "Local process stopped during loading" }
-                val ready = runCatching {
-                    val request = HttpRequest.newBuilder(host.route("models")).timeout(Duration.ofSeconds(2))
-                        .header("Authorization", "Bearer $token").GET().build()
-                    val response = http.send(request, HttpResponse.BodyHandlers.ofString())
-                    response.statusCode() == 200 && response.body().length <= 262144 &&
-                        HostClient(host, token).use { DesktopStarter.alias in it.models() }
-                }.getOrDefault(false)
-                if (ready) {
-                    val props = HostClient(host, token).use { it.localProperties() }
+                val inventory = client.health()
+                if (inventory is HostConnectionResult.Ready && DesktopStarter.alias in inventory.models) {
+                    val props = client.localProperties()
                     val effectiveContext = props["default_generation_settings"]?.jsonObject?.get("n_ctx")?.jsonPrimitive?.intOrNull
                     check(effectiveContext == options.context) { "Native context differs from configured capacity" }
                     val effectiveModel = props["model_path"]?.jsonPrimitive?.content ?: error("Native model identity missing")
                     check(Path.of(effectiveModel).toRealPath() == model.toRealPath()) { "Native runtime loaded another model" }
-                    checkCurrent(expectedRevision); return LocalSession(host, token, options.context, admission, backend)
+                    checkCurrent(expectedRevision);appliedCpuThreads=options.threads; return LocalSession(host, token, options.context, admission, backend)
                 }
                 Thread.sleep(150)
             }
@@ -134,24 +132,24 @@ internal class LocalEngine(private val resources: Path = Path.of(
         } catch (error: Exception) {
             synchronized(lock) { if (revision == expectedRevision) stop() }
             throw error
-        } finally { http.shutdownNow() }
+        } finally { client.close() }
     }
 
     private fun checkCurrent(expected: Long) {
         if (revision != expected || Thread.currentThread().isInterrupted) throw CancellationException("Local load cancelled")
     }
+    fun processId():Long?=synchronized(lock){process?.takeIf{it.isAlive}?.pid()}
     fun isRunning() = synchronized(lock) { process?.isAlive == true }
     fun stop() {
         val owned = synchronized(lock) {
             revision++
-            val result = process to privateDirectory
-            process = null; privateDirectory = null
+            val result = process to copiedServer
+            copiedServer = null
+            process = null; appliedCpuThreads = null
             result
         }
         owned.first?.destroy()
-        owned.second?.let { directory ->
-            runCatching { Files.deleteIfExists(directory.resolve("access-key")); Files.deleteIfExists(directory) }
-        }
+        owned.second?.let { runCatching { Files.deleteIfExists(it) } }
         owned.first?.let { child -> Thread({
             if (!child.waitFor(2, TimeUnit.SECONDS)) { child.destroyForcibly(); child.waitFor(2, TimeUnit.SECONDS) }
         }, "meshlit-local-stop").apply { isDaemon = true; start() } }

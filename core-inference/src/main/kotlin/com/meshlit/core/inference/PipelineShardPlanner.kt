@@ -160,6 +160,9 @@ class PipelineShardPlanner(
         roster: List<PeerCapabilities>,
         activationPort: Int = 9090,
     ): PipelineTopology {
+        if (manifest.shards.any { it.estimatedRamMb <= 0 }) {
+            return PipelineTopology.Invalid(manifest, "invalid_shard_ram_estimate")
+        }
         // 1. Insufficient peers — bail out before scoring.
         val totalRoster = (listOf(self) + roster).distinctBy { it.peerId }
         if (!allowLocalCollisions && totalRoster.size < manifest.shards.size) {
@@ -174,13 +177,14 @@ class PipelineShardPlanner(
         // roster between calls so each assignment removes its
         // chosen host from the pool when collisions are forbidden.
         val mutableRoster = totalRoster.toMutableList()
+        val remainingRamMb = totalRoster.associate { it.peerId to it.freeRamMb.coerceAtLeast(0) }.toMutableMap()
         val assignments = mutableListOf<StageAssignment>()
         for (shard in manifest.shards) {
             val eligible = mutableRoster.filter { peer ->
                 // Tier gate (peer tier >= shard preferred tier).
                 peerHasMinimumTier(peer.capabilityTier, shard.preferredCapabilityTier) &&
                     // RAM gate.
-                    peer.freeRamMb >= shard.estimatedRamMb
+                    remainingRamMb.getValue(peer.peerId) >= shard.estimatedRamMb
             }
             if (eligible.isEmpty()) {
                 return PipelineTopology.Invalid(
@@ -209,7 +213,7 @@ class PipelineShardPlanner(
                 peer to s
             }.sortedWith(
                 compareByDescending<Pair<PeerCapabilities, Double>> { it.second }
-                    .thenByDescending { it.first.freeRamMb }
+                    .thenByDescending { remainingRamMb.getValue(it.first.peerId) }
                     .thenBy { it.first.peerId }
             )
             val (chosenPeer, _) = scored.first()
@@ -220,6 +224,9 @@ class PipelineShardPlanner(
                 activationPort = activationPort,
             )
             assignments += assignment
+            // A colocated stage must not reuse RAM already admitted for another
+            // stage. Subtraction is safe because the eligibility gate proved fit.
+            remainingRamMb[chosenPeer.peerId] = remainingRamMb.getValue(chosenPeer.peerId) - shard.estimatedRamMb
             // Remove the chosen peer from the pool so we don't
             // double-assign unless the caller opted in.
             if (!allowLocalCollisions) {

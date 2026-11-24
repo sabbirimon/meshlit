@@ -1,0 +1,27 @@
+{
+  "format": "meshlit-offline-voice/1",
+  "timestampEpochMs": 1793606290730,
+  "status": "passed-listed-cases",
+  "recognition": "Whisper Tiny English INT8 / ONNX",
+  "synthesis": "Piper Lessac medium / ONNX",
+  "transcript": "After early nightfall, the yellow lamps would light up here and there the squalid quarter of the brothels.",
+  "pcmBytes": 144366,
+  "pcmSampleRate": 22050,
+  "microphoneTested": false,
+  "liveConversationTested": false,
+  "providerTested": false,
+  "syntheticSampleSaved": true,
+  "speakerPlaybackCompleted": true,
+  "audibilityVerified": false,
+  "chatModelPreserved": true,
+  "localLlmExecutedWithSpeechLoaded": true,
+  "timingsMs": {
+    "whisper-tiny-en-importMs": 3040.729894,
+    "piper-lessac-medium-importMs": 6919.129633,
+    "recognitionLoadMs": 4967.57854,
+    "transcriptionMs": 5705.688435,
+    "synthesisLoadMs": 8381.616299,
+    "synthesisMs": 2949.041197,
+    "localLlmWithSpeechLoadedMs": 4910.970831
+  }
+}

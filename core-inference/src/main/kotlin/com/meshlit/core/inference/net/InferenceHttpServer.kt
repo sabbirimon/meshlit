@@ -370,7 +370,12 @@ class InferenceHttpServer(
                     """{"error":"${(t.message ?: "bad request").replace("\"", "\\\"")}"}""",
                 )
             }
-            val hints = RequestHints.parse(session.headers["x-meshlit-hints"])
+            val hints = try {
+                RequestHints.parse(session.headers["x-meshlit-hints"])
+            } catch (_: IllegalArgumentException) {
+                return newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
+                    """{"error":"invalid-routing-hints"}""")
+            }
             val decision = try {
                 // decideFor is a suspend function; serve() is not. The
                 // inference loop is already serialized through the

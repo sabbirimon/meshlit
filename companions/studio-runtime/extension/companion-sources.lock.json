@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-31",
+  "sources": [
+    {
+      "id": "claude-mem",
+      "name": "Claude-Mem",
+      "repository": "https://github.com/thedotmack/claude-mem",
+      "revision": "70aa40042cfb8157a0d84954b9c0d2b30b50af80",
+      "license": "Apache-2.0",
+      "documentationPath": "README.md",
+      "healthPath": "/api/health",
+      "uiPath": "/viewer",
+      "description": "Search persistent observations, session summaries and their timeline in your installed memory worker.",
+      "prerequisites": "An installed, running worker. Its port depends on your user ID; use the address printed by the worker. Cloud sync, observer billing and capture remain controlled in Claude-Mem."
+    },
+    {
+      "id": "openmausbot",
+      "name": "OpenMausBot",
+      "repository": "https://github.com/milind-soni/OpenMausBot",
+      "revision": "21628af229abe8100cdd1f8761ccca391ff56bff",
+      "license": "Apache-2.0",
+      "documentationPath": "docs/mcp-server.md",
+      "healthPath": "/api/health",
+      "uiPath": "/",
+      "description": "Use bot teams, channels, approvals, computers, voice and connected apps in the full companion.",
+      "prerequisites": "An installed desktop app or source harness and its configured agents. Packaged UI usually shares the API port; source UI usually uses port 5199. Paired MCP writes need upstream authentication."
+    },
+    {
+      "id": "openbot",
+      "name": "OpenBot",
+      "repository": "https://github.com/CopilotKit/OpenBot",
+      "revision": "743649efc3f21d7bf0badbe6af2bcd5daedd97ce",
+      "license": "MIT",
+      "documentationPath": "docs/README.md",
+      "healthPath": "/health",
+      "uiPath": "/",
+      "description": "Open your self-hosted coworkers, governed browser computers, routines, policy and audit workspace.",
+      "prerequisites": "A configured source deployment with Bun, Docker, PostgreSQL, model access and CopilotKit Intelligence configuration. Its health endpoint does not prove identity, authentication or model readiness. AG-UI is separate from MCP."
+    }
+  ]
+}

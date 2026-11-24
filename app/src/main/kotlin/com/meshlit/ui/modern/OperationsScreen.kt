@@ -24,6 +24,8 @@ import com.meshlit.core.mcp.control.ClusterCapacity
                 Button(onClick={try{stop.stopAll()}catch(_:Exception){error="Stop latched in memory; persistence failed. Keep this instance stopped."}},colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("Emergency stop all managed operations")}
                 OutlinedButton(enabled=policy.emergencyStopped && !stopping,onClick={try{stop.resumeHuman()}catch(_:Exception){error="Resume could not be saved; stop remains active"}}){Text("Human resume · does not restart sessions")}}
             item{Text("Stops are local to this Meshlit instance. Remote commands, paid tasks and already accepted actions may continue; closing a transport is not remote cancellation proof. Review remote job state. Voice/media capture, external Termux processes and independent OS services still require their own Stop controls.")}
+            item{Row{Text("Managed agents enabled",Modifier.weight(1f));Switch(!policy.agentsPaused,{enabled->try{control.gate.setAgentsEnabled(enabled)}catch(_:Exception){error="Agent pause could not be saved"}},enabled=!policy.emergencyStopped)}
+                Text("Independent of human access and per-feature grants. Resume does not restart completed or interrupted tasks.")}
             report.forEach{(name,status)->item{Text("$name: $status")}}
             if(!com.meshlit.BuildProfile.coreCandidate) {
             item{Text("Cluster capacity",style=MaterialTheme.typography.titleMedium);Text("Enrolled inventory: ${directory.read().devices.size}. Previous inventory ceiling was 64; configurable ceiling is now 10,000. Layer execution stays at 2–8 paired workers. Neither ceiling is scale/performance qualification.")}

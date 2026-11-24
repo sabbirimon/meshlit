@@ -30,6 +30,25 @@ import org.junit.Test
  *  - Topologies are layer-monotonic and end-to-end validated.
  */
 class PipelineShardPlannerTest {
+    @Test fun `colocated stages cannot each reuse the same free RAM`() {
+        val planner = PipelineShardPlanner(allowLocalCollisions = true)
+        val m = manifest(listOf(shard("a", 0, 1, ramMb = 1024), shard("b", 1, 2, ramMb = 1024)))
+        assertTrue(planner.plan(m, caps("self", freeRamMb = 1536), emptyList()) is PipelineTopology.Invalid)
+        assertTrue(planner.plan(m, caps("self", freeRamMb = 2048), emptyList()) is PipelineTopology.Valid)
+    }
+
+    @Test fun `colocation moves the next stage to a peer with remaining RAM`() {
+        val planner = PipelineShardPlanner(allowLocalCollisions = true)
+        val m = manifest(listOf(shard("a", 0, 1, ramMb = 1024), shard("b", 1, 2, ramMb = 1024)))
+        val plan = planner.plan(m, caps("self", freeRamMb = 1536), listOf(caps("peer", freeRamMb = 1024)))
+        assertEquals(listOf("self", "peer"), (plan as PipelineTopology.Valid).assignments.map { it.peer.peerId })
+    }
+
+    @Test fun `negative stage estimate cannot create free RAM for another stage`() {
+        val planner = PipelineShardPlanner(allowLocalCollisions = true)
+        val m = manifest(listOf(shard("a", 0, 1, ramMb = -1), shard("b", 1, 2, ramMb = 1024)))
+        assertTrue(planner.plan(m, caps("self", freeRamMb = 1024), emptyList()) is PipelineTopology.Invalid)
+    }
 
     private fun caps(
         peerId: String,

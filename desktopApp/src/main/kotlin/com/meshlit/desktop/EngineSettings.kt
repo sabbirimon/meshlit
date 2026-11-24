@@ -42,30 +42,72 @@ internal class EnginePreferences(private val store: Preferences = Preferences.us
         store.putInt("batch",options.batch);store.putInt("microBatch",options.microBatch);store.put("keyCache",options.keyCache);store.putInt("idleMinutes",options.idleMinutes);store.put("cpuMode",options.cpuMode.name);store.flush()
     }
 }
-@Composable internal fun EnginePanel(options: EngineOptions, session: LocalSession?, onChange: (EngineOptions) -> Unit) {
-    Text("CPU inference engine", style = MaterialTheme.typography.h6)
-    Text("Settings apply on the next load. A change unloads the old model and starts a fresh chat. Memory admission uses GGUF architecture/KV metadata and actual available RAM; estimates are not reserved memory.")
-    Row { CpuMode.entries.forEach { mode -> TextButton({onChange(options.copy(cpuMode=mode))}) {Text((if(options.cpuMode==mode) "✓ " else "")+mode.label)} } }
-    Text("Context: ${options.context} tokens")
-    Row { listOf(512,1024,2048,4096,8192).forEach { n -> TextButton({onChange(options.copy(context=n))}) {Text(n.toString())} } }
-    Text("Generation CPU threads: ${options.threads}")
-    val processors = Runtime.getRuntime().availableProcessors().coerceIn(1,128)
-    var threadDraft by remember(options.threads) { mutableStateOf(options.threads.toFloat()) }
-    Slider(threadDraft,{threadDraft=it},valueRange=1f..processors.coerceAtLeast(2).toFloat(),
-        steps=processors.coerceAtLeast(2)-2,enabled=processors>1,
-        onValueChangeFinished={val chosen=threadDraft.toInt().coerceIn(1,processors);if(chosen!=options.threads) onChange(options.copy(threads=chosen))})
-    Text("Prompt processing threads: ${options.batchThreads}")
-    Row { listOf(1,2,4,8,16,32).filter {it<=Runtime.getRuntime().availableProcessors()}.forEach {n-> TextButton({onChange(options.copy(batchThreads=n))}) {Text(n.toString())} } }
-    Text("Prompt batch / micro-batch: ${options.batch} / ${options.microBatch}")
-    Row { listOf(128,256,512,1024,2048).forEach {n-> TextButton({onChange(options.copy(batch=n,microBatch=minOf(options.microBatch,n)))}) {Text(n.toString())} } }
-    Row { listOf(32,64,128,256,512).filter {it<=options.batch}.forEach {n-> TextButton({onChange(options.copy(microBatch=n))}) {Text("μ$n")} } }
-    Text("Key cache precision · value cache remains f16")
-    Row { listOf("f16","q8_0").forEach {kind-> TextButton({onChange(options.copy(keyCache=kind))}) {Text((if(options.keyCache==kind) "✓ " else "")+kind)} } }
-    Text("f16 is the default. q8_0 reduces KV memory and may affect answer quality.",style=MaterialTheme.typography.caption)
-    Text("Unload after idle · ${if(options.idleMinutes==0) "keep loaded" else "${options.idleMinutes} minutes"}")
-    Row { listOf(0,1,5,15,30).forEach {n-> TextButton({onChange(options.copy(idleMinutes=n))}) {Text(if(n==0) "Never" else "$n min")} } }
-    if(session!=null) {
-        Text("${session.backend} · native context verified: ${session.context} · admission estimate ${session.admission.estimatedBytes/1048576} MiB · KV estimate ${session.admission.kvBytes/1048576} MiB")
+internal enum class InferenceProfile(val label: String) {
+    COMPACT("Low memory"), BALANCED("Balanced"), LONG("Long context");
+
+    fun options(processors: Int, base: EngineOptions): EngineOptions {
+        val available = processors.coerceIn(1, 128)
+        val result = when (this) {
+            COMPACT -> base.copy(context = 1024, threads = minOf(2, available), batchThreads = minOf(2, available),
+                batch = 128, microBatch = 32, keyCache = "q8_0")
+            BALANCED -> base.copy(context = 4096, threads = minOf(4, available), batchThreads = minOf(8, available),
+                batch = 512, microBatch = 128, keyCache = "f16")
+            LONG -> base.copy(context = 8192, threads = minOf(4, available), batchThreads = minOf(8, available),
+                batch = 512, microBatch = 128, keyCache = "q8_0")
+        }
+        return result.also { it.validate(available) }
     }
-    Text("One loaded model and one request at a time. mmap and prompt-prefix caching are managed by the native runtime. CPU/thread/batch settings need hardware-specific measurement; more threads do not guarantee higher speed. GPU/NPU and distributed RPC execution are separate qualification paths.",style=MaterialTheme.typography.caption)
+}
+
+@Composable private fun <T> EngineChoice(label: String, value: T, choices: List<T>, display: (T) -> String, select: (T) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { open = true }) { Text("$label · ${display(value)} ▾") }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            choices.forEach { item ->
+                DropdownMenuItem(onClick = { open = false; select(item) }) {
+                    Text((if (item == value) "✓ " else "") + display(item))
+                }
+            }
+        }
+    }
+}
+
+@Composable internal fun EnginePanel(options: EngineOptions, session: LocalSession?, onChange: (EngineOptions) -> Unit) {
+    val processors = Runtime.getRuntime().availableProcessors().coerceIn(1, 128)
+    var draft by remember(options) { mutableStateOf(options) }
+    var advanced by remember { mutableStateOf(false) }
+    val profile = InferenceProfile.entries.firstOrNull { it.options(processors, draft) == draft }
+    Text("Local inference", style = MaterialTheme.typography.h6)
+    Text(session?.let { "${it.backend} · ${it.context} active tokens · estimated ${it.admission.estimatedBytes / 1048576} MiB" }
+        ?: "No local model loaded")
+    EngineChoice("Profile", profile?.label ?: "Custom", InferenceProfile.entries.map { it.label }, { it }) { label ->
+        draft = InferenceProfile.entries.first { it.label == label }.options(processors, draft)
+    }
+    Text("${draft.context} context tokens · ${draft.threads} generation threads · ${draft.keyCache} key cache")
+    EngineChoice("Unload after idle", draft.idleMinutes, listOf(0, 1, 5, 15, 30),
+        { if (it == 0) "Keep loaded" else "$it min" }) { draft = draft.copy(idleMinutes = it) }
+    TextButton({ advanced = !advanced }) { Text(if (advanced) "Hide advanced settings" else "Advanced settings") }
+    if (advanced) {
+        EngineChoice("CPU backend", draft.cpuMode, CpuMode.entries.toList(), { it.label }) { draft = draft.copy(cpuMode = it) }
+        EngineChoice("Context", draft.context, (512..8192 step 256).toList(), { "$it tokens" }) { draft = draft.copy(context = it) }
+        EngineChoice("Generation threads", draft.threads, (1..processors).toList(), Int::toString) { draft = draft.copy(threads = it) }
+        EngineChoice("Prompt threads", draft.batchThreads, (1..processors).toList(), Int::toString) { draft = draft.copy(batchThreads = it) }
+        EngineChoice("Prompt batch", draft.batch, listOf(128, 256, 512, 1024, 2048), Int::toString) {
+            draft = draft.copy(batch = it, microBatch = minOf(draft.microBatch, it))
+        }
+        EngineChoice("Micro-batch", draft.microBatch, listOf(32, 64, 128, 256, 512).filter { it <= draft.batch }, Int::toString) {
+            draft = draft.copy(microBatch = it)
+        }
+        EngineChoice("Key cache", draft.keyCache, listOf("f16", "q8_0"), { it }) { draft = draft.copy(keyCache = it) }
+        Text("q8_0 reduces key-cache memory and can affect quality. Model loading checks context capacity and available RAM.",
+            style = MaterialTheme.typography.caption)
+    }
+    if (draft != options) {
+        Text("Applying changes ends the current chat and unloads the model.")
+        Row {
+            Button({ onChange(draft) }) { Text("Apply settings") }
+            TextButton({ draft = options }) { Text("Discard changes") }
+        }
+    }
 }

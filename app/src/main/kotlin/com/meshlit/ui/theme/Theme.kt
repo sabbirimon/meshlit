@@ -99,10 +99,11 @@ fun MeshlitTheme(
         buildColorScheme(effectiveConfig, animatedBrush)
     }
     val styledColors=if(effectiveConfig.surfaceStyle==SurfaceStyle.GLASS) colorScheme.copy(surfaceContainerLow=colorScheme.surfaceContainerLow.copy(alpha=0.88f),surfaceContainer=colorScheme.surfaceContainer.copy(alpha=0.92f),surfaceContainerHigh=colorScheme.surfaceContainerHigh.copy(alpha=0.96f)) else colorScheme
+    val readableColors=styledColors.readableTextColors()
     val typography=remember(config.uiFont){typographyFor(config.uiFont)}
-    CompositionLocalProvider(LocalMeshlitThemeConfig provides effectiveConfig, androidx.compose.ui.platform.LocalDensity provides scaledDensity) {
+    CompositionLocalProvider(LocalMeshlitThemeConfig provides effectiveConfig, androidx.compose.ui.platform.LocalDensity provides scaledDensity, androidx.compose.material3.LocalContentColor provides readableColors.onSurface) {
         MaterialTheme(
-            colorScheme = styledColors,
+            colorScheme = readableColors,
             typography = typography,
             shapes = androidx.compose.material3.Shapes(
                 extraSmall=androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
@@ -110,7 +111,17 @@ fun MeshlitTheme(
                 medium=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                 large=androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
                 extraLarge=androidx.compose.foundation.shape.RoundedCornerShape(28.dp)),
-            content = content,
-        )
+        ) {
+            androidx.compose.material.MaterialTheme(
+                colors=legacyColorsFor(readableColors),
+                typography=androidx.compose.material.Typography(defaultFontFamily=typography.bodyLarge.fontFamily ?: androidx.compose.ui.text.font.FontFamily.Default),
+                shapes=androidx.compose.material.Shapes(
+                    small=androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    medium=androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    large=androidx.compose.foundation.shape.RoundedCornerShape(20.dp)),
+            ) {
+                CompositionLocalProvider(androidx.compose.material.LocalContentColor provides readableColors.onSurface,content=content)
+            }
+        }
     }
 }

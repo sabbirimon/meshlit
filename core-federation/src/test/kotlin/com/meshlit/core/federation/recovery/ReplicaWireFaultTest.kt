@@ -51,14 +51,23 @@ class ReplicaWireFaultTest {
         } }
         try {
             val endpoints = servers.mapIndexed { i, server -> ReplicaEndpoint("node$i", server.url("/replica").newBuilder().host("127.0.0.1").build().toString(), "x".repeat(40)) }
-            val journal = ReplicaJournal(group, ReplicaHttpTransport(endpoints))
-            journal.append(JournalEntry("start", "job", "masterA", 1, JournalAction.ACQUIRE))
-            nodes[0] = ReplicaAcceptor(group, "node0", keys[0].private, stores[0]); denyThird = true
-            journal.append(JournalEntry("transfer", "job", "masterB", 2, JournalAction.ACQUIRE))
-            assertEquals("masterB", journal.read().last().value.entry.owner)
-            assertFalse(String(Files.readAllBytes(root.resolve("replica0"))).contains("masterB"))
-            denyThird = false; journal.read()
-            assertEquals(2, nodes[2].handle(ReplicaRequest(group.fingerprint(), "status")).state.commits.size)
+            val clockOffset = java.util.concurrent.atomic.AtomicLong()
+            ReplicaHttpTransport(endpoints, clock = { System.nanoTime() / 1_000_000 + clockOffset.get() }).use { transport ->
+                val journal = ReplicaJournal(group, transport)
+                journal.append(JournalEntry("start", "job", "masterA", 1, JournalAction.ACQUIRE))
+                nodes[0] = ReplicaAcceptor(group, "node0", keys[0].private, stores[0]); denyThird = true
+                journal.append(JournalEntry("transfer", "job", "masterB", 2, JournalAction.ACQUIRE))
+                assertEquals("masterB", journal.read().last().value.entry.owner)
+                assertFalse(String(Files.readAllBytes(root.resolve("replica0"))).contains("masterB"))
+                denyThird = false
+                val deniedRequests = servers[2].requestCount
+                journal.read()
+                assertEquals("Rejoined path remains in its failure cooldown", deniedRequests, servers[2].requestCount)
+                assertEquals(1, nodes[2].handle(ReplicaRequest(group.fingerprint(), "status")).state.commits.size)
+                clockOffset.addAndGet(30_001)
+                journal.read()
+                assertEquals(2, nodes[2].handle(ReplicaRequest(group.fingerprint(), "status")).state.commits.size)
+            }
         } finally { servers.forEach { it.shutdown() }; root.toFile().deleteRecursively() }
     }
 }

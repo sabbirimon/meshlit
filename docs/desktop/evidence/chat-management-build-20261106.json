@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "recordedAt": "2026-11-06T06:53:27.049076+00:00",
+  "extensionTests": {
+    "passed": 221,
+    "failed": 0
+  },
+  "android": {
+    "settingsTestsPerFlavor": 7,
+    "debugAssemblies": [
+      "meshlitV1",
+      "meshlitV2"
+    ],
+    "finalGuideRebuildPassed": true,
+    "lint": {
+      "errors": 0,
+      "warningsPerFlavor": 416,
+      "hintsPerFlavor": 19
+    },
+    "artifacts": [
+      {
+        "path": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-arm64-v8a-debug.apk",
+        "bytes": 570293328,
+        "sha256": "9c3260708866002596e0775c768f70f7f2dafd5edceb277e3f7f8f646e1c0aa9",
+        "offlineGuideMatches": true
+      },
+      {
+        "path": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-universal-debug.apk",
+        "bytes": 621394082,
+        "sha256": "14b6bd21d761a174fdfcb6b53945905a72e4aa7a7db8f5c54647c21e826cbe66",
+        "offlineGuideMatches": true
+      },
+      {
+        "path": "app/build/outputs/apk/meshlitV1/debug/app-meshlitV1-x86_64-debug.apk",
+        "bytes": 568620298,
+        "sha256": "983d5008804505da46f2190a1322d1d8e62a85feee0c07709d3f475113b64028",
+        "offlineGuideMatches": true
+      },
+      {
+        "path": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-arm64-v8a-debug.apk",
+        "bytes": 570293409,
+        "sha256": "dcb503568c426df02ddb7c7aa2ea5bc23cd7d3fe27bfc7451a56c66f726dec6b",
+        "offlineGuideMatches": true
+      },
+      {
+        "path": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-universal-debug.apk",
+        "bytes": 621394163,
+        "sha256": "47a5d36ff3fbda0c024f1220b6581c59e0c1a588c569b6657104b04bcf2d2d43",
+        "offlineGuideMatches": true
+      },
+      {
+        "path": "app/build/outputs/apk/meshlitV2/debug/app-meshlitV2-x86_64-debug.apk",
+        "bytes": 568620383,
+        "sha256": "e2b40016b9891f0db4f633a07b2da0ef17fbf8a0666fd58b190553875a6b138c",
+        "offlineGuideMatches": true
+      }
+    ],
+    "physicalUiAcceptance": "Not performed: Samsung screen off and keyguard locked"
+  },
+  "documentation": {
+    "markdownFilesTracked": 206,
+    "features": 105,
+    "operations": 38,
+    "modules": 41
+  },
+  "productionQualified": false
+}

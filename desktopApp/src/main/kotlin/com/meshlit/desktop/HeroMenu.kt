@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** Small original line icons, drawn natively; no copied branding or remote images. */
-@Composable private fun MenuGlyph(kind: String, tint: Color, modifier: Modifier = Modifier.size(44.dp)) {
+@Composable internal fun MenuGlyph(kind: String, tint: Color, modifier: Modifier = Modifier.size(44.dp)) {
     Canvas(modifier) {
         val w = size.width; val h = size.height; val stroke = Stroke(w / 24)
         drawRoundRect(tint.copy(alpha = .12f), cornerRadius = CornerRadius(w / 4))
@@ -23,6 +23,19 @@ import androidx.compose.ui.unit.sp
             "chat" -> { drawRoundRect(tint, Offset(w * .22f, h * .24f), Size(w * .56f, h * .46f), CornerRadius(w * .1f), style = stroke)
                 drawLine(tint, Offset(w * .28f, h * .70f), Offset(w * .25f, h * .80f), w / 24) }
             "models" -> (0..2).forEach { i -> drawRoundRect(tint, Offset(w * .22f, h * (.22f + .20f * i)), Size(w * .56f, h * .14f), CornerRadius(w * .03f), style = stroke) }
+            "usage" -> (0..2).forEach { i ->
+                drawRoundRect(tint, Offset(w * (.23f + .2f * i), h * (.57f - .14f * i)),
+                    Size(w * .12f, h * (.20f + .14f * i)), CornerRadius(w * .025f), style = stroke)
+            }
+            "router" -> {
+                drawLine(tint, Offset(w * .3f, h * .28f), Offset(w * .7f, h * .5f), w / 24)
+                drawLine(tint, Offset(w * .3f, h * .72f), Offset(w * .7f, h * .5f), w / 24)
+                listOf(Offset(w*.3f,h*.28f),Offset(w*.3f,h*.72f),Offset(w*.7f,h*.5f)).forEach { drawCircle(tint, w*.065f, it) }
+            }
+            "vpn" -> {
+                drawRoundRect(tint, Offset(w*.26f,h*.43f), Size(w*.48f,h*.34f), CornerRadius(w*.06f), style=stroke)
+                drawArc(tint, 180f, 180f, false, Offset(w*.34f,h*.22f), Size(w*.32f,h*.4f), style=stroke)
+            }
             else -> { drawCircle(tint, w * .27f, style = stroke); (0..2).forEach { i -> drawCircle(tint, w * .04f, Offset(w * (.36f + .14f * i), h * .48f)) } }
         }
     }

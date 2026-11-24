@@ -437,7 +437,7 @@ class RunAnywhereStructuredEngine(
         grammar = null,
         response_format = null,
         echo_prompt = false,
-        n_threads = 0,
+        n_threads = AndroidCpuBudget.generationThreads(),
         tool_calling = null,
         disable_thinking = false,
     )

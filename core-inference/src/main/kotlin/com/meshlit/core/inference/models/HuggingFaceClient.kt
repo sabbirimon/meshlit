@@ -8,8 +8,22 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
+private class HubIdentityDenied(val status:Int):IllegalArgumentException(if(status==401)
+    "HF authentication failed (401): check token and permissions" else
+    "HF access denied (403): accept the model license or request repository access")
+const val HF_BEARER_LIMIT=8192
+private val bearerSyntax=Regex("[A-Za-z0-9._~+/-]+=*")
+fun isHubBearer(value:String)=value.length in 1..HF_BEARER_LIMIT && bearerSyntax.matches(value)
+internal fun hubBrowserAccessToken(grant:JsonObject):String {
+    require((grant["token_type"] as? JsonPrimitive)?.contentOrNull.equals("bearer",true)) { "Unexpected Hugging Face token type" }
+    val value=(grant["access_token"] as? JsonPrimitive)?.takeIf{it.isString}?.contentOrNull
+    return requireNotNull(value?.takeIf(::isHubBearer)) { "Invalid Hugging Face access token" }
+}
+
 @Serializable data class HubArtifact(val repo:String,val revision:String,val fileName:String,val sizeBytes:Long?,val sha256:String?,val url:String)
-@Serializable data class HubRepository(val id:String,val revision:String,val private:Boolean,val gated:String,val license:String?,val files:List<HubArtifact>)
+@Serializable data class HubRepository(val id:String,val revision:String,val private:Boolean,val gated:String,val license:String?,val files:List<HubArtifact>,
+    val downloads:Long?=null,val likes:Long?=null,val updated:String?=null,val task:String?=null,
+    val architecture:String?=null,val parameters:Long?=null,val contextLength:Long?=null,val tags:List<String> = emptyList(),val formats:List<String> = emptyList())
 @Serializable data class HostedModelConfig(val enabled:Boolean=false,val model:String="",val endpoint:String="https://router.huggingface.co/v1/chat/completions",val billTo:String="") {
     fun validate() {
         require(model.isBlank() || model.matches(Regex("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(:[A-Za-z0-9_-]+)?"))) { "Enter namespace/model with an optional provider suffix" }
@@ -21,17 +35,16 @@ import java.util.concurrent.TimeUnit
     }
 }
 /** Real Hub discovery and explicit hosted requests. No automatic cloud fallback, redirects or paid retries. */
-class HuggingFaceClient {
-    private val client=OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(60,TimeUnit.SECONDS)
-        .callTimeout(90,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
+class HuggingFaceClient internal constructor(private val client:OkHttpClient) {
+    constructor():this(OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(60,TimeUnit.SECONDS)
+        .callTimeout(90,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build())
     private suspend fun fetch(request:Request):JsonElement=withContext(Dispatchers.IO) {
         val call=client.newCall(request)
         coroutineScope {
             val watcher=launch(Dispatchers.IO){try{awaitCancellation()}finally{call.cancel()}}
             try {call.execute().use { response ->
+                if(response.code==401 || response.code==403) throw HubIdentityDenied(response.code)
                 require(response.isSuccessful) { when(response.code){
-                    401->"HF authentication failed (401): check token and permissions"
-                    403->"HF access denied (403): accept the model license or request repository access"
                     402->"HF billing required (402): check credits or provider billing"
                     404->"HF repository, model or endpoint not found (404)"
                     429->"HF rate limit (429): wait and retry manually"
@@ -46,10 +59,18 @@ class HuggingFaceClient {
         }
     }
     private fun builder(url:String,token:String)=Request.Builder().url(url).header("User-Agent","Meshlit/0.2.3").apply {
-        if(token.isNotBlank()) header("Authorization","Bearer $token")
+        if(token.isNotEmpty()) {require(isHubBearer(token)){"Invalid Hugging Face access token"};header("Authorization","Bearer $token")}
+    }
+    suspend fun explore(kind: String, query: String, token: String): List<String> {
+        require(kind in setOf("models","datasets","spaces") && query.length <= 200)
+        val url = "https://huggingface.co/api/$kind".toHttpUrl().newBuilder()
+            .addQueryParameter("search",query).addQueryParameter("limit","20").build()
+        return fetch(builder(url.toString(),token).build()).jsonArray.mapNotNull {
+            it.jsonObject["id"]?.jsonPrimitive?.contentOrNull?.takeIf { id -> id.matches(Regex("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")) }
+        }
     }
     suspend fun search(query:String,token:String=""):List<String> {
-        require(query.length in 1..200)
+        require(query.length<=200)
         val url="https://huggingface.co/api/models".toHttpUrl().newBuilder().addQueryParameter("search",query)
             .addQueryParameter("filter","gguf").addQueryParameter("limit","20").build()
         return fetch(builder(url.toString(),token).build()).jsonArray.mapNotNull{it.jsonObject["id"]?.jsonPrimitive?.contentOrNull}
@@ -70,15 +91,42 @@ class HuggingFaceClient {
             name.split('/').forEach{url.addPathSegment(it)}
             HubArtifact(id,revision,name,lfs?.get("size")?.jsonPrimitive?.longOrNull ?: item["size"]?.jsonPrimitive?.longOrNull,sha,url.build().toString())
         }.take(200)
+        val gguf=data["gguf"] as? JsonObject
+        val config=data["config"] as? JsonObject
+        val card=data["cardData"] as? JsonObject
+        fun JsonObject.field(key:String)=(this[key] as? JsonPrimitive)?.contentOrNull
+        val license=when(val value=card?.get("license")){
+            is JsonPrimitive -> value.contentOrNull
+            is JsonArray -> value.mapNotNull{(it as? JsonPrimitive)?.contentOrNull}.joinToString(", ")
+            else -> null
+        }
+        val weightExtensions=setOf("gguf","safetensors","onnx","pth","pt","bin","tflite","pte","rkllm","mlmodel","dlc","engine","msgpack","pb","h5","npz","npy","llamafile","ggml")
+        val formats=data["siblings"]?.jsonArray.orEmpty().mapNotNull{
+            it.jsonObject["rfilename"]?.jsonPrimitive?.contentOrNull?.substringAfterLast('.', "")?.lowercase()?.takeIf(weightExtensions::contains)
+        }.distinct().sorted()
         return HubRepository(id,revision,data["private"]?.jsonPrimitive?.booleanOrNull ?: false,
-            data["gated"]?.jsonPrimitive?.content ?: "unknown",(data["cardData"] as? JsonObject)?.get("license")?.jsonPrimitive?.contentOrNull,files)
+            data["gated"]?.jsonPrimitive?.content ?: "unknown",license,files,
+            data.field("downloads")?.toLongOrNull(),data.field("likes")?.toLongOrNull(),data.field("lastModified"),
+            data.field("pipeline_tag"),gguf?.field("architecture") ?: config?.field("model_type"),
+            gguf?.field("total")?.toLongOrNull(),gguf?.field("context_length")?.toLongOrNull(),
+            (data["tags"] as? JsonArray).orEmpty().mapNotNull{(it as? JsonPrimitive)?.contentOrNull}.distinct(),formats)
     }
     suspend fun hostedModels(token:String):JsonElement=fetch(builder("https://router.huggingface.co/v1/models",token).build())
-    suspend fun whoAmI(token:String):String {
-        require(token.startsWith("hf_") && token.length<=512 && token.none{it.isWhitespace()}) { "Enter a Hugging Face user access token" }
-        val identity=fetch(builder("https://huggingface.co/api/whoami-v2",token).build()).jsonObject
-        return identity["name"]?.jsonPrimitive?.contentOrNull?.takeIf{it.isNotBlank() && it.length<=128}
-            ?: error("Hugging Face did not return an account name")
+    suspend fun browserToken(open: suspend (String) -> Unit): String {
+        return hubBrowserAccessToken(fetch(browserGrant(open)).jsonObject)
+    }
+    suspend fun whoAmI(token:String,browserLogin:Boolean?=false):String {
+        require(isHubBearer(token)) { "Invalid Hugging Face access token" }
+        suspend fun account(oauth:Boolean):String {
+            val path=if(oauth) "/oauth/userinfo" else "/api/whoami-v2"
+            val identity=fetch(builder("https://huggingface.co"+path,token).build()).jsonObject
+            return (identity[if(oauth) "preferred_username" else "name"] as? JsonPrimitive)
+                ?.takeIf{it.isString}?.contentOrNull?.takeIf{it.isNotBlank() && it.length<=128}
+                ?: error("Hugging Face did not return an account name")
+        }
+        // Accounts saved before source tracking can contain either credential type.
+        return if(browserLogin!=null) account(browserLogin) else try { account(false) }
+            catch(_:HubIdentityDenied){account(true)}
     }
     suspend fun generate(config:HostedModelConfig,token:String,prompt:String,maxTokens:Int=256):JsonElement {
         config.validate();require(config.enabled) { "Hosted requests are disabled" };require(token.isNotBlank()) { "Save an inference-enabled HF token" }

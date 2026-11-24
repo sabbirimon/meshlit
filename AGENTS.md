@@ -198,4 +198,4 @@ gates; do not invent a global phase or project completion percentage. Run
 and versioned agreements are indexed without changing their dated claims or
 terms. Keep offline guide content synchronized when changing user instructions.
 
-Archived development notes are available to maintainers in the [private project archive](https://github.com/sabbirimon/meshlit-hyperl-internal-docs/blob/main/Meshlit/main).
+Archived development notes are available to maintainers in the [private project archive](https://github.com/sabbirimon/meshlit-hyperl-internal-docs/blob/main/Meshlit/development) and the [main branch archive](https://github.com/sabbirimon/meshlit-hyperl-internal-docs/blob/main/Meshlit/main).

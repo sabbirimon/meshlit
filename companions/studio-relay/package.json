@@ -1,0 +1,1 @@
+{"name":"meshlit-studio-relay","version":"0.1.0","private":true,"scripts":{"start":"node server.cjs"},"dependencies":{"ws":"^8.18.3"}}

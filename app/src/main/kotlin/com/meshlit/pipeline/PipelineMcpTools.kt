@@ -18,9 +18,12 @@ class PipelineMcpTools(private val host:PipelineHost,private val library:ModelLi
         McpToolSpec(name="cluster_runtime_status",description="Inspect actual native layer runtime state and saved delegation; does not expose pairing secrets."){
             McpToolResult.Json(buildJsonObject{
                 put("worker",host.status.value.worker);put("coordinator",host.status.value.coordinator)
-                put("starting",host.status.value.starting);put("native_available",host.available())
+                put("starting",host.status.value.starting);put("repairing_placement",host.status.value.repairing);put("native_available",host.available())
                 put("agent_control",host.agentControlAllowed());put("paired_workers",host.peers().size)
                 put("active_group",host.activeGroup());put("groups",buildJsonArray{host.groups().forEach{add(it)}})
+                put("coordinator_cpu_layers_enabled",host.coordinatorCpuLayersAllowed())
+                put("planned_coordinator_layers",host.status.value.plannedCoordinatorLayers)
+                put("planned_worker_layers",buildJsonArray{host.status.value.plannedWorkerLayers.forEach{add(it)}})
                 put("estimated_memory_bytes",host.status.value.memoryBudgetBytes)
                 host.status.value.error?.let{put("error",it)}
                 put("remote_failover_implemented",false);put("durable_replication_implemented",false)
@@ -43,7 +46,7 @@ class PipelineMcpTools(private val host:PipelineHost,private val library:ModelLi
             permission()?.let{return@McpToolSpec it}
             val group=(args as? JsonObject)?.get("group")?.jsonPrimitive?.contentOrNull
                 ?: return@McpToolSpec McpToolResult.Error(McpToolResult.ErrorCode.INVALID_ARGS,"Choose an existing group")
-            if(host.status.value.coordinator || host.status.value.starting || group !in host.groups())
+            if(host.status.value.coordinator || host.status.value.starting || host.status.value.repairing || group !in host.groups())
                 return@McpToolSpec McpToolResult.Error(McpToolResult.ErrorCode.INVALID_ARGS,"Group unavailable while coordinator is active or group is unknown")
             val peers=host.setActiveGroup(group)
             McpToolResult.Json(buildJsonObject{put("group",group);put("workers",peers.size)})

@@ -1,0 +1,25 @@
+{
+  "platform": "Darwin",
+  "architecture": "x86_64",
+  "sdk_version": "0.1.22",
+  "artifacts": [
+    {
+      "name": "google_antigravity-0.1.22-py3-none-macosx_11_0_x86_64.whl",
+      "size": 41282858,
+      "sha256": "86a31782a68da8eabdb59a7d0c4a38412c7f034029ac4b8e4eb61606c374b99d",
+      "verified": true
+    },
+    {
+      "name": "VSCodium-darwin-x64-1.143.17183.zip",
+      "size": 215753305,
+      "sha256": "2ba006bd8b01f6c208d6cc586b5cef22092d7b0c44338247cfc95c6fd61ebf6c",
+      "verified": true
+    }
+  ],
+  "sdk_import_and_explicit_config": "passed",
+  "workbench_archive": "passed",
+  "agent_started": false,
+  "model_requests": 0,
+  "integrated_ide_qualified": false,
+  "device_control_qualified": false
+}

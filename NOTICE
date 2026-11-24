@@ -19,3 +19,11 @@ are preserved separately and bundled offline. Meshlit application Apache rights
 are unchanged. See core-hyperl/MODIFICATIONS.md and THIRD_PARTY_NOTICES.md.
 
 Apache MINA SSHD 2.20.0 (optional embedded SSH transport): Copyright The Apache Software Foundation. Apache-2.0; licence/notice assets: app/src/main/assets/node-ssh. Upstream: https://github.com/apache/mina-sshd.
+
+The Meshlit Studio icon adapts “paulo22s” by @psergiojr for VSCodium.
+Meshlit adds a circular rim joined at the base of the extended trunk. The adapted
+icon and its size, format, and Android adaptive/monochrome variants are
+licensed under Creative Commons Attribution-ShareAlike 4.0 International.
+Original artwork: https://github.com/psergiojr/vscodium-logo-ideas
+Windows icon: https://github.com/VSCodium/icons/blob/main/icons/win32/nobg/blue1/paulo22s.ico
+License: https://creativecommons.org/licenses/by-sa/4.0/

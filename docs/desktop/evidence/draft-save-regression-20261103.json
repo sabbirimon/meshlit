@@ -1,0 +1,20 @@
+{
+  "recordedAt": "2026-11-02T18:53:42.361353+00:00",
+  "issue": "Draft could not be saved warning when typing resumes during an in-flight autosave",
+  "cause": "runCatching converted coroutine cancellation from the previous autosave into a storage-failure warning",
+  "fix": "Rethrow CancellationException; preserve warnings for actual storage exceptions; successful save clears only its own warning",
+  "tests": {
+    "class": "ChatDraftPersistenceTest",
+    "androidV1": {
+      "tests": 2,
+      "failures": 0
+    },
+    "androidV2": {
+      "tests": 2,
+      "failures": 0
+    },
+    "log": "/tmp/meshlit-draft-save-tests.log",
+    "build": "successful in 52 seconds"
+  },
+  "deployment": "Handed to finalization chat; installation not verified by this test"
+}

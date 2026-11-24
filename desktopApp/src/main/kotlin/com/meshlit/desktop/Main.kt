@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.collect
 
 private data class Message(val role: String, val text: String, val completed: Boolean = true)
 fun main(args: Array<String>) {
+    if (args.contentEquals(arrayOf("--ide-backend"))) { runIdeBackend(); return }
+    if (args.size == 2 && args[0] == "--assistant-controls-check") { assistantControlsCheck(args[1]); return }
+    if (args.size == 2 && args[0] == "--dashboard-browser-check") { dashboardBrowserCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--cpu-benchmark-check") { cpuBenchmarkCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--engine-options-check") { engineOptionsCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--monitor-check") { monitorCheck(args[1]); return }
@@ -35,12 +38,53 @@ fun main(args: Array<String>) {
     if (args.size == 2 && args[0] == "--local-check") { localCheck(args[1]); return }
     if (args.size == 2 && args[0] == "--models-check") { modelsCheck(args[1]); return }
     if (args.firstOrNull() == "--cli") { runCli(args.drop(1).toTypedArray()); return }
-    application {
-    Window(onCloseRequest = ::exitApplication, title = "Meshlit · Experimental desktop",
-        state = rememberWindowState(width = 1120.dp, height = 800.dp)) { Workspace() }
+    if (args.size == 2 && args[0] == "--workspace") {
+        val folder = java.nio.file.Path.of(args[1]).toRealPath()
+        require(java.nio.file.Files.isDirectory(folder))
+        System.setProperty("meshlit.workspace", folder.toString())
     }
+    val instance = try {
+        StudioInstance.acquire(java.nio.file.Path.of(System.getProperty("user.home"), ".meshlit", "studio"), StudioBuild.details)
+    } catch(_: Exception) {
+        javax.swing.JOptionPane.showMessageDialog(null, "Meshlit could not verify its single-instance lock. Check access to your Meshlit profile.", "Meshlit", javax.swing.JOptionPane.ERROR_MESSAGE)
+        return
+    }
+    if(instance == null) {
+        println("Meshlit is already running; requested activation. Use Open folder in that window to change workspaces.")
+        return
+    }
+    Runtime.getRuntime().addShutdownHook(Thread { instance.close() })
+    System.setProperty("apple.laf.useScreenMenuBar", "true")
+    installDesktopIcon()
+    try { application {
+    DisposableEffect(Unit) { onDispose { DashboardEngine.shutdown() } }
+    var unsavedCode by remember { mutableStateOf(false) }
+    var confirmExit by remember { mutableStateOf(false) }
+    var menuCommand by remember { mutableStateOf(0 to "") }
+    fun dispatch(action: String) { menuCommand = menuCommand.first + 1 to action }
+    fun requestQuit() { if(unsavedCode) confirmExit = true else exitApplication() }
+    Window(onCloseRequest = { if(unsavedCode) confirmExit = true else exitApplication() }, title = StudioBuild.title,
+        icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"),
+        state = rememberWindowState(width = 1120.dp, height = 800.dp)) {
+        LaunchedEffect(instance) {
+            while(true) {
+                delay(500)
+                if(withContext(Dispatchers.IO) { runCatching { instance.consumeActivation() }.getOrDefault(false) }) {
+                    window.extendedState = java.awt.Frame.NORMAL
+                    window.toFront(); window.requestFocus()
+                }
+            }
+        }
+        StudioMenus(::dispatch, ::requestQuit)
+        Workspace(command = menuCommand, onCommand = ::dispatch, onQuit = ::requestQuit) { unsavedCode = it }
+        if(confirmExit) AlertDialog(onDismissRequest = { confirmExit = false }, title = { Text("Unsaved code") },
+            text = { Text("Return to the editor to save, or discard edits and quit.") },
+            confirmButton = { TextButton({ exitApplication() }) { Text("Discard and quit") } },
+            dismissButton = { TextButton({ confirmExit = false }) { Text("Keep editing") } })
+    }
+    } } finally { instance.close() }
 }
-@Composable internal fun Workspace() {
+@Composable internal fun Workspace(command: Pair<Int, String> = 0 to "", onCommand: (String) -> Unit = {}, onQuit: () -> Unit = {}, onCodeDirty: (Boolean) -> Unit = {}) {
     val preferences = remember { DesktopPreferences() }
     var language by remember { mutableStateOf(preferences.language()) }
     var look by remember { mutableStateOf(preferences.look()) }
@@ -61,6 +105,15 @@ fun main(args: Array<String>) {
     var observedAt by remember { mutableStateOf<Long?>(null) }
     val localEngine = remember { LocalEngine() }
     val knowledge = remember { DesktopKnowledge() }
+    val usageVault = remember { DesktopUsage() }
+    val credentials = remember { DesktopCredentials() }
+    val onlineConnections = remember { OnlineConnections() }
+    var activeCredential by remember { mutableStateOf<DesktopCredentials.Lease?>(null) }
+    var pricedRoute by remember { mutableStateOf("") }
+    var reviewedPrice by remember { mutableStateOf(UsagePrice()) }
+    var gateway by remember { mutableStateOf(false) }
+    var onlineService by remember { mutableStateOf("Custom compatible") }
+    var usageFailure by remember { mutableStateOf<String?>(null) }
     val enginePreferences = remember { EnginePreferences() }
     var engineOptions by remember { mutableStateOf(enginePreferences.load()) }
     var sendAfterLoad by remember { mutableStateOf(false) }
@@ -75,9 +128,37 @@ fun main(args: Array<String>) {
     var budget by remember { mutableStateOf(2048f) }
     var settings by remember { mutableStateOf(false) }
     var section by remember { mutableStateOf("models") }
+    var vendorDashboard by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var dashboard by remember { mutableStateOf(false) }
+    var ideFocus by remember { mutableStateOf(0) }
+    var coding by remember { mutableStateOf(false) }
+    var codeCommand by remember { mutableStateOf(0 to "") }
+    LaunchedEffect(coding) { if(!coding) codeCommand = 0 to "" }
     var responsePolicy by remember { mutableStateOf(ResponsePolicy.ASSISTANT) }
     var instructions by remember { mutableStateOf(DesktopStarter.prompt) }
-    fun openSection(id: String) { section = id; settings = true }
+    fun openSection(id: String) {
+        settings = false
+        when (id) {
+            "management" -> dashboard = true
+            "chat" -> dashboard = false
+            "code", "ide" -> {
+                dashboard = true
+                coding = true
+                ideFocus++
+            }
+            else -> {
+                section = id
+                settings = true
+            }
+        }
+    }
+    var studioMode by remember { mutableStateOf(StudioMode.CHAT) }
+    var studioApproval by remember { mutableStateOf(StudioApproval.ASK) }
+    var assistantFolder by remember { mutableStateOf<java.nio.file.Path?>(null) }
+    var editorDirty by remember { mutableStateOf(false) }
+    var assistantControls by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<PendingStudioReview?>(null) }
+    var agentEvents by remember { mutableStateOf(emptyList<String>()) }
     var busy by remember { mutableStateOf(false) }
     var connected by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf(false) }
@@ -86,6 +167,10 @@ fun main(args: Array<String>) {
     var client by remember { mutableStateOf<HostClient?>(null) }
     var revision by remember { mutableStateOf(0) }
     fun stop(unloadLocal: Boolean = false) {
+        if(busy && !localLoading && messages.lastOrNull()?.let { it.role == "assistant" && !it.completed } == true) {
+            messages = messages.dropLast(1) + messages.last().copy(text = messages.last().text.ifBlank { "Stopped. Completed file changes are kept; review the activity log and workspace." })
+        }
+        pendingAction?.answer?.cancel(); pendingAction = null
         revision++; sendAfterLoad = false; client?.close(); job?.cancel(); client = null
         if (unloadLocal || localMode && busy) { localEngine.stop(); localSession = null; connected = false; models = emptyList(); model = "" }
         busy = false; localLoading = false
@@ -117,7 +202,7 @@ fun main(args: Array<String>) {
         }
     }
     fun requestsAllowed() = if (localMode) localSession != null && connected else network && connected
-    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close(); knowledge.lock() } }
+    DisposableEffect(Unit) { onDispose { client?.close(); job?.cancel(); localEngine.close(); knowledge.lock(); usageVault.lock(); credentials.lock() } }
     fun colibriReady() = connected && observedAt?.let { System.nanoTime() - it in 0..300_000_000_000L } == true
     fun hostAllowed() = localMode || !colibriHost || colibriDecision(colibriMode, network, colibriReady(), false).route == ColibriRoute.HOST
     fun connect() {
@@ -127,7 +212,7 @@ fun main(args: Array<String>) {
         job = scope.launch {
             var active: HostClient? = null
             try {
-                val host = HostEndpoint.parse(endpoint, hostProtocol); val connectedClient = HostClient(host, token); active = connectedClient; client = connectedClient
+                val host = HostEndpoint.parse(endpoint, hostProtocol); val connectedClient = HostClient(host, activeCredential?.let { credentials.resolve(it, host) } ?: token); active = connectedClient; client = connectedClient
                 val choices = withContext(Dispatchers.IO) { connectedClient.models() }
                 if (revision != currentRevision) throw CancellationException("Request superseded")
                 models = choices; model = choices.firstOrNull().orEmpty(); connected = true; observedAt = System.nanoTime()
@@ -138,6 +223,8 @@ fun main(args: Array<String>) {
     }
     fun send() {
         if (busy || !requestsAllowed() || !hostAllowed() || prompt.isBlank()) return
+        if (!usageVault.isUnlocked()) { usageFailure = "Unlock Usage & budgets before sending a request"; openSection("usage"); return }
+        usageFailure = null
         val system = if (localMode) runCatching { responsePolicy.localPrompt(instructions) }.getOrElse { failure = true; return } else null
         if (localMode && budget.toInt() >= (localSession?.context ?: engineOptions.context)) { failure = true; return }
         val context = messages.filter { it.completed }.map { ChatTurn(it.role, it.text) } + ChatTurn("user", prompt.trim())
@@ -145,32 +232,83 @@ fun main(args: Array<String>) {
         messages = messages + Message("user", prompt.trim()) + Message("assistant", "", false)
         prompt = ""; usage = GenerationUsage(); failure = false; busy = true
         val currentRevision = revision
+        val selectedMode = studioMode
+        val selectedApproval = studioApproval
+        val selectedFolder = assistantFolder
+        agentEvents = emptyList()
+        val selectedLocal = localMode
+        val selectedModel = model
+        val selectedEndpoint = endpoint
+        val selectedProtocol = hostProtocol
+        val selectedToken = token
+        val selectedCredential = activeCredential
+        val selectedBudget = budget.toInt()
+        val selectedSession = localSession
+        val route = UsageLedger.route(if(selectedLocal) "local:" + (customModelHash ?: customModel?.toString() ?: DesktopStarter.alias) else selectedEndpoint + "/" + selectedProtocol, selectedModel)
+        val selectedPrice = if (selectedLocal) UsagePrice(local = true, source = "Local inference")
+            else if (pricedRoute == route) reviewedPrice.copy(gateway = gateway) else UsagePrice(gateway = gateway)
         job = scope.launch {
             var active: HostClient? = null
+            var attempt: String? = null
+            val ledger = usageVault.journal()
             try {
-                val session = if (localMode) checkNotNull(localSession) else null
-                val generationClient = HostClient(session?.endpoint ?: HostEndpoint.parse(endpoint, hostProtocol), session?.token ?: token); active = generationClient; client = generationClient
-                val reply = ReplyBuffer()
-                val updates = MutableStateFlow("")
-                val display = launch {
-                    updates.collect { text ->
-                        if (revision == currentRevision && text.isNotEmpty()) messages = messages.dropLast(1) + messages.last().copy(text = text)
-                    }
-                }
-                val result = try {
-                    withContext(Dispatchers.IO) {
-                        val references = knowledge.context(context.last().content, remote = !localMode)
-                        val groundedSystem = (system.orEmpty() + references).takeIf { it.isNotBlank() }
-                        generationClient.generateConfigured(model, context, GenerationBudget(budget.toInt()), groundedSystem) { chunk ->
-                            reply.append(chunk)?.let { updates.value = it }
+                val session = if (selectedLocal) checkNotNull(selectedSession) else null
+                val targetHost = session?.endpoint ?: HostEndpoint.parse(selectedEndpoint, selectedProtocol)
+                val generationClient = HostClient(targetHost, session?.token ?: selectedCredential?.let { credentials.resolve(it, targetHost) } ?: selectedToken); active = generationClient; client = generationClient
+                suspend fun round(turns: List<ChatTurn>, agentSystem: String?, showReply: Boolean): Pair<String, GenerationUsage> {
+                    val reply = ReplyBuffer()
+                    val updates = MutableStateFlow("")
+                    val display = launch {
+                        updates.collect { text ->
+                            if(showReply && revision == currentRevision && text.isNotEmpty()) messages = messages.dropLast(1) + messages.last().copy(text = text)
                         }
                     }
-                } finally { display.cancelAndJoin() }
-                if (revision != currentRevision) throw CancellationException("Request superseded")
-                messages = messages.dropLast(1) + messages.last().copy(text = reply.snapshot(), completed = true); usage = result
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { if (revision == currentRevision) failure = true }
-            finally { active?.close(); if (revision == currentRevision) { client = null; busy = false } }
+                    val result = try {
+                        withContext(Dispatchers.IO) {
+                            currentCoroutineContext().ensureActive()
+                            // Recheck sharing and the independent agent permission for every model round.
+                            val references = knowledge.context(context.last().content, remote = !selectedLocal,
+                                agent = selectedMode != StudioMode.CHAT)
+                            // Agent protocol replaces the ordinary no-tools persona; retrieved context stays untrusted.
+                            val groundedSystem = ((agentSystem ?: system.orEmpty()) + references).takeIf { it.isNotBlank() }
+                            require(groundedSystem == null || groundedSystem.length <= 8192) { "System context is too large" }
+                            require(turns.size < 64 && turns.sumOf { it.content.length.toLong() } + (groundedSystem?.length ?: 0) <= 131072) { "Assistant context limit reached; start a new chat" }
+                            attempt = ledger.begin(route, selectedModel, selectedPrice,
+                                (turns.sumOf { it.content.length.toLong() } + (groundedSystem?.length ?: 0)) * 4 + 1024, selectedBudget.toLong())
+                            if (!selectedLocal && selectedCredential != null) credentials.resolve(selectedCredential, targetHost)
+                            generationClient.generateConfigured(selectedModel, turns, GenerationBudget(selectedBudget), groundedSystem) { chunk ->
+                                reply.append(chunk)?.let { updates.value = it }
+                            }
+                        }
+                    } finally { display.cancelAndJoin() }
+                    withContext(NonCancellable + Dispatchers.IO) { ledger.finish(checkNotNull(attempt), "complete", result.inputTokens, result.outputTokens) }
+                    attempt = null
+                    if (revision != currentRevision) throw CancellationException("Request superseded")
+                    usage = result
+                    return reply.snapshot() to result
+                }
+                val answer = if(selectedMode == StudioMode.CHAT) round(context, null, true).first else {
+                    StudioAgent(selectedFolder, { editorDirty }, ::openSection).run(selectedMode, selectedApproval, context,
+                        generate = { turns, agentSystem -> round(turns, agentSystem, false).first },
+                        review = { proposed ->
+                            val decision = PendingStudioReview(proposed, CompletableDeferred())
+                            pendingAction = decision
+                            try { decision.answer.await() } finally { if(pendingAction === decision) pendingAction = null }
+                        },
+                        event = { event -> if(revision == currentRevision) agentEvents = (agentEvents + event).takeLast(30) })
+                }
+                messages = messages.dropLast(1) + messages.last().copy(text = answer, completed = true)
+            } catch (e: CancellationException) {
+                if(revision == currentRevision && messages.lastOrNull()?.role == "assistant") messages = messages.dropLast(1) + messages.last().copy(text = "Stopped. Completed file changes are kept; review the activity log.")
+                withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, "cancelled") } }; throw e
+            } catch (e: Exception) {
+                withContext(NonCancellable + Dispatchers.IO) { attempt?.let { ledger.finish(it, "failed") } }
+                if (revision == currentRevision) {
+                    failure = selectedMode == StudioMode.CHAT
+                    usageFailure = if(attempt == null) e.message else "Request failed; review Usage for any unresolved charge"
+                    if(selectedMode != StudioMode.CHAT) messages = messages.dropLast(1) + messages.last().copy(text = "Assistant stopped: ${usageFailure ?: "action failed"}. Earlier completed changes are kept.")
+                }
+            } finally { active?.close(); if (revision == currentRevision) { client = null; busy = false } }
         }
     }
     LaunchedEffect(localSession, busy, engineOptions.idleMinutes) {
@@ -191,47 +329,97 @@ fun main(args: Array<String>) {
             if (localSession != null) send()
         }
     }
+    fun openChatSetup(action: String) {
+        when (action) {
+            "local" -> {
+                if (!localMode) { stop(true); localMode = true; network = false; messages = emptyList() }
+                if (localEngine.available() && localSession == null) loadLocal() else openSection("models")
+            }
+            "ollama", "lmstudio", "bionic" -> {
+                stop(true)
+                localMode = false; gateway = false; colibriHost = false; pricedRoute = ""
+                onlineService = chatSetupLabels.getValue(action)
+                hostProtocol = HostProtocol.OPENAI
+                endpoint = when (action) {
+                    "ollama" -> "http://127.0.0.1:11434/v1"
+                    "lmstudio" -> "http://127.0.0.1:1234/v1"
+                    else -> ""
+                }
+                network = false; token = ""; activeCredential = null; messages = emptyList()
+                observedAt = null; failure = false
+                openSection("models")
+            }
+            "device" -> openSection("device-dashboard")
+            "cloud" -> openSection("providers")
+            "management", "ide" -> openSection(action)
+        }
+    }
     fun requestSend() {
+        if (!dashboard && !busy) {
+            chatSetupIntent(prompt)?.let { prompt = ""; openChatSetup(it); return }
+        }
         if (localMode && localSession == null && !busy && prompt.isNotBlank()) { loadLocal(); sendAfterLoad = true }
         else send()
     }
-    val colors = if (look == WorkspaceLook.PAPER) lightColors(primary = Color(look.accent), background = Color(look.background),
-        surface = Color(look.surface), onBackground = Color(look.foreground), onSurface = Color(look.foreground))
-        else darkColors(primary = Color(look.accent), background = Color(look.background), surface = Color(look.surface),
-            onBackground = Color(look.foreground), onSurface = Color(look.foreground), onPrimary = Color(0xFF101113))
-    MaterialTheme(colors = colors, typography = Typography(defaultFontFamily = FontFamily.SansSerif,
-        body1 = TextStyle(fontSize = (16 * scale).sp, lineHeight = (25 * scale).sp))) {
-        Surface(Modifier.fillMaxSize(), color = colors.background) {
-            BoxWithConstraints {
-                val wide = maxWidth > 860.dp
-                Row(Modifier.fillMaxSize()) {
-                    if (wide) WorkspaceRail(if(settings) section else "chat", onSelect = { id ->
-                        if (id == "chat") settings = false else openSection(id)
-                    }, onNewChat = { stop(); messages = emptyList(); usage = GenerationUsage(); settings = false })
-                    Column(Modifier.weight(1f).fillMaxHeight()) {
+    val clipboard = LocalClipboardManager.current
+    var navigationError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(command) {
+        runCatching {
+            when(command.second) {
+                "new-chat" -> { stop(); messages = emptyList(); usage = GenerationUsage(); openSection("chat") }
+                "assistant-controls" -> { if (!coding) dashboard = false; assistantControls = true }
+                "paste-draft" -> { prompt = (prompt + (clipboard.getText()?.text ?: "")).take(131072) }
+                "copy-draft" -> clipboard.setText(AnnotatedString(prompt))
+                "clear-draft" -> { prompt = "" }
+                "open-folder", "terminal" -> { codeCommand = command; openSection("code") }
+                "save-file", "focus-editor", "show-files" -> if(coding) { codeCommand = command }
+                "vscode" -> if(coding) { codeCommand = command } else openVsCode()
+                "guide" -> java.awt.Desktop.getDesktop().browse(java.net.URI("https://github.com/sabbirimon/meshlit/blob/plan/studio-mobile-lts/docs/USER_GUIDE.md"))
+                "vscode-guide" -> java.awt.Desktop.getDesktop().browse(java.net.URI("https://code.visualstudio.com/docs"))
+                "code", "providers", "models", "usage", "management", "appearance", "about" -> openSection(command.second)
+            }
+        }.onFailure { navigationError = "Could not open the requested view or application. Check that VS Code is installed for workspace handoff." }
+    }
+    val colors = desktopColors(look)
+    DesktopTheme(look, scale) {
+        if(assistantControls) StudioControlDialog(studioMode, studioApproval, assistantFolder?.toString(), busy,
+            onMode = { studioMode = it }, onApproval = { studioApproval = it }, onClose = { assistantControls = false },
+            onFolder = {
+                val picker = javax.swing.JFileChooser().apply { fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY }
+                if(picker.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) runCatching {
+                    assistantFolder = CodeFiles(picker.selectedFile.toPath()).root; studioApproval = StudioApproval.ASK
+                }.onFailure { navigationError = "Could not open the assistant workspace" }
+            })
+        pendingAction?.let { pending -> StudioActionDialog(pending, if(localMode) "On device" else "$onlineService · $model") { pending.answer.complete(it) } }
+
+        val chatContent: @Composable RowScope.() -> Unit = {
+                    Column(Modifier.weight(1f).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                         WorkspaceHeader(
                             title = if (localMode) customModel?.fileName?.toString() ?: DesktopStarter.label else model.ifBlank { "Meshlit" },
                             status = if (localMode) if (localSession != null) "Offline · ${localSession?.backend} · ready" else if (localLoading) "Verifying and loading local model…" else "Offline model · load when ready"
                                 else if (connected) "Connected · selected host" else "Remote host · awaiting connection",
-                            onSettings = { settings = true },
+                            onSettings = { openSection("appearance") },
                             onLoad = if(localMode) ({ if(localSession == null) loadLocal() else stop(true) }) else null,
                             loadLabel = if(localSession == null) "Load" else "Unload", busy = busy,
                             onNew = { stop(); messages = emptyList(); usage = GenerationUsage() },
                             onSearch = { openSection("search") }, onManage = { openSection("management") })
+                        if (!dashboard) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+                            chatSetupLabels.forEach { (id, label) ->
+                                TextButton({ openChatSetup(id) }, enabled = !busy) { Text(label) }
+                            }
+                        }
                         if (messages.isNotEmpty()) OutlinedTextField(query, { query = it.take(256) }, label = { Text(t("Search this chat", "搜索当前对话")) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), singleLine = true)
+                        navigationError?.let { Text(it, Modifier.padding(16.dp), color = colors.error) }
+                        usageFailure?.let { Text(it, Modifier.padding(horizontal = 24.dp), color = colors.error) }
                         if (failure) Text(if (localMode) t("Local model failed. Check available memory, GGUF compatibility and packaged engine/model integrity. Try Unload and Load; partial replies are excluded from future requests.", "本地模型失败。请检查可用内存、GGUF 兼容性及引擎和模型完整性。尝试卸载再加载；未完成回复不会用于后续请求。") else t("Request failed. Check the host, trusted TLS, client token and context size. A partial reply is excluded from the next request.", "请求失败。请检查主机、可信 TLS、客户端令牌和上下文长度。未完成的回复不会发送至下一次请求。"), Modifier.padding(24.dp), color = colors.error)
-                        if (messages.isEmpty()) Column(Modifier.weight(1f).fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("✦", fontSize = 48.sp, color = colors.primary)
-                            Spacer(Modifier.height(20.dp)); Text(t("What should we work on?", "我们开始做什么？"), style = MaterialTheme.typography.h4)
-                            Spacer(Modifier.height(12.dp)); Text(if (localMode) t("Load the bundled Qwen model to chat offline, or select a GGUF in Settings.", "加载内置 Qwen 模型离线聊天，或在设置中选择 GGUF。") else t("Choose a trusted Meshlit or OpenAI-compatible host in Settings.", "请在设置中选择可信的 Meshlit 或 OpenAI 兼容主机。"), color = colors.onSurface.copy(alpha = .65f))
-                            Spacer(Modifier.height(20.dp))
-                            HeroMenu(::t, onChat = { stop(); messages = emptyList(); usage = GenerationUsage() }, onModels = { openSection("models") }, onStyle = { openSection("appearance") })
-                        } else LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                        if (messages.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            ChatWelcome(dashboard && coding, onPrompt = { prompt = it }, onCode = { openSection("code") })
+                        } else LazyColumn(Modifier.weight(1f).widthIn(max = 780.dp).fillMaxWidth(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                             itemsIndexed(messages.filter { query.isBlank() || it.text.contains(query, true) }) { _, message ->
                                 if (message.role == "user") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                    Surface(shape = RoundedCornerShape(24.dp), color = colors.surface, modifier = Modifier.widthIn(max = 560.dp)) { SelectionContainer { Text(message.text, Modifier.padding(18.dp)) } }
+                                    Surface(shape = RoundedCornerShape(28.dp), color = colors.surface, modifier = Modifier.widthIn(max = 560.dp)) { SelectionContainer { Text(message.text, Modifier.padding(18.dp)) } }
                                 } else Column(Modifier.fillMaxWidth().widthIn(max = 860.dp)) {
-                                    if (message.text.isEmpty()) Text(t("Generating…", "正在生成…"), color = colors.onSurface.copy(alpha = .65f))
+                                    if (message.text.isEmpty()) Text(if(studioMode != StudioMode.CHAT) "Assistant is working…" else t("Generating…", "正在生成…"), color = colors.onSurface.copy(alpha = .65f))
                                     RichReply(message.text, scale)
                                     val clipboard = LocalClipboardManager.current
                                     Row { TextButton({ clipboard.setText(AnnotatedString(message.text)) }, enabled = message.text.isNotEmpty()) { Text(t("Copy", "复制")) }
@@ -239,34 +427,112 @@ fun main(args: Array<String>) {
                                 }
                             }
                         }
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                            Surface(shape = RoundedCornerShape(24.dp), color = colors.surface, border = androidx.compose.foundation.BorderStroke(1.dp, colors.primary.copy(alpha = .35f))) {
-                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    TextField(prompt, { prompt = it.take(131072) }, placeholder = { Text(t("Ask Meshlit", "向 Meshlit 提问")) }, modifier = Modifier.weight(1f), maxLines = 6,
+                        if(agentEvents.isNotEmpty()) {
+                            var showActivity by remember { mutableStateOf(false) }
+                            TextButton({ showActivity = !showActivity }) { Text((if(showActivity) "▾ " else "▸ ") + agentEvents.last()) }
+                            if(showActivity) Column(Modifier.heightIn(max = 130.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+                                agentEvents.forEach { Text(it, style = MaterialTheme.typography.caption) }
+                            }
+                        }
+                        Column(Modifier.widthIn(max = 780.dp).fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp)) {
+                            Surface(shape = RoundedCornerShape(24.dp), color = colors.surface, border = androidx.compose.foundation.BorderStroke(1.dp, colors.onSurface.copy(alpha = .10f))) {
+                                Column {
+                                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    TextField(prompt, { prompt = it.take(131072) }, placeholder = { Text(t("Ask anything", "向 Meshlit 提问")) }, modifier = Modifier.weight(1f), maxLines = 6,
                                         colors = TextFieldDefaults.textFieldColors(backgroundColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
-                                    Button(if (busy) { { stop() } } else ::requestSend, enabled = busy || (prompt.isNotBlank() && (localMode && localEngine.available() || requestsAllowed() && hostAllowed() && model.isNotBlank())), shape = RoundedCornerShape(22.dp)) { Text(if (busy) t("Stop", "停止") else t("Send ↑", "发送 ↑")) }
+                                    Button(if (busy) { { stop() } } else ::requestSend, enabled = busy || (!dashboard && chatSetupIntent(prompt) != null) || (prompt.isNotBlank() && (localMode && localEngine.available() || requestsAllowed() && hostAllowed() && model.isNotBlank())), shape = RoundedCornerShape(22.dp)) { Text(if (busy) t("Stop", "停止") else t("Send ↑", "发送 ↑")) }
+                                }
+                        Row(Modifier.widthIn(max = 780.dp).fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            var modelMenu by remember { mutableStateOf(false) }
+                            var modelQuery by remember { mutableStateOf("") }
+                            Box {
+                                TextButton({ modelMenu = true }, enabled = !busy) { Text("▾  " + if(localMode) "On device" else model.ifBlank { onlineService }, maxLines = 1) }
+                                DropdownMenu(modelMenu, { modelMenu = false }) {
+                                    DropdownMenuItem({ modelMenu = false; if(!localMode) { stop(true); localMode = true; network = false; messages = emptyList() } }) { Text("Local / offline") }
+                                    if (!localMode && connected) OutlinedTextField(modelQuery, { modelQuery = it.take(128) }, label = { Text("Find model") }, modifier = Modifier.width(280.dp))
+                                    if (!localMode && connected) models.filter { it.contains(modelQuery, ignoreCase = true) }.take(50).forEach { id -> DropdownMenuItem({ modelMenu = false; model = id }) { Text(id) } }
+                                    DropdownMenuItem({ modelMenu = false; openSection("providers") }) { Text("Online models & gateways…") }
                                 }
                             }
-                            Text(t("Reported output tokens", "报告的输出令牌") + ": ${usage.outputTokens ?: t("unknown", "未知")} · " + t("End-to-end tokens/s", "端到端令牌/秒") + ": ${usage.tokensPerSecond?.let { "%.2f".format(it) } ?: t("unknown", "未知")}", style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = 8.dp))
+                            StudioModePicker(studioMode, busy, { studioMode = it }, { assistantControls = true })
+                            TextButton({ assistantControls = true }) { Text(studioApproval.label) }
+                            TextButton({ openSection("providers") }) { Text("Online models") }
+
                         }
+                                }
+                            }
+                            if (messages.isEmpty()) Text("Meshlit can make mistakes. Check important information.", style = MaterialTheme.typography.caption,
+                                color = colors.onSurface.copy(alpha = .5f), modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp))
+                            if (messages.isNotEmpty()) Text(t("Last request output tokens", "最近请求输出令牌") + ": ${usage.outputTokens ?: t("unknown", "未知")} · " + t("End-to-end tokens/s", "端到端令牌/秒") + ": ${usage.tokensPerSecond?.let { "%.2f".format(it) } ?: t("unknown", "未知")}", style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = 8.dp))
+                        }
+                    }
+        }
+        Surface(Modifier.fillMaxSize(), color = colors.background) {
+            BoxWithConstraints {
+                val wide = maxWidth > 860.dp
+                Row(Modifier.fillMaxSize()) {
+                    if (wide) WorkspaceRail(if (settings) section else if (dashboard) "management" else "chat", onSelect = ::openSection, onNewChat = { stop(); messages = emptyList(); usage = GenerationUsage(); openSection("chat") })
+                    if (dashboard) {
+                        Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(if (wide) 28.dp else 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            DashboardHub(modelStatus = when {
+                                localLoading -> "Loading model"
+                                localSession != null -> "Local model loaded"
+                                else -> "No local session"
+                            }, onNavigate = ::openSection)
+                        }
+                    } else chatContent()
+                }
+            }
+            vendorDashboard?.let { (name, url) ->
+                Window(onCloseRequest = { vendorDashboard = null }, title = "Meshlit · $name dashboard",
+                    icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1280.dp, height = 860.dp)) {
+                    StudioMenus(onCommand, onQuit)
+                    Surface(Modifier.fillMaxSize(), color = colors.background) {
+                        EmbeddedDashboard(name, url, onDraft = { prompt = listOf(prompt, it).filter { draft -> draft.isNotBlank() }.joinToString("\n\n"); vendorDashboard = null; openSection("chat") }, onClose = { vendorDashboard = null })
                     }
                 }
             }
-            if (settings) DialogWindow(onCloseRequest = { settings = false }, title = t("Meshlit Studio · settings & tools", "Meshlit Studio · 设置与工具"), state = rememberDialogState(width = 1060.dp, height = 800.dp)) {
+            if (coding) {
+                var codeDirty by remember { mutableStateOf(false) }
+                var closeCode by remember { mutableStateOf(false) }
+                Window(onCloseRequest = { if (codeDirty) closeCode = true else coding = false },
+                    title = "Meshlit · Coding workspace", icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1420.dp, height = 860.dp)) {
+                    LaunchedEffect(ideFocus) { window.toFront(); window.requestFocus() }
+                    StudioMenus(onCommand, onQuit, coding = true)
+                    Surface(Modifier.fillMaxSize(), color = colors.background) {
+                        Row(Modifier.fillMaxSize()) {
+                            CodingWorkspace(Modifier.weight(1.6f).fillMaxHeight(), onDraft = { prompt = it; dashboard = true }, onClose = { coding = false },
+                                onDirty = { codeDirty = it; editorDirty = it; onCodeDirty(it) }, command = codeCommand,
+                                onWorkspace = { folder -> if(assistantFolder != folder) { stop(); assistantFolder = folder; studioApproval = StudioApproval.ASK } })
+                            if (dashboard) {
+                                Divider(Modifier.width(1.dp).fillMaxHeight(), color = colors.onSurface.copy(alpha = .10f))
+                                chatContent()
+                            }
+                        }
+                        if (closeCode) AlertDialog(onDismissRequest = { closeCode = false }, title = { Text("Unsaved changes") },
+                            text = { Text("Save your file first, or discard edits before closing the workspace.") },
+                            confirmButton = { TextButton({ coding = false }) { Text("Discard and close") } },
+                            dismissButton = { TextButton({ closeCode = false }) { Text("Keep editing") } })
+                    }
+                }
+            }
+            if (settings) Window(onCloseRequest = { settings = false }, title = t("Meshlit Studio · Settings", "Meshlit Studio · 设置"), icon = androidx.compose.ui.res.painterResource("icons/meshlit.png"), state = rememberWindowState(width = 1060.dp, height = 800.dp)) {
+                StudioMenus(onCommand, onQuit)
                 Surface(Modifier.fillMaxSize(), color = colors.background) {
                     Row(Modifier.fillMaxSize()) {
-                    Column(Modifier.width(260.dp).fillMaxHeight().padding(12.dp)) {
+                    Column(Modifier.width(228.dp).fillMaxHeight().background(colors.surface).padding(16.dp)) {
                         Row {
-                            TextButton({ advanced = false; if (section !in BASIC_DESKTOP_SECTIONS) section = "models"; runCatching { preferences.saveAdvanced(false) }.onFailure { preferencesError = true } }) { Text((if (!advanced) "✓ " else "") + "Basic") }
+                            TextButton({ advanced = false; if (section !in BASIC_DESKTOP_SECTIONS) section = "appearance"; runCatching { preferences.saveAdvanced(false) }.onFailure { preferencesError = true } }) { Text((if (!advanced) "✓ " else "") + "Basic") }
                             TextButton({ advanced = true; runCatching { preferences.saveAdvanced(true) }.onFailure { preferencesError = true } }) { Text((if (advanced) "✓ " else "") + "Advanced") }
                         }
-                        Text(if (advanced) "Developer tools and Android port status" else "Daily chat, models and connections", style = MaterialTheme.typography.caption)
-                        Box(Modifier.weight(1f)) { DesktopMenu(section, { section = it }, advanced = advanced) }
+                        Text(if (advanced) "Technical controls and feature availability" else "Appearance, privacy and help", style = MaterialTheme.typography.caption)
+                        Box(Modifier.weight(1f)) { DesktopMenu(section, ::openSection, advanced = advanced) }
                     }
-                    Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     val destination = DesktopDestinations.all.first { it.id == section }
                     Text(destination.title, style = MaterialTheme.typography.h5)
-                    if (section in setOf("appearance", "models", "providers", "colibri", "tokens", "permissions")) {
+                    if (section in setOf("appearance", "models", "colibri", "tokens", "permissions")) {
                         if (section == "appearance") {
                         MenuHeading("style", t("Make it yours", "个性化设置"))
                         Row { WorkspaceLanguage.entries.forEach { l -> TextButton({ language = l; save() }) { Text((if (language == l) "✓ " else "") + l.label) } } }
@@ -283,13 +549,13 @@ fun main(args: Array<String>) {
                         if (localMode) {
                             ModelRecommendations(onLoad = { item ->
                                 stop(true); customModel = java.nio.file.Path.of(item.path); customModelHash = item.sha256
-                                messages = emptyList(); loadLocal(); settings = false
+                                messages = emptyList(); loadLocal(); openSection("chat")
                             })
                             ModelManager(onLoad = { item ->
                                 stop(true); customModel = java.nio.file.Path.of(item.path); customModelHash = item.sha256
-                                messages = emptyList(); loadLocal(); settings = false
+                                messages = emptyList(); loadLocal(); openSection("chat")
                             }, onBundled = {
-                                stop(true); customModel = null; customModelHash = null; messages = emptyList(); loadLocal(); settings = false
+                                stop(true); customModel = null; customModelHash = null; messages = emptyList(); loadLocal(); openSection("chat")
                             })
                             Text(customModel?.fileName?.toString() ?: DesktopStarter.label, fontWeight = FontWeight.Bold)
                             Text(t("Bundled Qwen: 1.12 GB · text/chat/code · ${engineOptions.context}-token configured context · CPU. A small model can make mistakes; it has no web or device tools. Imported GGUFs depend on engine support and available RAM.", "内置 Qwen：1.12 GB · 文本/聊天/代码 · 4,096 令牌上下文 · CPU。小模型可能出错；没有网络或设备工具。导入 GGUF 取决于引擎支持和可用内存。"), style = MaterialTheme.typography.caption)
@@ -305,24 +571,35 @@ fun main(args: Array<String>) {
                         MenuHeading("models", t("Explicit host access", "明确授权主机访问"))
                         Row {
                             listOf("LM Studio" to "http://127.0.0.1:1234/v1", "Ollama" to "http://127.0.0.1:11434/v1", "Open WebUI" to "http://127.0.0.1:3000/api").forEach { (label, url) ->
-                                TextButton({ stop(true); hostProtocol = if (label == "Open WebUI") HostProtocol.OPEN_WEBUI else HostProtocol.OPENAI; endpoint = url; token = ""; network = false; colibriHost = false; messages = emptyList() }) { Text(label) }
+                                TextButton({ stop(true); gateway = false; pricedRoute = ""; hostProtocol = if (label == "Open WebUI") HostProtocol.OPEN_WEBUI else HostProtocol.OPENAI; endpoint = url; token = ""; activeCredential = null; network = false; colibriHost = false; messages = emptyList() }) { Text(label) }
                             }
                         }
                         Text(if (hostProtocol == HostProtocol.OPEN_WEBUI) t("Open WebUI API: /api. Obtain your account API key from that host's Settings → Account. The administrator must enable it. This connects to your existing host; it does not install or rebrand Open WebUI.", "Open WebUI API：/api。请从该主机设置 → 账户获取 API 密钥，管理员需要启用。此连接使用现有主机，不安装或重新品牌化 Open WebUI。") else t("OpenAI-compatible API: /v1. LM Studio/Ollama must already be installed and serving the selected model. No automatic installation or remote discovery.", "OpenAI 兼容 API：/v1。LM Studio/Ollama 需要已安装并提供所选模型。不自动安装或发现远程主机。"), style = MaterialTheme.typography.caption)
                         Text(t("The selected host may forward to a cloud provider or execute its configured server-side tools. Meshlit's local tool grants do not control that host; review its configuration.", "所选主机可能转发到云服务或执行其服务端工具。Meshlit 的本地工具授权不控制该主机，请检查主机配置。"), style = MaterialTheme.typography.caption)
                         if (!localMode && !colibriHost) Row { HostProtocol.entries.forEach { protocol ->
-                            TextButton({ stop(true); hostProtocol = protocol; endpoint = ""; token = ""; network = false; connected = false; messages = emptyList() }) { Text((if (hostProtocol == protocol) "✓ " else "") + protocol.label) }
+                            TextButton({ stop(true); hostProtocol = protocol; endpoint = ""; token = ""; activeCredential = null; network = false; connected = false; messages = emptyList() }) { Text((if (hostProtocol == protocol) "✓ " else "") + protocol.label) }
                         } }
+                        Row {
+                            listOf("OmniRoute", "FreeLLMAPI · experimental").forEach { label ->
+                                TextButton({ stop(true); localMode = false; hostProtocol = HostProtocol.OPENAI; gateway = true; colibriHost = false;
+                                    endpoint = ""; token = ""; activeCredential = null; network = false; connected = false; model = ""; models = emptyList(); messages = emptyList(); pricedRoute = "" }) { Text(label) }
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(gateway, { stop(); gateway = it; pricedRoute = "" }); Text("This host is a routing gateway") }
+                        if (gateway) Text("Optional /v1 gateway: enter your own deployment URL and scoped key. Meshlit adds no retries or fallback. Downstream routing and charges are controlled by the gateway; free-only and currency budgets block it. FreeLLMAPI is for personal experimentation. Neither gateway includes paid API entitlement.", style = MaterialTheme.typography.caption)
                         if (hostProtocol == HostProtocol.MESHLIT) Text("Meshlit nodes use authenticated buffered replies. Use a scoped client key and a reachable trusted HTTPS /v1 service. Worker enrollment and remote command permissions are separate.", style = MaterialTheme.typography.caption)
-                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(colibriHost, { stop(true); colibriHost = it; connected = false; observedAt = null; hostProtocol = HostProtocol.OPENAI; network = false; token = ""; endpoint = ""; messages = emptyList() }); Text(t("Use Colibri host", "使用 Colibri 主机")) }
+                        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(colibriHost, { stop(true); colibriHost = it; connected = false; observedAt = null; hostProtocol = HostProtocol.OPENAI; network = false; token = ""; activeCredential = null; endpoint = ""; messages = emptyList() }); Text(t("Use Colibri host", "使用 Colibri 主机")) }
                         if (colibriHost) {
                             Row { ColibriMode.entries.forEach { mode -> TextButton({ stop(); colibriMode = mode; if (mode == ColibriMode.OFF) connected = false }) { Text((if (colibriMode == mode) "✓ " else "") + mode.name) } } }
                             Text(t("Auto uses this explicitly authorized, recently observed Colibri host while remote mode is selected. Refresh expires after 5 minutes. No server or model is installed. Agent switching is supported in the Android Experimental node with separate user grants; this preview has no agent controller.", "选择远程模式时，自动模式使用已授权且近期确认的 Colibri 主机。刷新记录在五分钟后失效，不会安装服务器或模型。代理切换需要 Android 实验性节点中的单独授权；本预览没有代理控制器。"), style = MaterialTheme.typography.caption)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(network, { network = it; if (!it) { stop(); connected = false; models = emptyList(); model = "" } }); Text(t("Allow requests to the selected host", "允许向所选主机发送请求")) }
                         Text(t("Prompts and your token go to this host. TLS uses the system trust store; redirects are blocked. HTTP is limited to literal loopback. Host model operation is managed separately.", "提示词和令牌将发送至此主机。TLS 使用系统信任库，并禁止重定向。HTTP 仅限本机回环地址。主机模型需要单独管理。"), style = MaterialTheme.typography.caption)
-                        OutlinedTextField(endpoint, { stop(true); endpoint = it.take(2048); network = false; token = ""; connected = false; model = ""; models = emptyList(); messages = emptyList() }, label = { Text("https://host:port${hostProtocol.basePath}") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                        OutlinedTextField(token, { stop(); token = it.take(8192); connected = false }, label = { Text(t("Client token · session only", "客户端令牌 · 仅当前会话")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                        OutlinedTextField(endpoint, { stop(true); endpoint = it.take(2048); network = false; token = ""; activeCredential = null; connected = false; model = ""; models = emptyList(); messages = emptyList() }, label = { Text("https://host:port${hostProtocol.basePath}") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(token, { stop(); activeCredential = null; token = it.take(8192); connected = false }, label = { Text(t("Client token · save only on request", "客户端令牌 · 仅主动保存")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                        CredentialControls(credentials, endpoint, hostProtocol, token,
+                            invalidate = { stop(); network = false; connected = false; token = ""; activeCredential = null },
+                            use = { lease, value -> activeCredential = lease; token = value })
                         Button(::connect, enabled = network && !busy && endpoint.isNotBlank() && (!colibriHost || colibriMode != ColibriMode.OFF)) { Text(t("Connect / refresh models", "连接 / 刷新模型")) }
                         models.forEach { id -> Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(model == id, { model = id }); Text(id) } }
                         if (connected && models.isEmpty()) Text(t("The host reports no models.", "主机未报告可用模型。"))
@@ -335,27 +612,58 @@ fun main(args: Array<String>) {
                         Text(t("Actual throughput appears only when the host reports token usage; it includes request latency. Language affects UI only.", "仅在主机报告令牌用量时显示吞吐量；此值包含请求延迟。语言设置仅影响界面。"), style = MaterialTheme.typography.caption)
                         }
                     } else when (section) {
+                        "agents" -> {
+                            Text("${studioMode.label} · ${studioApproval.label}")
+                            Text("Shared assistant controls for Studio chat and coding. Runs use bounded file tools, system readings and Meshlit navigation. Permissions apply to assistant actions, not your manual settings or terminal commands.")
+                            Button({ assistantControls = true; openSection("chat") }) { Text("Mode, approvals & workspace") }
+                        }
+                        "providers" -> OnlineModelsPanel(onlineService, endpoint, token, hostProtocol, gateway,
+                            network && !localMode, connected && !localMode, busy, if(localMode) emptyList() else models, model,
+                            preset = { item -> stop(true); localMode = false; colibriHost = false; onlineService = item.name;
+                                val saved = onlineConnections.load(item.name)
+                                endpoint = saved?.endpoint ?: item.endpoint; hostProtocol = saved?.protocol ?: HostProtocol.OPENAI; gateway = saved?.gateway ?: item.gateway;
+                                token = ""; activeCredential = null; network = false; connected = false; messages = emptyList(); pricedRoute = "" },
+                            setEndpoint = { stop(true); localMode = false; endpoint = it.take(2048); token = ""; activeCredential = null; network = false; connected = false; messages = emptyList(); pricedRoute = "" },
+                            setToken = { stop(); activeCredential = null; token = it.take(8192); connected = false },
+                            setProtocol = { stop(true); hostProtocol = it; token = ""; activeCredential = null; network = false; connected = false },
+                            setGateway = { stop(); gateway = it; pricedRoute = "" },
+                            setAllowed = { stop(); localMode = false; network = it; connected = false },
+                            connect = ::connect,
+                            choose = { model = it; openSection("chat") }, onUsage = { section = "usage" },
+                            credentialControls = { CredentialControls(credentials, endpoint, hostProtocol, token,
+                                invalidate = { stop(); network = false; connected = false; token = ""; activeCredential = null },
+                                use = { lease, value -> activeCredential = lease; token = value }) },
+                            saveConnection = { onlineConnections.save(onlineService, endpoint, hostProtocol, gateway) },
+                            forgetConnection = { onlineConnections.remove(onlineService) },
+                            openDashboard = { name, url -> vendorDashboard = name to url })
                         "engine" -> {
                             if (preferencesError) Text("Engine settings could not be saved; previous values are retained.", color = colors.error)
                             EnginePanel(engineOptions, localSession) { options ->
-                            stop(true); messages = emptyList(); usage = GenerationUsage(); sendAfterLoad = false
-                            runCatching { options.validate(); enginePreferences.save(options) }.onSuccess { engineOptions = options; budget = minOf(budget, (options.context / 2).toFloat()); preferencesError = false }.onFailure { preferencesError = true }
+                                runCatching { enginePreferences.save(options) }.onSuccess {
+                                    stop(true)
+                                    messages = emptyList()
+                                    usage = GenerationUsage()
+                                    sendAfterLoad = false
+                                    engineOptions = options
+                                    budget = minOf(budget, (options.context / 2).toFloat())
+                                    preferencesError = false
+                                }.onFailure { preferencesError = true }
                             }
                         }
                         "nodes", "network" -> NodesPanel { node ->
                             stop(true); localMode = false; endpoint = node.endpoint; hostProtocol = node.protocol
-                            token = ""; network = false; colibriHost = false; messages = emptyList(); section = "providers"
+                            token = ""; activeCredential = null; network = false; colibriHost = false; messages = emptyList(); section = "providers"
                         }
                         "device-dashboard" -> DeviceDashboardPanel(onNodes = { section = "nodes" }, onMonitor = { section = "monitor" })
                         "securityprivacy" -> {
                             Text("Connection access is opt-in for each Studio session. Saved device addresses are not approved workers or authenticated identities.")
                             Text("Current remote access: ${if (network && connected && !localMode) "connected" else if (network && !localMode) "allowed for this session" else "off"}")
                             Text("Current request: ${if (busy) "running" else "idle"}. Session token: ${if (token.isBlank()) "none entered" else "entered, held in memory"}.")
-                            Button({ stop(true); network = false; token = ""; observedAt = null; connected = false }) { Text("Revoke session access and stop") }
+                            Button({ stop(true); credentials.lock(); network = false; token = ""; activeCredential = null; observedAt = null; connected = false }) { Text("Revoke session access and stop") }
                             TextButton({ section = "providers" }) { Text("Review host connection") }
                             TextButton({ section = "guardrails" }) { Text("Review response policy") }
                             TextButton({ section = "nodes" }) { Text("Review saved addresses") }
-                            Text("Chat history, host keys and response policy are session-only. Device addresses and appearance persist locally. Remote hosts may retain prompts under their own policy.", style = MaterialTheme.typography.caption)
+                            Text("Chat history and response policy are session-only. Host keys persist only when explicitly saved in the credential vault. Device addresses and appearance persist locally. Remote hosts may retain prompts under their own policy.", style = MaterialTheme.typography.caption)
                         }
                         "health", "memory", "device", "monitor", "power", "acceleration", "tasks" -> ResourceMonitor { stop(true) }
                         "crypto" -> { com.meshlit.desktop.peering.PeerWalletPanel(); Divider(); CryptoPanel() }
@@ -380,16 +688,24 @@ fun main(args: Array<String>) {
                             Button({ stop(true) }) { Text("Stop request & unload local model") }
                             Text("This stops the process owned by Meshlit. Remote host lifecycle, agent jobs and other devices remain managed by their own authorised controllers.")
                         }
-                        "management" -> ManagementPanel { section = it }
+                        "management" -> DashboardHub(onNavigate = ::openSection)
+                        "usage" -> {
+                            val route = UsageLedger.route(endpoint + "/" + hostProtocol, model)
+                            UsageHistoryDashboard(usageVault, route, if(localMode) "" else model, gateway,
+                                if(pricedRoute == route) reviewedPrice else UsagePrice(gateway = gateway),
+                                { reviewedPrice = it; pricedRoute = route }, { section = "tokens" })
+                        }
+                        "router" -> RoutingDashboard({ section = "models" }, { section = "providers" })
+                        "vpn" -> VpnDashboard({ section = "network" }, { section = "securityprivacy" })
                         "search" -> SearchPanel(messages.map { it.role to it.text }) { destination, chatQuery ->
-                            if (destination == "chat") { query = chatQuery; settings = false }
+                            if (destination == "chat") { query = chatQuery; openSection("chat") }
                             else section = destination
                         }
                         "help" -> {
                             Text("Offline: Models → Local offline → Load. Import a trusted GGUF with Select GGUF. The bundled Qwen file is verified in full before loading.")
                             Text("Add a phone/PC/cluster: Nodes → enter its trusted HTTPS inference address and type → Save → Select & authenticate → enter client token → enable access → Connect. Then choose a reported model. The target must already expose a compatible API.")
                             Text("Existing LM Studio/Ollama/Open WebUI: Models → Remote host → choose preset, review the host, add its key where required, allow requests and Connect. Open WebUI uses /api; others use /v1.")
-                            Text("Stop cancels generation; local Stop also unloads. Closing the app stops its private model server. Node addresses and appearance persist; chats and keys are session-only.")
+                            Text("Stop cancels generation; local Stop also unloads. Closing the app stops its private model server. Node addresses and appearance persist; chats are session-only; keys persist only when explicitly saved.")
                         }
                         "legal" -> {
                             Text("Meshlit application: Apache-2.0. Qwen starter: Apache-2.0. llama.cpp: MIT and its retained dependency notices. Java runtime: GPL-2.0 with Classpath Exception; matching source accompanies the installers.")
@@ -397,10 +713,10 @@ fun main(args: Array<String>) {
                             Text("Offline chat makes no web requests. Connecting sends prompts and session keys to the selected host, which may use its own cloud providers or tools. No telemetry or agent execution is enabled by default.")
                         }
                         "about" -> {
-                            Text("Meshlit Studio · Intel desktop build 40 · experimental")
+                            Text(StudioBuild.details)
                             Text("Bundled Qwen2.5 1.5B Instruct Q4_K_M · llama.cpp CPU · portable Java 21")
                             Text("Android menu inventory has been audited. ${DesktopDestinations.all.count { it.available }} desktop sections provide scoped functions or actual host readings. Remaining Android backends are explicitly listed as awaiting a desktop port.")
-                            Text("This build is not full Android feature parity or production qualification. GPU, P2P, agents, training, recovery, voice and VM require their respective desktop implementations and tests. SSH currently supports pinned exec and an inbound status node; remote qualification remains.")
+                            Text("This build is not full Android feature parity or production qualification. GPU, P2P, delegated multi-agent jobs, training, recovery, voice and VM require their respective desktop implementations and tests. SSH currently supports pinned exec and an inbound status node; remote qualification remains.")
                         }
                         else -> FeatureStatus(section)
                     }

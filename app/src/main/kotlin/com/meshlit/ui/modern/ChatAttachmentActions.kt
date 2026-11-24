@@ -1,6 +1,7 @@
 package com.meshlit.ui.modern
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.outlined.Screenshot
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
@@ -31,10 +32,31 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
 
 /** Actual user-granted file reads. Binary formats are not misrepresented as text. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun ChatAttachmentActions(enabled:Boolean,onText:(String)->Unit,onSelectedImage:(Uri)->Unit,onPhoto:()->Unit,onCamera:()->Unit,onFiles:()->Unit,onMedia:()->Unit,onVision:()->Unit,onOptions:()->Unit) {
+@Composable internal fun ChatAttachmentActions(enabled:Boolean,onText:(String)->Unit,onSelectedImage:(Uri)->Unit,onPhoto:()->Unit,onCamera:()->Unit,onFiles:()->Unit,onMedia:()->Unit,onVision:()->Unit,onOptions:()->Unit,onTool:(String)->Unit,onCustomize:(ComposerPin?)->Unit,pins:List<ComposerPin>,options:com.meshlit.chat.ChatOptions,onUpdate:(com.meshlit.chat.ChatOptions)->Unit) {
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var menu by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
+    var alive by remember { mutableStateOf(true) }
+    DisposableEffect(Unit){onDispose{alive=false}}
+    val projection=context.getSystemService(android.media.projection.MediaProjectionManager::class.java)
+    val latestImage by rememberUpdatedState(onSelectedImage)
+    val share=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){reply->
+        if(reply.resultCode==android.app.Activity.RESULT_OK && reply.data!=null){
+            val receiver=object:android.os.ResultReceiver(android.os.Handler(android.os.Looper.getMainLooper())){
+                override fun onReceiveResult(code:Int,data:android.os.Bundle?){
+                    if(!alive)return
+                    val frame=data?.getParcelable<Uri>("frame")
+                    if(code==android.app.Activity.RESULT_OK && frame!=null)latestImage(frame) else error="Screen capture stopped."
+                    busy=false
+                }
+            }
+            try{
+                busy=true
+                androidx.core.content.ContextCompat.startForegroundService(context,android.content.Intent(context,com.meshlit.chat.ChatScreenCapture::class.java)
+                    .putExtra("receiver",receiver).putExtra("consent",reply.data))
+            }catch(e:Exception){busy=false;error=e.localizedMessage}
+        }
+    }
     val pick=rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()){uris->
         if(uris.isNotEmpty()) scope.launch{busy=true;try{
             require(uris.size<=3){"Select at most three files"}
@@ -69,9 +91,39 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
             require(text.length<=11000){"Combined attachments exceed the chat text budget"};onText(text)
         }catch(c:CancellationException){throw c}catch(e:Exception){error=e.message}finally{busy=false}}
     }
-    IconButton(enabled=enabled && !busy,onClick={menu=true}){Icon(Icons.Default.Add,"Add photo, file or chat options")}
+    TouchIcon(Icons.Default.Add,"Add photo, file or chat options",enabled=enabled && !busy){menu=true}
+    var confirmAuto by remember { mutableStateOf(false) }
+    if(confirmAuto) SelectedToolsConfirmation(onDismiss={confirmAuto=false},onConfirm={
+        confirmAuto=false
+        onUpdate(options.copy(executionMode=com.meshlit.chat.ChatExecutionMode.AGENT,approvalMode=com.meshlit.chat.ChatApprovalMode.SELECTED_TOOLS))
+    })
     if(menu) ModalBottomSheet(onDismissRequest={menu=false}) { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom=20.dp)) {
         Text("Add to chat",Modifier.padding(horizontal=24.dp,vertical=10.dp),style=MaterialTheme.typography.titleLarge)
+        val toChat=LocalResultToChat.current
+        val clipboard=androidx.compose.ui.platform.LocalClipboardManager.current
+        ListItem(modifier=Modifier.clickable{val value=clipboard.getText()?.text;if(!value.isNullOrBlank()){menu=false;toChat("pasted tool",value)}else error="Copy a tool result first."},headlineContent={Text("Paste tool result")},leadingContent={Icon(Icons.Default.AttachFile,null)})
+        ListItem(modifier=Modifier.clickable{menu=false;onOptions()},headlineContent={Text("Tools and permissions")},leadingContent={Icon(Icons.Default.Tune,null)})
+        if(!com.meshlit.BuildProfile.coreCandidate) {
+            ListItem(headlineContent={Text("Internet search")},trailingContent={Switch(options.webTools,{onUpdate(options.copy(webTools=it))})})
+            ListItem(headlineContent={Text("Device tools")},trailingContent={Switch(options.phoneTools,{onUpdate(options.copy(phoneTools=it))})})
+            ListItem(headlineContent={Text("SSH node tools")},supportingContent={Text("Use actions delegated to enrolled nodes")},trailingContent={Switch(options.nodeTools,{onUpdate(options.copy(nodeTools=it))})})
+            val active=options.agentToolsActive && options.approvalMode==com.meshlit.chat.ChatApprovalMode.SELECTED_TOOLS
+            ListItem(headlineContent={Text("Autopilot")},supportingContent={Text(if(options.canSelectAgentMode) "Use approved tools in this chat" else "Choose compatible tools and a tool-capable route first")},
+                trailingContent={Switch(active,{if(it)confirmAuto=true else onUpdate(options.copy(approvalMode=com.meshlit.chat.ChatApprovalMode.ASK))},enabled=active || options.canSelectAgentMode)})
+            ListItem(modifier=Modifier.clickable{menu=false;onText("Write a Markdown document about ")},headlineContent={Text("Create document")})
+            for ((id,label) in listOf("create-image" to "Generate image","create-video" to "Generate video","research-topic" to "Research a topic","bot-connections" to "Bots and agents")) {
+                ListItem(modifier=Modifier.clickable{menu=false;onTool(id)},headlineContent={Text(label)})
+            }
+            ListItem(modifier=Modifier.clickable{menu=false;onTool("reset-model-autosend")},headlineContent={Text("Reset model auto-send")},supportingContent={Text("Ask before sending to named models in this chat")})
+            for(pin in pins)ListItem(modifier=Modifier.clickable{menu=false;onCustomize(pin)},headlineContent={Text(pin.title)},supportingContent={Text("/tool "+pin.command)})
+            ListItem(modifier=Modifier.clickable{menu=false;onCustomize(null)},headlineContent={Text("All tools and services")},leadingContent={Icon(Icons.Default.Tune,null)})
+            for((id,label) in listOf("models" to "Models and providers","files" to "Browse device files","devices" to "Devices and pairing","ssh" to "SSH connections","ide" to "Coding workspace","agents" to "Agent management","mcp-catalog" to "MCP tools","gateway" to "Allow model clients","providers" to "External model providers","shirudo" to "Shirudo shields")){
+                ListItem(modifier=Modifier.clickable{menu=false;onTool(id)},headlineContent={Text(label)},leadingContent={Icon(com.meshlit.ui.phone.phoneIcon(id),null)})
+            }
+        }
+        if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;try{share.launch(projection.createScreenCaptureIntent())}catch(e:Exception){error=e.localizedMessage}},
+            headlineContent={Text("Share screen")},supportingContent={Text("Switch to the screen you want. Review the captured frame before sending.")},
+            leadingContent={Icon(androidx.compose.material.icons.Icons.Outlined.Screenshot,null)})
         if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;onPhoto()},headlineContent={Text("Photo from device")},supportingContent={Text("Choose a photo, review its model, then use Send")},leadingContent={Icon(Icons.Default.Image,null)})
         if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;onCamera()},headlineContent={Text("Take a photo")},supportingContent={Text("Capture, review, and ask in the normal message box")},leadingContent={Icon(Icons.Default.PhotoCamera,null)})
         ListItem(modifier=Modifier.clickable{menu=false;pick.launch(arrayOf("*/*"))},headlineContent={Text("Choose files")},supportingContent={Text("Pick any type; Meshlit checks whether this chat can read it")},leadingContent={Icon(Icons.Default.AttachFile,null)})
@@ -81,7 +133,6 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
             ListItem(modifier=Modifier.clickable{menu=false;onVision()},headlineContent={Text("Vision studio")},supportingContent={Text("Run a separate image analysis request")},leadingContent={Icon(Icons.Default.Image,null)})
             ListItem(modifier=Modifier.clickable{menu=false;onMedia()},headlineContent={Text("Generate media")},supportingContent={Text("Create images, speech or video with a configured provider")},leadingContent={Icon(Icons.Default.AutoAwesome,null)})
         }
-        ListItem(modifier=Modifier.clickable{menu=false;onOptions()},headlineContent={Text("Chat options and model routing")},leadingContent={Icon(Icons.Default.Tune,null)})
     } }
     error?.let{message->AlertDialog(onDismissRequest={error=null},title={Text("Attachment could not be read")},text={Text(message)},confirmButton={TextButton(onClick={error=null}){Text("OK")}})}
 }

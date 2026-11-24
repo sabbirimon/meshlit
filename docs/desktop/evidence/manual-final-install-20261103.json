@@ -1,0 +1,37 @@
+{
+  "format": "meshlit-illustrated-manual-verification/1",
+  "date": "2026-11-03",
+  "chapters": 20,
+  "primaryScreenshots": 7,
+  "vectorGraphics": 4,
+  "pdfPages": 22,
+  "offlineTotalEmbeddedPngs": 10,
+  "offlineManualSha256": "63fa7e28349764d4f322162f924eaa7b4c975924fbeaae24e51cd0eb06ec7ba1",
+  "bothAndroidBuildsPassed": true,
+  "bothAndroidLints": {
+    "errors": 0,
+    "fatal": 0,
+    "warningsPerFlavor": 415
+  },
+  "studioExtensionTests": {
+    "passed": 97,
+    "failed": 0
+  },
+  "physicalInstallVerified": true,
+  "physicalViewerVerified": true,
+  "limits": [
+    "No physical desktop native-window visual qualification",
+    "No live seamless Wi-Fi/cellular or distributed checkpoint recovery qualification",
+    "New agent device-connection workflow remains source-tested separately"
+  ],
+  "draftPreservedOnUpdate": true,
+  "allSixApkManualAssetsIdentical": true,
+  "studioHostsCandidateRefreshedAndSigned": true,
+  "physicalTocNavigationVerified": true,
+  "physicalFindVerified": true,
+  "physicalEmbeddedPngVerified": true,
+  "physicalInlineVectorVerified": true,
+  "screenshot": "docs/desktop/evidence/samsung-offline-manual-20261103.png",
+  "drawerScrollIssue": "Observed; coordinated UI chat owns subsequent fix and package",
+  "installedApkSha256": "07565a0608a96d7390ff9e035f5bee9662304cc01458a11a07e4514a330f4a8c"
+}

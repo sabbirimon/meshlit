@@ -138,6 +138,7 @@ class RunAnywhereInferenceEngine(
      * early `initialized` check makes subsequent calls a no-op.
      */
     suspend fun initialize(context: Context) {
+        AndroidCpuBudget.initialize(context)
         if (initialized) return
         initMutex.withLock {
             if (initialized) return
@@ -189,6 +190,13 @@ class RunAnywhereInferenceEngine(
 
     override suspend fun loadModel(request: ModelLoadRequest): MeshlitResult<ModelInfo> =
         withContext(dispatcher) {
+            // SDK catalog ids and local files have the same whole-model-only
+            // contract. Do not accept a slice and later advertise a full SDK
+            // load as a successfully hosted pipeline stage.
+            if (request.layerStart != 0 || request.layerEnd != Int.MAX_VALUE || request.manifest != null) {
+                return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid(
+                    "runanywhere.pipeline_unsupported: use the native RPC layer backend"))
+            }
             if (!initialized) {
                 return@withContext MeshlitResult.Failure(
                     com.meshlit.core.common.MeshlitError.Native(
@@ -228,10 +236,6 @@ class RunAnywhereInferenceEngine(
                 // the SDK's canonical id (`smollm2-360m-instruct-q8_0`,
                 // etc.) directly, so the two code paths land on the same
                 // catalog row.
-                if (request.layerStart != 0 || request.layerEnd != Int.MAX_VALUE || request.manifest != null) {
-                    return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid(
-                        "runanywhere.pipeline_unsupported: use the native RPC layer backend"))
-                }
                 val prepared = try {
                     ModelFiles.validateGguf(file)
                     ("local-" + ModelFiles.sha256(file)) to file
@@ -256,13 +260,14 @@ class RunAnywhereInferenceEngine(
             }
 
             return@withContext try {
-                val result = RunAnywhere.loadModel(
+                val measurements = LlamaRuntimeMeasurements()
+                val result = measurements.measure { RunAnywhere.loadModel(
                     request = RAModelLoadRequest(
                         model_id = modelId,
                         category = ModelCategory.MODEL_CATEGORY_LANGUAGE,
                         framework = InferenceFramework.INFERENCE_FRAMEWORK_LLAMA_CPP,
                     ),
-                )
+                ) }
                 if (!result.success) {
                     modelInfo = null
                     loadedModelId = null
@@ -291,7 +296,7 @@ class RunAnywhereInferenceEngine(
                 val info = ModelInfo(
                     modelPath = resolvedPath,
                     modelName = displayName,
-                    contextSize = 0, // Pinned SDK does not expose its effective native context.
+                    contextSize = measurements.contextSize ?: 0,
                     parameterCount = 0L, // SDK doesn't surface this in the load result
                     quantization = guessQuantization(displayName),
                     embeddingDim = 0,
@@ -356,6 +361,7 @@ class RunAnywhereInferenceEngine(
             if(request.reuseContext) return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Invalid("runanywhere.explicit_cache_reuse_unavailable"))
             val started = System.currentTimeMillis()
             val accounting=SdkStreamAccounting()
+            val measurements = LlamaRuntimeMeasurements()
             try {
                 val events: Flow<LLMStreamEvent> = RunAnywhere.generateStream(
                     prompt = request.prompt,
@@ -364,11 +370,14 @@ class RunAnywhereInferenceEngine(
                         top_p = request.topP, top_k = request.topK,
                         repetition_penalty = request.repeatPenalty, stop_sequences = request.stopSequences,
                         seed = request.seed, streaming_enabled = true,
+                        n_threads = AndroidCpuBudget.generationThreads(request.cpuThreads),
                     ),
                 )
-                events.collect { event ->
-                    coroutineContext.ensureActive()
-                    accounting.accept(event)?.let{request.onToken(it)}
+                measurements.measure {
+                    events.collect { event ->
+                        coroutineContext.ensureActive()
+                        accounting.accept(event)?.let{request.onToken(it)}
+                    }
                 }
             } catch (t: kotlinx.coroutines.CancellationException) {
                 // Re-throw so the calling coroutine observes the cancel.
@@ -387,7 +396,13 @@ class RunAnywhereInferenceEngine(
                 )
             }
             val durationMs = System.currentTimeMillis() - started
-            val result=try {accounting.finish(durationMs)} catch(e:IllegalStateException){
+            val result=try {
+                accounting.finish(durationMs).copy(
+                    promptTokens = measurements.inputTokens,
+                    generatedTokens = measurements.outputTokens,
+                    tokensPerSecond = measurements.decodeRate,
+                )
+            } catch(e:IllegalStateException){
                 return@withContext MeshlitResult.Failure(com.meshlit.core.common.MeshlitError.Native("runanywhere.incomplete_stream",e))
             }
             request.onComplete(result)

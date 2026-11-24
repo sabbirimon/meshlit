@@ -4,8 +4,6 @@ import com.meshlit.core.common.CapabilityTier
 import com.meshlit.core.common.logger
 import com.meshlit.core.inference.net.ShardSpec
 import com.meshlit.core.inference.net.StageRole
-import kotlin.math.ceil
-import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -27,19 +25,21 @@ import kotlin.math.min
  *  2. **Multi-shard plan** — split the model into N shards of
  *     `shardSizeBytes` each (capped by `totalLayers`). Distribute
  *     shards to peers in descending free-disk order, preferring
- *     peers that already host the same shard (sticky).
+ *     peers that already host the same shard (sticky), while charging
+ *     every assignment against that peer's remaining disk budget.
  *
  *  3. **Fallback** — if `sum(peer.freeDiskMb * 1MiB) < modelSizeBytes`
  *     the cluster can't host the model. Caller should fall back to
  *     whole-model download via `ModelCatalog.downloadFromUrl`.
  *
- * The plan keeps shard ranges as `[layerStart, layerEnd)` so the
- * downstream `ShardAssembler` can map them to byte offsets in the
- * final GGUF.
+ * Byte ranges cover the source exactly for storage/reassembly. Layer
+ * ranges are proportional labels, not GGUF tensor boundaries: this
+ * storage plan alone does not admit RAM or enable layer inference.
  */
 class ClusterShardPlanner(
     private val shardSizeBytes: Long = DEFAULT_SHARD_SIZE_BYTES,
 ) {
+    init { require(shardSizeBytes > 0) { "Shard size must be positive" } }
 
     private val log = logger("ClusterShardPlanner")
 
@@ -62,14 +62,16 @@ class ClusterShardPlanner(
         self: PeerCapabilities,
         peers: List<PeerCapabilities>,
     ): Plan {
-        if (totalLayers <= 0) {
+        if (totalLayers !in 1..MAX_LAYERS || modelSizeBytes <= 0) {
             return Plan.FallbackToWholeModel(
-                reason = "model has 0 layers",
+                reason = "invalid model size or unsupported layer count (1–$MAX_LAYERS)",
             )
         }
         val roster = (listOf(self) + peers).distinctBy { it.peerId }
 
-        val eligibleByTier = roster.filter { it.freeDiskMb > 0 }
+        // Ignore invalid/unrepresentable reports rather than allowing a MiB
+        // conversion or GPU preference score to wrap into usable capacity.
+        val eligibleByTier = roster.filter { it.freeDiskMb in 1..Long.MAX_VALUE / BYTES_PER_MB }
         if (eligibleByTier.isEmpty()) {
             return Plan.FallbackToWholeModel(reason = "no peers report free disk")
         }
@@ -79,7 +81,9 @@ class ClusterShardPlanner(
             it.freeDiskMb * BYTES_PER_MB >= modelSizeBytes
         }
         if (withEnough.isNotEmpty()) {
-            val host = withEnough.maxBy { it.freeDiskMb + gpuBonusMb(it) }
+            val host = withEnough.sortedWith(
+                compareByDescending<PeerCapabilities> { it.freeDiskMb + gpuBonusMb(it) }.thenBy { it.peerId },
+            ).first()
             val shardId = "whole-${modelId}"
             log.info(
                 "shard.plan.single",
@@ -105,17 +109,21 @@ class ClusterShardPlanner(
         }
 
         // 2. Multi-shard.
-        val shardsByCapacity = max(1L, ceil(modelSizeBytes.toDouble() / shardSizeBytes.toDouble()).toLong())
-        val shardCount = min(shardsByCapacity.toInt(), totalLayers)
-        val sorted = eligibleByTier.sortedByDescending { peer ->
+        val shardsByCapacity = modelSizeBytes / shardSizeBytes + if (modelSizeBytes % shardSizeBytes == 0L) 0 else 1
+        val shardCount = minOf(shardsByCapacity, totalLayers.toLong()).toInt()
+        val sorted = eligibleByTier.sortedWith(compareByDescending<PeerCapabilities> { peer ->
             // GPU peers get a tiny tie-breaker so the planner picks
             // them for early layers when disk capacity is comparable.
             // 256 MB equivalent worth of "preferredness" — enough to
             // outrank a peer with 256 MB less free disk.
             peer.freeDiskMb + gpuBonusMb(peer)
-        }
+        }.thenBy { it.peerId })
 
-        val totalClusterFree = sorted.sumOf { it.freeDiskMb * BYTES_PER_MB }
+        // Sum only up to the requested model size; independent valid reports
+        // may otherwise overflow Long when combined.
+        val totalClusterFree = sorted.fold(0L) { total, peer ->
+            total + minOf(modelSizeBytes - total, peer.freeDiskMb * BYTES_PER_MB)
+        }
         if (totalClusterFree < modelSizeBytes) {
             log.warn(
                 "shard.plan.no_capacity",
@@ -138,21 +146,29 @@ class ClusterShardPlanner(
         sorted.forEach { peer ->
             peer.hostedShardIds.forEach { key ->
                 if (key.startsWith("$modelId/")) {
-                    shardsById[key.removePrefix("$modelId/")] = peer
+                    shardsById.putIfAbsent(key.removePrefix("$modelId/"), peer)
                 }
             }
         }
 
-        val bytesPerLayer = modelSizeBytes.toDouble() / totalLayers.toDouble()
+        // floor(size * layer / layers), without an overflowing multiplication
+        // or floating-point rounding. Taking differences preserves every byte.
+        fun byteBoundary(layer: Int): Long = modelSizeBytes / totalLayers * layer +
+            (modelSizeBytes % totalLayers) * layer / totalLayers
+        val remaining = sorted.associate { it.peerId to it.freeDiskMb * BYTES_PER_MB }.toMutableMap()
         val assignments = ArrayList<ShardAssignment>(shardCount)
         for (i in 0 until shardCount) {
             val layerStart = layerForShard(i, shardCount, totalLayers)
             val layerEnd = layerForShard(i + 1, shardCount, totalLayers)
-            val byteOffset = (layerStart * bytesPerLayer).toLong()
-            val byteLength = ((layerEnd - layerStart) * bytesPerLayer).toLong()
+            val byteOffset = byteBoundary(layerStart)
+            val byteLength = byteBoundary(layerEnd) - byteOffset
             val shardId = "shard-${i.toString().padStart(3, '0')}"
             val sticky = shardsById[shardId]
-            val peer = sticky ?: sorted[i % sorted.size]
+            val peer = sticky?.takeIf { remaining.getValue(it.peerId) >= byteLength }
+                ?: (sorted.indices).asSequence().map { sorted[(i + it) % sorted.size] }
+                    .firstOrNull { remaining.getValue(it.peerId) >= byteLength }
+                ?: return Plan.FallbackToWholeModel("no peer has remaining disk for shard $shardId ($byteLength bytes)")
+            remaining[peer.peerId] = remaining.getValue(peer.peerId) - byteLength
             assignments += ShardAssignment(
                 shardId = shardId,
                 layerStart = layerStart,
@@ -236,6 +252,7 @@ class ClusterShardPlanner(
     companion object {
         /** 512 MiB default shard size — fits on phones with ≥ 4 GB free disk. */
         const val DEFAULT_SHARD_SIZE_BYTES: Long = 512L * 1024 * 1024
+        private const val MAX_LAYERS = 1024
         private const val BYTES_PER_MB: Long = 1024L * 1024
         /** Planner tie-breaker for peers with a working GPU backend. */
         private const val GPU_BONUS_MB: Long = 256L

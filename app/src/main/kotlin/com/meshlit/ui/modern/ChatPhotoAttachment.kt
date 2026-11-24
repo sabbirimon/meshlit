@@ -29,11 +29,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+internal const val LOCAL_PHOTO_ROUTE="__local_vision__"
+
 /** A reviewed attachment. Selection never uploads pixels; the composer Send does. */
 @Composable
 internal fun ChatPhotoAttachment(
-    uri: Uri, profiles: List<OnlineProfile>, selectedId: String, enabled: Boolean,
-    onProvider: (String) -> Unit, onRemove: () -> Unit, onSetup: () -> Unit, maxHeight: Dp,
+    uri: Uri, profiles: List<OnlineProfile>, selectedId: String, enabled: Boolean, localModel:String?,
+    onProvider: (String) -> Unit, onRemove: () -> Unit, onSetup: () -> Unit, onLocalSetup:()->Unit,maxHeight: Dp,
 ) {
     val context = LocalContext.current
     val preview by produceState<Bitmap?>(null, uri) {
@@ -54,6 +56,7 @@ internal fun ChatPhotoAttachment(
     }
     var choosing by remember { mutableStateOf(false) }
     val selected = profiles.firstOrNull { it.id == selectedId }
+    val local=selectedId==LOCAL_PHOTO_ROUTE
     Surface(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=4.dp).testTag("chat-photo-card"),
         shape=RoundedCornerShape(20.dp), color=MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(Modifier.heightIn(max=maxHeight).verticalScroll(rememberScrollState()).padding(12.dp),
@@ -70,19 +73,25 @@ internal fun ChatPhotoAttachment(
                 IconButton(enabled=enabled,onClick=onRemove) { Icon(Icons.Default.Close,"Remove photo") }
             }
             Box(Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick={if(profiles.isEmpty()) onSetup() else choosing=true},enabled=enabled,
+                OutlinedButton(onClick={choosing=true},enabled=enabled,
                     modifier=Modifier.fillMaxWidth().testTag("chat-photo-model"),shape=RoundedCornerShape(12.dp)) {
-                    Text(selected?.let{"${it.name} · ${it.model}"} ?: "Set up a vision model",Modifier.weight(1f),maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(if(local) localModel?.let{"On-device photo · $it"} ?: "On-device photo · setup needed" else selected?.let{"${it.name} · ${it.model}"} ?: "Choose a vision model",Modifier.weight(1f),maxLines=2,overflow=TextOverflow.Ellipsis)
                     Icon(Icons.Default.ExpandMore,null,Modifier.size(20.dp))
                 }
                 DropdownMenu(choosing,{choosing=false}) {
+                    DropdownMenuItem(text={Text("On-device photo"+(localModel?.let{" · $it"} ?: " · setup needed"))},onClick={onProvider(LOCAL_PHOTO_ROUTE);choosing=false})
+                    DropdownMenuItem(text={Text("Set up offline photo model")},onClick={choosing=false;onLocalSetup()})
                     profiles.forEach { profile -> DropdownMenuItem(text={Text("${profile.name}\n${profile.model}",maxLines=3,overflow=TextOverflow.Ellipsis)},
                         onClick={onProvider(profile.id);choosing=false}) }
                     DropdownMenuItem(text={Text("Manage providers")},onClick={choosing=false;onSetup()})
                 }
             }
-            Text(if(selected==null) "The local chat model reads text only. Connect a vision provider to send this photo."
-                else "Send shares this photo with ${Uri.parse(selected.endpoint).host ?: selected.name}. Choose a model that supports images.",
+            Text(when {
+                local && localModel==null -> "Import a compatible vision GGUF and projector to send offline."
+                local -> "Photo processing stays on this device."
+                selected!=null -> "Send shares this photo with ${Uri.parse(selected.endpoint).host ?: selected.name}. Choose a model that supports images."
+                else -> "Choose a photo destination."
+            },
                 style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-26",
+  "workingTree": true,
+  "baseCommit": "5a7c5167ce6a32880c4e6354fde26af50773eb2c",
+  "status": "Local tests, both Android builds/lints, provenance and documentation checks passed; live tailnet/device qualification open",
+  "sourceSha256": {
+    "shared-workspace/src/commonMain/kotlin/com/meshlit/workspace/VpnObservation.kt": "6f0a669511587508f2ef895406fad057ca79660d0a6878d103f3811059d67282",
+    "shared-workspace/src/jvmMain/kotlin/com/meshlit/workspace/TailscaleStatus.kt": "a79d5a5125271738b8ea88970867f4399e337b7e99624bc2f7619a55145a4dc4",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/TailscaleProbe.kt": "9738455047c9a9b4588d4f351ed18f6d6293f08ba31c10b2ed7b24a8f28dd224",
+    "desktopApp/src/main/kotlin/com/meshlit/desktop/VpnDashboard.kt": "b94fa1f7764eb8dab0d7a43e14f6c730824edda3fd9e2cf2fc7b29f8766c15a2",
+    "app/src/main/kotlin/com/meshlit/network/AndroidVpnObserver.kt": "125051efea9a25e36621e66f4df9b7b6f1e0401a6e1615ffda962cede2a02b30",
+    "app/src/main/kotlin/com/meshlit/ui/modern/VpnDashboard.kt": "44c2ca18f5c5692a76d59a02128a3d50e53355ebc840ec8fa7b401dd9db99f61"
+  },
+  "notQualified": [
+    "Live Tailscale CLI/tailnet (client not installed)",
+    "Physical Android VPN transitions, split tunneling and lifecycle",
+    "Windows/Linux runtime"
+  ],
+  "paidApiCalls": false,
+  "pushes": false,
+  "newDependencies": false,
+  "crawlerTests": 9,
+  "hyperlProvenance": "both checks passed",
+  "testSuites": {
+    "shared-workspace:jvmTest": {
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "desktopApp:test": {
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "core-mcp:testDebugUnitTest": {
+      "tests": 139,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-sandbox:testDebugUnitTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-net:testDebugUnitTest": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "core-inference:testDebugUnitTest": {
+      "tests": 287,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV1DebugUnitTest": {
+      "tests": 245,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "app:testMeshlitV2DebugUnitTest": {
+      "tests": 245,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "assemblies": {
+    "meshlitV1Debug": "passed",
+    "meshlitV2Debug": "passed"
+  },
+  "preview": {
+    "file": "docs/desktop/evidence/vpn-dashboard.png",
+    "scope": "Native offscreen Studio opt-out screen; visually inspected; no live client/device proof"
+  },
+  "lint": {
+    "meshlitV1Debug": {
+      "Warning": 401,
+      "Hint": 19
+    },
+    "meshlitV2Debug": {
+      "Warning": 401,
+      "Hint": 19
+    }
+  },
+  "lintNote": "Zero errors; two additional UseKtx style suggestions (commit result intentionally checked, Uri.parse)",
+  "duration": "15m 26s"
+}

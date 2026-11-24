@@ -1,5 +1,16 @@
 # Meshlit build and continuation contract for the Claude Opus agent
 
+## Studio and mixed-device handoff — 2026-11-06
+
+Read the dated plan (archived),
+evidence (archived), and
+acceptance queue (archived)
+before changing Studio routing. General Chat uses direct completions with
+usage accounting. Workspace agents retain SDK permissions and review. Studio
+generated through two CPU RPC workers on one Mac, then through a physical Mac
+CPU worker and Samsung CPU worker over scoped USB. Qualify managed placement,
+larger-than-node memory admission, managed WAN, and project edits independently.
+
 ## Read this before changing code
 
 The user has explicitly authorized genuine layer/pipeline execution across phones.

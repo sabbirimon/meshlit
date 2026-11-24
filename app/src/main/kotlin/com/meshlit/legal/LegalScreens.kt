@@ -1,6 +1,10 @@
 package com.meshlit.legal
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
@@ -51,22 +55,47 @@ import kotlinx.coroutines.withContext
     var error by remember { mutableStateOf<String?>(null) }
     if (accepted) { content(); return }
     if (document != null) { LegalDocument(document!!, { document = null }); return }
-    Scaffold(topBar = { TopAppBar(title = { Text("Welcome to Meshlit") }) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            item { Text("Your AI, your devices", style = MaterialTheme.typography.headlineMedium)
-                Text("By IMON · ${LegalAgreementStore.VERSION}", style = MaterialTheme.typography.bodySmall) }
-            item { Text("Read the Terms and Privacy policy before using Meshlit. Startup model loading, SDK initialization and background bootstrap wait for acceptance.") }
-            item { Text("Local chats, files and settings stay on this installation unless you choose sharing or an online service. Optional cloud providers receive the data you send. Audit collection is off by default. The model SDK may attempt its own development telemetry; its opt-out is still under review.") }
-            item { OutlinedButton(onClick = { document = "terms" }, modifier = Modifier.testTag("read-terms")) { Text("Read Terms of use") }
-                OutlinedButton(onClick = { document = "privacy" }, modifier = Modifier.testTag("read-privacy")) { Text("Read Privacy policy") } }
-            item { Row { Checkbox(terms, { terms = it }, Modifier.testTag("accept-terms")); Text("I agree to the Terms of use", Modifier.padding(top = 12.dp)) }
-                Row { Checkbox(privacy, { privacy = it }, Modifier.testTag("accept-privacy")); Text("I acknowledge and accept the Privacy policy", Modifier.padding(top = 12.dp)) } }
+    var showDetails by rememberSaveable { mutableStateOf(false) }
+    Scaffold { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(horizontal=28.dp,vertical=36.dp),
+            verticalArrangement=Arrangement.spacedBy(20.dp)) {
+            item {
+                Icon(androidx.compose.ui.res.painterResource(com.meshlit.R.drawable.meshlit_mark),null,
+                    Modifier.size(44.dp),tint=androidx.compose.ui.graphics.Color.Unspecified)
+                Spacer(Modifier.height(24.dp))
+                Text("Welcome to Meshlit",style=MaterialTheme.typography.headlineLarge)
+                Spacer(Modifier.height(12.dp))
+                Text("Review both documents to start chatting on this device.",style=MaterialTheme.typography.bodyLarge)
+            }
+            item {
+                TextButton(onClick={document="terms"},modifier=Modifier.testTag("read-terms")){Text("Read Terms of use")}
+                TextButton(onClick={document="privacy"},modifier=Modifier.testTag("read-privacy")){Text("Read Privacy policy")}
+                HorizontalDivider()
+            }
+            item {
+                AgreementChoice("I agree to the Terms of use",terms,"accept-terms"){terms=it}
+                AgreementChoice("I accept the Privacy policy",privacy,"accept-privacy"){privacy=it}
+            }
+            item {
+                Text("Cloud providers receive what you send. The model SDK may attempt development telemetry.",style=MaterialTheme.typography.bodyMedium)
+                TextButton(onClick={showDetails=!showDetails}){Text(if(showDetails) "Hide details" else "Privacy details")}
+                if(showDetails) Text("Local chats, files and settings stay on this installation unless you choose sharing or an online service. Audit collection is off by default. SDK telemetry opt-out is under review. Startup model loading and background setup wait for acceptance. By IMON · ${LegalAgreementStore.VERSION}",style=MaterialTheme.typography.bodyMedium)
+            }
             item { Button(onClick = { runCatching { store.accept(terms, privacy) }.onSuccess { accepted = true }.onFailure { error = it.message } },
-                    enabled = terms && privacy, modifier = Modifier.fillMaxWidth().testTag("legal-continue")) { Text("Agree and continue") }
+                    enabled = terms && privacy, shape=RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().heightIn(min=52.dp).testTag("legal-continue")) { Text("Agree and continue") }
                 TextButton(onClick = onDecline, modifier = Modifier.fillMaxWidth()) { Text("Decline and exit") } }
-            item { Text("This agreement does not grant camera, microphone, location, agent autonomy, online access or optional telemetry permissions. You choose those separately.", style = MaterialTheme.typography.bodySmall) }
+            item { Text("This agreement does not grant camera, microphone, location, agent autonomy, online access or optional telemetry permissions. You choose those separately.", style = MaterialTheme.typography.bodyMedium) }
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
         }
+    }
+}
+
+@Composable
+private fun AgreementChoice(label:String, selected:Boolean, tag:String, onChange:(Boolean)->Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min=56.dp).testTag(tag)
+        .toggleable(value=selected,role=Role.Checkbox,onValueChange=onChange),
+        verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)) {
+        Checkbox(checked=selected,onCheckedChange=null)
+        Text(label,style=MaterialTheme.typography.bodyLarge)
     }
 }

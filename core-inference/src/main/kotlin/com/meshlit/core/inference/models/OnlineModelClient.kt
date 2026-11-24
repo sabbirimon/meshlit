@@ -9,16 +9,19 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
+@Serializable enum class OnlineGateway { DIRECT, OMNIROUTE, FREELLMAPI, CUSTOM }
+@Serializable enum class ModelSourceKind { CLOUD, LOCAL_SERVER, MULTI_LOCAL, REMOTE_DEVICE, GROUP_CLUSTER }
 @Serializable enum class OnlineProtocol { OPENAI, OPENAI_COMPATIBLE, ANTHROPIC, GEMINI }
 @Serializable data class OnlineProfile(val id:String,val name:String,val endpoint:String,val model:String="",
     val protocol:OnlineProtocol=OnlineProtocol.OPENAI_COMPATIBLE,val enabled:Boolean=false,val agentAllowed:Boolean=false,
-    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY") {
+    val sendTemperature:Boolean=false,val inputPricePerMillion:Double?=null,val outputPricePerMillion:Double?=null,val currency:String="USD",val pricingSource:String?=null,val priceCheckedAtMs:Long?=null,val requiresApiKey:Boolean=true,val credentialEnvironmentId:String?=null,val credentialVariable:String="API_KEY", val gateway:OnlineGateway=OnlineGateway.DIRECT, val sourceKind:ModelSourceKind=ModelSourceKind.CLOUD,val effortSupport:EffortSupport?=null,val hostedToolSupport:HostedToolSupport?=null) {
     fun validate() {
+        require(gateway == OnlineGateway.DIRECT || protocol == OnlineProtocol.OPENAI_COMPATIBLE) { "Gateways use OpenAI-compatible protocol" }
         require(credentialEnvironmentId==null || credentialEnvironmentId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
         require(credentialVariable.matches(Regex("[A-Z_][A-Z0-9_]{0,79}")))
         require(id.matches(Regex("[a-zA-Z0-9-]{1,80}")) && name.length in 1..100)
         val url=endpoint.toHttpUrl()
-        require(url.isHttps && url.username.isEmpty() && url.password.isEmpty() && url.query==null && url.fragment==null) { "Use an HTTPS API base URL without credentials or query parameters" }
+        require((url.isHttps || url.scheme=="http" && url.host in setOf("127.0.0.1","::1")) && url.username.isEmpty() && url.password.isEmpty() && url.query==null && url.fragment==null) { "Use HTTPS or literal loopback HTTP, without credentials or query parameters" }
         require(model.length<=200 && model.none{it.isWhitespace() || it=='?' || it=='#' || it=='\\'})
         require(currency.matches(Regex("[A-Z]{3}")))
         listOf(inputPricePerMillion,outputPricePerMillion).forEach{require(it==null || it.isFinite() && it in 0.0..100000.0)}
@@ -26,7 +29,7 @@ import java.util.concurrent.TimeUnit
     }
 }
 data class OnlineMessage(val role:String,val text:String)
-data class OnlineReply(val text:String,val inputTokens:Long?,val outputTokens:Long?) {
+data class OnlineReply(val text:String,val inputTokens:Long?,val outputTokens:Long?,val reasoningSummary:String?=null) {
     fun estimatedCost(profile:OnlineProfile):Double? {
         val input=inputTokens ?: return null;val output=outputTokens ?: return null
         return input*(profile.inputPricePerMillion ?: return null)/1e6+output*(profile.outputPricePerMillion ?: return null)/1e6
@@ -66,11 +69,28 @@ class OnlineModelClient {
                 model["name"]?.jsonPrimitive?.content?.removePrefix("models/") else null
         } else data["data"]?.jsonArray.orEmpty().mapNotNull{it.jsonObject["id"]?.jsonPrimitive?.contentOrNull}
     }
-    suspend fun generate(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f):OnlineReply {
+    fun validateGeneration(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,temperature:Float,effort:ReasoningEffort=ReasoningEffort.AUTO) {
         profile.validate();require(profile.enabled) { "Enable the selected online profile first" }
+        profile.validateEffort(effort)
         require(messages.isNotEmpty() && messages.size<=41 && messages.all{it.role in setOf("user","assistant")})
-        require(messages.sumOf{it.text.length}+system.length<=96000 && maxTokens in 1..2048 && temperature.isFinite() && temperature in 0f..2f)
-        val payload=buildJsonObject { when(profile.protocol) {
+        require(messages.sumOf{it.text.length}+system.length<=96000 && maxTokens in 1..(if(profile.supportedEfforts().isNotEmpty())16384 else 2048) && temperature.isFinite() && temperature in 0f..2f)
+        require(!profile.requiresApiKey || token.isNotBlank() && token.length<=4096 && token.none{it.isWhitespace()}) { "Save an API key first" }
+        if(profile.protocol==OnlineProtocol.GEMINI) require(profile.model.matches(Regex("[A-Za-z0-9_.-]+")))
+    }
+    fun prepareHostedWebRound(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String,maxTokens:Int,
+        temperature:Float,effort:ReasoningEffort,reviewId:String,evidence:HostedSearchEvidence?):HostedWebTurnRequest {
+        require(profile.hostedToolsAllowed(reviewId)){"Review hosted tool calling for this exact API model and enable agent access"}
+        validateGeneration(profile,token,messages,system,maxTokens,temperature,effort)
+        return HostedWebTurnRequest(profile,hostedWebPayload(profile,messages,system,maxTokens,temperature,effort,evidence),evidence==null)
+    }
+    suspend fun hostedWebRound(token:String,turn:HostedWebTurnRequest):HostedWebTurn {
+        val request=request(turn.profile,token,"chat/completions")
+            .post(turn.payload.toString().oneShotJsonBody()).build()
+        return parseHostedWebTurn(fetch(request),turn.acceptsCall)
+    }
+    suspend fun generate(profile:OnlineProfile,token:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,effort:ReasoningEffort=ReasoningEffort.AUTO):OnlineReply {
+        validateGeneration(profile, token, messages, system, maxTokens, temperature,effort)
+        val base=buildJsonObject { when(profile.protocol) {
             OnlineProtocol.GEMINI -> {
                 put("contents",buildJsonArray{messages.forEach{message->add(buildJsonObject{put("role",if(message.role=="assistant") "model" else "user");put("parts",buildJsonArray{add(buildJsonObject{put("text",message.text)})})})}})
                 if(system.isNotBlank()) put("systemInstruction",buildJsonObject{put("parts",buildJsonArray{add(buildJsonObject{put("text",system)})})})
@@ -87,17 +107,24 @@ class OnlineModelClient {
                 put("stream",false)
             }
         } }
+        val payload=if(profile.protocol in setOf(OnlineProtocol.OPENAI,OnlineProtocol.OPENAI_COMPATIBLE))reasoningPayload(base,profile,effort,maxTokens) else base
         val path=when(profile.protocol){OnlineProtocol.ANTHROPIC->"messages";OnlineProtocol.GEMINI->{require(profile.model.matches(Regex("[A-Za-z0-9_.-]+")));"models/${profile.model}:generateContent"};else->"chat/completions"}
         val data=fetch(request(profile,token,path).post(payload.toString().toRequestBody("application/json".toMediaType())).build())
+        val parts = if (profile.protocol == OnlineProtocol.GEMINI)
+            data["candidates"]?.jsonArray?.firstOrNull()?.jsonObject?.get("content")?.jsonObject?.get("parts")?.jsonArray.orEmpty().map { it.jsonObject }
+        else emptyList()
+        val summary = if (profile.protocol == OnlineProtocol.GEMINI)
+            parts.filter { it["thought"]?.jsonPrimitive?.booleanOrNull == true }.mapNotNull { it["text"]?.jsonPrimitive?.contentOrNull }.joinToString("\n")
+        else (data["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("reasoning_summary") as? JsonPrimitive)?.contentOrNull
         val text=when(profile.protocol) {
             OnlineProtocol.ANTHROPIC -> data["content"]?.jsonArray.orEmpty().mapNotNull{it.jsonObject["text"]?.jsonPrimitive?.contentOrNull}.joinToString("")
-            OnlineProtocol.GEMINI -> data["candidates"]?.jsonArray?.firstOrNull()?.jsonObject?.get("content")?.jsonObject?.get("parts")?.jsonArray.orEmpty().mapNotNull{it.jsonObject["text"]?.jsonPrimitive?.contentOrNull}.joinToString("")
+            OnlineProtocol.GEMINI -> parts.filter { it["thought"]?.jsonPrimitive?.booleanOrNull != true }.mapNotNull { it["text"]?.jsonPrimitive?.contentOrNull }.joinToString("")
             else -> data["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("content")?.let{(it as? JsonPrimitive)?.contentOrNull}.orEmpty()
         }
         require(text.isNotBlank()) { "Provider returned no text; check safety, token budget and model modality" }
         val usage=(data[if(profile.protocol==OnlineProtocol.GEMINI) "usageMetadata" else "usage"] as? JsonObject)
         fun count(vararg keys:String)=keys.firstNotNullOfOrNull{usage?.get(it)?.jsonPrimitive?.longOrNull?.takeIf{n->n>=0}}
-        return OnlineReply(text,count("prompt_tokens","input_tokens","promptTokenCount"),count("completion_tokens","output_tokens","candidatesTokenCount"))
+        return OnlineReply(text,count("prompt_tokens","input_tokens","promptTokenCount"),count("completion_tokens","output_tokens","candidatesTokenCount"),summary?.take(4000)?.takeIf { it.isNotBlank() })
     }
 }
 

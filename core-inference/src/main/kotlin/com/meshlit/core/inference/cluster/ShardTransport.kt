@@ -3,6 +3,13 @@ package com.meshlit.core.inference.cluster
 import com.meshlit.core.common.logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -46,6 +53,7 @@ class ShardTransport(
 ) {
 
     private val log = logger("ShardTransport")
+    private val shardClient = client.newBuilder().followRedirects(false).followSslRedirects(false).build()
 
     /** Upload a shard to the peer's HTTP server. Overwrites if it
      *  already exists (the server treats `POST` as idempotent). */
@@ -94,9 +102,8 @@ class ShardTransport(
         }
     }
 
-    /** Stream a shard to disk at the given offset, truncating if the
-     *  server returned more than `length`. Caller verifies the file
-     *  size + sha256 against the manifest. */
+    /** Stream exactly the declared immutable shard; never follow a redirect
+     * away from the caller-approved source. Caller verifies the digest. */
     suspend fun fetchShardToFile(
         peerBaseUrl: String,
         modelId: String,
@@ -106,18 +113,27 @@ class ShardTransport(
         length: Long,
         onProgress: (Long) -> Unit = {},
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        require(length > 0L) { "length must be positive" }
+        require(length > 0L && offset >= 0 && offset <= Long.MAX_VALUE - length) { "Invalid shard bounds" }
         val url = "$peerBaseUrl/v1/shards/$modelId/$shardId"
         val request = Request.Builder()
             .url(url)
             .header("Range", "bytes=0-${length - 1}")
             .get()
             .build()
-        runCatching {
-            val resp = client.newCall(request).execute()
-            resp.use { handleShardResponse(it, dest, offset, length, onProgress) }
-        }.onFailure { t ->
-            log.warn("shard.fetch.fail", "stream fetch failed", mapOf("shard" to shardId, "err" to (t.message ?: "?")))
+        val call = shardClient.newCall(request)
+        try {
+            coroutineScope {
+                val cancellation = launch(start = CoroutineStart.UNDISPATCHED) {
+                    try { awaitCancellation() } finally { call.cancel() }
+                }
+                try { call.execute().use { handleShardResponse(it, dest, offset, length, onProgress) } }
+                finally { cancellation.cancel() }
+            }
+            Result.success(Unit)
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            currentCoroutineContext().ensureActive()
+            Result.failure(error)
         }
     }
 
@@ -135,29 +151,35 @@ class ShardTransport(
             }
         }
 
-    private fun handleShardResponse(
+    private suspend fun handleShardResponse(
         resp: Response,
         dest: File,
         offset: Long,
         length: Long,
         onProgress: (Long) -> Unit,
     ) {
-        if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
+        if (resp.code != 200 && resp.code != 206) throw IOException("HTTP ${resp.code}")
+        if (resp.code == 206 && resp.header("Content-Range") != "bytes 0-${length - 1}/$length") {
+            throw IOException("Shard Content-Range differs from manifest")
+        }
         val body = resp.body ?: throw IOException("empty body")
+        if (body.contentLength() >= 0 && body.contentLength() != length) throw IOException("Shard length differs from manifest")
         dest.parentFile?.mkdirs()
         RandomAccessFile(dest, "rw").use { raf ->
             raf.seek(offset)
             body.byteStream().use { input ->
                 val buf = ByteArray(64 * 1024)
                 var copied = 0L
-                var read: Int
-                while (input.read(buf).also { read = it } != -1) {
-                    val toWrite = minOf(read.toLong(), length - copied).toInt().coerceAtLeast(0)
-                    if (toWrite <= 0) break
-                    raf.write(buf, 0, toWrite)
-                    copied += toWrite
+                while (copied < length) {
+                    currentCoroutineContext().ensureActive()
+                    val read = input.read(buf, 0, minOf(buf.size.toLong(), length - copied).toInt())
+                    if (read < 0) throw IOException("Truncated shard")
+                    raf.write(buf, 0, read)
+                    copied += read
                     if (copied % (256 * 1024) == 0L) onProgress(copied)
                 }
+                if (input.read() != -1) throw IOException("Shard exceeds manifest length")
+                currentCoroutineContext().ensureActive()
             }
         }
         onProgress(length)
@@ -171,7 +193,8 @@ class ShardTransport(
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(5, TimeUnit.MINUTES)
             .writeTimeout(5, TimeUnit.MINUTES)
-            .followRedirects(true)
+            .followRedirects(false)
+            .followSslRedirects(false)
             .build()
     }
 }

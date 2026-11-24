@@ -1,0 +1,23 @@
+name: Qualify Apple Silicon MLX model adapter
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/desktop-inference-profiles]
+    paths:
+      - '.github/workflows/qualify-mlx-adapter.yml'
+      - 'scripts/qualify-mlx-adapter.py'
+      - 'companions/native-studio/extension/model-adapters.cjs'
+      - 'companions/native-studio/extension/model_worker.py'
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install mlx-lm==0.30.7 mlx==0.30.4 transformers==5.0.0
+      - run: python scripts/qualify-mlx-adapter.py

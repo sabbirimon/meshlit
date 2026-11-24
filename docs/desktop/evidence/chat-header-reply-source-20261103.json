@@ -1,0 +1,31 @@
+{
+  "recordedAt": "2026-11-02T19:04:41.084904+00:00",
+  "scope": "Shared V1/V2 mobile model header, compact navigation and reply action; Studio reply parity",
+  "changes": [
+    "Actual model name replaces upper-left Meshlit label; filename suffix/quantization cleaned only for display",
+    "On-device/source and real readiness state moved into header; removed repeated composer footer",
+    "Model details summarize size/weights/configured runner/context; technical/capability notes expandable",
+    "Navigation content minimum52dp instead of default80dp plus outerpadding,19dp visibleicons,48dp+tapareas and systeminsets preserved",
+    "Reply icons quote selected content into editable draft and preserve all existing input; no automatic send"
+  ],
+  "tests": {
+    "androidV1": {
+      "class": "ChatModelPresentationTest",
+      "tests": 3,
+      "failures": 0
+    },
+    "androidV2": {
+      "class": "ChatModelPresentationTest",
+      "tests": 3,
+      "failures": 0
+    },
+    "gradleLog": "/tmp/meshlit-chat-header-reply-tests.log",
+    "gradleBuild": "successful in 32 seconds",
+    "desktopReplyAndConnectionTests": {
+      "tests": 6,
+      "failures": 0
+    }
+  },
+  "visualAcceptance": "Pending final app packaging and physical visual check by finalization chat",
+  "finalizationChat": "01a19b01-de0c-7e30-80f9-40de41aed61e"
+}

@@ -42,7 +42,7 @@ data class MeshlitThemeConfig(
     val themeMode: ThemeMode = ThemeMode.DARK,
     val dynamicColors: Boolean = false,
     val fontScale: Float = 1.0f,
-    val uiFont: UiFont = UiFont.FIGTREE,
+    val uiFont: UiFont = UiFont.SYSTEM,
     val uiLanguage: com.meshlit.workspace.WorkspaceLanguage = com.meshlit.workspace.WorkspaceLanguage.ENGLISH,
     val surfaceStyle: SurfaceStyle = SurfaceStyle.SOLID,
     val workspaceLayout: WorkspaceLayout = WorkspaceLayout.ADAPTIVE,
@@ -232,7 +232,7 @@ fun buildColorScheme(
     val tertiary = customResolved?.tertiary ?: MeshlitEmerald
     val onPrimary = if (primary.luminance() > 0.45f) Color(0xFF0A0E1A) else Color(0xFFFFFFFF)
 
-    return if (isLight) {
+    val scheme = if (isLight) {
         lightColorScheme(
             primary = primary,
             onPrimary = onPrimary,
@@ -292,6 +292,7 @@ fun buildColorScheme(
             onError = Color(0xFFFFFFFF),
         )
     }
+    return scheme.readableTextColors()
 }
 
 /**

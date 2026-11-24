@@ -5,8 +5,10 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -19,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -36,11 +40,14 @@ import kotlinx.coroutines.*
     val context=LocalContext.current
     val prefs=remember{context.getSharedPreferences("settings-navigation",0)}
     var advanced by rememberSaveable{mutableStateOf(prefs.getBoolean("advanced",false))}
-    var showAllBasic by rememberSaveable { mutableStateOf(false) }
+    var selectedGroup by rememberSaveable{mutableStateOf<String?>(null)}
+    val group=SettingsGroup.entries.firstOrNull{it.name==selectedGroup}
+    val listState=rememberLazyListState()
+    LaunchedEffect(destination,advanced,selectedGroup,query){listState.scrollToItem(0)}
     val repository=koinInject<SettingsRepository>()
     var history by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
     fun navigate(next:String) {
-        if(next==destination) return
+        if(next==destination || !com.meshlit.BuildProfile.routeAllowed(next)) return
         history=ArrayList(history).apply { add(destination.orEmpty()) }
         destination=next
     }
@@ -54,7 +61,8 @@ import kotlinx.coroutines.*
         destination=previous?.ifEmpty { null }
     }
     val back:()->Unit={back()}
-    BackHandler(destination!=null){back()}
+    BackHandler(destination!=null || group!=null){if(destination!=null) back() else selectedGroup=null}
+    if(destination in setOf("dashboards", "usage", "vpn")) { WorkspaceDashboards(destination!!, back, ::navigate); return }
     if(destination=="menu-layout"){MenuLayoutScreen(back);return}
     if(destination=="sharding"){ShardingSettingsScreen(back);return}
     if(destination=="radar"){RadarScreen(back,{navigate("scan")},{navigate("meshchat")},{navigate("logs")},{navigate("host-map")},
@@ -72,24 +80,26 @@ import kotlinx.coroutines.*
     if(destination=="mcp-catalog"){McpCatalogScreen(back,{navigate("gateway")});return}
     if(destination=="huggingface"){HuggingFaceDashboardScreen(back);return}
     if(destination=="rag"){
-        val scope=rememberCoroutineScope()
-        com.meshlit.ui.screens.settings.RagSettingsScreen(
-            initialRagMode=repository.ragModeFlowNow(),initialLoopMode=repository.loopModeFlowNow(),onBack=back,
-            onRagModeChange={mode->scope.launch{repository.setRagMode(mode)}},
-            onLoopModeChange={mode->scope.launch{repository.setLoopMode(mode)}})
+        com.meshlit.ui.screens.settings.RagSettingsScreen(onBack=back,onOpenConnected={navigate("connected-capabilities")})
         return
     }
     if(destination=="agent-registry"){AgentRegistryScreen(back,{navigate("agents")},{navigate("mcp-catalog")});return}
     if(destination=="agent-logs"){ModernLogsScreen(back,com.meshlit.core.observability.LogSource.AGENT,"Agent logs");return}
     if(destination=="guardrails"){GuardrailSettingsScreen(back,{navigate("behavior")},{navigate("gateway")});return}
     if(destination=="crypto"){CryptoScreen(back);return}
-    if(destination=="gibberlink"){GibberLinkScreen(back);return}
     if(destination=="remotecommands"){RemoteCommandsScreen(back);return}
     if(destination=="p2p"){PeerChatScreen(back);return}
     if(destination=="colibri"){ColibriScreen(back);return}
     if(destination=="search"){SearchAccessScreen(back);return}
     if(destination=="legal"){com.meshlit.legal.LegalDocumentsScreen(back);return}
     if(destination=="personalization"){PersonalizationScreen(back);return}
+    if(destination=="voice-settings"){
+        val chat=koinInject<com.meshlit.chat.ChatController>()
+        BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+            HandsFreeVoiceDialog(chat,maxHeight=maxHeight,onClose=back)
+        }
+        return
+    }
     if(destination=="behavior"){LocalBehaviorScreen(back,{navigate("models")});return}
     if(destination=="help"){HelpTutorialScreen(back);return}
     if(destination=="cloud"){CloudManagementScreen(back,{navigate("huggingface")});return}
@@ -101,18 +111,24 @@ import kotlinx.coroutines.*
     if(destination=="operations"){OperationsScreen(back);return}
     if(destination=="gateway"){GatewayScreen(back);return}
     if(destination=="commands"){ManualCommandsScreen(back);return}
-    if(destination=="packages"){LabPackagesScreen(back);return}
-    if(destination=="securitylab"){SecurityLabScreen(back,{navigate("runtime")},{navigate("packages")});return}
     if(destination=="providers"){OnlineProvidersScreen(back);return}
     if(destination=="power"){PowerCostsScreen(back,{navigate("cloud")});return}
     if(destination=="external"){ExternalDevicesScreen(back);return}
+    if(destination=="connected-capabilities"){ConnectedServicesScreen(back,{navigate(it)});return}
+    if(destination=="agent-catalog"){AgencyAgentCatalogScreen(back);return}
+    if(destination=="agent-teams"){AgentTeamsScreen(back,{navigate(it)});return}
+    if(destination=="bot-connections"){BotConnectionsScreen(back,{navigate(it)});return}
+    if(destination=="bot-inbox"){BotInboxScreen(back);return}
+    if(destination=="moltbook"){MoltbookScreen(back);return}
     if(destination=="agents"){AgentManagementScreen(back,{navigate(it)});return}
     if(destination=="acceleration"){AccelerationScreen(back);return}
     if(destination=="ssh"){SshConnectionsScreen(back);return}
+    if(destination=="shirudo"){ShirudoScreen(back);return}
     if(destination=="firewall"){FirewallSettingsScreen(back);return}
     if(destination=="tasks"){TaskManagerScreen(back,{navigate("operations")});return}
     if(destination=="files"){FileManagerScreen(back);return}
     if(destination=="termux"){ExistingTermuxSettings(back);return}
+    if(destination=="deepseek-harness"){com.meshlit.harness.HarnessScreen(back);return}
     if(destination=="ide"){com.meshlit.ide.CodeWorkspaceScreen(back);return}
     if(destination=="hyperl"){HyperLScreen(back);return}
     if(destination=="resources"){ResourcesScreen(back);return}
@@ -120,24 +136,25 @@ import kotlinx.coroutines.*
     if(destination=="openclaw"){OpenClawScreen(back);return}
     if(destination=="audit"){AuditTelemetryScreen(back);return}
     if(destination=="logs"){ModernLogsScreen(back);return}
-    if(destination=="models"){ModernModelsScreen(back);return}
+    if(destination=="models"){Scaffold(topBar={CenterAlignedTopAppBar(title={Text("Models")},navigationIcon={
+        IconButton(onClick=back){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding->
+        Box(Modifier.padding(padding)){com.meshlit.ui.phone.PhoneModelPicker()}};return}
     if(destination=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
-    if(destination=="rewards"){com.meshlit.ui.v2.screens.RewardsScreen(back);return}
     if(destination=="devices"){ModernNetworkScreen(back,{navigate("device-dashboard")},initialPage="app");return}
     if(destination=="network"){ModernNetworkScreen(back,{navigate("device-dashboard")},onDevices={navigate("devices")});return}
     if(destination=="peers"){com.meshlit.ui.screens.settings.ForwardingPeersScreen(back);return}
     if(destination=="automation"){com.meshlit.ui.screens.cloud.AndroidAutomationSettingsScreen(repository,back);return}
     if(destination=="hooks"){com.meshlit.ui.screens.settings.HooksScreen(back,{navigate("hook:$it")});return}
     if(destination?.startsWith("hook:")==true){com.meshlit.ui.screens.settings.HookEditorScreen(destination!!.removePrefix("hook:"),back);return}
-    Scaffold(topBar={TopAppBar(expandedHeight=48.dp,colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent),title={Text(SettingsDestinations.all.firstOrNull{it.id==destination}?.title ?: "Settings",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)},
+    Scaffold(topBar={CenterAlignedTopAppBar(expandedHeight=48.dp,colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent),title={Text(SettingsDestinations.all.firstOrNull{it.id==destination}?.title ?: "Settings",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)},
         navigationIcon={if(destination!=null || onExit!=null) IconButton(onClick={if(destination!=null) back() else onExit?.invoke()}){
             Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")} else if(onMenu!=null) IconButton(onClick=onMenu){Icon(Icons.Default.Menu,"Menu")}})}){padding ->
         when(destination){
             "appearance" -> AppearanceSettings(Modifier.padding(padding))
             "device" -> Box(Modifier.padding(padding)){com.meshlit.ui.screens.settings.DeviceScreen(back)}
             "monitor" -> Box(Modifier.padding(padding)){ModernMonitorScreen()}
-            else -> LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax).testTag("settings-list"),contentPadding=PaddingValues(12.dp),
-                verticalArrangement=Arrangement.spacedBy(T.medium)) {
+            else -> LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax).testTag("settings-list"),state=listState,contentPadding=PaddingValues(12.dp),
+                verticalArrangement=Arrangement.spacedBy(T.small)) {
                 when(destination){
                     "runtime" -> item{com.meshlit.ui.screens.cloud.RuntimeDashboardCard()}
                     "crawler" -> item{com.meshlit.ui.screens.cloud.CrawlerSettingsCard()}
@@ -157,39 +174,81 @@ import kotlinx.coroutines.*
                     }}}
                     else -> {
                         item {OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().testTag("settings-search"),singleLine=true,placeholder={Text("Search settings")},
-                            leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear search")}},shape=RoundedCornerShape(28.dp))}
+                            leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear search")}},shape=RoundedCornerShape(8.dp))}
                         item {Row(horizontalArrangement=Arrangement.spacedBy(T.small)){
-                            FilterChip(!advanced,{advanced=false;prefs.edit().putBoolean("advanced",false).apply()},label={Text("Basic")})
-                            FilterChip(advanced,{advanced=true;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced")})
+                            FilterChip(!advanced,{advanced=false;selectedGroup=null;prefs.edit().putBoolean("advanced",false).apply()},label={Text("General")})
+                            FilterChip(advanced,{advanced=true;selectedGroup=null;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced tools")})
                         }}
-                        if(query.isBlank()) item {
-                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                                Text(if(advanced) "Advanced tools and integrations" else if(showAllBasic) "All everyday settings" else "Essentials",
-                                    Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                                if(!advanced) TextButton(onClick={showAllBasic=!showAllBasic},modifier=Modifier.testTag("settings-toggle-all")) {
-                                    Text(if(showAllBasic) "Show essentials" else "Browse all")
+                        if(query.isBlank() && group==null) item {
+                            OutlinedButton(onClick={navigate("dashboards")},modifier=Modifier.fillMaxWidth().testTag("open-dashboards")) {
+                                Icon(Icons.Outlined.Dashboard,null);Spacer(Modifier.width(T.small));Text("Activity overview")
+                            }
+                            Text(if(advanced) "Choose a topic. Detailed controls stay inside each section." else "Your everyday preferences",
+                                style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if(query.isBlank() && advanced && group==null) {
+                            items(SettingsDestinations.groups(true),key={"group:${it.name}"}) {category ->
+                                Surface(onClick={selectedGroup=category.name},modifier=Modifier.fillMaxWidth().testTag("settings-group-${category.name}"),
+                                    shape=RoundedCornerShape(12.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) {
+                                    ListItem(headlineContent={Text(category.title,color=MaterialTheme.colorScheme.onSurface,fontWeight=FontWeight.Medium)},supportingContent={Text(category.description)},
+                                        trailingContent={Icon(Icons.Default.ChevronRight,null)},
+                                        colors=ListItemDefaults.colors(containerColor=Color.Transparent))
                                 }
                             }
-                        }
-                        val results=if(query.isBlank() && !advanced && !showAllBasic) {
-                            val essentials=setOf("models","device-dashboard","agents","securityprivacy","appearance","permissions")
-                            SettingsDestinations.all.filter { it.id in essentials }
-                        } else SettingsDestinations.search(query,advanced)
-                        if(results.isEmpty()) item{Text("No matching settings. Search covers Basic and Advanced.")}
-                        items(results,key={it.id}){entry -> Card(shape=RoundedCornerShape(20.dp),onClick={navigate(entry.id)},modifier=Modifier.fillMaxWidth(),
-                            colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow)){
-                            Row(Modifier.padding(horizontal=12.dp,vertical=10.dp),horizontalArrangement=Arrangement.spacedBy(T.medium),verticalAlignment=Alignment.CenterVertically){
-                                SettingsIconTile(entry.id)
-                                Column(Modifier.weight(1f)){Text(entry.title,style=MaterialTheme.typography.titleMedium);Text(entry.description,
-                                    style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-                                Icon(Icons.Default.ChevronRight,null)
+                        } else {
+                            if(query.isBlank() && group!=null) item {
+                                TextButton(onClick={selectedGroup=null},modifier=Modifier.testTag("settings-all-categories")) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack,null);Spacer(Modifier.width(T.small));Text("All categories")
+                                }
+                                Text(group.title,style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.primary)
+                                Text(group.description,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        }}
+                            // A search always spans both tabs and all categories, even within a category.
+                            val results=SettingsDestinations.search(query,advanced).filter{query.isNotBlank() || group==null || it.group==group}
+                            if(query.isNotBlank() && results.isNotEmpty()) item {Text("${results.size} results across all settings",style=MaterialTheme.typography.labelLarge)}
+                            if(results.isEmpty()) item{Text("No matching settings. Search covers Basic and Advanced.")}
+                            SettingsGroup.entries.forEach {category ->
+                                val entries=results.filter{it.group==category}
+                                if(entries.isNotEmpty()) {
+                                    if(group==null || query.isNotBlank()) item(key="heading:${category.name}") {
+                                        HorizontalDivider(Modifier.padding(top=T.medium),color=MaterialTheme.colorScheme.outlineVariant)
+                                        Text(category.title,Modifier.padding(top=T.small),style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    items(entries,key={it.id}) {entry ->
+                                        if(query.isNotBlank()) {
+                                            val ordered=SettingsGroup.entries.flatMap{section->results.filter{it.group==section}}
+                                            val found=com.meshlit.search.textSearchMatches("${entry.title}\n${entry.description}\n${entry.keywords}",query,words=true,maxPositions=1)
+                                            Text("${ordered.indexOf(entry)+1} / ${results.size} · ${found.total} matches · ${found.location()}",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                                        }
+                                        SettingsDestinationRow(entry,expanded=query.isNotBlank()){navigate(entry.id)}
+                                    }
+                                }
+                            }
+                            if(query.isBlank() && group==null && !advanced) item {SettingsQuickAccess(::navigate)}
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable private fun SettingsDestinationRow(entry:SettingsDestination,expanded:Boolean=false,onSelect:()->Unit) {
+    var details by remember(entry.id){mutableStateOf(false)}
+    val colors=MaterialTheme.colorScheme
+    Surface(modifier=Modifier.fillMaxWidth(),
+        color=colors.background) {
+        ListItem(modifier=Modifier.testTag("settings-entry-${entry.id}").combinedClickable(role=androidx.compose.ui.semantics.Role.Button,
+            onClickLabel="Open ${entry.title}",onLongClickLabel="Show details",onLongClick={details=true},onClick=onSelect),
+            leadingContent={SettingsIconTile(entry.id)},
+            headlineContent={Text(entry.title,color=colors.onSurface,style=MaterialTheme.typography.bodyLarge)},
+            supportingContent=if(expanded) {{Text(entry.description,color=colors.onSurfaceVariant)}} else null,
+            trailingContent={Icon(Icons.Default.ChevronRight,null)},colors=ListItemDefaults.colors(containerColor=Color.Transparent))
+    }
+    if(details)AlertDialog(onDismissRequest={details=false},title={Text(entry.title)},text={Text(entry.description)},
+        confirmButton={TextButton(onClick={details=false;onSelect()}){Text("Open")}},
+        dismissButton={TextButton(onClick={details=false}){Text("Close")}})
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -284,6 +343,10 @@ import kotlinx.coroutines.*
 
 /** The same icon vocabulary is used in settings and the app drawer. */
 internal fun settingsIcon(id:String)=when(id){
+    "dashboards"->Icons.Outlined.Dashboard
+    "usage"->Icons.Outlined.Insights
+    "vpn"->Icons.Outlined.VpnLock
+    "router"->Icons.Outlined.Route
     "chat"->Icons.Outlined.ChatBubbleOutline
     "voice","gibberlink"->Icons.Outlined.GraphicEq
     "vision"->Icons.Outlined.CameraAlt
@@ -295,7 +358,7 @@ internal fun settingsIcon(id:String)=when(id){
     "resources"->Icons.Outlined.Memory
     "menu-layout"->Icons.Outlined.DashboardCustomize
     "appearance"->Icons.Outlined.Palette
-    "models","router","acceleration","colibri"->Icons.Outlined.Storage
+    "models","acceleration","colibri"->Icons.Outlined.Storage
     "cloud","providers"->Icons.Outlined.Cloud
     "network","peers","ssh","firewall"->Icons.Outlined.Wifi
     "agents","openclaw","automation"->Icons.Outlined.SmartToy

@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-06",
+  "removed": [
+    {
+      "path": "/Users/code/Documents/Codex/output/Meshlit Studio 2026-11-05 QA",
+      "allocatedBytesReportedBefore": 2459234304
+    },
+    {
+      "path": "/Users/code/Documents/Codex/output/Meshlit Studio 2026-11-06 Chat First QA",
+      "allocatedBytesReportedBefore": 2459254784
+    },
+    {
+      "path": "/Users/code/Documents/Codex/output/Meshlit Studio 2026-11-06 Chat and Workspace QA",
+      "allocatedBytesReportedBefore": 2459271168
+    },
+    {
+      "path": "/Users/code/Documents/Codex/output/Meshlit Studio 2026-11-06 Main Window QA",
+      "allocatedBytesReportedBefore": 2459320320
+    },
+    {
+      "path": "/Users/code/Documents/Codex/output/Meshlit-Studio-2026-11-05-Intel-QA.dmg",
+      "allocatedBytesReportedBefore": 1812332544
+    },
+    {
+      "path": "/Users/code/Documents/Codex/meshlit-model-cache/Qwen3.5-4B-Q4_K_M.gguf.partial",
+      "allocatedBytesReportedBefore": 117878784
+    },
+    {
+      "path": "/Users/code/Documents/Codex/meshlit-unified/app/build/intermediates",
+      "allocatedBytesReportedBefore": 6955986944,
+      "reason": "Regenerable Android intermediates; final APKs/reports retained; no Gradle process running"
+    }
+  ],
+  "freeBytesBefore": 93609910272,
+  "freeBytesAfter": 93722726400,
+  "observedFreeSpaceGainBytes": 112816128,
+  "note": "APFS clones/shared blocks mean directory sizes do not equal reclaimed space. Kept current UI Polish QA, Chat Settings rollback, Hosts symlink target, verified model cache, active experiments, all source and user profiles."
+}
