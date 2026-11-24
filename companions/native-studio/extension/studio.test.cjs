@@ -145,3 +145,7 @@ test('Hugging Face sign-in validates before saving and keeps credentials inside 
     assert.match(nextPage('</api/models?cursor=abc>; rel="next"'),/^https:\/\/huggingface.co\/api\/models/);
     assert.equal(modelRows([{id:'community/weights',tags:['base_model:quantized:Qwen/test']}])[0].publisher,'Qwen');
 });
+
+test('wallet view loads during native Studio activation',()=>{
+    assert.equal(typeof require('./wallet-view.cjs').walletView,'function');
+});
