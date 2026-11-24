@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -232,8 +234,11 @@ private val remoteBlue=Color(0xFF4B9BFF)
     } else {sweepState=remember{mutableFloatStateOf(0f)};pingState=remember{mutableFloatStateOf(0f)}}
     var canvasSize by remember{mutableStateOf(IntSize.Zero)}
     val points=remember(markers,canvasSize){markers.indices.map{radarMarkerPoint(markers,it,canvasSize.width.toFloat(),canvasSize.height.toFloat())}}
-    val labelPaint=remember{android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{color=android.graphics.Color.WHITE}}
-    val insetPaint=remember{android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{color=android.graphics.Color.LTGRAY;textAlign=android.graphics.Paint.Align.CENTER}}
+    val labelColor=MaterialTheme.colorScheme.onSurface
+    val inset=MaterialTheme.colorScheme.surfaceContainerHighest
+    val insetLabel=MaterialTheme.colorScheme.onSurface
+    val labelPaint=remember(labelColor){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{color=labelColor.toArgb()}}
+    val insetPaint=remember(insetLabel){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{color=insetLabel.toArgb();textAlign=android.graphics.Paint.Align.CENTER}}
     Canvas(Modifier.fillMaxWidth().height(300.dp).onSizeChanged{canvasSize=it}.testTag("radar-topology").pointerInput(points) {
         detectTapGestures { tap ->
             val hit=markers.indices.map { index ->
@@ -250,11 +255,10 @@ private val remoteBlue=Color(0xFF4B9BFF)
         if(scanning && animateScan) {
             drawCircle(primary.copy(alpha=0.24f*(1f-ping)),radius*(0.08f+0.92f*ping),center,
                 style=Stroke(2.dp.toPx()))
-            // Draw a stepped alpha wedge so the sweep remains legible on dark
-            // and light palettes without implying physical bearing or range.
-            repeat(18) { step ->
-                drawArc(primary.copy(alpha=0.025f+step*0.017f),sweep-63f+step*3.5f,3.7f,true,
-                    topLeft=Offset(center.x-radius,center.y-radius),size=Size(radius*2,radius*2))
+            rotate(sweep,center) {
+                val trail=androidx.compose.ui.graphics.Brush.sweepGradient(
+                    0f to Color.Transparent,0.78f to Color.Transparent,0.995f to primary.copy(alpha=0.45f),1f to Color.Transparent,center=center)
+                drawCircle(trail,radius,center)
             }
             val radians=Math.toRadians(sweep.toDouble())
             drawLine(primary,center,
@@ -265,7 +269,7 @@ private val remoteBlue=Color(0xFF4B9BFF)
         if(markers.any { it.bearingDegrees==null || it.rangeFraction==null }) {
             // A labeled inset keeps unlocated devices within the radar while
             // making clear that their grid coordinates are not bearings or ranges.
-            drawRoundRect(Color(0xFF172027).copy(alpha=0.95f),
+            drawRoundRect(inset,
                 topLeft=Offset(center.x-radius*0.5f,size.height*0.56f),
                 size=Size(radius,size.height*0.28f),cornerRadius=CornerRadius(10.dp.toPx()))
             insetPaint.textSize=10.dp.toPx()

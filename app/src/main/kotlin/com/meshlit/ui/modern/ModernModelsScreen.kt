@@ -76,7 +76,6 @@ fun ModernModelsScreen(onBack:(()->Unit)?=null) {
                 Text(stringResource(R.string.modern_resources,formatBytes(memory),formatBytes(storage)),style=MaterialTheme.typography.bodySmall,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            item { ModelRecommendationPanel(library,onError={message=it}) }
             item {
                 Row(horizontalArrangement=Arrangement.spacedBy(T.small)) {
                     OutlinedButton(onClick={ importer.launch(arrayOf("*/*")) },modifier=Modifier.weight(1f)) {
@@ -96,6 +95,7 @@ fun ModernModelsScreen(onBack:(()->Unit)?=null) {
                 }
             }
             item {HuggingFacePanel(library)}
+            item { ModelRecommendationPanel(library,onError={message=it}) }
             item {
                 OutlinedTextField(search,{search=it},Modifier.fillMaxWidth(),singleLine=true,
                     placeholder={Text(stringResource(R.string.modern_search_models))},leadingIcon={Icon(Icons.Default.Search,null)},shape=MaterialTheme.shapes.large)

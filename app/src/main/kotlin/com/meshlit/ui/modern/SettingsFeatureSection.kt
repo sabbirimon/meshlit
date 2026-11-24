@@ -10,9 +10,9 @@ import androidx.compose.ui.unit.dp
 
 /** A feature boundary, not a separate container around every control. Titles wrap at large font sizes. */
 @Composable internal fun SettingsFeatureSection(title:String,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
-    Surface(modifier.fillMaxWidth().padding(vertical=4.dp),shape=RoundedCornerShape(12.dp),
+    Surface(modifier.fillMaxWidth().padding(vertical=4.dp),shape=RoundedCornerShape(20.dp),
         color=MaterialTheme.colorScheme.surfaceContainerLow,border=BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text(title,style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.primary)
             HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
             content()

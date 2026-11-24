@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-11-06",
+  "updated": "2026-11-24",
   "operations": [
     "SETTINGS_READ",
     "SETTINGS_PATCH",
@@ -39,9 +39,20 @@
     "CLOUD_EXECUTE",
     "BROWSER_STATUS",
     "BROWSER_AUTONOMOUS_RUN",
-    "BROWSER_STOP"
+    "BROWSER_STOP",
+    "MOLTBOOK_READ"
   ],
   "features": [
+    {
+      "id": "moltbook-feed",
+      "title": "Public Moltbook posts for readers and authorized agents",
+      "status": "implemented",
+      "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/modern/MoltbookScreen.kt",
+        "app/src/main/kotlin/com/meshlit/control/AgentBackend.kt"
+      ],
+      "authority": ["CLOUD"]
+    },
     {
       "id": "local-inference",
       "title": "Local model engine",

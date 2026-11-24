@@ -427,14 +427,12 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
         if(messages.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth()) {
             if(!keyboardVisible) Column(Modifier.align(Alignment.Center).padding(horizontal=T.section),
                 horizontalAlignment=Alignment.CenterHorizontally) {
-                Icon(Icons.Default.AutoAwesome,null,Modifier.size(32.dp),tint=MaterialTheme.colorScheme.primary)
+                Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_meshlit_notification),null,Modifier.size(48.dp),tint=MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(T.large))
                 Text(stringResource(R.string.modern_greeting),style=MaterialTheme.typography.headlineSmall,
                     textAlign=TextAlign.Center,modifier=Modifier.widthIn(max=280.dp))
                 Spacer(Modifier.height(20.dp))
                 if(hasChatModel) {
-                    Text("Ask a question, make a plan, or work through an idea.",style=MaterialTheme.typography.bodyMedium,color=colors.onSurfaceVariant,textAlign=TextAlign.Center)
-                    Spacer(Modifier.height(T.large))
                     FlowRow(horizontalArrangement=Arrangement.spacedBy(T.small),verticalArrangement=Arrangement.spacedBy(T.tiny)) {
                         SuggestionChip(onClick={editDraft("Help me understand ");composerFocus.requestFocus();keyboard?.show()},label={Text("Explain")})
                         SuggestionChip(onClick={editDraft("Help me plan ");composerFocus.requestFocus();keyboard?.show()},label={Text("Plan")})
@@ -516,7 +514,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
         state.error?.let { Box(Modifier.padding(horizontal=T.large)) {ErrorCard(it){controller.clearError()}} }
         if(runtime is CoordinatorState.Error) Box(Modifier.padding(horizontal=T.large)) {ErrorCard(runtime.message,onModels)}
         Column(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=6.dp)) {
-            Surface(shape=RoundedCornerShape(24.dp),color=colors.surfaceContainerLow,
+            Surface(shape=RoundedCornerShape(28.dp),color=colors.surfaceContainer,
                 border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant.copy(alpha=0.65f))) {
                 Column(Modifier.fillMaxWidth().padding(6.dp)) {
                     TextField(value=draft,onValueChange={editDraft(it.take(12000))},enabled=!state.running,

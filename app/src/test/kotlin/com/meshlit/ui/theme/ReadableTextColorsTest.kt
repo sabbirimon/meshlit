@@ -18,7 +18,7 @@ class ReadableTextColorsTest {
     @Test fun textRemainsReadableAcrossCuratedThemesAndAccents() {
         for(base in BasePalette.entries)for(accent in AccentHue.entries) {
             val c=buildColorScheme(MeshlitThemeConfig.Default.copy(basePalette=base,accentHue=accent))
-            for((ink,paper) in listOf(c.onSurface to c.surface,c.onBackground to c.background,c.onPrimary to c.primary,c.onSecondary to c.secondary,c.onTertiary to c.tertiary))
+            for((ink,paper) in listOf(c.primary to c.surface,c.secondary to c.surface,c.tertiary to c.surface,c.onSurface to c.surface,c.onBackground to c.background,c.onPrimary to c.primary,c.onSecondary to c.secondary,c.onTertiary to c.tertiary))
                 assertTrue("Readable text for $base/$accent",textContrast(ink,paper)>=4.5f)
         }
     }

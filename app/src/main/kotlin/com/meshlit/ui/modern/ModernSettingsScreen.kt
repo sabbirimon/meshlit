@@ -5,6 +5,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -229,16 +230,23 @@ import kotlinx.coroutines.*
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable private fun SettingsDestinationRow(entry:SettingsDestination,expanded:Boolean=false,onSelect:()->Unit) {
-    Surface(onClick=onSelect,modifier=Modifier.fillMaxWidth().testTag("settings-entry-${entry.id}"),
-        shape=RoundedCornerShape(12.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) {
-        ListItem(headlineContent={Text(entry.title,color=MaterialTheme.colorScheme.onSurface,style=MaterialTheme.typography.bodyLarge,maxLines=if(expanded)Int.MAX_VALUE else 2,overflow=TextOverflow.Ellipsis)},
-            supportingContent={Column {
-                Text(entry.description,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall,maxLines=if(expanded)Int.MAX_VALUE else 2,overflow=TextOverflow.Ellipsis)
-                if(expanded && entry.keywords.isNotBlank())Text("Keywords: ${entry.keywords}",style=MaterialTheme.typography.labelSmall)
-            }},
+    var details by remember(entry.id){mutableStateOf(false)}
+    val colors=MaterialTheme.colorScheme
+    Surface(modifier=Modifier.fillMaxWidth(),
+        shape=RoundedCornerShape(18.dp),color=colors.surfaceContainerLow,
+        border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant)) {
+        ListItem(modifier=Modifier.testTag("settings-entry-${entry.id}").combinedClickable(role=androidx.compose.ui.semantics.Role.Button,
+            onClickLabel="Open ${entry.title}",onLongClickLabel="Show details",onLongClick={details=true},onClick=onSelect),
+            leadingContent={SettingsIconTile(entry.id)},
+            headlineContent={Text(entry.title,color=colors.onSurface,style=MaterialTheme.typography.titleSmall)},
+            supportingContent=if(expanded) {{Text(entry.description,color=colors.onSurfaceVariant)}} else null,
             trailingContent={Icon(Icons.Default.ChevronRight,null)},colors=ListItemDefaults.colors(containerColor=Color.Transparent))
     }
+    if(details)AlertDialog(onDismissRequest={details=false},title={Text(entry.title)},text={Text(entry.description)},
+        confirmButton={TextButton(onClick={details=false;onSelect()}){Text("Open")}},
+        dismissButton={TextButton(onClick={details=false}){Text("Close")}})
 }
 
 @OptIn(ExperimentalLayoutApi::class)

@@ -29,8 +29,8 @@ internal fun WorkspaceDock(selected:String,onSelect:(String)->Unit) {
         Triple("agents","Agents",Icons.Outlined.SmartToy),
         Triple("settings","Settings",Icons.Outlined.Settings),
     ).filter{com.meshlit.BuildProfile.routeAllowed(it.first)}
-    Surface(Modifier.fillMaxWidth().testTag("workspace-dock"),color=MaterialTheme.colorScheme.surfaceContainerLow) {
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=4.dp).selectableGroup()) {
+    Surface(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=10.dp,vertical=4.dp).testTag("workspace-dock"),shape=RoundedCornerShape(24.dp),border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),color=MaterialTheme.colorScheme.surfaceContainerLow) {
+        Row(Modifier.fillMaxWidth().padding(horizontal=4.dp).selectableGroup()) {
             items.forEach{(id,label,icon)->
                 val active=selected==id
                 Column(Modifier.weight(1f).heightIn(min=52.dp).selectable(active,role=Role.Tab,onClick={onSelect(id)}).testTag("dock-$id")

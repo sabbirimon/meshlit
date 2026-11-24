@@ -46,12 +46,12 @@ import com.meshlit.ui.theme.ChatTokens as T
     if(page=="meshchat"){PeerChatScreen{page="radar"};return}
     if(page=="logs"){ModernLogsScreen(onBack={page="radar"});return}
     if(page=="forward"){com.meshlit.ui.screens.settings.ForwardingPeersScreen({page=null});return}
-    Scaffold(topBar={TopAppBar(title={Text("Network and pairing")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
+    Scaffold(topBar={CenterAlignedTopAppBar(title={Text("Network and pairing")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max=T.contentMax),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
             item{Text("Connect devices",style=MaterialTheme.typography.headlineSmall)
-                Text("Choose a path for another phone, a remote cluster, or a browser device.")}
-            item { NetworkMethod("Direct device pairing · local or Internet",
-                "Discover devices on the same network, or add a verified HTTPS endpoint or pairing link for a remote device. A VPN can make remote devices reachable privately.") {
+                Text("Pair a device to share models. Join a cluster to contribute compute.")}
+            item { NetworkMethod("Pair a Meshlit device",
+                "Find a device on Wi-Fi, or enter its pairing link. Check the fingerprint before you connect.") {
                 Button({if(onDevices!=null) onDevices() else page="app"},Modifier.fillMaxWidth()) { Text("Open Devices and pair") }
                 OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))},modifier=Modifier.fillMaxWidth()) {
                     Text("Open Android VPN settings")

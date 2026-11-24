@@ -1,6 +1,6 @@
 {
   "title": "Meshlit illustrated user guide",
-  "date": "2026-11-06",
+  "date": "2026-11-24",
   "subtitle": "Android and Studio: from your first reply to approved connected devices",
   "chapters": [
     {
@@ -74,6 +74,10 @@
         [
           "Start independently",
           "New chat separates the next conversation. Changing a model does not make previous output or tool claims trustworthy."
+        ],
+        [
+          "Read reply statistics",
+          "Desktop replies show elapsed time, token counts when reported, and decode or end-to-end throughput. Find searches the visible conversation. Use the plus menu to export it."
         ]
       ],
       "success": "Your reply and composer stay visible as text arrives. Stop ends the active request. Missing native token counts remain unavailable.",
@@ -83,7 +87,8 @@
       ],
       "refs": [
         "USER_GUIDE.md#reading-replies-and-managing-tokens",
-        "CHAT_EFFORT_AND_APPROVALS_2026-11-03.md"
+        "CHAT_EFFORT_AND_APPROVALS_2026-11-03.md",
+        "GUI_WORKFLOWS.md"
       ]
     },
     {
@@ -121,11 +126,16 @@
         [
           "Free resources",
           "Unload before switching heavy workloads. Delete only models you no longer need; a configuration export does not contain their weights."
+        ],
+        [
+          "Browse as a guest or sign in",
+          "Search public models as a guest. For gated or private downloads select Sign in with Hugging Face and approve access in the browser. Use the import control for weights already on your device."
         ]
       ],
       "success": "The runtime accepts the exact installed file and answers a prompt. An unsupported architecture or failed validation is shown as a failure, not a ready state.",
       "refs": [
-        "USER_GUIDE.md#local-models-downloads-and-import"
+        "USER_GUIDE.md#local-models-downloads-and-import",
+        "GUI_WORKFLOWS.md"
       ],
       "notes": [
         "After the owner uninstalled and reinstalled the app on November 3, the current phone uses the bundled Qwen2.5 0.5B model. The Qwen3 capture is historical; uninstalling removes private settings, chats and separately downloaded models."
@@ -162,6 +172,10 @@
         [
           "Use project memory",
           "Save a deliberate project note, choose local/host recall permissions, and inspect Context preview before sending it to a model."
+        ],
+        [
+          "Inspect connected platforms",
+          "Cloud providers opens AWS, Google Cloud and Azure inventory or their official consoles. Tools includes a read-only Moltbook feed."
         ]
       ],
       "success": "The selected model responds, and only chosen tools appear in the chat. Reviewed changes have observable outcomes.",
@@ -171,7 +185,8 @@
       ],
       "refs": [
         "USER_MANUAL.md#start-a-desktop-conversation",
-        "layer-pipeline-and-recovery.md#use-a-coordinator-from-studio"
+        "layer-pipeline-and-recovery.md#use-a-coordinator-from-studio",
+        "GUI_WORKFLOWS.md"
       ]
     },
     {
@@ -205,11 +220,16 @@
         [
           "Check persistence",
           "Return to the page after saving. Runtime options may require reload; permissions may require the operating system's own confirmation."
+        ],
+        [
+          "Inspect a shortcut",
+          "On Android, tap a settings icon and label to open the page, or long-press the row to read details. Advanced tools groups the specialist settings."
         ]
       ],
       "success": "The named destination opens and its saved state is reflected after revisiting. Unavailable backends stay visibly unavailable.",
       "refs": [
-        "USER_MANUAL.md#find-settings-without-guessing"
+        "USER_MANUAL.md#find-settings-without-guessing",
+        "GUI_WORKFLOWS.md"
       ]
     },
     {
@@ -429,12 +449,17 @@
         [
           "Keep sensitive steps human",
           "Review new identities, permission expansion, login/credential handling and destructive actions in their proper owner-controlled flows."
+        ],
+        [
+          "Open the agent workspace",
+          "Profiles, teams and the registry are grouped together. More tools opens logs, MCP connections and phone controls. Review delegates separately."
         ]
       ],
       "success": "The intended tool executes under the intended scope and returns an observable result. A refusal or missing backend is reported honestly.",
       "refs": [
         "AGENT_CHAT_CHECKPOINT_2026-10-31.md",
-        "USER_MANUAL.md#android-agent-controls-and-provider-dashboard"
+        "USER_MANUAL.md#android-agent-controls-and-provider-dashboard",
+        "GUI_WORKFLOWS.md"
       ],
       "notes": [
         "Delegated Android UI Click/Type cannot operate Meshlit's own app. Change Meshlit permissions yourself; an all-supported-apps grant does not allow an agent to grant itself more access."

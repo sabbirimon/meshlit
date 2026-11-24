@@ -127,14 +127,27 @@ import kotlinx.serialization.json.Json
     val tools=remember(revision){registry.list()}
     val agentList=androidx.compose.foundation.lazy.rememberLazyListState()
     LazyColumn(state=agentList,modifier=Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item{TextButton(onClick=onBack){Text("Back to settings")};TextButton(onClick={onOpen("connected-capabilities")}){Text("Connected capabilities")};TextButton(onClick={onOpen("agent-catalog")}){Text("Agent role library")};TextButton(onClick={onOpen("agent-teams")}){Text("Agent teams")};Text("Agent management",style=MaterialTheme.typography.headlineSmall);Text("Saved permissions govern typed commands. Online access also needs opt-in on the selected provider profile. The built-in phone agent and optional OpenClaw gateway have separate controls.")
-            Column {
-                TextButton(onClick={onOpen("agent-registry")}){Text("Agent registry")}
-                TextButton(onClick={onOpen("agent-logs")}){Text("Agent logs")}
+        item {
+            Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick=onBack){Text("Back to settings")}
+                StatusHeroCard("Agents","${savedAgents.size} profiles · ${jobs.count { !it.terminal }} running")
             }
-            OutlinedButton(onClick={onOpen("mcp-catalog")}){Text("MCP connections and tools")}}
-        item{OutlinedButton(onClick={onOpen("bot-connections")}){Text("Bots and connections")};OutlinedButton(onClick={onOpen("openclaw")}){Text("Phone autonomy and background node")}
-            Button(onClick={onOpen("operations")},colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("Emergency stop all")}}
+        }
+        item {
+            SettingsFeatureSection("Workspace") {
+                val destinations=listOf("agent-catalog" to "Agent role library","agent-teams" to "Agent teams",
+                    "agent-registry" to "Agent registry","agent-logs" to "Agent logs","connected-capabilities" to "Connected capabilities",
+                    "mcp-catalog" to "MCP connections and tools","bot-connections" to "Bots and connections","openclaw" to "Phone autonomy and background node")
+                var expanded by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+                destinations.take(if(expanded) destinations.size else 3).forEach { (id,label) ->
+                    OutlinedButton(onClick={onOpen(id)},modifier=Modifier.fillMaxWidth()) { Text(label) }
+                }
+                TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Show less" else "More tools")}
+                OutlinedButton(onClick={onOpen("operations")},modifier=Modifier.fillMaxWidth()){
+                    Text("Emergency stop all",color=MaterialTheme.colorScheme.error)
+                }
+            }
+        }
         item { AgentAccessPanel(onOpen,onChanged={revision++}) }
         item { SettingsFeatureSection("Task presets") {
             Text("General assistant, Researcher, Writer, Planner, Phone assistant and Code reviewer. Choose a model below, then add the missing presets. They start off; existing profiles and edits are preserved.")
@@ -150,7 +163,7 @@ import kotlinx.serialization.json.Json
             if(selectedModel.isBlank()) Text("Choose a model first. Load a model in Models if the list is empty.")
             Text("Presets are named instructions, not background workers or permission grants. Enable a profile below, or choose a task preset directly in Chat → Tools.")
         } }
-        item { Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        item { OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text(if(editingAgent==null)"Create a bot profile" else "Edit bot profile",style=MaterialTheme.typography.titleMedium)
             Text("A saved agent is a named task template. It starts disabled and has no tools, device access or network grant. Choose a loaded local model or a separately agent-approved online profile; enable MODELS delegation to run it.",style=MaterialTheme.typography.bodySmall)
             OutlinedTextField(newAgentName,{newAgentName=it.take(48)},Modifier.fillMaxWidth(),label={Text("Agent name")},singleLine=true)
@@ -172,7 +185,7 @@ import kotlinx.serialization.json.Json
             }
             if(agentStoreError.isNotBlank()) Text(agentStoreError,color=MaterialTheme.colorScheme.error)
         } } }
-        items(savedAgents,key={it.id}) { profile -> Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        items(savedAgents,key={it.id}) { profile -> OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text(profile.name,style=MaterialTheme.typography.titleMedium)
             Text(choices.firstOrNull{it.first==profile.modelId}?.second ?: "Model unavailable · select a new agent model",style=MaterialTheme.typography.bodySmall)
             if(profile.instruction.isNotBlank()) Text("Instruction: ${profile.instruction.take(180)}",style=MaterialTheme.typography.bodySmall)
@@ -192,7 +205,7 @@ import kotlinx.serialization.json.Json
             }
         } } }
         items(AgentBackend.Scope.entries.filter{it!=AgentBackend.Scope.MODELS}){permission->Row{Text(permission.name,Modifier.weight(1f));Switch(backend.delegated(permission),{backend.setDelegated(permission,it);revision++})}}
-        item { Card { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        item { OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Parallel agent jobs",style=MaterialTheme.typography.titleMedium)
             Text("Run 2–4 independent prompts as separate typed jobs. At most two execute at once; others wait. One loaded phone model serializes its own inference, while separately approved online profiles may run concurrently. Each job can be cancelled independently.",style=MaterialTheme.typography.bodySmall)
             Text("Selected model: $selectedLabel",style=MaterialTheme.typography.bodySmall)

@@ -6,6 +6,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.meshlit.core.mcp.control.CodeWorkspace
@@ -25,6 +28,10 @@ import kotlinx.serialization.json.JsonPrimitive
     var files by remember{mutableStateOf<List<String>>(emptyList())};var name by remember{mutableStateOf("main.kt")}
     var text by remember{mutableStateOf("fun main() {\n    println(\"Hello, Meshlit\")\n}\n")};var hash by remember{mutableStateOf<String?>(null)}
     var message by remember{mutableStateOf<String?>(null)};var web by remember{mutableStateOf<WebView?>(null)};var ready by remember{mutableStateOf(false)}
+    var basicEditor by remember { mutableStateOf(false) }
+    LaunchedEffect(ready) {
+        if(!ready) { delay(4000);basicEditor=true }
+    }
     var newFile by remember{mutableStateOf(false)};var newName by remember{mutableStateOf("main.py")}
     fun refresh(){scope.launch{files=withContext(Dispatchers.IO){workspace.list().map{it.name}}}}
     LaunchedEffect(workspace){refresh()}
@@ -33,19 +40,23 @@ import kotlinx.serialization.json.JsonPrimitive
         val result=withContext(Dispatchers.IO){workspace.write(name,value,hash)};hash=result.sha256;text=value;message="Saved $name";refresh()
     }catch(e:Exception){message=e.message}}})
     DisposableEffect(Unit){onDispose{web?.removeJavascriptInterface("NativeEditor");web?.destroy()}}
-    Scaffold(topBar={TopAppBar(title={Text("Code workspace")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
+    Scaffold(topBar={CenterAlignedTopAppBar(title={Text("Code workspace")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         Column(Modifier.fillMaxSize().padding(padding)){
             Row(Modifier.padding(T.small),horizontalArrangement=Arrangement.spacedBy(T.small)){
-                Button(onClick={web?.evaluateJavascript("saveEditor()",null)}){Text("Save")}
+                Button(enabled=basicEditor || ready,onClick={if(basicEditor)saveHandler(text) else web?.evaluateJavascript("saveEditor()",null)}){Text("Save")}
                 OutlinedButton(onClick={newFile=true}){Text("New")}
                 var expanded by remember{mutableStateOf(false)}
                 Box{OutlinedButton(onClick={expanded=true}){Text("Files (${files.size})")};DropdownMenu(expanded,{expanded=false}){files.forEach{file ->DropdownMenuItem(text={Text(file)},onClick={expanded=false;scope.launch{try{val item=withContext(Dispatchers.IO){workspace.read(file)};name=file;text=item.text.orEmpty();hash=item.sha256}catch(e:Exception){message=e.message}}})}}}
             }
             if(!com.meshlit.BuildProfile.coreCandidate) TextButton(onClick={showHarness=true}){Text("DeepSeek Harness · host workspace")}
             Text(name,Modifier.padding(horizontal=T.large),style=MaterialTheme.typography.titleSmall)
-            Text("Offline CodeMirror editor · Save before switching files · Compiling uses an optional external/Linux toolchain",Modifier.padding(horizontal=T.large),style=MaterialTheme.typography.bodySmall)
+            Text(if(basicEditor)"Plain text editor · Save before switching files" else "Save before switching files",Modifier.padding(horizontal=T.large),style=MaterialTheme.typography.bodySmall)
             message?.let{Text(it,Modifier.padding(T.small),color=MaterialTheme.colorScheme.primary)}
-            AndroidView(modifier=Modifier.weight(1f).fillMaxWidth(),factory={WebView(it).apply{
+            Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
+            if(basicEditor) {
+                OutlinedTextField(text,{text=it.take(1_048_576)},Modifier.fillMaxSize(),label={Text(name)})
+            } else {
+            AndroidView(modifier=Modifier.fillMaxSize().clipToBounds().alpha(if(ready)1f else 0f),factory={WebView(it).apply{
                 settings.javaScriptEnabled=true;settings.allowFileAccess=false;settings.allowContentAccess=false;settings.domStorageEnabled=false
                 settings.mixedContentMode=WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 webViewClient=object:WebViewClient(){
@@ -63,6 +74,9 @@ import kotlinx.serialization.json.JsonPrimitive
                 },"NativeEditor")
                 web=this;loadUrl("https://meshlit-editor.local/index.html")
             }})
+            if(!ready)CircularProgressIndicator(Modifier.align(Alignment.Center))
+            }
+            }
         }
     }
     if(newFile) AlertDialog(onDismissRequest={newFile=false},title={Text("New source file")},text={OutlinedTextField(newName,{newName=it},label={Text("Filename, e.g. main.kt")})},

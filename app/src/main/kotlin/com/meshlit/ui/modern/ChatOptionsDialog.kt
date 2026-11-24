@@ -192,6 +192,9 @@ import kotlinx.coroutines.withContext
             OutlinedButton(onClick={options=options.localRoute()},modifier=Modifier.testTag("chat-tools-use-local")) {Text("Use local model for tools")}
             Text("Save applies the route change. Load a capable local model before sending; switching here does not load one or grant tool access.",style=MaterialTheme.typography.bodySmall)
         } else {
+            val selectedGroups=ChatToolGroup.entries.filter { it.selected(options) }
+            if(selectedGroups.isNotEmpty())Text(selectedGroups.joinToString(" · ") { it.label },style=MaterialTheme.typography.titleSmall)
+            LinearProgressIndicator(progress={ (options.toolCount/10f).coerceIn(0f,1f) },modifier=Modifier.fillMaxWidth())
             Text("Selected tools: ${options.toolCount}/10. Combine groups as needed; each action still requires its own saved grant.",style=MaterialTheme.typography.bodySmall,color=if(options.toolCount>10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
             ChatToolSwitch(ChatToolGroup.MEMORY,options){options=it}
             Text("Requires saved agent management in Memory and personality. Agents can manage switches and facts; recall is applied only to on-device chat.")
