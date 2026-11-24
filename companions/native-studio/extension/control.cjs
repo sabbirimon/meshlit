@@ -17,10 +17,10 @@ function helper(root) {
         child.stdin.write(JSON.stringify({...fields,id})+'\n');
     });},stop(){child.kill();lines.close();}};
 }
-function register(vscode,context,root) {
+function register(vscode,context,root,stopAutopilot=()=>{}) {
     let session;
     const stop=()=>{session?.stop();session=undefined;};
-    context.subscriptions.push({dispose:stop},vscode.commands.registerCommand('meshlit.studio.stopControl',stop));
+    context.subscriptions.push({dispose:stop},vscode.commands.registerCommand('meshlit.studio.stopControl',()=>{stop();stopAutopilot();}));
     return async function control(hint='') {
         stop();const current=helper(root);session=current;
         try {
