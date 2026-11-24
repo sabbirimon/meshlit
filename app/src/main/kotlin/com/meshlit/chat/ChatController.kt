@@ -225,6 +225,9 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         try {
             if(delegation!=null) require(!com.meshlit.BuildProfile.coreCandidate && delegation.request.provider.accepts(delegation.profile) && providers.profiles.value.contains(delegation.profile)){"Provider changed. Review the connection before sending."}
             configured.validate();com.meshlit.BuildProfile.requireChat(configured)
+            if(delegation==null && photo==null && androidAppTask(text)!=null) {
+                require(configured.phoneTools && configured.agentToolsActive){"For an Android app task, choose a local model, enable Phone tools in this chat, then select Agent."}
+            }
             hostedProfile=if(photo==null && configured.hostedAgentToolsActive) {
                 providers.profiles.value.singleOrNull{it.id==configured.onlineProfileId && it.hostedToolsAllowed(configured.hostedToolReviewId)}
                     ?: error("Hosted tool permission changed. Review the exact model in Online providers and this chat's settings.")

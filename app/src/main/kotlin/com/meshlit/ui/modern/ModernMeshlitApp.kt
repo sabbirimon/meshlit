@@ -535,7 +535,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
     }
     var reviewApp by remember(state.selectedId) { mutableStateOf<AppRequest?>(null) }
     reviewApp?.let { request ->
-        InstalledAppDialog(request, onDismiss = { reviewApp = null },
+        InstalledAppDialog(request, controller=controller, onInstall={reviewApp=null;onTool("permissions")}, onDismiss = { reviewApp = null },
             onDone = { reviewApp = null; editDraft("") },
             onControls = { reviewApp = null; editDraft(""); onTool("openclaw") },
             onChat = { reviewApp = null; if (controller.send(draft) != null) editDraft("") })
