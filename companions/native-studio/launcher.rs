@@ -110,7 +110,8 @@ fn launch() -> io::Result<()> {
         .arg("--extensions-dir")
         .arg(extensions)
         .arg("--new-window");
-    if home {
+    // The test terminal receives its compiler PATH from the launcher and starts its own shell.
+    if home || probe.is_some() {
         gui.arg("--force-disable-user-env");
     }
     if let Some(path) = probe {
