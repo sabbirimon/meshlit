@@ -112,7 +112,7 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
                 trailingContent={Switch(active,{if(it)confirmAuto=true else onUpdate(options.copy(approvalMode=com.meshlit.chat.ChatApprovalMode.ASK))},enabled=active || options.canSelectAgentMode)})
             for(pin in pins)ListItem(modifier=Modifier.clickable{menu=false;onCustomize(pin)},headlineContent={Text(pin.title)},supportingContent={Text("/tool "+pin.command)})
             ListItem(modifier=Modifier.clickable{menu=false;onCustomize(null)},headlineContent={Text("Customize composer")},leadingContent={Icon(Icons.Default.Tune,null)})
-            for((id,label) in listOf("models" to "Models and providers","files" to "Browse device files","devices" to "Devices and pairing","ssh" to "SSH connections","ide" to "Coding workspace","agents" to "Agent management","mcp-catalog" to "MCP tools","shirudo" to "Shirudo shields")){
+            for((id,label) in listOf("models" to "Models and providers","files" to "Browse device files","devices" to "Devices and pairing","ssh" to "SSH connections","ide" to "Coding workspace","agents" to "Agent management","mcp-catalog" to "MCP tools","gateway" to "Allow model clients","providers" to "External model providers","shirudo" to "Shirudo shields")){
                 ListItem(modifier=Modifier.clickable{menu=false;onTool(id)},headlineContent={Text(label)},leadingContent={Icon(com.meshlit.ui.phone.phoneIcon(id),null)})
             }
         }

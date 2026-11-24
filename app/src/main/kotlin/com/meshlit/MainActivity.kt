@@ -24,18 +24,37 @@ import com.meshlit.ui.theme.LocalMeshlitThemeConfig
 import com.meshlit.ui.theme.MeshlitTheme
 import com.meshlit.ui.v2.V2Root
 
+internal val LocalSharedPrompt = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.runtime.MutableState<String?>?> { null }
+
 class MainActivity:ComponentActivity() {
+    private val sharedPrompt = androidx.compose.runtime.mutableStateOf<String?>(null)
+
+    private fun readShare(source: android.content.Intent?) {
+        if (source?.action != android.content.Intent.ACTION_SEND || source.type != "text/plain") return
+        val value = source.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)
+        if (value != null && value.length in 1..12000 && value.isNotBlank()) sharedPrompt.value = value.toString()
+        else android.widget.Toast.makeText(this,"Share up to 12,000 characters of text.",android.widget.Toast.LENGTH_SHORT).show()
+    }
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        readShare(intent)
+    }
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("pendingSharedText", sharedPrompt.value)
+    }
     companion object { @Volatile var foregroundActive:Boolean=false; private set }
     override fun onResume(){super.onResume();foregroundActive=true;(application as MeshlitApplication).refreshDiscovery()}
     override fun onPause(){foregroundActive=false;(application as MeshlitApplication).refreshDiscovery();super.onPause()}
     private val log=logger("MainActivity")
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) readShare(intent) else sharedPrompt.value = savedInstanceState.getString("pendingSharedText")
         log.info("activity.create","MainActivity onCreate",mapOf("ui_version" to if(BuildConfig.USE_NEW_UI) "v2" else "v1"))
         setContent {
             val repository:com.meshlit.settings.SettingsRepository=koinInject()
             val config by repository.flow.collectAsState(initial=com.meshlit.ui.theme.MeshlitThemeConfig.Default)
-            CompositionLocalProvider(LocalMeshlitThemeConfig provides config) {
+            CompositionLocalProvider(LocalMeshlitThemeConfig provides config, LocalSharedPrompt provides sharedPrompt) {
                 MeshlitTheme {
                     ThemedAppWindow {
                         // Both flavors use the shared optional permission setup. A second

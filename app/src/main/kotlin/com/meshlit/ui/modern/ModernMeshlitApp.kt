@@ -243,6 +243,26 @@ fun ModernMeshlitApp() {
         tab=if(com.meshlit.BuildProfile.routeAllowed(id)) id else "about"
         scope.launch{drawer.close()}
     }
+    val incoming = com.meshlit.LocalSharedPrompt.current
+    incoming?.value?.let { text ->
+        val existing = chatDraftState.value
+        val next = listOf(existing, "Shared text\n$text").filter { it.isNotBlank() }.joinToString("\n\n")
+        AlertDialog(onDismissRequest = { incoming.value = null }, title = { Text("Add shared text to chat?") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text.take(480), maxLines=8, overflow=TextOverflow.Ellipsis)
+                Text(if (next.length > 12000) "Shorten the current draft or share a smaller excerpt." else "Review the draft and choose a model before sending.")
+            } },
+            confirmButton = { TextButton(enabled = !state.running && next.length <= 12000, onClick = {
+                scope.launch {
+                    chats.ready.await()
+                    chats.setDraft(chats.state.value.selectedId, next)
+                    chatDraftState.value = next
+                    incoming.value = null
+                    select("chat")
+                }
+            }) { Text("Add to draft") } },
+            dismissButton = { TextButton(onClick = { incoming.value = null }) { Text("Cancel") } })
+    }
     if(showChatOptions) ChatOptionsDialog(state,chats,onSearchSettings={showChatOptions=false;select("search")},
         onShardingSettings={showChatOptions=false;select("sharding")}){showChatOptions=false}
     if(showGlobalSearch) GlobalSearchDialog(state,onResult={result,query->
@@ -303,6 +323,11 @@ fun ModernMeshlitApp() {
                             DropdownMenuItem(text={Text("Models and imports")},onClick={chatMenu=false;select("models")})
                             DropdownMenuItem(text={Text("Search all chats and settings")},onClick={chatMenu=false;showGlobalSearch=true})
                             DropdownMenuItem(text={Text("Search this chat")},onClick={chatMenu=false;showChatSearch=true;chatSearchMessage=null})
+                            DropdownMenuItem(text={Text(if (options.showReplyActivity) "Hide reply activity" else "Show reply activity")}, enabled=!state.running, onClick={
+                                chatMenu=false
+                                runCatching { chats.setOptions(options.copy(showReplyActivity=!options.showReplyActivity)) }
+                                    .onFailure { chats.attachmentError(it.message ?: "Could not update reply activity") }
+                            })
                             DropdownMenuItem(text={Text("Conversation and token settings")},onClick={chatMenu=false;showChatOptions=true})
                             DropdownMenuItem(text={Text("Model details")},onClick={chatMenu=false;showCapabilities=true})
                             DropdownMenuItem(text={Text("Export current chat…")},enabled=state.current?.messages?.isNotEmpty()==true && !state.running,onClick={

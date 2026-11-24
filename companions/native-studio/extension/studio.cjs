@@ -652,6 +652,22 @@ async function activate(context) {
                     if(dest)await vscode.workspace.fs.writeFile(dest,Buffer.from(msg.text.slice(0,128000)));
                 }
                 if(msg.op==='models')go('models');
+                if(msg.op==='modelServer'){if(navigation.at(-1)!=='models')navigation.push('models');management.open(true);return;}
+                if(msg.op==='otherModel' && !active && !changing && typeof msg.text==='string'){
+                    const before=settings();
+                    const alternatives=routes().filter(route=>modelId(route)!==modelId(before));
+                    if(!alternatives.length){await vscode.window.showInformationMessage('Add another model in Models & providers, then choose Ask another model on this reply.');return;}
+                    const pick=await vscode.window.showQuickPick(alternatives.map(route=>({label:modelName(route),description:route.base||route.kind,route})),{title:'Choose a model to review this reply'});
+                    if(!pick)return;
+                    const draft=[String(msg.draft||''),'Review this reply and explain any corrections.',msg.text.slice(0,3000)].filter(Boolean).join('\n\n');
+                    if(draft.length>16000)throw Error('Shorten the current draft before adding the reply.');
+                    changing=true;
+                    try{
+                        await select({label:pick.label,route:pick.route});
+                        if(modelId(settings())===modelId(pick.route))sendUI('draft',{text:draft,replace:true});
+                    }finally{changing=false;}
+                    return;
+                }
                 if(msg.op==='pickModel'&&!active&&!changing){changing=true;try{await browseModels();}finally{changing=false;}}
                 if(msg.op==='tuneChat'&&!active)await tuneModel();
                 if(msg.op==='pair') await pair();

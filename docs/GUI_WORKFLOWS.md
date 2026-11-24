@@ -8,7 +8,9 @@ For a larger chat window on an ARM64 phone with the native runner installed, ope
 
 The mobile model indicator is orange on standby, green during generation, blue while starting or loading, violet for a tool call, yellow when approval is needed, and red on failure. Gray means unloaded. A configured remote route is teal. The text beside the dot names its current state.
 
-**Show reply activity** is in Conversation and token settings on Android and the composer’s tools menu on desktop. Expand Activity on a reply to see recorded operations and any user-facing summary supplied by the provider. **Explain answer** prepares a follow-up that asks the model to explain its evidence and assumptions.
+**Show reply activity** is in the Android chat menu and Conversation and token settings and the composer’s tools menu on desktop. Expand Activity on a reply to see recorded operations and any user-facing summary supplied by the provider. **Explain answer** prepares a follow-up that asks the model to explain its evidence and assumptions.
+
+On Android, share a reply through **Response actions → Share response** to an app that accepts text. Choose **Meshlit** when sharing text back and review **Add to draft**. For programmatic access, open **+ → Allow model clients** to configure the gateway and owner token. On desktop, **Ask another model** opens a registered route and prepares a draft. **Allow local model clients** opens the local server controls.
 
 After the first exchange, the conversation rail offers a point for each prompt and reply. Tap the rail on Android to choose a message, or select a mark on desktop to jump directly.
 
