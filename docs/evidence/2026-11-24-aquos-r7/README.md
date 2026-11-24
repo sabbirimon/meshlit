@@ -23,3 +23,9 @@ The packaged native runner passed five consecutive replies, cancellation, and re
 The AQUOS R7 opened a schema 1 JSON fixture through the Android file picker. The screenshot shows the supplied `tampered` verdict and the `ChainIntact` alert. This checks the viewer on physical hardware. Live shield enforcement requires a configured Linux target.
 
 ![Shirudo report fixture on the AQUOS R7](shirudo-report-fixture.png)
+
+### Downloading from a chat reply
+
+The AQUOS saved a 207-byte assistant reply as Markdown through Android’s Downloads picker. Its bytes matched the complete reply in local chat history. A separate check selected a 68-byte PNG test file in Media studio, added it to a chat, and tapped **Download file** beneath the message. The original and downloaded PNG shared the SHA-256 digest `1d89320682b000c6096e92bedc28ea34c51865ab4a0c4603c6382150c6832fb8`.
+
+![Media studio attachment in chat with the Download file action and File saved confirmation](chat-download.png)
