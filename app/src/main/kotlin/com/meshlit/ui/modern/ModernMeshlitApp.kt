@@ -297,7 +297,7 @@ fun ModernMeshlitApp() {
                         else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onExit=if(tab!="settings") ({tab=previousHub;settingsDestination=null}) else null,onMenu=openMenu,onDestinationChanged={destination->
                             settingsDestination=destination
                             if(destination==null && tab!="settings") tab="settings"
-                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,chatPhotoState,chatPhotoProviderState,chatDraftState,chatPhotoTurnState,chatCapturePathState,chatCaptureUriState,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onProviders={select("providers")},onOptions={showChatOptions=true},onConnections={select("device-dashboard")})
+                        }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,chatPhotoState,chatPhotoProviderState,chatDraftState,chatPhotoTurnState,chatCapturePathState,chatCaptureUriState,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onProviders={select("providers")},onOptions={showChatOptions=true},onConnections={select("device-dashboard")},onTool=::select)
                     }}
                 }
             }
@@ -328,7 +328,7 @@ fun ModernMeshlitApp() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,photoState:MutableState<android.net.Uri?>,photoProviderState:MutableState<String>,draftState:MutableState<String>,photoTurnState:MutableState<String?>,capturePathState:MutableState<String?>,captureUriState:MutableState<android.net.Uri?>,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onFiles:()->Unit,onProviders:()->Unit,onOptions:()->Unit,onConnections:()->Unit) {
+private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller:ChatController,engineTag:String,searchOpen:Boolean,searchQuery:String,searchMessageId:String?,photoState:MutableState<android.net.Uri?>,photoProviderState:MutableState<String>,draftState:MutableState<String>,photoTurnState:MutableState<String?>,capturePathState:MutableState<String?>,captureUriState:MutableState<android.net.Uri?>,onSearchQuery:(String)->Unit,onCloseSearch:()->Unit,onModels:()->Unit,onMedia:()->Unit,onVision:()->Unit,onFiles:()->Unit,onProviders:()->Unit,onOptions:()->Unit,onConnections:()->Unit,onTool:(String)->Unit) {
     var draft by draftState
     fun editDraft(value:String){draft=value;controller.setDraft(state.selectedId,value)}
     var showVoice by remember{mutableStateOf(false)}
@@ -404,8 +404,20 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
     val chosenOffline=offlineVision.takeIf{photoProvider==LOCAL_PHOTO_ROUTE}
     val hasChatModel=runtime is CoordinatorState.Ready || state.current?.options?.onlineProfileId!=null || state.current?.options?.routeId!=null
     val nativeConnection=photo==null && state.current?.options?.let{it.agentToolsActive && deviceConnectionChatIntent(draft,it)!=null}==true
-    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection) && draft.isNotBlank()
-    val send={ if(canSend) {
+    var customize by remember { mutableStateOf(false) }
+    var pickedPin by remember { mutableStateOf<ComposerPin?>(null) }
+    val pins=savedComposerPins(context)
+    if(customize) ComposerToolPicker(pickedPin,onClose={customize=false;pickedPin=null},onRoute={if(it=="chat-options")onOptions() else onTool(it)},onDraft={editDraft(it)})
+    val pinIntent=if(photo==null && draft.startsWith("/tool ") && !com.meshlit.BuildProfile.coreCandidate) pins.find {draft.trim()=="/tool "+it.command} else null
+    var shieldAction by rememberSaveable { mutableStateOf<String?>(null) }
+    val shieldIntent=if(photo==null && !com.meshlit.BuildProfile.coreCandidate) shieldChatAction(draft) else null
+    if(shieldAction!=null) {
+        androidx.activity.compose.BackHandler { shieldAction=null }
+        ShirudoScreen(back={shieldAction=null},action=shieldAction!!)
+        return
+    }
+    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection || shieldIntent!=null || pinIntent!=null) && draft.isNotBlank()
+    val send={ if(canSend && pinIntent!=null) {editDraft("");keyboard?.hide();pickedPin=pinIntent;customize=true} else if(canSend && shieldIntent!=null) {editDraft("");keyboard?.hide();shieldAction=shieldIntent} else if(canSend) {
         followLatest=true
         val selectedPhoto=photo
         val sent=controller.send(if(selectedPhoto!=null) draft.ifBlank{"Describe this photo accurately, including any readable text."} else draft,
@@ -534,7 +546,9 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         captureFilePath=target.path
                         captureUri=androidx.core.content.FileProvider.getUriForFile(context,"${context.packageName}.fileprovider",target)
                         camera.launch(checkNotNull(captureUri))
-                    }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions)}
+                    }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions,onTool=onTool,onCustomize={pin->pickedPin=pin;customize=true},pins=pins,options=access,onUpdate={next->
+                        runCatching {controller.setOptions(next)}.onFailure {controller.attachmentError(it.message ?: "Could not change tool access")}
+                    })}
                 },tools={
                         ChatAccessControl(access,!state.running,onMode={mode->
                             runCatching{controller.setOptions(access.copy(approvalMode=mode))}.onFailure{controller.attachmentError(it.message ?: "Approval choice could not be applied")}

@@ -20,7 +20,21 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
-private data class ShieldReport(val bytes: ByteArray, val rows: List<Pair<String,String>>)
+internal data class ShieldReport(val bytes: ByteArray, val rows: List<Pair<String,String>>)
+
+internal class ShieldSession : androidx.lifecycle.ViewModel() {
+    internal var report by mutableStateOf<ShieldReport?>(null)
+}
+
+internal fun shieldChatAction(text: String): String? {
+    val words = text.trim().lowercase().trimEnd('.', '!', '?').removePrefix("please ").removeSuffix(" please")
+    return when (words) {
+        "/shirudo", "/shirudo status", "show shirudo status" -> "status"
+        "/shirudo import", "/shirudo scan", "scan my shirudo report", "scan shirudo report", "import shirudo report" -> "import"
+        "/shirudo export", "export shirudo report", "export my shirudo report" -> "export"
+        else -> null
+    }
+}
 
 private fun readShieldReport(input: InputStream): ShieldReport {
     val bytes = ByteArrayOutputStream()
@@ -63,10 +77,11 @@ private fun readShieldReport(input: InputStream): ShieldReport {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable internal fun ShirudoScreen(back: () -> Unit) {
+@Composable internal fun ShirudoScreen(back: () -> Unit, action: String = "status") {
     val resolver = LocalContext.current.contentResolver
     val scope = rememberCoroutineScope()
-    var report by remember { mutableStateOf<ShieldReport?>(null) }
+    val session: ShieldSession = androidx.lifecycle.viewmodel.compose.viewModel()
+    var report by session::report
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -99,6 +114,16 @@ private fun readShieldReport(input: InputStream): ShieldReport {
             } catch (_: Exception) {
                 error = "Could not write the report to that destination."
             } finally { loading = false }
+        }
+    }
+    var handled by androidx.compose.runtime.saveable.rememberSaveable(action) { mutableStateOf(false) }
+    LaunchedEffect(action) {
+        if (!handled) {
+            handled = true
+            when (action) {
+                "import" -> picker.launch(arrayOf("application/json","text/plain","application/octet-stream"))
+                "export" -> if (report != null) exporter.launch("shirudo-status.json") else error = "Import a report before exporting."
+            }
         }
     }
     Scaffold(topBar = { CenterAlignedTopAppBar(title = { Text("Shirudo shields") }, navigationIcon = {

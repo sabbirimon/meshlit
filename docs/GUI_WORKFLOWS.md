@@ -69,3 +69,17 @@ On a configured Linux desktop, **Scan local Linux target** requests system autho
 See the [upstream target requirements](https://docs.shirudo.dev/) before setting up a Linux node.
 
 Importing a Shirudo report scans its seven expected security checks. The summary counts alerts and warnings and names any missing checks. **Export original JSON** on Android or **Tools → Network security → Export Shirudo report** on desktop saves a reusable copy with the original fields.
+
+## Customize the chat composer
+
+Open **+** in chat. Pair devices, choose models, open agents, browse files or change internet search access there. **More tools → Customize composer** on desktop and **Customize composer** on Android let you pin destinations, connect external services and import shortcut JSON. Type `/tool research` to open a pinned shortcut named `research`. A linked HTTPS service opens in your browser. Registered tools run through the installed tool host after you review their inputs. Their result goes into a draft for review.
+
+A portable shortcut file looks like this.
+
+```json
+{"schema":1,"tools":[{"command":"research","title":"Hugging Face","target":"https://huggingface.co"},{"command":"pair","title":"Pair devices","target":"devices"}]}
+```
+
+Desktop also accepts actions from its Studio dashboard and registered tools. Android supports its own destinations and MCP tools from enrolled, enabled routes. In **Customize composer**, discover approved tools after configuring their route. Use the picker on the target platform to select its tool names. An import accepts up to 32 shortcuts and 64 KiB.
+
+Type or dictate “scan my Shirudo report” and send it, or use `/shirudo scan`, `/shirudo export` or `/shirudo status`. On a prepared Linux desktop, `/shirudo scan` requests a live scan. Android, macOS and Windows open the report picker. **Autopilot** on Android requests permission to use the selected built-in agent tools. Desktop’s **Autopilot** supports the approved web-read workflow. After enabling it, send “search the web for” followed by your query. The query goes to Wikipedia and the results go to the selected model. Operator actions, external tools and file selection retain their own prompts.

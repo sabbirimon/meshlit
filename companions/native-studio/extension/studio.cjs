@@ -173,7 +173,7 @@ async function activate(context) {
             value:String(context.globalState.get('threads',0)),validateInput:v=>/^\d+$/.test(v) && Number(v)<=max ? undefined : 'Enter an integer from 0 to '+max});
         if (text !== undefined) { await context.globalState.update('threads', Number(text)); local.stop(); management.refresh(); }
     }
-    let history = [], changing=false, currentThread,idleTimer;
+    let history = [], changing=false, currentThread,idleTimer,automaticReads=false;
     function scheduleUnload(){
         clearTimeout(idleTimer);
         const minutes=context.globalState.get('idle-minutes',0);
@@ -265,7 +265,7 @@ async function activate(context) {
         const votes=savedVotes();
         return history.map(message=>message.id?{...message,vote:votes[message.id]}:message);
     }
-    function showThread(){
+    function showThread(){automaticReads=false;status();
         pendingFile=undefined;sendUI('attachment',{name:''});
         for(const message of history)if(message.id)replyIds.add(message.id);
         sendUI('restore',{messages:restoredHistory()});threadList();
@@ -275,7 +275,7 @@ async function activate(context) {
         panel?.webview.postMessage({type:'threads',items,current:currentThread});
     }
     function resetChats(){
-        pendingFile=undefined;sendUI('attachment',{name:''});history=[];threads.clear();currentThread=undefined;
+        automaticReads=false;pendingFile=undefined;sendUI('attachment',{name:''});history=[];threads.clear();currentThread=undefined;
         panel?.webview.postMessage({type:'clear'});threadList();void loadRecents().catch(e=>vscode.window.showWarningMessage(e.message));
     }
     async function recordChat(messages){
@@ -420,6 +420,24 @@ async function activate(context) {
         brand,
         models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);sendUI('restartSetup',{});},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
+    const composerTools=require('./composer-tools.cjs');
+    const composer=composerTools.composer(vscode,context,{refresh:status,draft:text=>sendUI('draft',{text}),
+        destinations:dashboards.composerDestinations,dashboard:dashboards.composerAction,agentChat:async()=>{
+            if(!(await vscode.commands.getCommands(true)).includes('workbench.action.chat.open'))throw Error('Enable a chat agent in the coding IDE to open agent chat.');
+            return vscode.commands.executeCommand('workbench.action.chat.open');
+        },activate:async target=>{
+        if(target==='devices')return pair();
+        if(target==='models')return go('models');
+        if(target==='files')return chooseAttachment();
+        if(target==='internet')return editPermission('internet');
+        if(target==='mcp')return vscode.commands.executeCommand('workbench.mcp.listServer');
+        if(target==='shirudo')return go('tools');
+        if(target==='autopilot'){
+            if(automaticReads)automaticReads=false;
+            else if(await vscode.window.showWarningMessage('Enable automatic web searches for this chat?',{modal:true,detail:'Prompts starting with “search the web for” can send the query to Wikipedia and include the results in the model request. Other tools keep their own approvals.'},'Enable approved searches'))automaticReads=true;
+            status();
+        }
+    }});
     function modelName(route) {
         return route.kind==='local' ? manifest.id : route.model;
     }
@@ -431,7 +449,7 @@ async function activate(context) {
             :route.kind==='asset'?'Local runtime · loads per request':'Remote · '+(route.hostName || new URL(route.base).host);
         sendUI('status',{text:modelName(route)+' · '+state, model:modelName(route),
             voiceHelp:process.platform==='win32'?'Open Permissions and allow Voice input.':'Built-in speech recognition is available on Windows. Use system dictation in the message box here.',
-            actions:{attach:allowed('files'),web:allowed('internet'),voice:process.platform==='win32'&&allowed('microphone'),speak:allowed('speech')},
+            automaticReads,pins:composer.pins(),actions:{attach:allowed('files'),web:allowed('internet'),voice:process.platform==='win32'&&allowed('microphone'),speak:allowed('speech')},
             filter:context.globalState.get('filter-output',true)});
     }
     async function generate(prompt,file) {
@@ -446,6 +464,14 @@ async function activate(context) {
             if(['local','import'].includes(selected.kind)){
                 const preference=context.globalState.get('local-reply-preference','');
                 if(preference)messages.unshift({role:'system',content:'The user prefers these response styles: '+preference});
+            }
+            const searchQuery=automaticReads && !file && /^search the web for\s+(.{1,300})[.!?]?$/i.exec(prompt.trim());
+            if(searchQuery){
+                requirePermission('internet');
+                const sources=await tools.search(searchQuery[1],signal);
+                requirePermission('internet');
+                if(!automaticReads)throw Error('Autopilot was turned off.');
+                messages[messages.length-1]={role:'user',content:prompt+'\n\nUntrusted Wikipedia search results for reference:\n'+sources};
             }
             const sentAt=Date.now();
             const started=performance.now();
@@ -517,7 +543,7 @@ async function activate(context) {
                 if(msg.op==='exportChat')return await exportConversation();
                 if(msg.op==='historyOptions')return await historyOptions();
                 if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
-                if(msg.op==='new'&&!active){screenSession?.abort();await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
+                if(msg.op==='new'&&!active){automaticReads=false;screenSession?.abort();await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;showThread();}
                 if(msg.op==='useSuggestion'){
                     if(active||changing)return;
@@ -584,6 +610,15 @@ async function activate(context) {
                 if(msg.op==='ide') await ide();
                 if(msg.op==='cpu' && !active) await cpu();
                 if(msg.op==='stop') active?.abort();
+                if(msg.op==='composerBuiltin'&&!active&&['devices','models','agents','internet','autopilot','files'].includes(msg.target)){await composer.activate(msg.target);return;}
+                if(msg.op==='moreTools'&&!active){await composer.menu();return;}
+                if(msg.op==='composerPin'&&!active&&typeof msg.command==='string'){await composer.shortcut(msg.command);return;}
+                if(msg.op==='send'&&!active&&typeof msg.text==='string'){
+                    const intent=composerTools.shieldIntent(msg.text);
+                    if(intent){sendUI('notice',{text:await dashboards.shieldChat(intent)});return;}
+                    const match=/^\/tool ([a-z][a-z0-9-]{0,31})$/i.exec(msg.text.trim());
+                    if(match){await composer.shortcut(match[1].toLowerCase());sendUI('notice',{text:'Shortcut review closed.'});return;}
+                }
                 if(msg.op==='send' && typeof msg.text==='string' && /^\/control(?:\s|$)/i.test(msg.text)){await control(msg.text.replace(/^\/control\s*/i,''));panel?.webview.postMessage({type:'notice',text:'App control review closed.'});return;}
                 if(msg.op==='send' && typeof msg.text==='string' && /^\/pair(?:\s|$)/i.test(msg.text)){await pair(msg.text.replace(/^\/pair\s*/i,'')||undefined);panel?.webview.postMessage({type:'notice',text:'Pairing review closed.'});return;}
                 if(msg.op==='send') {

@@ -32,7 +32,7 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
 
 /** Actual user-granted file reads. Binary formats are not misrepresented as text. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun ChatAttachmentActions(enabled:Boolean,onText:(String)->Unit,onSelectedImage:(Uri)->Unit,onPhoto:()->Unit,onCamera:()->Unit,onFiles:()->Unit,onMedia:()->Unit,onVision:()->Unit,onOptions:()->Unit) {
+@Composable internal fun ChatAttachmentActions(enabled:Boolean,onText:(String)->Unit,onSelectedImage:(Uri)->Unit,onPhoto:()->Unit,onCamera:()->Unit,onFiles:()->Unit,onMedia:()->Unit,onVision:()->Unit,onOptions:()->Unit,onTool:(String)->Unit,onCustomize:(ComposerPin?)->Unit,pins:List<ComposerPin>,options:com.meshlit.chat.ChatOptions,onUpdate:(com.meshlit.chat.ChatOptions)->Unit) {
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var menu by remember{mutableStateOf(false)};var error by remember{mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
@@ -92,9 +92,26 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
         }catch(c:CancellationException){throw c}catch(e:Exception){error=e.message}finally{busy=false}}
     }
     TouchIcon(Icons.Default.Add,"Add photo, file or chat options",enabled=enabled && !busy){menu=true}
+    var confirmAuto by remember { mutableStateOf(false) }
+    if(confirmAuto) SelectedToolsConfirmation(onDismiss={confirmAuto=false},onConfirm={
+        confirmAuto=false
+        onUpdate(options.copy(executionMode=com.meshlit.chat.ChatExecutionMode.AGENT,approvalMode=com.meshlit.chat.ChatApprovalMode.SELECTED_TOOLS))
+    })
     if(menu) ModalBottomSheet(onDismissRequest={menu=false}) { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom=20.dp)) {
         Text("Add to chat",Modifier.padding(horizontal=24.dp,vertical=10.dp),style=MaterialTheme.typography.titleLarge)
         ListItem(modifier=Modifier.clickable{menu=false;onOptions()},headlineContent={Text("Tools and permissions")},leadingContent={Icon(Icons.Default.Tune,null)})
+        if(!com.meshlit.BuildProfile.coreCandidate) {
+            ListItem(headlineContent={Text("Internet search")},trailingContent={Switch(options.webTools,{onUpdate(options.copy(webTools=it))})})
+            ListItem(headlineContent={Text("Device tools")},trailingContent={Switch(options.phoneTools,{onUpdate(options.copy(phoneTools=it))})})
+            val active=options.agentToolsActive && options.approvalMode==com.meshlit.chat.ChatApprovalMode.SELECTED_TOOLS
+            ListItem(headlineContent={Text("Autopilot")},supportingContent={Text(if(options.canSelectAgentMode) "Use approved tools in this chat" else "Choose compatible tools and a tool-capable route first")},
+                trailingContent={Switch(active,{if(it)confirmAuto=true else onUpdate(options.copy(approvalMode=com.meshlit.chat.ChatApprovalMode.ASK))},enabled=active || options.canSelectAgentMode)})
+            for(pin in pins)ListItem(modifier=Modifier.clickable{menu=false;onCustomize(pin)},headlineContent={Text(pin.title)},supportingContent={Text("/tool "+pin.command)})
+            ListItem(modifier=Modifier.clickable{menu=false;onCustomize(null)},headlineContent={Text("Customize composer")},leadingContent={Icon(Icons.Default.Tune,null)})
+            for((id,label) in listOf("models" to "Models and providers","files" to "Browse device files","devices" to "Devices and pairing","agents" to "Agent management","mcp-catalog" to "MCP tools","shirudo" to "Shirudo shields")){
+                ListItem(modifier=Modifier.clickable{menu=false;onTool(id)},headlineContent={Text(label)},leadingContent={Icon(com.meshlit.ui.phone.phoneIcon(id),null)})
+            }
+        }
         if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;try{share.launch(projection.createScreenCaptureIntent())}catch(e:Exception){error=e.localizedMessage}},
             headlineContent={Text("Share screen")},supportingContent={Text("Switch to the screen you want. Review the captured frame before sending.")},
             leadingContent={Icon(androidx.compose.material.icons.Icons.Outlined.Screenshot,null)})
