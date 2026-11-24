@@ -1,0 +1,11 @@
+{
+  "device": "AQUOS R7 A202SH",
+  "processor": "SM8450",
+  "runner": "Meshlit native ARM64 CPU, 4 threads",
+  "model": "Qwen2.5 1.5B Instruct Q4_K_M",
+  "context": 8192,
+  "promptTokens": 37,
+  "outputTokens": 17,
+  "decodeTokensPerSecond": 18.24418010654601,
+  "answer": "The sky is blue, the grass is green, and the ocean is blue."
+}

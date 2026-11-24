@@ -61,3 +61,5 @@ Desktop **Cloud providers → Hugging Face Hub** and Android **Hugging Face dash
 An absent local model usually means its source moved, an index points to a missing shard, or no compatible runtime is configured. Reopen the picker and inspect the file or package. If an account request fails, check the credential and repository entitlement before retrying a large download. If a cloud CLI cannot return inventory, open the provider's console to verify the account. For all three cases, preserve the original weights, chats and receipts while troubleshooting.
 
 [Platform rules and permissions](RULEBOOK.md) · [Historical Android and Studio audit](OLD_ANDROID_STUDIO_REQUEST_AUDIT.md)
+
+[R7 model cards, chat screenshots and native inference measurements](evidence/2026-11-24-aquos-r7/README.md)

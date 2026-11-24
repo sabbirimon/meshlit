@@ -1,0 +1,12 @@
+{
+  "device": "AQUOS R7 A202SH",
+  "processor": "SM8450",
+  "runner": "Meshlit pinned ARM64 native server via ADB loopback",
+  "model": "Qwen2.5 0.5B Instruct Q4_K_M",
+  "context": 4096,
+  "promptTokens": 2206,
+  "outputTokens": 6,
+  "promptMs": 45906.529,
+  "decodeTokensPerSecond": 24.791626380273797,
+  "truncated": false
+}

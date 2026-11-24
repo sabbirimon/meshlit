@@ -4,7 +4,7 @@
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 180,
+    "active": 181,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -576,7 +576,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit Studio on desktop and Android",
-      "contentSha256WithoutTrackingBlock": "635be288bb264651e40a21490b121fb1bf426f6f3b12550b81d33f1b9c3757b4"
+      "contentSha256WithoutTrackingBlock": "934508c90b9310a56dacf7da89d876f9c1fce8a8be9f2315998283ece56b27da"
     },
     {
       "path": "docs/HIGH_IMPACT_BACKLOG_2026-10-24.md",
@@ -1172,6 +1172,13 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Device-aware local models, context and KV cache",
       "contentSha256WithoutTrackingBlock": "88896e5c3369423a7c817f92fdd5a1fca73c74fb0e19868fe35422c4071e02b8"
+    },
+    {
+      "path": "docs/evidence/2026-11-24-aquos-r7/README.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "AQUOS R7 model library and inference checks",
+      "contentSha256WithoutTrackingBlock": "d03478109fd63b94dca7bcee338e53b1b79def398171806034acf659f8459b83"
     },
     {
       "path": "docs/history/BUGS-before-studio-2026-10-10.md",

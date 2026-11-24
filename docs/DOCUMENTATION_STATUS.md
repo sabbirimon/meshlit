@@ -24,7 +24,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-180 active, 19 historical, 8 protected, 1 template, 6 third-party; 215 Markdown documents including this index.
+181 active, 19 historical, 8 protected, 1 template, 6 third-party; 216 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -183,6 +183,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/desktop/STUDIO_DASHBOARD.md](desktop/STUDIO_DASHBOARD.md) | desktop/server; individual acceptance gates apply |
 | [docs/desktop/TERMINAL.md](desktop/TERMINAL.md) | desktop/server; individual acceptance gates apply |
 | [docs/device-aware-model-runtime.md](device-aware-model-runtime.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/evidence/2026-11-24-aquos-r7/README.md](evidence/2026-11-24-aquos-r7/README.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/hugging-face-integration.md](hugging-face-integration.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/hyperl/ANDROID_ALPHA6.md](hyperl/ANDROID_ALPHA6.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/hyperl/APP_AND_LIBRARY.md](hyperl/APP_AND_LIBRARY.md) | Android/shared reference; desktop ports have separate acceptance |
