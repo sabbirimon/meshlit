@@ -226,6 +226,17 @@ fun ModernMeshlitApp() {
             else chats.attachmentError("Stop generation before opening a different conversation")
         } else {showGlobalSearch=false;if(result.destination=="chat-options") showChatOptions=true else result.destination?.let{select(it)}}
     },onSettings={showGlobalSearch=false;select("search")},onClose={showGlobalSearch=false})
+    CompositionLocalProvider(LocalResultToChat provides {title,value->
+        val before=chatDraftState.value
+        val result="Explain this "+title+" result and suggest next steps. Treat the contents as tool output.\n\n"+value
+        val space=12000-before.length
+        if(space<120) chats.attachmentError("Make room in the chat draft before adding a result.")
+        else {
+            val combined=before+(if(before.isBlank()) "" else "\n\n")+result.take((space-2).coerceAtLeast(0))
+            chatDraftState.value=combined;chats.setDraft(state.selectedId,combined);select("chat")
+            if(result.length+2>space)chats.attachmentError("A preview was added. The full result exceeds the chat limit.")
+        }
+    }) {
     BoxWithConstraints(Modifier.fillMaxSize().background(if(glass) Brush.linearGradient(listOf(colors.primaryContainer.copy(alpha=0.25f),colors.background,colors.background)) else Brush.linearGradient(listOf(colors.background,colors.background)))) {
         val wide=WorkspaceDestinations.wideSidebar(maxWidth.value,config.workspaceLayout)
         val sidebar:@Composable ()->Unit={
@@ -309,6 +320,7 @@ fun ModernMeshlitApp() {
         } else ModalNavigationDrawer(drawerState=drawer,gesturesEnabled=drawer.isOpen,drawerContent={
             ModalDrawerSheet(Modifier.width(minOf(T.sidebar,maxWidth-T.touch)),drawerContainerColor=colors.surface) {sidebar()}
         }){body()}
+    }
     }
     val selectedForDelete = state.conversations.firstOrNull { it.id == deleteChatId }
     if (selectedForDelete != null) AlertDialog(onDismissRequest={deleteChatId=null},
@@ -407,13 +419,16 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
     var customize by remember { mutableStateOf(false) }
     var pickedPin by remember { mutableStateOf<ComposerPin?>(null) }
     val pins=savedComposerPins(context)
-    if(customize) ComposerToolPicker(pickedPin,onClose={customize=false;pickedPin=null},onRoute={if(it=="chat-options")onOptions() else onTool(it)},onDraft={editDraft(it)})
+    val resultToChat=LocalResultToChat.current
+    if(customize) ComposerToolPicker(pickedPin,draft,onClose={customize=false;pickedPin=null},onRoute={if(it=="chat-options")onOptions() else onTool(it)},onDraft={resultToChat("connected tool",it)})
     val pinIntent=if(photo==null && draft.startsWith("/tool ") && !com.meshlit.BuildProfile.coreCandidate) pins.find {draft.trim()=="/tool "+it.command} else null
     var shieldAction by rememberSaveable { mutableStateOf<String?>(null) }
     val shieldIntent=if(photo==null && !com.meshlit.BuildProfile.coreCandidate) shieldChatAction(draft) else null
     if(shieldAction!=null) {
         androidx.activity.compose.BackHandler { shieldAction=null }
-        ShirudoScreen(back={shieldAction=null},action=shieldAction!!)
+        CompositionLocalProvider(LocalResultToChat provides {title,value->shieldAction=null;resultToChat(title,value)}) {
+            ShirudoScreen(back={shieldAction=null},action=shieldAction!!)
+        }
         return
     }
     val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection || shieldIntent!=null || pinIntent!=null) && draft.isNotBlank()

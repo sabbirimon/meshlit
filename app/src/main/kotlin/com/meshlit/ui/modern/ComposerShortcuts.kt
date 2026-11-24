@@ -22,6 +22,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
+internal val LocalResultToChat = staticCompositionLocalOf<(String,String)->Unit> { { _,_ -> } }
+
+@Composable internal fun ExplainToolResult(title:String, result:()->String) {
+    val toChat=LocalResultToChat.current
+    TextButton({toChat(title,result())}) { Text("Explain in chat") }
+}
+
 internal data class ComposerPin(val command:String,val title:String,val target:String)
 private val aliases=mapOf("mcp" to "mcp-catalog","internet" to "search","autopilot" to "chat-options")
 private fun validTarget(target:String):Boolean {
@@ -52,7 +59,7 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
     return runCatching {decodePins(text)}.getOrDefault(emptyList())
 }
 
-@Composable internal fun ComposerToolPicker(initial:ComposerPin?,onClose:()->Unit,onRoute:(String)->Unit,onDraft:(String)->Unit) {
+@Composable internal fun ComposerToolPicker(initial:ComposerPin?,draft:String,onClose:()->Unit,onRoute:(String)->Unit,onDraft:(String)->Unit) {
     val ctx=LocalContext.current
     val gateway=koinInject<GatewayHost>().remoteRoutes
     val scope=rememberCoroutineScope()
@@ -63,7 +70,7 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
     var query by remember {mutableStateOf("")}
     var message by remember {mutableStateOf("")}
     var confirm by remember {mutableStateOf(initial)}
-    var args by remember {mutableStateOf("{}")}
+    var args by remember {mutableStateOf(if(draft.isBlank() || draft.startsWith("/tool ")) "{}" else runCatching {Json.parseToJsonElement(draft).jsonObject.toString()}.getOrElse {JSONObject().put("text",draft.take(3000)).toString()})}
     var imported by remember {mutableStateOf(emptyList<ComposerPin>())}
     var remote by remember {mutableStateOf(emptyList<String>())}
     var busy by remember {mutableStateOf(false)}
@@ -127,7 +134,7 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
                         val name=pin.target.removePrefix("mcp:")
                         val input=Json.parseToJsonElement(args).jsonObject
                         val result=withContext(Dispatchers.IO){gateway.invoke(name,input,agent=false)}
-                        onDraft(result.toString().take(8000));onClose()
+                        onDraft("Tool result · "+name+"\n"+result.toString());onClose()
                     }catch(e:CancellationException){throw e}catch(_:Exception){message="Tool call failed. Check the arguments and approved route."}finally{busy=false;confirm=null}
                 }else{
                     val id=aliases[pin.target]?:pin.target

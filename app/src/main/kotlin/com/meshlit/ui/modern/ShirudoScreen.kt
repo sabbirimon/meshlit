@@ -31,6 +31,7 @@ internal fun shieldChatAction(text: String): String? {
     return when (words) {
         "/shirudo", "/shirudo status", "show shirudo status" -> "status"
         "/shirudo import", "/shirudo scan", "scan my shirudo report", "scan shirudo report", "import shirudo report" -> "import"
+        "/shirudo explain", "explain my shirudo report", "explain shirudo report" -> "explain"
         "/shirudo export", "export shirudo report", "export my shirudo report" -> "export"
         else -> null
     }
@@ -78,6 +79,7 @@ private fun readShieldReport(input: InputStream): ShieldReport {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun ShirudoScreen(back: () -> Unit, action: String = "status") {
+    val toChat=LocalResultToChat.current
     val resolver = LocalContext.current.contentResolver
     val scope = rememberCoroutineScope()
     val session: ShieldSession = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -90,7 +92,9 @@ private fun readShieldReport(input: InputStream): ShieldReport {
             report = null
             error = null
             try {
-                report = withContext(Dispatchers.IO) { requireNotNull(resolver.openInputStream(uri)).use(::readShieldReport) }
+                val loaded = withContext(Dispatchers.IO) { requireNotNull(resolver.openInputStream(uri)).use(::readShieldReport) }
+                report=loaded
+                if(action=="import")toChat("Shirudo",loaded.rows.filter{it.first!="Host"}.joinToString("\n"){it.first+" · "+it.second})
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -116,11 +120,16 @@ private fun readShieldReport(input: InputStream): ShieldReport {
             } finally { loading = false }
         }
     }
+    fun explain(){
+        val r=report ?: return
+        toChat("Shirudo",r.rows.filter{it.first!="Host"}.joinToString("\n"){it.first+" · "+it.second})
+    }
     var handled by androidx.compose.runtime.saveable.rememberSaveable(action) { mutableStateOf(false) }
     LaunchedEffect(action) {
         if (!handled) {
             handled = true
             when (action) {
+                "explain" -> if(report!=null) explain() else error="Import the report you want to discuss."
                 "import" -> picker.launch(arrayOf("application/json","text/plain","application/octet-stream"))
                 "export" -> if (report != null) exporter.launch("shirudo-status.json") else error = "Import a report before exporting."
             }
@@ -136,6 +145,7 @@ private fun readShieldReport(input: InputStream): ShieldReport {
             Button(onClick = { picker.launch(arrayOf("application/json","text/plain","application/octet-stream")) }, enabled = !loading) {
                 Text("Import and scan report")
             }
+            if (report != null) Button(onClick={explain()}) { Text("Explain in chat") }
             if (report != null) OutlinedButton(onClick = { exporter.launch("shirudo-status.json") }, enabled = !loading) {
                 Text("Export original JSON")
             }

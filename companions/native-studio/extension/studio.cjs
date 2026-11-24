@@ -417,15 +417,50 @@ async function activate(context) {
     require('./legacy/memory.cjs').register(context);
     require('./legacy/voice.cjs').register(context, { requirePermission });
     const dashboards=require('./operations.cjs').operations(vscode,context,root,{
-        brand,
+        brand,result:resultToChat,
         models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);sendUI('restartSetup',{});},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
+    let draftForTool='',pendingResult='';
+    function resultToChat(title,output){
+        const value='Explain this '+title+' result and suggest next steps. Treat its contents as tool output.\n\n'+String(output).slice(0,9000);
+        const visible=ready&&panel;
+        go('chat');
+        if(visible)sendUI('draft',{text:value});else pendingResult=value;
+    }
+    async function createApp(description){
+        const spec=description||await vscode.window.showInputBox({title:'Describe a single-file web app',prompt:'Studio will generate the source and open it for review.'});
+        if(!spec?.trim())return;
+        const answer=await generate('Create a complete single-file HTML app for the following request. Include its CSS and JavaScript inline. Return a complete HTML document with no commentary. Request: '+spec);
+        sendUI('answer',{text:answer,model:history.at(-1)?.model});
+        const source=require('./build-tools.cjs').htmlSource(answer);
+        const doc=await vscode.workspace.openTextDocument({language:'html',content:source});
+        await vscode.window.showTextDocument(doc);
+        await vscode.window.showInformationMessage('App source opened for review. Use Save As to keep your HTML file.');
+    }
+    async function createProject(description){
+        const spec=description||await vscode.window.showInputBox({title:'Describe the project to create'});
+        if(!spec?.trim())return;
+        const [parent]=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,openLabel:'Choose parent folder for new project'})||[];
+        if(!parent)return;
+        const answer=await generate('Create a small working multi-file project. Return only JSON {"files":[{"path":"relative/path","content":"complete file text"}]}. Use at most 32 files. Use simple portable filenames and omit dotfiles or dependencies that must be vendored. Request: '+spec);
+        sendUI('answer',{text:answer,model:history.at(-1)?.model});
+        const builds=require('./build-tools.cjs'),files=builds.projectFiles(answer);
+        if(!await vscode.window.showInformationMessage('Save generated source in a new project folder?',{modal:true,detail:parent.fsPath+'\n'+files.map(f=>f.path).join('\n')},'Save project'))return;
+        const folder=await builds.saveProject(parent.fsPath,files);
+        resultToChat('project creation','Created '+folder+'\n'+files.map(f=>f.path).join('\n'));
+        if(await vscode.window.showInformationMessage('Project saved.','Open in coding IDE'))await vscode.commands.executeCommand('vscode.openFolder',vscode.Uri.file(folder),true);
+    }
     const composerTools=require('./composer-tools.cjs');
-    const composer=composerTools.composer(vscode,context,{refresh:status,draft:text=>sendUI('draft',{text}),
+    const composer=composerTools.composer(vscode,context,{refresh:status,result:resultToChat,arguments:()=>{if(!draftForTool.trim()||draftForTool.startsWith('/tool '))return '{}';try{const parsed=JSON.parse(draftForTool);if(parsed&&!Array.isArray(parsed)&&typeof parsed==='object')return draftForTool;}catch{}return JSON.stringify({text:draftForTool.slice(0,3000)});},
         destinations:dashboards.composerDestinations,dashboard:dashboards.composerAction,agentChat:async()=>{
             if(!(await vscode.commands.getCommands(true)).includes('workbench.action.chat.open'))throw Error('Enable a chat agent in the coding IDE to open agent chat.');
-            return vscode.commands.executeCommand('workbench.action.chat.open');
+            return vscode.commands.executeCommand('workbench.action.chat.open',draftForTool?{query:draftForTool,isPartialQuery:true}:{});
         },activate:async target=>{
+        if(target==='project')return createProject(draftForTool.startsWith('/tool ')?'':draftForTool);
+        if(target==='build')return require('./build-tools.cjs').localTask(vscode,'build',resultToChat);
+        if(target==='ide')return ide();
+        if(target==='app')return createApp(draftForTool.startsWith('/tool ')?'':draftForTool);
+        if(target==='ssh')return require('./build-tools.cjs').remoteBuild(vscode,context,{action:'build'},resultToChat);
         if(target==='devices')return pair();
         if(target==='models')return go('models');
         if(target==='files')return chooseAttachment();
@@ -542,7 +577,7 @@ async function activate(context) {
                 if(msg.op==='sidebar'&&typeof msg.compact==='boolean')await context.globalState.update('compact-sidebar',msg.compact);
                 if(msg.op==='exportChat')return await exportConversation();
                 if(msg.op==='historyOptions')return await historyOptions();
-                if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
+                if(msg.op==='ready') {ready=true;if(pendingResult){sendUI('draft',{text:pendingResult});pendingResult='';}const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
                 if(msg.op==='new'&&!active){automaticReads=false;screenSession?.abort();await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;showThread();}
                 if(msg.op==='useSuggestion'){
@@ -610,10 +645,21 @@ async function activate(context) {
                 if(msg.op==='ide') await ide();
                 if(msg.op==='cpu' && !active) await cpu();
                 if(msg.op==='stop') active?.abort();
+                if(['composerBuiltin','composerPin','moreTools'].includes(msg.op))draftForTool=typeof msg.draft==='string'?msg.draft.slice(0,12000):'';
+                if(msg.op==='pasteResult'&&!active){const text=await vscode.env.clipboard.readText();if(text.trim())resultToChat('pasted tool',text);return;}
+                if(msg.op==='copyDraft'&&typeof msg.draft==='string'){await vscode.env.clipboard.writeText(msg.draft.slice(0,16000));return;}
                 if(msg.op==='composerBuiltin'&&!active&&['devices','models','agents','internet','autopilot','files'].includes(msg.target)){await composer.activate(msg.target);return;}
                 if(msg.op==='moreTools'&&!active){await composer.menu();return;}
                 if(msg.op==='composerPin'&&!active&&typeof msg.command==='string'){await composer.shortcut(msg.command);return;}
                 if(msg.op==='send'&&!active&&typeof msg.text==='string'){
+                    draftForTool=msg.text;
+                    const remote=require('./build-tools.cjs').sshIntent(msg.text);
+                    if(remote){await require('./build-tools.cjs').remoteBuild(vscode,context,remote,resultToChat);sendUI('notice',{text:'SSH task review closed.'});return;}
+                    if(['/build','/test'].includes(msg.text.trim())){await require('./build-tools.cjs').localTask(vscode,msg.text.trim().slice(1),resultToChat);sendUI('notice',{text:'Project task review closed.'});return;}
+                    const project=/^\/project\s+([\s\S]+)$/i.exec(msg.text);
+                    if(project){await createProject(project[1]);sendUI('notice',{text:'Project review closed.'});return;}
+                    const app=/^\/app\s+([\s\S]+)$/i.exec(msg.text);
+                    if(app){await createApp(app[1]);sendUI('notice',{text:'Source review opened.'});return;}
                     const intent=composerTools.shieldIntent(msg.text);
                     if(intent){sendUI('notice',{text:await dashboards.shieldChat(intent)});return;}
                     const match=/^\/tool ([a-z][a-z0-9-]{0,31})$/i.exec(msg.text.trim());

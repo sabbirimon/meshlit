@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs/promises');
 const catalogIds=new Set(Object.values(require('./operations.cjs').groups).flat().flatMap(([,ids])=>ids));
-const builtins={devices:'Pair devices',models:'Models & providers',agents:'Agents and model tools',files:'Browse device files',mcp:'Manage MCP servers',shirudo:'Shirudo shields',internet:'Internet permission',autopilot:'Autopilot permission'};
+const builtins={project:'Create a multi-file project',build:'Build a local project',ssh:'SSH project build',ide:'Coding workspace',app:'Create a web app',devices:'Pair devices',models:'Models & providers',agents:'Agents and model tools',files:'Browse device files',mcp:'Manage MCP servers',shirudo:'Shirudo shields',internet:'Internet permission',autopilot:'Autopilot permission'};
 function entries(doc) {
     if(doc?.schema!==1||!Array.isArray(doc.tools)||doc.tools.length>32)throw Error('Choose a schema 1 composer file with up to 32 tools.');
     const seen=new Set();
@@ -21,6 +21,7 @@ function shieldIntent(text) {
     if(['/shirudo','/shirudo status','show shirudo status'].includes(s))return 'status';
     if(['/shirudo scan','scan local shirudo target'].includes(s))return 'scan';
     if(['/shirudo import','scan my shirudo report','scan shirudo report','import shirudo report'].includes(s))return 'import';
+    if(['/shirudo explain','explain my shirudo report','explain shirudo report'].includes(s))return 'explain';
     if(['/shirudo export','export shirudo report','export my shirudo report'].includes(s))return 'export';
 }
 function composer(vscode,context,hooks){
@@ -30,14 +31,18 @@ function composer(vscode,context,hooks){
     async function runTool(name){
         const tool=vscode.lm?.tools?.find(t=>t.name===name);
         if(!tool)throw Error('Connect or enable this tool in MCP or the IDE extension manager first.');
-        const input=await vscode.window.showInputBox({title:tool.name+' · JSON arguments',value:'{}',prompt:JSON.stringify(tool.inputSchema||{}).slice(0,700)});
+        const input=await vscode.window.showInputBox({title:tool.name+' · JSON arguments',value:hooks.arguments(),prompt:JSON.stringify(tool.inputSchema||{}).slice(0,700)});
         if(input===undefined)return;
         const args=JSON.parse(input);
         if(!args||typeof args!=='object'||Array.isArray(args))throw Error('Enter a JSON object.');
         if(!await vscode.window.showWarningMessage('Run '+name+' with these arguments?',{modal:true,detail:input.slice(0,4000)},'Run tool'))return;
         const result=await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:name,cancellable:true},(_,token)=>vscode.lm.invokeTool(name,{input:args,toolInvocationToken:undefined},token));
-        const output=(result.content||[]).filter(c=>c instanceof vscode.LanguageModelTextPart).map(c=>c.value).join('\n').slice(0,8000);
-        hooks.draft(output || 'Tool completed without text output.');
+        const output=(result.content||[]).map(part=>{
+            if(typeof part.value==='string')return part.value;
+            if(part.data instanceof Uint8Array)return '['+(part.mimeType||'Binary output')+' · '+part.data.byteLength+' bytes]';
+            return JSON.stringify(part);
+        }).join('\n');
+        hooks.result(name,output || 'Tool finished with no output.');
     }
     async function activate(target){
         if(target.startsWith('mcp:'))return runTool(target.slice(4));

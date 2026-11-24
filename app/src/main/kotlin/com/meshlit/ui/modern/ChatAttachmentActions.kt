@@ -99,16 +99,20 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
     })
     if(menu) ModalBottomSheet(onDismissRequest={menu=false}) { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom=20.dp)) {
         Text("Add to chat",Modifier.padding(horizontal=24.dp,vertical=10.dp),style=MaterialTheme.typography.titleLarge)
+        val toChat=LocalResultToChat.current
+        val clipboard=androidx.compose.ui.platform.LocalClipboardManager.current
+        ListItem(modifier=Modifier.clickable{val value=clipboard.getText()?.text;if(!value.isNullOrBlank()){menu=false;toChat("pasted tool",value)}else error="Copy a tool result first."},headlineContent={Text("Paste tool result")},leadingContent={Icon(Icons.Default.AttachFile,null)})
         ListItem(modifier=Modifier.clickable{menu=false;onOptions()},headlineContent={Text("Tools and permissions")},leadingContent={Icon(Icons.Default.Tune,null)})
         if(!com.meshlit.BuildProfile.coreCandidate) {
             ListItem(headlineContent={Text("Internet search")},trailingContent={Switch(options.webTools,{onUpdate(options.copy(webTools=it))})})
             ListItem(headlineContent={Text("Device tools")},trailingContent={Switch(options.phoneTools,{onUpdate(options.copy(phoneTools=it))})})
+            ListItem(headlineContent={Text("SSH node tools")},supportingContent={Text("Use actions delegated to enrolled nodes")},trailingContent={Switch(options.nodeTools,{onUpdate(options.copy(nodeTools=it))})})
             val active=options.agentToolsActive && options.approvalMode==com.meshlit.chat.ChatApprovalMode.SELECTED_TOOLS
             ListItem(headlineContent={Text("Autopilot")},supportingContent={Text(if(options.canSelectAgentMode) "Use approved tools in this chat" else "Choose compatible tools and a tool-capable route first")},
                 trailingContent={Switch(active,{if(it)confirmAuto=true else onUpdate(options.copy(approvalMode=com.meshlit.chat.ChatApprovalMode.ASK))},enabled=active || options.canSelectAgentMode)})
             for(pin in pins)ListItem(modifier=Modifier.clickable{menu=false;onCustomize(pin)},headlineContent={Text(pin.title)},supportingContent={Text("/tool "+pin.command)})
             ListItem(modifier=Modifier.clickable{menu=false;onCustomize(null)},headlineContent={Text("Customize composer")},leadingContent={Icon(Icons.Default.Tune,null)})
-            for((id,label) in listOf("models" to "Models and providers","files" to "Browse device files","devices" to "Devices and pairing","agents" to "Agent management","mcp-catalog" to "MCP tools","shirudo" to "Shirudo shields")){
+            for((id,label) in listOf("models" to "Models and providers","files" to "Browse device files","devices" to "Devices and pairing","ssh" to "SSH connections","ide" to "Coding workspace","agents" to "Agent management","mcp-catalog" to "MCP tools","shirudo" to "Shirudo shields")){
                 ListItem(modifier=Modifier.clickable{menu=false;onTool(id)},headlineContent={Text(label)},leadingContent={Icon(com.meshlit.ui.phone.phoneIcon(id),null)})
             }
         }

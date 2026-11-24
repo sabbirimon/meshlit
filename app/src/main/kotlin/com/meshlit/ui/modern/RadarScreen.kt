@@ -92,6 +92,7 @@ import kotlin.math.sin
     }
     val markerNames=visible.map { it.advertisement.displayName.ifBlank { "Nearby Meshlit device" } }
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().testTag("radar-screen"),state=list,contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        item { ExplainToolResult("device radar") { "Visible devices: "+visible.size+"\nScanning: "+state.scanning } }
         item { TextButton(onClick=onBack) { Text("Back to settings") };Text("Device radar",style=MaterialTheme.typography.headlineSmall)
             Text("Live Meshlit discoveries only. Saved devices are listed separately below. Rings do not measure physical distance.",style=MaterialTheme.typography.bodyMedium) }
         item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {

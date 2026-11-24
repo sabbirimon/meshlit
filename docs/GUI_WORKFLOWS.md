@@ -83,3 +83,15 @@ A portable shortcut file looks like this.
 Desktop also accepts actions from its Studio dashboard and registered tools. Android supports its own destinations and MCP tools from enrolled, enabled routes. In **Customize composer**, discover approved tools after configuring their route. Use the picker on the target platform to select its tool names. An import accepts up to 32 shortcuts and 64 KiB.
 
 Type or dictate “scan my Shirudo report” and send it, or use `/shirudo scan`, `/shirudo export` or `/shirudo status`. On a prepared Linux desktop, `/shirudo scan` requests a live scan. Android, macOS and Windows open the report picker. **Autopilot** on Android requests permission to use the selected built-in agent tools. Desktop’s **Autopilot** supports the approved web-read workflow. After enabling it, send “search the web for” followed by your query. The query goes to Wikipedia and the results go to the selected model. Operator actions, external tools and file selection retain their own prompts.
+
+### Work with results in chat
+
+Chat-launched Shirudo scans return their check results to the composer. From a report or supported diagnostic dashboard choose **Explain in chat**. You can also type `/shirudo explain` for the report in this session. A draft lets you review what goes to the selected model. Send it, then ask follow-up questions in the same conversation.
+
+Use **Paste tool result** for output copied from another service. A registered external tool can return text or structured data to the draft. The desktop composer labels binary output by type and size. Use the attachment picker when you want the model to see an image. In the other direction, open a pinned tool with a draft present to review the draft as JSON input. The tool runs only after confirmation.
+
+On desktop, `/app describe your app` asks the selected model for a single HTML app and opens complete source in an editable document. Save the file after review. For an existing codebase, choose **More tools → Coding workspace**. An installed IDE agent can also receive your draft through **Agents and model tools**.
+
+Use `/ssh build host`, `/ssh test host`, or “SSH to host and build my app” with a saved host. Select the existing project folder and its npm, Cargo or Gradle task, then approve the displayed target and command. Meshlit checks the known SSH host key and returns the exit status and output to the draft. Android chat can request the structured actions delegated to a paired SSH node. Enable SSH node tools and choose a compatible agent route.
+
+For a multi-file app, send `/project` followed by a description. Review the generated source and file list before saving into a new project directory. For a local checkout, `/build` and `/test` ask you to select the folder and task, then return the process output and exit status to chat. Build tools and project dependencies must already be installed. For interactive edits to an existing project, open it in the coding IDE and use an installed coding agent.
