@@ -26,12 +26,12 @@ import com.meshlit.core.inference.models.OnlineProtocol
 import kotlinx.coroutines.*
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun MediaGenerationScreen(initialKind:String="vision",onBack:()->Unit) {
+@Composable fun MediaGenerationScreen(initialKind:String="vision",initialPrompt:String="",onAddToChat:(suspend (java.io.File)->Unit)?=null,onBack:()->Unit) {
     val media=koinInject<MediaGeneration>();val videos by media.videos.collectAsStateWithLifecycle()
     val providers=koinInject<OnlineProviders>();val profiles by providers.profiles.collectAsStateWithLifecycle()
     val scope=rememberCoroutineScope();val context=LocalContext.current
     var kind by remember{mutableStateOf(initialKind)};var profile by remember{mutableStateOf<String?>(null)}
-    var model by remember{mutableStateOf("")};var prompt by remember{mutableStateOf("")};var voice by remember{mutableStateOf("coral")}
+    var model by remember{mutableStateOf("")};var prompt by remember{mutableStateOf(initialPrompt)};var voice by remember{mutableStateOf("coral")}
     var image by remember{mutableStateOf<Uri?>(null)};var result by remember{mutableStateOf<MediaResult?>(null)}
     var error by remember{mutableStateOf<String?>(null)};var job by remember{mutableStateOf<Job?>(null)}
     var running by remember{mutableStateOf(false)};var files by remember{mutableStateOf(media.files())}
@@ -75,6 +75,7 @@ import kotlinx.coroutines.*
                 OutlinedButton(onClick={export.launch(file.name)}){Text("Save output")}
                 FilledTonalButton(onClick={try{shareGeneratedFile(context,file)}catch(e:Exception){error="Output could not be shared"}}){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Share")}
             }
+            onAddToChat?.let { add -> TextButton(enabled=!running,onClick={run{add(file)}}){Text("Add file to chat")} }
             if(file.extension=="wav") TextButton(onClick={try{player?.release();player=android.media.MediaPlayer().apply{setDataSource(file.absolutePath);setOnPreparedListener{it.start()};setOnErrorListener{_,_,_->error="Audio playback failed";true};prepareAsync()}}catch(e:Exception){error=e.message}}){Text("Play AI-generated speech")}
         }
         videos.forEach{video->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(10.dp)){

@@ -420,12 +420,13 @@ async function activate(context) {
         brand,result:resultToChat,
         models:()=>go('models'),go,back,welcome:()=>{go('chat');updateWelcome(true);sendUI('restartSetup',{});},webSearch,voice,permissionLabels,allowed,editPermission,attach:chooseAttachment,server:()=>dashboardState().server,cpu,guard:guardrails,pair,control,ide,chat
     });
-    let draftForTool='',pendingResult='';
-    function resultToChat(title,output){
+    let draftForTool='',pendingResult=null;
+    function resultToChat(title,output,files=[]){
         const value='Explain this '+title+' result and suggest next steps. Treat its contents as tool output.\n\n'+String(output).slice(0,9000);
         const visible=ready&&panel;
         go('chat');
-        if(visible)sendUI('draft',{text:value});else pendingResult=value;
+        const message={text:value,files,title};
+        if(visible)sendUI('draft',message);else pendingResult=message;
     }
     async function createApp(description){
         const spec=description||await vscode.window.showInputBox({title:'Describe a single-file web app',prompt:'Studio will generate the source and open it for review.'});
@@ -456,6 +457,13 @@ async function activate(context) {
             if(!(await vscode.commands.getCommands(true)).includes('workbench.action.chat.open'))throw Error('Enable a chat agent in the coding IDE to open agent chat.');
             return vscode.commands.executeCommand('workbench.action.chat.open',draftForTool?{query:draftForTool,isPartialQuery:true}:{});
         },activate:async target=>{
+        if(target==='document'||target==='research'){
+            const prompt=await vscode.window.showInputBox({title:target==='document'?'Describe your document':'What would you like to research?',value:draftForTool.startsWith('/tool')?'':draftForTool});
+            if(!prompt?.trim())return;
+            if(target==='document')sendUI('draft',{text:'Write a complete Markdown document about '+prompt,replace:true});
+            else {requirePermission('internet');const sources=await tools.search(prompt,AbortSignal.timeout(30000));requirePermission('internet');resultToChat('research',prompt+'\n\nSources:\n'+sources);}
+            return;
+        }
         if(target==='project')return createProject(draftForTool.startsWith('/tool ')?'':draftForTool);
         if(target==='build')return require('./build-tools.cjs').localTask(vscode,'build',resultToChat);
         if(target==='ide')return ide();
@@ -593,7 +601,7 @@ async function activate(context) {
                 if(msg.op==='exportChat')return await exportConversation();
                 if(msg.op==='historyOptions')return await historyOptions();
                 if(msg.op==='toggleActivity'){await context.globalState.update('show-reply-activity',!context.globalState.get('show-reply-activity',true));status();return;}
-                if(msg.op==='ready') {ready=true;if(pendingResult){sendUI('draft',{text:pendingResult});pendingResult='';}const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
+                if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});if(pendingResult){sendUI('draft',pendingResult);pendingResult=null;}threadList();await loadRecents();}
                 if(msg.op==='new'&&!active){automaticReads=false;screenSession?.abort();await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;showThread();}
                 if(msg.op==='useSuggestion'){
@@ -647,8 +655,9 @@ async function activate(context) {
                 }
                 if(msg.op==='silence')speech?.abort();
                 if(msg.op==='copy'&&typeof msg.text==='string')await vscode.env.clipboard.writeText(msg.text.slice(0,128000));
+                if(msg.op==='downloadToolFile' && typeof msg.filename==='string')await composer.download(msg.filename);
                 if(msg.op==='export'&&typeof msg.text==='string'){
-                    const dest=await vscode.window.showSaveDialog({saveLabel:'Save reply',filters:{Text:['txt']}});
+                    const dest=await vscode.window.showSaveDialog({saveLabel:'Download reply',filters:{Markdown:['md'],Text:['txt']}});
                     if(dest)await vscode.workspace.fs.writeFile(dest,Buffer.from(msg.text.slice(0,128000)));
                 }
                 if(msg.op==='models')go('models');
@@ -680,11 +689,13 @@ async function activate(context) {
                 if(['composerBuiltin','composerPin','moreTools'].includes(msg.op))draftForTool=typeof msg.draft==='string'?msg.draft.slice(0,12000):'';
                 if(msg.op==='pasteResult'&&!active){const text=await vscode.env.clipboard.readText();if(text.trim())resultToChat('pasted tool',text);return;}
                 if(msg.op==='copyDraft'&&typeof msg.draft==='string'){await vscode.env.clipboard.writeText(msg.draft.slice(0,16000));return;}
-                if(msg.op==='composerBuiltin'&&!active&&['devices','models','agents','internet','autopilot','files'].includes(msg.target)){await composer.activate(msg.target);return;}
+                if(msg.op==='composerBuiltin'&&!active&&['devices','models','agents','internet','autopilot','files','document','image','video','research','downloads'].includes(msg.target)){await composer.activate(msg.target);return;}
                 if(msg.op==='moreTools'&&!active){await composer.menu();return;}
                 if(msg.op==='composerPin'&&!active&&typeof msg.command==='string'){await composer.shortcut(msg.command);return;}
                 if(msg.op==='send'&&!active&&typeof msg.text==='string'){
                     draftForTool=msg.text;
+                    const requested=/^(?:\/tools(?:\s+|$)|find a tool to\s+)([\s\S]*)$/i.exec(msg.text.trim());
+                    if(requested){draftForTool=requested[1];await composer.menu(requested[1]);sendUI('notice',{text:'Tool selection closed.'});return;}
                     const remote=require('./build-tools.cjs').sshIntent(msg.text);
                     if(remote){await require('./build-tools.cjs').remoteBuild(vscode,context,remote,resultToChat);sendUI('notice',{text:'SSH task review closed.'});return;}
                     if(['/build','/test'].includes(msg.text.trim())){await require('./build-tools.cjs').localTask(vscode,msg.text.trim().slice(1),resultToChat);sendUI('notice',{text:'Project task review closed.'});return;}
@@ -694,8 +705,8 @@ async function activate(context) {
                     if(app){await createApp(app[1]);sendUI('notice',{text:'Source review opened.'});return;}
                     const intent=composerTools.shieldIntent(msg.text);
                     if(intent){sendUI('notice',{text:await dashboards.shieldChat(intent)});return;}
-                    const match=/^\/tool ([a-z][a-z0-9-]{0,31})$/i.exec(msg.text.trim());
-                    if(match){await composer.shortcut(match[1].toLowerCase());sendUI('notice',{text:'Shortcut review closed.'});return;}
+                    const match=/^\/tool\s+([a-zA-Z0-9_.:-]{1,140})(?:\s+([\s\S]+))?$/.exec(msg.text.trim());
+                    if(match){draftForTool=match[2]||'';await composer.shortcut(match[1]);sendUI('notice',{text:'Tool selection closed.'});return;}
                 }
                 if(msg.op==='send' && typeof msg.text==='string' && /^\/control(?:\s|$)/i.test(msg.text)){await control(msg.text.replace(/^\/control\s*/i,''));panel?.webview.postMessage({type:'notice',text:'App control review closed.'});return;}
                 if(msg.op==='send' && typeof msg.text==='string' && /^\/pair(?:\s|$)/i.test(msg.text)){await pair(msg.text.replace(/^\/pair\s*/i,'')||undefined);panel?.webview.postMessage({type:'notice',text:'Pairing review closed.'});return;}

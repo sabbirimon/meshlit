@@ -237,10 +237,18 @@ fun ModernMeshlitApp() {
     val glass=config.surfaceStyle==com.meshlit.ui.theme.SurfaceStyle.GLASS
     val colors=MaterialTheme.colorScheme
     val openMenu:()->Unit={scope.launch{drawer.open()}}
+    var mediaKind by rememberSaveable { mutableStateOf("vision") }
+    var researchOpen by rememberSaveable { mutableStateOf(false) }
     fun select(id:String) {
+        if (id == "research-topic" && !com.meshlit.BuildProfile.coreCandidate) { researchOpen=true; return }
+        val destination=when(id) {
+            "create-image","create-video" -> {mediaKind=id.removePrefix("create-");"media"}
+            "research-topic" -> "search"
+            else -> id
+        }
         if(tab in setOf("chat","settings","agents","devices","models")) previousHub=tab
         if(id in WorkspaceDestinations.settingsIds && tab!="settings" && tab !in WorkspaceDestinations.settingsIds) settingsOrigin=tab
-        tab=if(com.meshlit.BuildProfile.routeAllowed(id)) id else "about"
+        tab=if(com.meshlit.BuildProfile.routeAllowed(destination)) destination else "about"
         scope.launch{drawer.close()}
     }
     val incoming = com.meshlit.LocalSharedPrompt.current
@@ -282,6 +290,7 @@ fun ModernMeshlitApp() {
             if(result.length+2>space)chats.attachmentError("A preview was added. The full result exceeds the chat limit.")
         }
     }) {
+    if (researchOpen) ResearchDialog(chatDraftState.value, onSettings={researchOpen=false;select("search")}, onClose={researchOpen=false})
     BoxWithConstraints(Modifier.fillMaxSize().background(if(glass) Brush.linearGradient(listOf(colors.primaryContainer.copy(alpha=0.25f),colors.background,colors.background)) else Brush.linearGradient(listOf(colors.background,colors.background)))) {
         val wide=WorkspaceDestinations.wideSidebar(maxWidth.value,config.workspaceLayout)
         val sidebar:@Composable ()->Unit={
@@ -351,7 +360,7 @@ fun ModernMeshlitApp() {
                             else if(tab=="devices") ModernNetworkScreen(onBack={primaryDetail=false},onDashboard={select("device-dashboard")}, initialPage="app")
                             else ModernSettingsScreen(initialDestination=tab,onExit={primaryDetail=false})
                         "monitor" -> ModernMonitorScreen()
-                        "media" -> MediaGenerationScreen(onBack={select("chat")})
+                        "media" -> MediaGenerationScreen(initialKind=mediaKind,initialPrompt=chatDraftState.value,onAddToChat={file->chats.addMediaToChat(file);select("chat")},onBack={select("chat")})
                         "vision" -> MediaGenerationScreen(onBack={select("chat")},initialKind="vision")
                         "voice" -> HandsFreeVoiceDialog(chats){select("chat")}
                         "structured" -> ModernStructuredScreen()
@@ -469,11 +478,21 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
     val hasChatModel=runtime is CoordinatorState.Ready || state.current?.options?.onlineProfileId!=null || state.current?.options?.routeId!=null
     val nativeConnection=photo==null && state.current?.options?.let{it.agentToolsActive && deviceConnectionChatIntent(draft,it)!=null}==true
     var customize by remember { mutableStateOf(false) }
+    var catalogQuery by remember { mutableStateOf<String?>(null) }
+    var toolArguments by remember { mutableStateOf<String?>(null) }
     var pickedPin by remember { mutableStateOf<ComposerPin?>(null) }
     val pins=savedComposerPins(context)
     val resultToChat=LocalResultToChat.current
-    if(customize) ComposerToolPicker(pickedPin,draft,onClose={customize=false;pickedPin=null},onRoute={if(it=="chat-options")onOptions() else onTool(it)},onDraft={resultToChat("connected tool",it)})
-    val pinIntent=if(photo==null && draft.startsWith("/tool ") && !com.meshlit.BuildProfile.coreCandidate) pins.find {draft.trim()=="/tool "+it.command} else null
+    if(customize) ComposerToolPicker(pickedPin,toolArguments ?: draft,catalogQuery,onClose={customize=false;pickedPin=null;catalogQuery=null;toolArguments=null},onRoute={if(it=="chat-options")onOptions() else onTool(it)},onDraft={resultToChat("connected tool",it)})
+    val commandText = draft.trim()
+    val toolRequest = if(photo==null && !com.meshlit.BuildProfile.coreCandidate)
+        Regex("""(?i)^(?:/tools?(?:\s+|$)|find a tool to\s+)([\s\S]*)$""").matchEntire(commandText)?.groupValues?.get(1) else null
+    val key = toolRequest.orEmpty().substringBefore(' ')
+    val pinIntent = if(toolRequest!=null && commandText.startsWith("/tool ",true))
+        pins.find { it.command==key } ?: when {
+            key.startsWith("mcp:") && key.matches(Regex("mcp:[A-Za-z0-9_.-]{1,128}")) -> ComposerPin("",key.removePrefix("mcp:"),key)
+            else -> WorkspaceDestinations.all.firstOrNull { it.id==key && com.meshlit.BuildProfile.routeAllowed(it.id) }?.let { ComposerPin("",it.title,it.id) }
+        } else null
     var shieldAction by rememberSaveable { mutableStateOf<String?>(null) }
     val shieldIntent=if(photo==null && !com.meshlit.BuildProfile.coreCandidate) shieldChatAction(draft) else null
     if(shieldAction!=null) {
@@ -483,8 +502,12 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
         }
         return
     }
-    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection || shieldIntent!=null || pinIntent!=null) && draft.isNotBlank()
-    val send={ if(canSend && pinIntent!=null) {editDraft("");keyboard?.hide();pickedPin=pinIntent;customize=true} else if(canSend && shieldIntent!=null) {editDraft("");keyboard?.hide();shieldAction=shieldIntent} else if(canSend) {
+    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection || shieldIntent!=null || toolRequest!=null) && draft.isNotBlank()
+    val send={ if(canSend && toolRequest!=null) {
+        editDraft("");keyboard?.hide();pickedPin=pinIntent;catalogQuery=if(pinIntent==null)toolRequest else null
+        toolArguments=if(pinIntent!=null)toolRequest.substringAfter(' ',"") else ""
+        customize=true
+    } else if(canSend && shieldIntent!=null) {editDraft("");keyboard?.hide();shieldAction=shieldIntent} else if(canSend) {
         followLatest=true
         val selectedPhoto=photo
         val sent=controller.send(if(selectedPhoto!=null) draft.ifBlank{"Describe this photo accurately, including any readable text."} else draft,
@@ -575,6 +598,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         "block" -> ReplyContent(checkNotNull(row.block),if(searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key) Modifier.background(colors.secondaryContainer.copy(alpha=0.45f)).testTag("chat-search-current-match") else Modifier)
                         "devices" -> ChatDeviceConnections(message.deviceOffer,message.deviceReceipt,!state.running && state.current?.options?.connectionTools==true && state.current?.options?.agentToolsActive==true,controller::connectDevice,{controller.send("connect devices")},onConnections)
                         "actions" -> Column {
+                            message.mediaFilename?.let { DownloadGeneratedFile(it) }
                             ChatWebSources(message.id,message.webSources)
                             if (message.knowledgeSources.isNotEmpty()) {
                                 var showSources by remember(message.id) { mutableStateOf(false) }

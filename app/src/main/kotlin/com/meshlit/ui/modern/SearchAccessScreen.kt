@@ -67,3 +67,35 @@ import kotlinx.coroutines.*
         }
     }
 }
+
+@Composable internal fun ResearchDialog(draft:String,onSettings:()->Unit,onClose:()->Unit) {
+    val service=koinInject<AppSearchService>()
+    val access by service.access.state.collectAsStateWithLifecycle()
+    val resultToChat=LocalResultToChat.current
+    val scope=rememberCoroutineScope()
+    var query by remember { mutableStateOf(draft.take(600)) }
+    var busy by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf<String?>(null) }
+    AlertDialog(onDismissRequest=onClose,title={Text("Research a topic")},text={
+        Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(query,{query=it.take(600)},enabled=!busy,label={Text("Search the web")})
+            if (!access.webEnabled) TextButton(onClick=onSettings){Text("Enable Internet search")}
+            if (busy) LinearProgressIndicator()
+            problem?.let { Text(it,color=MaterialTheme.colorScheme.error) }
+        }
+    },confirmButton={TextButton(enabled=access.webEnabled && query.isNotBlank() && !busy,onClick={
+        busy=true
+        scope.launch {
+            try {
+                val rows=service.web(query)
+                if(rows.isEmpty()) problem="No results. Try another query."
+                else {
+                    resultToChat("web search", rows.joinToString("\n\n") { "${it.title}\n${it.url}\n${it.snippet}" })
+                    onClose()
+                }
+            } catch (e:CancellationException) { throw e }
+            catch (e:Exception) { problem=e.message ?: "Search failed" }
+            finally { busy=false }
+        }
+    }){Text("Search")}},dismissButton={TextButton(onClick=onClose){Text("Close")}})
+}

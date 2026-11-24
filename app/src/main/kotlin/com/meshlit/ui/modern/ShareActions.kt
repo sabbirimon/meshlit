@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -60,6 +61,7 @@ internal fun shareGeneratedFile(context:Context,file:File) {
         IconButton(onClick={reader=true}){
             Icon(Icons.Default.OpenInFull,"Read full response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        IconButton(enabled=!busy,onClick={export.launch("meshlit-response.md")}) { Icon(Icons.Default.FileDownload,"Download reply",Modifier.size(18.dp)) }
         androidx.compose.foundation.layout.Box {
         IconButton(onClick={menu=true}){
             Icon(Icons.Default.MoreVert,"Response actions",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
@@ -82,4 +84,40 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     }
     error?.let{AlertDialog(onDismissRequest={error=null},title={Text("Cannot share")},text={Text(it)},
         confirmButton={TextButton(onClick={error=null}){Text("OK")}})}
+}
+
+@Composable internal fun DownloadGeneratedFile(filename:String) {
+    val context=LocalContext.current
+    val media=com.meshlit.di.koinInject<com.meshlit.media.MediaGeneration>()
+    val scope=rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var status by remember(filename) { mutableStateOf<String?>(null) }
+    val mime=when(filename.substringAfterLast('.')) {
+        "png" -> "image/png"
+        "mp4" -> "video/mp4"
+        "wav" -> "audio/wav"
+        else -> return
+    }
+    val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mime)) { uri ->
+        if(uri!=null) scope.launch {
+            busy=true
+            try {
+                withContext(Dispatchers.IO) {
+                    val file=media.files().firstOrNull { it.name==filename } ?: error("The original file is no longer in Media studio.")
+                    file.inputStream().use { input ->
+                        val stream=context.contentResolver.openOutputStream(uri,"wt") ?: error("Cannot open the selected location")
+                        stream.use { output -> input.copyTo(output) }
+                    }
+                }
+                status="File saved"
+            } catch(e:CancellationException) {throw e}
+            catch(e:Exception) {status=e.message ?: "Download failed"}
+            finally {busy=false}
+        }
+    }
+    TextButton(enabled=!busy,onClick={save.launch(File(filename).name)}) {
+        Icon(Icons.Default.FileDownload,null)
+        Text("Download file")
+    }
+    status?.let { Text(it,style=MaterialTheme.typography.bodySmall) }
 }

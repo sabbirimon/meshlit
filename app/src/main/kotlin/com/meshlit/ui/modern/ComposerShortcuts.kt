@@ -59,7 +59,7 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
     return runCatching {decodePins(text)}.getOrDefault(emptyList())
 }
 
-@Composable internal fun ComposerToolPicker(initial:ComposerPin?,draft:String,onClose:()->Unit,onRoute:(String)->Unit,onDraft:(String)->Unit) {
+@Composable internal fun ComposerToolPicker(initial:ComposerPin?,draft:String,initialQuery:String?,onClose:()->Unit,onRoute:(String)->Unit,onDraft:(String)->Unit) {
     val ctx=LocalContext.current
     val gateway=koinInject<GatewayHost>().remoteRoutes
     val scope=rememberCoroutineScope()
@@ -67,12 +67,13 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
     var target by remember {mutableStateOf("")}
     var title by remember {mutableStateOf("")}
     var command by remember {mutableStateOf("")}
-    var query by remember {mutableStateOf("")}
+    var query by remember {mutableStateOf(initialQuery.orEmpty())}
+    var manage by remember {mutableStateOf(false)}
     var message by remember {mutableStateOf("")}
     var confirm by remember {mutableStateOf(initial)}
     var args by remember {mutableStateOf(if(draft.isBlank() || draft.startsWith("/tool ")) "{}" else runCatching {Json.parseToJsonElement(draft).jsonObject.toString()}.getOrElse {JSONObject().put("text",draft.take(3000)).toString()})}
     var imported by remember {mutableStateOf(emptyList<ComposerPin>())}
-    var remote by remember {mutableStateOf(emptyList<String>())}
+    var remote by remember {mutableStateOf(gateway.tools(false).map { it.jsonObject.getValue("name").jsonPrimitive.content })}
     var busy by remember {mutableStateOf(false)}
     fun save(next:List<ComposerPin>){
         val data=JSONObject().put("schema",1).put("tools",JSONArray(next.map {JSONObject().put("command",it.command).put("title",it.title).put("target",it.target)})).toString()
@@ -98,13 +99,19 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
     }
     AlertDialog(onDismissRequest=onClose,title={Text("Composer tools")},text={
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
-            pins.forEach {pin->Row {
+            TextButton({ manage = !manage }) { Text(if (manage) "Browse all tools" else "Customize shortcuts") }
+            OutlinedTextField(query,{query=it},label={Text("Search tools and services")},singleLine=true)
+            pins.filter { query.isBlank() || it.title.contains(query,true) || it.command.contains(query,true) }.forEach {pin->Row {
                 TextButton({confirm=pin},Modifier.weight(1f)){Text(pin.title)}
-                TextButton({save(pins-pin)}){Text("Unpin")}
+                if (manage) TextButton({save(pins-pin)}){Text("Unpin")}
             }}
-            OutlinedTextField(query,{query=it},label={Text("Find a Meshlit tool to pin")},singleLine=true)
-            WorkspaceDestinations.search(query).filter{BuildProfile.routeAllowed(it.id)}.take(if(query.isBlank()) 4 else 16).forEach {tool->
-                TextButton({stage(tool.title,tool.id)}){Text(tool.title)}
+            val words=query.lowercase().split(Regex("\\W+")).filter { it.length>1 }
+            val destinations=WorkspaceDestinations.all.filter { BuildProfile.routeAllowed(it.id) }.map { tool ->
+                val text="${tool.id} ${tool.title} ${tool.description} ${tool.keywords}".lowercase()
+                tool to words.count { it in text }
+            }.filter { words.isEmpty() || it.second>0 }.sortedByDescending { it.second }
+            destinations.forEach { (tool,_) ->
+                TextButton({if (manage) stage(tool.title,tool.id) else {onClose();onRoute(tool.id)}}){Text(tool.title)}
             }
             TextButton({onClose();onRoute("mcp-catalog")}){Text("Connect an MCP service")}
             TextButton(enabled=!busy,onClick={scope.launch {
@@ -112,12 +119,16 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
                 try {withContext(Dispatchers.IO){gateway.refresh()};remote=gateway.tools(false).map {it.jsonObject.getValue("name").jsonPrimitive.content};message="Found ${remote.size} approved tools."}
                 catch(e:CancellationException){throw e}catch(_:Exception){message="Check your MCP route, gateway permissions and allowed tool names."}finally{busy=false}
             }}){Text("Discover connected tools")}
-            remote.forEach {name->TextButton({stage(name,"mcp:"+name)}){Text(name)}}
+            remote.filter { name -> query.isBlank() || words.any { it in name.lowercase() } }.forEach { name ->
+                TextButton({ if(manage)stage(name,"mcp:"+name) else confirm=ComposerPin("",name,"mcp:"+name) }) { Text(name) }
+            }
+            if (manage) {
             OutlinedTextField(target,{target=it.take(2048)},label={Text("Destination or HTTPS service")})
             OutlinedTextField(title,{title=it.take(64)},label={Text("Shortcut title")})
             OutlinedTextField(command,{command=it.take(32)},label={Text("Command · /tool name")},singleLine=true)
             Button({runCatching {save(pins+ComposerPin(command,title,target))}.onSuccess{title="";target="";command="";message="Shortcut pinned."}.onFailure{message="Choose a supported target and a unique lowercase command."}}){Text("Pin shortcut")}
             TextButton({importer.launch(arrayOf("application/json","text/plain","application/octet-stream"))}){Text("Import shortcuts")}
+            }
             if(message.isNotBlank())Text(message)
         }
     },confirmButton={TextButton(onClose){Text("Done")}})

@@ -36,7 +36,7 @@ data class PhotoChatRequest(val uri:android.net.Uri,val profile:OnlineProfile?=n
     val label:String get()=profile?.let{"${it.name} · ${it.model}"} ?: "On-device photo · ${checkNotNull(offline).label}"
 }
 
-@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null,val knowledgeSources:List<String> = emptyList(),val webSources:List<ChatWebSource> = emptyList(),val deviceOffer:com.meshlit.core.mcp.control.DeviceConnectionOffer?=null,val deviceReceipt:com.meshlit.core.mcp.control.DeviceConnectionReceipt?=null,val isolatedPhoto:Boolean=false,val createdAtMs:Long?=null, val activity:List<String> = emptyList(), val reasoningSummary:String?=null)
+@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null,val knowledgeSources:List<String> = emptyList(),val webSources:List<ChatWebSource> = emptyList(),val deviceOffer:com.meshlit.core.mcp.control.DeviceConnectionOffer?=null,val deviceReceipt:com.meshlit.core.mcp.control.DeviceConnectionReceipt?=null,val isolatedPhoto:Boolean=false,val createdAtMs:Long?=null, val activity:List<String> = emptyList(), val reasoningSummary:String?=null, val mediaFilename:String?=null)
 @Serializable data class ChatConversation(val id:String=UUID.randomUUID().toString(),val title:String="New chat",
     val messages:List<ChatMessage> = emptyList(),val updatedAt:Long=System.currentTimeMillis(),val options:ChatOptions=ChatOptions(),val usageNote:String?=null,val draft:String="",val recoveryBinding:ReplicaChatBinding?=null)
 data class ChatState(val conversations:List<ChatConversation> = emptyList(),val selectedId:String?=null,
@@ -76,6 +76,22 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         _state.update { it.copy(conversations=(listOf(item)+it.conversations).take(40),selectedId=item.id,error=null) }
         appScope.launch { runCatching { save() } }
     }
+    internal suspend fun addMediaToChat(file: File) {
+        ready.await()
+        require(withContext(Dispatchers.IO) { file in media.files() }) { "Generated file is unavailable" }
+        check(!state.value.running) { "Wait for the current reply to finish" }
+        if (state.value.current == null) newChat()
+        val id = checkNotNull(state.value.selectedId)
+        val now = System.currentTimeMillis()
+        val reply = ChatMessage(role = "assistant", text = file.name, source = "Media studio",
+            createdAtMs = now, mediaFilename = file.name)
+        _state.update { old -> old.copy(conversations = old.conversations.map { chat ->
+            if (chat.id != id || chat.messages.any { it.mediaFilename == file.name }) chat
+            else chat.copy(updatedAt = now, messages = (chat.messages + reply).takeLast(100))
+        }) }
+        save()
+    }
+
     /** A reviewed inbox item becomes a local Chat draft and never starts a model. */
     internal suspend fun createBotDraft(source: String, eventId: String, text: String) {
         ready.await()
