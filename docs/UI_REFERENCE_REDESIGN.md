@@ -1,8 +1,4 @@
 # Reference-driven UI continuation
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-07, Asia/Dhaka. The owner's screenshots are the visual reference:
 compact AI chat toolbar, centered empty state, pale neutral canvas with a blue/cyan

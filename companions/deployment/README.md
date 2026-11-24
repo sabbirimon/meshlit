@@ -1,8 +1,4 @@
 # Terraform saved-plan companion
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Original optional POSIX/Python companion. The operator installs Terraform independently;
 its [license](https://github.com/hashicorp/terraform/blob/main/LICENSE) remains separate.

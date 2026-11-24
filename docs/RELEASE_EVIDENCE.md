@@ -1,8 +1,4 @@
 # Release publication and qualification evidence
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-10. Source review and release assets have separate states.
 

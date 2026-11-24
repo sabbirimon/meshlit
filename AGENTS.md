@@ -1,8 +1,4 @@
 # Meshlit agent instructions
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
-Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 ## Start here
 Read `README.md`, `settings.gradle.kts`, `docs/architecture/current-state.md`,
@@ -201,3 +197,5 @@ gates; do not invent a global phase or project completion percentage. Run
 `scripts/validate-feature-map.py`. Historical records, third-party/licence text
 and versioned agreements are indexed without changing their dated claims or
 terms. Keep offline guide content synchronized when changing user instructions.
+
+Archived development notes are available to maintainers in the [private project archive](https://github.com/sabbirimon/meshlit-hyperl-internal-docs/blob/main/Meshlit/main).

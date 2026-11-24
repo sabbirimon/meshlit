@@ -1,8 +1,4 @@
 # Optional private Crawl4AI companion
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 This host-side service gives Meshlit `crawl_url`, returning bounded Markdown,
 source/final URLs, HTTP status, retrieval time and truncation information.

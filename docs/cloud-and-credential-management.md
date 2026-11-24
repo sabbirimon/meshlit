@@ -1,8 +1,4 @@
 # Cloud, credentials and environment management
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-06. Dedicated drawer entry and Settings → Cloud and credentials.
 Source implementation is separate from authenticated vendor/device acceptance.

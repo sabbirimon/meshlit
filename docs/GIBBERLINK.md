@@ -1,8 +1,4 @@
 # Experimental GibberLink with English transcript
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Settings → GibberLink and English transcript is off by default. It uses the actual
 local ggwave PCM codec, not speech recognition, an LLM, a prerecorded modem sound

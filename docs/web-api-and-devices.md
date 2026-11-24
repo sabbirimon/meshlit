@@ -1,8 +1,4 @@
 # Authenticated web/API companion and local groups
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Modern Devices → Web/API devices and groups. Off by default. Enable the TLS
 listener on port 18792; a foreground notification offers Stop access. Check the

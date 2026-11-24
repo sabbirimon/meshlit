@@ -1,8 +1,4 @@
 # Desktop recovery, self-healing and reset
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-10. User requests desktop/server parity with old and current Android.
 
@@ -44,4 +40,4 @@ rollback or reset workflow. Do not label Stop as “full auto repair”.
 
 A full PC/OS recovery/reset is not implied by “application reset”. System-level
 operations require a separately reviewed backend and visible OS authentication.
-Track delivery in [desktop features](../DESKTOP_FEATURE_TRACKER.md) and [build log](../DESKTOP_BUILD_LOG.md).
+Track delivery in desktop features (archived) and build log (archived).

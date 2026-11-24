@@ -1,8 +1,4 @@
 # P2P chat, scoped remote commands and local cryptography
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Implemented source is Experimental unless noted. Build/fixture checks are not
 physical phone, Internet reachability, penetration testing or production proof.

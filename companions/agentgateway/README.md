@@ -1,8 +1,4 @@
 # Official Rust agentgateway companion
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Pinned upstream v1.6.0 from the official release API, reviewed 2026-10-07.
 `upstream.lock.json` records Linux amd64/arm64 download URLs and GitHub SHA-256

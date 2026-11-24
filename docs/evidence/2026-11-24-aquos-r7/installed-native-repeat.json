@@ -1,0 +1,51 @@
+{
+  "model": "Qwen2.5 0.5B Instruct Q4_K_M",
+  "runner": "Installed ARM64 native local",
+  "context": 512,
+  "keyCache": "q8_0",
+  "valueCache": "f16",
+  "requestedCpuThreads": 4,
+  "samples": [
+    {
+      "sample": 0,
+      "requestWallMs": 545.01875,
+      "firstTextCallbackMs": 104.419115,
+      "generatedTokens": 16,
+      "engineTokensPerSecond": 34.473724,
+      "engineDurationMs": 515
+    },
+    {
+      "sample": 1,
+      "requestWallMs": 477.140938,
+      "firstTextCallbackMs": 114.979063,
+      "generatedTokens": 16,
+      "engineTokensPerSecond": 42.529785,
+      "engineDurationMs": 439
+    },
+    {
+      "sample": 2,
+      "requestWallMs": 511.855781,
+      "firstTextCallbackMs": 105.777865,
+      "generatedTokens": 16,
+      "engineTokensPerSecond": 37.432903,
+      "engineDurationMs": 482
+    },
+    {
+      "sample": 3,
+      "requestWallMs": 536.791822,
+      "firstTextCallbackMs": 139.962864,
+      "generatedTokens": 16,
+      "engineTokensPerSecond": 38.79016,
+      "engineDurationMs": 505
+    },
+    {
+      "sample": 4,
+      "requestWallMs": 534.922552,
+      "firstTextCallbackMs": 120.771198,
+      "generatedTokens": 16,
+      "engineTokensPerSecond": 37.067333,
+      "engineDurationMs": 501
+    }
+  ],
+  "cancellationTest": "passed"
+}

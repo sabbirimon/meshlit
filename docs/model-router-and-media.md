@@ -1,8 +1,4 @@
 # Scenario routing, attachments and media
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-06. This is source behavior and its acceptance plan. Read
 PROGRESS.md for actual test/device evidence; an API adapter is not paid-provider

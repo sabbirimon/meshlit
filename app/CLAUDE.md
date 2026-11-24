@@ -1,8 +1,4 @@
 # App-specific instructions
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
-Scope: workflow guidance; current owner instructions and scoped evidence govern. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Read `../AGENTS.md` and `../CLAUDE.md`. The previous file referred to a missing
 BUILD_GUIDE.md, nonexistent domain skills, and a stale phase.

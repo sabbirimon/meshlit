@@ -1,13 +1,9 @@
 # Intel Mac offline desktop preview
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-10. Desktop-only addition to build40. Android's bundled SmolLM2
 starter and local inference defaults remain unchanged. The shared worker-admission
 planner adds bounded whole-layer allocation; both Android flavor Kotlin compilations pass. The earlier host-only Mac preview is being replaced by a desktop studio;
-new installer/native acceptance is recorded in [DESKTOP_BUILD_LOG.md](DESKTOP_BUILD_LOG.md).
+new installer/native acceptance is recorded in DESKTOP_BUILD_LOG.md (archived).
 
 The desktop bundle includes the publisher's Qwen2.5 1.5B Instruct Q4_K_M GGUF,
 1,117,320,736 bytes, Apache-2.0. The immutable revision, source URL and full
@@ -44,7 +40,7 @@ opt-in and admits revision-pinned single-file GGUFs only after full size/SHA che
 Interrupted transfers are removed; resume is not yet implemented. Basic/Advanced
 settings are grouped; monitor/process, crypto, terminal, SSH and optional native
 CPU HyperL have desktop adapters. These are narrower than Android feature parity.
-See [scope](DESKTOP_FEATURE_TRACKER.md) and [Android comparison](ANDROID_DESKTOP_PARITY.md).
+See scope (archived) and [Android comparison](ANDROID_DESKTOP_PARITY.md).
 
 Switching local/remote clears session history. Keys, prompts and grants are session-only;
 appearance, navigation mode, model references and saved node addresses persist.

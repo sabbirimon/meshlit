@@ -1,8 +1,4 @@
 # Audit telemetry, OpenTelemetry and Grafana
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Meshlit provides opt-in encrypted local audit metadata and optional OTLP/HTTP
 traces/metrics. Open Settings → Audit and telemetry. Both audit collection and
@@ -95,7 +91,7 @@ unknown values are not zero. The app does not deploy or send alerts itself.
 RunAnywhere SDK development mode attempted its own development telemetry URL in
 an earlier real generation. DNS failed; no successful payload/transmission was
 established. Meshlit's audit switches control Meshlit's OTel subsystem. They do
-not establish a vendor SDK opt-out. See [remaining-engine-bugs.md](remaining-engine-bugs.md).
+not establish a vendor SDK opt-out. See remaining-engine-bugs.md (archived).
 Do not advertise zero-network SDK behavior without supported opt-out evidence.
 
 ## References

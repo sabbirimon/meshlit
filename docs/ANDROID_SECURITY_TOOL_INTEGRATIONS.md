@@ -1,8 +1,4 @@
 # Android security tool and root integration plan
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Requested by IMON on 2026-10-07. **Source review and implementation roadmap.**
 None of these tools has been installed, executed, copied or bundled into this beta.

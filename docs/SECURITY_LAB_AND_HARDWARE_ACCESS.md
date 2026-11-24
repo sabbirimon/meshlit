@@ -1,8 +1,4 @@
 # Hardware access and Security Lab roadmap
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Requested by IMON. **Design milestone, not a deployed penetration-testing suite.**
 GitHub Full retains the existing implemented runtime/network features. The future
@@ -32,7 +28,7 @@ pending lab execution or agent MCP bridge.
 
 Unit checks cover catalog uniqueness/bounded content, unknown IDs and denial when
 CYBER agent execution is unavailable. APK compilation is separate from physical
-agent use; see [progress](../PROGRESS.md) for current qualification.
+agent use; see progress (archived) for current qualification.
 
 Probe OS/API, architecture, kernel, available native executables, USB classes,
 user-granted handles, root broker, namespaces, cgroups, perf/eBPF permissions,

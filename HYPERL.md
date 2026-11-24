@@ -1,14 +1,10 @@
 # HyperL experimental foundation
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 HyperL began in source commit `cdb06b6`, and the owner merged it into
 `main` through [PR #1](https://github.com/sabbirimon/meshlit-v2/pull/1), merge
 `851576bdd0c9daaea71f32f5daac8720671c6453`, on 2026-10-08. It remains an
 experimental Apache-2.0 CPU library/source emitter within `core-gpu`, with a bounded app recipe workflow added on the production-library review branch.
-Native mobile accelerator runtime integration remains unavailable. Start with [owner requests and build plan](docs/hyperl/REQUESTS_AND_PLAN.md),
+Native mobile accelerator runtime integration remains unavailable. Start with owner requests and build plan (archived),
 [language v1](docs/hyperl/LANGUAGE_V1.md) and [research](docs/hyperl/RESEARCH_2026_10_08.md).
 
 Implementation: `core-gpu` HyperL files and tests; `examples/hyperl`.

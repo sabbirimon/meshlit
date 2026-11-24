@@ -1,8 +1,4 @@
 # Meshlit structured feature and architecture map
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
-Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-09. This is the map of the separate Meshlit implementation, not the
 old Android checkout. `PROGRESS.md` records evidence; `PLAN.md` records unfinished
@@ -290,7 +286,7 @@ Additional MCP environment/SSH tools are separate from that operation count.
 | Configuration profiles | Strict v1 export/import, preview and local preflight | No secrets/trust/delegation; multi-store apply reports partial failures |
 
 Read [implementation details](docs/online-power-peripherals-and-configuration.md)
-and [declarative federation plan](docs/declarative-federation-roadmap.md).
+and declarative federation plan (archived).
 Future compact-memory replication, cross-cluster task leases, WAN brokers and IaC
 providers are planned explicitly and must not be exposed as completed services.
 
@@ -400,8 +396,8 @@ Counts describe source/plans, not completion. New areas include manual replica
 metadata, MCP/A2A connectors, Terraform saved-plan and storage/DSP companions,
 managed stop/capacity dashboard, unified routing, SDK/topology probes, platform/native
 contracts and authenticated network measurements. See
-[continuation](docs/CONTINUATION_2026_10_08.md) and
-[platform plan](docs/PLATFORM_ADAPTER_PLAN.md) for explicit acceptance boundaries.
+continuation (archived) and
+platform plan (archived) for explicit acceptance boundaries.
 HyperL foundation was owner-merged through PR #1. The production-library port adds
 a human-only Settings workbench, twelve CPU recipes, memory admission and controlled
 source generation. [Workflow/provenance](docs/hyperl/APP_AND_LIBRARY.md) records its

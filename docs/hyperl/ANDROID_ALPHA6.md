@@ -1,8 +1,4 @@
 # HyperL alpha.6 in Meshlit
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Settings → HyperL libraries. Read the separate offline licence/notices and enable
 alpha.6 explicitly. This installs no additional executable and makes no network
@@ -78,7 +74,7 @@ This UI does not register a new agent/MCP tool or change the local chat engine.
 
 The new Android build and tests do not imply full neural networks, NPU/CUDA/ROCm,
 transparent KV migration or automatic cluster healing. See the supplied-paper
-[review](../architecture/EVALUATION_REVIEW_2026_10_09.md) for measured follow-up gates.
+review (archived) for measured follow-up gates.
 
 ## Measurement and admission continuation — 2026-10-24
 

@@ -1,8 +1,4 @@
 # Nemotron and mixed-hardware model placement — 2026-10-23
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 This is a research and admission note, not a claim that the models below have
 passed a Meshlit load or multi-device test. Keep the current pinned starter

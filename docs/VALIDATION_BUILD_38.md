@@ -101,7 +101,7 @@ PRoot/chroot and successful process starts are not strong isolation or guest-boo
 proof. Stop cancels registered local work but does not undo completed or persistent
 remote effects. Read [SSH_NODE.md](SSH_NODE.md),
 [ANDROID_ALPHA6.md](hyperl/ANDROID_ALPHA6.md) and the
-[evaluation review](architecture/EVALUATION_REVIEW_2026_10_09.md).
+evaluation review (archived).
 
 Final universal installers and the 1 MiB device-test APK are preserved outside
 the source checkout in the local build-38 delivery directory. Only duplicate

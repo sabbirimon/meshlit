@@ -119,4 +119,4 @@ peer messaging and bounded node actions, not distributed model-layer transport.
 See [production channels](architecture/PRODUCTION_CHANNELS.md),
 [Colibri](COLIBRI.md), [GibberLink](GIBBERLINK.md),
 [peer/cryptography boundaries](P2P_AND_CRYPTO.md), and
-[desktop/NEXT](MULTIPLATFORM_NEXT.md) for setup and explicit limits.
+desktop/NEXT (archived) for setup and explicit limits.

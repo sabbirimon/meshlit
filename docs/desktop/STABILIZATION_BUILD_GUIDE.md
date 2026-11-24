@@ -1,10 +1,6 @@
 # Stabilization build and acceptance guide
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-10. Companion to the [proposed milestone](STABILIZATION_PLAN.md). This guide describes commands present in the checkout and future acceptance procedures. **No stabilization build or new test run is claimed by writing this guide.** Proposed session persistence, resumable transfer, shared authority and desktop distributed execution are not available merely because their acceptance procedure is documented.
+Updated 2026-10-10. Companion to the proposed milestone (archived). This guide describes commands present in the checkout and future acceptance procedures. **No stabilization build or new test run is claimed by writing this guide.** Proposed session persistence, resumable transfer, shared authority and desktop distributed execution are not available merely because their acceptance procedure is documented.
 
 ## 1. Build matrix and prerequisites
 

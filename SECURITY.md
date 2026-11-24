@@ -1,8 +1,4 @@
 # Security reporting
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Do not post credentials, private model prompts, exploit payloads or sensitive
 network captures in public issues. Use the repository's GitHub private vulnerability

@@ -1,8 +1,4 @@
 # RunAnywhere sources and browser assistant
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Meshlit already uses RunAnywhere Android SDK 0.20.12 for its on-device inference.
 That path remains the default. The SDK, standalone llama.cpp fork and Chrome

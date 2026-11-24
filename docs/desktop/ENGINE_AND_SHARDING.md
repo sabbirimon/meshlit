@@ -1,10 +1,6 @@
 # Desktop engine and shared sharding admission
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
-Updated 2026-10-10. [Feature tracker](../DESKTOP_FEATURE_TRACKER.md).
+Updated 2026-10-10. Feature tracker (archived).
 
 The desktop engine owns one verified CPU llama-server process and one model. The
 native backend is the pinned existing llama.cpp revision; neither Ollama nor
@@ -94,4 +90,4 @@ Current matched Intel case records AVX2 at 12.052–17.409 end-to-end tokens/sec
 versus SSE4.2 at 2.499–7.100 across two observations per backend, each 128 native
 tokens with equal settings. Variance is substantial; no stable multiplier is
 claimed. See [raw evidence](evidence/cpu-benchmark-host-check.json) and the
-[build ledger](../DESKTOP_BUILD_LOG.md). This does not qualify physical sharding.
+build ledger (archived). This does not qualify physical sharding.

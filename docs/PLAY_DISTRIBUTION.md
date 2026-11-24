@@ -1,8 +1,4 @@
 # Google Play distribution preparation
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Maintainer: **IMON**. Reviewed 2026-10-08. This is an engineering review candidate,
 **not a Google Play approval or a claim of full policy compliance**.

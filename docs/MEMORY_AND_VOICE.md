@@ -1,8 +1,4 @@
 # Memory, personality, recovery and speech adapters
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-10-12: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-24. These are optional additions to the current chat controller.
 They do not restore the historical Android Studio UI or response pipeline.
@@ -195,7 +191,7 @@ non-silent Piper PCM, but its subsequent Qwen3 check failed with no reply. The t
 had supplied a raw completion instead of the known model's ChatML prompt; build45
 source corrects that test and records partial failures. That source correction is
 not a passed rerun. The updated live controls still require physical acceptance;
-see [current progress](../PROGRESS.md) for the latest actual results.
+see current progress (archived) for the latest actual results.
 
 Remaining qualification: real microphone end-to-end conversation and background/
 Stop/revocation, multilingual packs, independent speaker inventory, audio latency
