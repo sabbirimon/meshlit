@@ -33,7 +33,7 @@ class AndroidControl(private val context:Context,private val settings:SettingsRe
             McpToolResult.Json(buildJsonObject{put("enabled",enabled());put("service_bound",MeshlitAccessibilityService.instance!=null)
                 put("all_apps",allApps());put("packages",buildJsonArray{packages().sorted().forEach{add(it)}})})
         },
-        McpToolSpec("android_control","Perform a delegated Android accessibility action: snapshot, click, type, open, back, home. Scope is checked against the real foreground app. Passwords and high-risk system apps are refused.",
+        McpToolSpec("android_control","Perform a delegated Android accessibility action: snapshot, click, type, open, back, home. For open, supply an exact app label or package in package. Scope is checked against the real foreground app. Passwords and high-risk system apps are refused.",
             objectSchema(mapOf("action" to stringProp(enumValues=listOf("snapshot","click","type","open","back","home")),
                 "package" to stringProp(),"text" to stringProp(),"resource_id" to stringProp(),"description" to stringProp()),listOf("action"))) {arguments ->
             if(!enabled() || !settings.androidAutomationEnabledFlow.first()) return@McpToolSpec denied("Enable Android automation and autonomous delegation first")
@@ -41,7 +41,14 @@ class AndroidControl(private val context:Context,private val settings:SettingsRe
             val args=arguments as? JsonObject ?: return@McpToolSpec denied("Arguments required")
             fun value(key:String)=args[key]?.jsonPrimitive?.contentOrNull
             val action=value("action")
-            val target=if(action=="open") value("package").orEmpty() else service.foregroundPackage()
+            val target=if(action=="open") {
+                val name=value("package")?.trim().orEmpty()
+                if(name.isEmpty()) return@McpToolSpec denied("Choose a launchable app by name or package")
+                val apps=withContext(Dispatchers.IO){ launchableApps(context.packageManager) }
+                val exactPackage=apps.firstOrNull{it.packageName==name}
+                exactPackage?.packageName ?: apps.filter{it.label.equals(name,true)}.map{it.packageName}.distinct().singleOrNull()
+                    ?: return@McpToolSpec denied("No unique launchable app matches that name. Choose its exact package.")
+            } else service.foregroundPackage()
             if(target.isBlank() || target in settings.androidAutomationHighRiskPackagesFlow.first()) return@McpToolSpec denied("Target requires human control")
             if(!allApps() && target !in packages()) return@McpToolSpec denied("Target is outside saved delegation")
             val request=when(action){

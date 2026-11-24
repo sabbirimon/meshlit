@@ -6,10 +6,10 @@ const run=promisify(execFile);
 const shirudo=require('./shirudo.cjs');
 const groups={
  cloud:[['Provider accounts',['aws','gcp','azure']],['Model platforms',['hubExplore']]],
- permissions:[['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
+ permissions:[['System permissions',['osAccessibility','osUsage','osSecurity']],['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
  management:[['Chat and permissions',['permissions','voice','liveVoice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
  tools:[['Network security',['shieldReport','shieldLive','shieldExport','shieldApply']],['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Community',['moltbook','hubExplore']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
- settings:[['Appearance',['theme']],['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
+ settings:[['Appearance',['theme']],['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['permissions','pair','stopControl']],['Developer',['server','inventory']]]
 };
 const titles={cloud:'Cloud providers',permissions:'Permissions',management:'Management',tools:'Tools',settings:'Meshlit Settings'};
 function operations(vscode,context,root,hooks){
@@ -25,9 +25,33 @@ function operations(vscode,context,root,hooks){
    ['Missing checks',report.scan.missing.join(', ')||'None'],['Loaded shields',String(report.loaded)],...report.conditions,['TPM attestation','Unverified']
   ]);
  }
+ function systemPage(label, mac, windows, linuxPanel, description) {
+  return [label, description, async () => {
+   if (process.platform === 'linux') {
+    const desktop = (process.env.XDG_CURRENT_DESKTOP || '').toLowerCase();
+    if (desktop.includes('kde') || desktop.includes('gnome')) {
+     const {spawn} = require('node:child_process');
+     await new Promise((resolve,reject) => {
+      const kde = desktop.includes('kde');
+      const child = spawn(kde ? 'systemsettings' : 'gnome-control-center', kde || !linuxPanel ? [] : [linuxPanel], {detached:true,stdio:'ignore'});
+      child.once('error',reject);
+      child.once('spawn',() => { child.unref(); resolve(); });
+     });
+    } else {
+     await vscode.window.showInformationMessage(label + ': open your desktop’s System Settings. Available controls depend on the desktop environment.');
+    }
+    return;
+   }
+   const uri = process.platform === 'darwin' ? mac : process.platform === 'win32' ? windows : undefined;
+   if (!uri || !(await vscode.env.openExternal(vscode.Uri.parse(uri)))) throw Error('Open '+label+' in system settings.');
+  }];
+ }
  function items(){
   const cpu=context.globalState.get('threads',0);
   const data={
+   osAccessibility:systemPage('Accessibility','x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility','ms-settings:easeofaccess-narrator','universal-access','Review system accessibility settings'),
+   osUsage:systemPage(process.platform==='darwin'?'Screen Time':process.platform==='win32'?'App diagnostics':'Usage history','x-apple.systempreferences:com.apple.Screen-Time-Settings.extension','ms-settings:privacy-appdiagnostics',null,'Review the usage controls available on this operating system'),
+   osSecurity:systemPage('Privacy and security','x-apple.systempreferences:com.apple.preference.security','ms-settings:windowsdefender','privacy','Open the system’s security settings'),
    shieldReport:['Inspect Shirudo report','Open a Linux node’s status JSON',()=>showShield(false)],
    shieldExport:['Export Shirudo report','Save the original JSON from the last import or live scan',()=>shirudo.exportReport(vscode,lastShieldReport)],
    shieldLive:['Scan local Linux target','Inspect this Linux target with operator authorization',()=>showShield(true)],

@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+
     <!-- Network: discovery, transport, and the embedded HTTP/SSE server. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Explicit user-selected APK and Android-confirmed removal workflows. -->
@@ -107,6 +109,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <queries>
+        <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent>
         <!-- Narrow visibility for the optional, owner-installed Tailscale companion. -->
         <package android:name="com.tailscale.ipn" />
         <intent><action android:name="android.speech.RecognitionService" /></intent>

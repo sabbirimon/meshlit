@@ -529,13 +529,26 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
             onSetup={reviewNamed=null;onTool("setup-"+request.provider.name.lowercase())},onRevoke={grants.revoke(state.selectedId,request);reviewNamed=null},
             onDismiss={reviewNamed=null})
     }
-    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (namedTask!=null || chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection || shieldIntent!=null || toolRequest!=null || namedTask!=null) && draft.isNotBlank()
+    val installedRequest = remember(draft, photo) {
+        if (photo == null && !com.meshlit.BuildProfile.coreCandidate && !com.meshlit.BuildConfig.PLAY_REVIEW)
+            installedAppRequest(draft) else null
+    }
+    var reviewApp by remember(state.selectedId) { mutableStateOf<AppRequest?>(null) }
+    reviewApp?.let { request ->
+        InstalledAppDialog(request, onDismiss = { reviewApp = null },
+            onDone = { reviewApp = null; editDraft("") },
+            onControls = { reviewApp = null; editDraft(""); onTool("openclaw") },
+            onChat = { reviewApp = null; if (controller.send(draft) != null) editDraft("") })
+    }
+    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (namedTask!=null || chosenVision!=null || chosenOffline!=null) else (hasChatModel || installedRequest!=null || nativeConnection || shieldIntent!=null || toolRequest!=null || namedTask!=null) && draft.isNotBlank()
     val send={ if(canSend && namedTask!=null && photo!=null) {
         controller.attachmentError(NAMED_TASK_ATTACHMENT_ERROR)
     } else if(canSend && namedTask!=null) {
         keyboard?.hide()
         val prior=profiles.singleOrNull{grants.allows(state.selectedId,namedTask,it)}
         if(prior!=null && namedTask.task.isNotEmpty())sendNamed(namedTask,prior,true) else reviewNamed=namedTask
+    } else if(canSend && installedRequest!=null && !(nativeConnection && draft.trim().startsWith("connect",true) && !draft.contains("app",true))) {
+        keyboard?.hide();reviewApp=installedRequest
     } else if(canSend && toolRequest!=null) {
         editDraft("");keyboard?.hide();pickedPin=pinIntent;catalogQuery=if(pinIntent==null)toolRequest else null
         toolArguments=if(pinIntent!=null)toolRequest.substringAfter(' ',"") else ""
