@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit
     }
 }
 data class OnlineMessage(val role:String,val text:String)
-data class OnlineReply(val text:String,val inputTokens:Long?,val outputTokens:Long?) {
+data class OnlineReply(val text:String,val inputTokens:Long?,val outputTokens:Long?,val reasoningSummary:String?=null) {
     fun estimatedCost(profile:OnlineProfile):Double? {
         val input=inputTokens ?: return null;val output=outputTokens ?: return null
         return input*(profile.inputPricePerMillion ?: return null)/1e6+output*(profile.outputPricePerMillion ?: return null)/1e6
@@ -110,15 +110,21 @@ class OnlineModelClient {
         val payload=if(profile.protocol in setOf(OnlineProtocol.OPENAI,OnlineProtocol.OPENAI_COMPATIBLE))reasoningPayload(base,profile,effort,maxTokens) else base
         val path=when(profile.protocol){OnlineProtocol.ANTHROPIC->"messages";OnlineProtocol.GEMINI->{require(profile.model.matches(Regex("[A-Za-z0-9_.-]+")));"models/${profile.model}:generateContent"};else->"chat/completions"}
         val data=fetch(request(profile,token,path).post(payload.toString().toRequestBody("application/json".toMediaType())).build())
+        val parts = if (profile.protocol == OnlineProtocol.GEMINI)
+            data["candidates"]?.jsonArray?.firstOrNull()?.jsonObject?.get("content")?.jsonObject?.get("parts")?.jsonArray.orEmpty().map { it.jsonObject }
+        else emptyList()
+        val summary = if (profile.protocol == OnlineProtocol.GEMINI)
+            parts.filter { it["thought"]?.jsonPrimitive?.booleanOrNull == true }.mapNotNull { it["text"]?.jsonPrimitive?.contentOrNull }.joinToString("\n")
+        else (data["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("reasoning_summary") as? JsonPrimitive)?.contentOrNull
         val text=when(profile.protocol) {
             OnlineProtocol.ANTHROPIC -> data["content"]?.jsonArray.orEmpty().mapNotNull{it.jsonObject["text"]?.jsonPrimitive?.contentOrNull}.joinToString("")
-            OnlineProtocol.GEMINI -> data["candidates"]?.jsonArray?.firstOrNull()?.jsonObject?.get("content")?.jsonObject?.get("parts")?.jsonArray.orEmpty().mapNotNull{it.jsonObject["text"]?.jsonPrimitive?.contentOrNull}.joinToString("")
+            OnlineProtocol.GEMINI -> parts.filter { it["thought"]?.jsonPrimitive?.booleanOrNull != true }.mapNotNull { it["text"]?.jsonPrimitive?.contentOrNull }.joinToString("")
             else -> data["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("content")?.let{(it as? JsonPrimitive)?.contentOrNull}.orEmpty()
         }
         require(text.isNotBlank()) { "Provider returned no text; check safety, token budget and model modality" }
         val usage=(data[if(profile.protocol==OnlineProtocol.GEMINI) "usageMetadata" else "usage"] as? JsonObject)
         fun count(vararg keys:String)=keys.firstNotNullOfOrNull{usage?.get(it)?.jsonPrimitive?.longOrNull?.takeIf{n->n>=0}}
-        return OnlineReply(text,count("prompt_tokens","input_tokens","promptTokenCount"),count("completion_tokens","output_tokens","candidatesTokenCount"))
+        return OnlineReply(text,count("prompt_tokens","input_tokens","promptTokenCount"),count("completion_tokens","output_tokens","candidatesTokenCount"),summary?.take(4000)?.takeIf { it.isNotBlank() })
     }
 }
 

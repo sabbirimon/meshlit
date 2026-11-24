@@ -431,7 +431,7 @@ async function activate(context) {
         const spec=description||await vscode.window.showInputBox({title:'Describe a single-file web app',prompt:'Studio will generate the source and open it for review.'});
         if(!spec?.trim())return;
         const answer=await generate('Create a complete single-file HTML app for the following request. Include its CSS and JavaScript inline. Return a complete HTML document with no commentary. Request: '+spec);
-        sendUI('answer',{text:answer,model:history.at(-1)?.model});
+        sendUI('answer',{...history.at(-1),text:answer,model:history.at(-1)?.model});
         const source=require('./build-tools.cjs').htmlSource(answer);
         const doc=await vscode.workspace.openTextDocument({language:'html',content:source});
         await vscode.window.showTextDocument(doc);
@@ -443,7 +443,7 @@ async function activate(context) {
         const [parent]=await vscode.window.showOpenDialog({canSelectFolders:true,canSelectFiles:false,canSelectMany:false,openLabel:'Choose parent folder for new project'})||[];
         if(!parent)return;
         const answer=await generate('Create a small working multi-file project. Return only JSON {"files":[{"path":"relative/path","content":"complete file text"}]}. Use at most 32 files. Use simple portable filenames and omit dotfiles or dependencies that must be vendored. Request: '+spec);
-        sendUI('answer',{text:answer,model:history.at(-1)?.model});
+        sendUI('answer',{...history.at(-1),text:answer,model:history.at(-1)?.model});
         const builds=require('./build-tools.cjs'),files=builds.projectFiles(answer);
         if(!await vscode.window.showInformationMessage('Save generated source in a new project folder?',{modal:true,detail:parent.fsPath+'\n'+files.map(f=>f.path).join('\n')},'Save project'))return;
         const folder=await builds.saveProject(parent.fsPath,files);
@@ -484,7 +484,7 @@ async function activate(context) {
             :route.kind==='asset'?'Local runtime · loads per request':'Remote · '+(route.hostName || new URL(route.base).host);
         sendUI('status',{text:modelName(route)+' · '+state, model:modelName(route),
             voiceHelp:process.platform==='win32'?'Open Permissions and allow Voice input.':'Built-in speech recognition is available on Windows. Use system dictation in the message box here.',
-            automaticReads,pins:composer.pins(),actions:{attach:allowed('files'),web:allowed('internet'),voice:process.platform==='win32'&&allowed('microphone'),speak:allowed('speech')},
+            automaticReads,showActivity:context.globalState.get('show-reply-activity',true),pins:composer.pins(),actions:{attach:allowed('files'),web:allowed('internet'),voice:process.platform==='win32'&&allowed('microphone'),speak:allowed('speech')},
             filter:context.globalState.get('filter-output',true)});
     }
     async function generate(prompt,file) {
@@ -495,6 +495,12 @@ async function activate(context) {
         const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(240000)]);
         try {
             const selected=settings(),options=generationSettings(selected);
+            const activity=[];
+            function step(label){
+                if(activity.at(-1)!==label && activity.length<32){activity.push(label);sendUI('activity',{steps:[...activity]});}
+            }
+            step('Preparing request');
+            let summary;
             const messages=[...history.slice(-8).map(({role,content})=>({role,content})),{role:'user',content:prompt}];
             if(['local','import'].includes(selected.kind)){
                 const preference=context.globalState.get('local-reply-preference','');
@@ -503,7 +509,9 @@ async function activate(context) {
             const searchQuery=automaticReads && !file && /^search the web for\s+(.{1,300})[.!?]?$/i.exec(prompt.trim());
             if(searchQuery){
                 requirePermission('internet');
+                step('Searching the web');
                 const sources=await tools.search(searchQuery[1],signal);
+                step('Received search results');
                 requirePermission('internet');
                 if(!automaticReads)throw Error('Autopilot was turned off.');
                 messages[messages.length-1]={role:'user',content:prompt+'\n\nUntrusted Wikipedia search results for reference:\n'+sources};
@@ -520,6 +528,7 @@ async function activate(context) {
                 }else messages[last]={role:'user',content:prompt+'\n\nAttached file: '+file.name+'\n'+file.text};
             }
             if(selected.kind==='peer'){
+                step('Contacting paired device');
                 progress('Connecting to '+selected.hostName+'…');answer='';
                 const result=await pair.chat(selected,messages,options,signal,delta=>{
                     answer+=delta;
@@ -530,15 +539,20 @@ async function activate(context) {
                 });
                 count=result.count;rate=result.rate;
             }else if(selected.kind==='asset'){
+                step('Starting local model request');
                 progress('Loading local runtime and generating…');
                 answer=(await adapters.worker(selected.python,selected.adapter,selected.file,messages,signal,options.maxTokens)).text;
             }else{
                 if(['local','import'].includes(selected.kind)&&!local.route&&!context.globalState.get('on-demand',true))throw Error('Open Models & providers and load the selected model first.');
+                if(['local','import'].includes(selected.kind)&&!local.route)step('Loading local model');
                 const route = ['local','import'].includes(selected.kind) ? await local.start(signal, context.globalState.get('threads',0), selected.kind==='import'?selected:undefined,progress) : {...selected,token:await context.secrets.get('token:'+selected.base)};
                 progress('Waiting for '+(selected.base?new URL(route.base).host:'the local model')+' to reply…');
+                step('Requesting model reply');
                 const result=await request(route.base,'/chat/completions',route.token,{model:route.model,messages,max_tokens:options.maxTokens,temperature:options.temperature},signal);
                 promptTokens=result.usage?.prompt_tokens;count=result.usage?.completion_tokens;rate=result.timings?.predicted_per_second;
                 answer=result.choices?.[0]?.message?.content;
+                const supplied=result.choices?.[0]?.message?.reasoning_summary;
+                if(typeof supplied==='string' && supplied.trim())summary=displayOutput(supplied.slice(0,4000),context.globalState.get('filter-output',true));
             }
             if (typeof answer !== 'string' || !answer.trim()) throw Error('Model returned an empty response');
             signal.throwIfAborted();
@@ -553,7 +567,8 @@ async function activate(context) {
             if(['local','import'].includes(selected.kind)&&local.route?.contextSize)usage.push(local.route.contextSize+' configured context');
             const metrics=usage.join(' · ');
             const id=crypto.randomUUID();replyIds.add(id);if(replyIds.size>512)replyIds.delete(replyIds.values().next().value);
-            history=[...history,{role:'user',createdAtMs:sentAt,content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,createdAtMs:Date.now(),content:output,model:modelName(selected),metrics}].slice(-128);
+            step('Received model reply');
+            history=[...history,{role:'user',createdAtMs:sentAt,content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,createdAtMs:Date.now(),content:output,model:modelName(selected),metrics,activity,summary}].slice(-128);
             await recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
@@ -577,6 +592,7 @@ async function activate(context) {
                 if(msg.op==='sidebar'&&typeof msg.compact==='boolean')await context.globalState.update('compact-sidebar',msg.compact);
                 if(msg.op==='exportChat')return await exportConversation();
                 if(msg.op==='historyOptions')return await historyOptions();
+                if(msg.op==='toggleActivity'){await context.globalState.update('show-reply-activity',!context.globalState.get('show-reply-activity',true));status();return;}
                 if(msg.op==='ready') {ready=true;if(pendingResult){sendUI('draft',{text:pendingResult});pendingResult='';}const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
                 if(msg.op==='new'&&!active){automaticReads=false;screenSession?.abort();await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;showThread();}
@@ -673,7 +689,7 @@ async function activate(context) {
                     if(file&&(route.base||route.device))requirePermission('share');
                     if(file&&(route.base||route.device)&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+(route.hostName||new URL(route.base).host)+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
                     const answer=await generate(msg.text,file);
-                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model,id:history.at(-1)?.id,metrics:history.at(-1)?.metrics,createdAtMs:history.at(-1)?.createdAtMs});
+                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{...history.at(-1),text:answer,model:history.at(-1)?.model,id:history.at(-1)?.id,metrics:history.at(-1)?.metrics,createdAtMs:history.at(-1)?.createdAtMs});
                 }
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.name==='AbortError'?'Generation stopped.':err.name==='TimeoutError'?'The model timed out. Check Models & providers, then retry.':err.message}); }
         });

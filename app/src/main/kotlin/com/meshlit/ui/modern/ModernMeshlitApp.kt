@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -64,6 +65,19 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.delay
+
+private enum class ModelIndicator(val label: String, val dark: Color, val light: Color) {
+    Standby("Standby", Color(0xFFFFA254), Color(0xFFAC5000)),
+    Working("Generating", Color(0xFF55DB89), Color(0xFF16783F)),
+    Loading("Loading", Color(0xFF71B7FF), Color(0xFF216AC0)),
+    Starting("Starting", Color(0xFF71B7FF), Color(0xFF216AC0)),
+    Configured("Configured", Color(0xFF59CBDA), Color(0xFF0C7583)),
+    Tool("Using tool", Color(0xFFBE9AFF), Color(0xFF7543B7)),
+    Approval("Awaiting approval", Color(0xFFF2D466), Color(0xFF856200)),
+    Unavailable("Unavailable", Color(0xFFFF8585), Color(0xFFB13236)),
+    Failed("Request failed", Color(0xFFFF8585), Color(0xFFB13236)),
+    Unloaded("Not loaded", Color(0xFFA6ADB5), Color(0xFF646D77))
+}
 
 /** Shared modern navigation for both APK flavors; earlier sources are inventory references only. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -166,17 +180,28 @@ fun ModernMeshlitApp() {
         hostPolicy -> "Colibri host"
         else -> modelDisplayName(localEntry?.name ?: loaded?.modelName.orEmpty())
     }
-    val modelStatus=when {
-        options.onlineProfileId!=null -> "Model API · ${selectedProfile?.name ?: "Profile unavailable"}"
-        options.routeId!=null -> "Model route · ${if(state.running) "Working" else "Configured"}"
-        hostPolicy -> "Host policy · ${options.colibriMode}"
-        else -> {
-            val status=when(runtime){is CoordinatorState.Ready->"Ready";is CoordinatorState.Generating->"Generating";is CoordinatorState.Loading->"Loading";CoordinatorState.Starting->"Starting";is CoordinatorState.Error->"Unavailable";else->"Not loaded"}
-            val contextLabel=loaded?.contextSize?.takeIf{it>0}?.let{"$it ctx"}
-                ?:localEntry?.metadata?.maxContext?.let{"$it model max · active ctx unknown"} ?: "Context unreported"
-            "$status · $contextLabel"
-        }
+    val indicator = when {
+        pendingTool != null -> ModelIndicator.Approval
+        state.running && state.activeTool != null -> ModelIndicator.Tool
+        localSelected && runtime is CoordinatorState.Loading -> ModelIndicator.Loading
+        localSelected && runtime is CoordinatorState.Starting -> ModelIndicator.Starting
+        state.running || (localSelected && runtime is CoordinatorState.Generating) -> ModelIndicator.Working
+        state.error != null -> ModelIndicator.Failed
+        localSelected && runtime is CoordinatorState.Error -> ModelIndicator.Unavailable
+        localSelected && runtime is CoordinatorState.Ready -> ModelIndicator.Standby
+        localSelected -> ModelIndicator.Unloaded
+        options.onlineProfileId != null && selectedProfile == null -> ModelIndicator.Unavailable
+        options.routeId != null && options.routeId != "__auto__" && savedRoutes.none { it.id == options.routeId } -> ModelIndicator.Unavailable
+        else -> ModelIndicator.Configured
     }
+    val sourceDetail = when {
+        options.onlineProfileId != null -> selectedProfile?.name ?: "Model API"
+        options.routeId != null -> "Model route"
+        hostPolicy -> "Host policy · ${options.colibriMode}"
+        else -> loaded?.contextSize?.takeIf { it > 0 }?.let { "$it ctx" }
+            ?: localEntry?.metadata?.maxContext?.let { "$it model max · active ctx unknown" } ?: "Context unreported"
+    }
+    val modelStatus = "${indicator.label} · $sourceDetail"
     if(showCapabilities) ModelCapabilitiesDialog(if(localSelected)localEntry else null,modelTitle,
         runtimeInfo=if(localSelected)loaded else null,sourceLabel=modelStatus){showCapabilities=false}
     val drawer=rememberDrawerState(DrawerValue.Closed)
@@ -260,7 +285,7 @@ fun ModernMeshlitApp() {
                 topBar={if(!ownHeader) CenterAlignedTopAppBar(expandedHeight=60.dp,
                     title={if(tab=="chat") Column(Modifier.heightIn(min=T.touch).clickable(onClickLabel="Choose model",onClick={if(localSelected)select("models") else showChatOptions=true}).testTag("chat-model-header"),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
                         Row(verticalAlignment=Alignment.CenterVertically) {
-                            Box(Modifier.size(8.dp).background(if(localSelected && loaded!=null) colors.primary else colors.outline,androidx.compose.foundation.shape.CircleShape).semantics{contentDescription=modelStatus});Spacer(Modifier.width(7.dp))
+                            Box(Modifier.size(8.dp).background(if (colors.background.luminance() < 0.5f) indicator.dark else indicator.light,androidx.compose.foundation.shape.CircleShape).semantics{contentDescription=modelStatus});Spacer(Modifier.width(7.dp))
                             Text(modelTitle,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium,
                                 modifier=Modifier.weight(1f,fill=false).testTag("chat-model-name"))
                             Icon(Icons.Default.ExpandMore,null,Modifier.size(16.dp),tint=colors.onSurfaceVariant)
@@ -379,6 +404,8 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
         else {
             val document=key(message.id){rememberReply(message.text)}
             rows+=ReplyTimelineRow("${message.id}:header",message,kind="header")
+            if (state.current?.options?.showReplyActivity != false && (message.activity.isNotEmpty() || message.text.isNotBlank()))
+                rows += ReplyTimelineRow("${message.id}:activity",message,kind="activity")
             document.blocks.forEachIndexed{index,block->rows+=ReplyTimelineRow("${message.id}:$index",message,block,"block")}
             if(message.deviceOffer!=null || message.deviceReceipt!=null) rows+=ReplyTimelineRow("${message.id}:devices",message,kind="devices")
             if(message.text.isNotEmpty() || message.webSources.isNotEmpty()) rows+=ReplyTimelineRow("${message.id}:actions",message,kind="actions")
@@ -506,6 +533,20 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                             }
                             else message.status?.let{Text(it,Modifier.weight(1f).padding(start=8.dp),style=MaterialTheme.typography.bodySmall,color=colors.onSurfaceVariant)}
                         }
+                        "activity" -> Column {
+                            var expanded by rememberSaveable(message.id) { mutableStateOf(false) }
+                            TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide activity" else "View activity") }
+                            if (expanded) {
+                                for (step in message.activity) Text(step, style = MaterialTheme.typography.bodyMedium)
+                                message.reasoningSummary?.let { Text("Model summary", style = MaterialTheme.typography.titleSmall); Text(it) }
+                                if (message.text.isNotBlank()) TextButton(enabled = !state.running, onClick = {
+                                    val question = "Briefly explain the assumptions and evidence behind this answer."
+                                    val next = quotedReplyDraft(message, listOf(draft, question).filter { it.isNotBlank() }.joinToString("\n\n"))
+                                    if (next != null) { editDraft(next); composerFocus.requestFocus(); keyboard?.show() }
+                                    else controller.attachmentError("Shorten the draft to add an explanation request.")
+                                }) { Text("Explain answer") }
+                            }
+                        }
                         "block" -> ReplyContent(checkNotNull(row.block),if(searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key) Modifier.background(colors.secondaryContainer.copy(alpha=0.45f)).testTag("chat-search-current-match") else Modifier)
                         "devices" -> ChatDeviceConnections(message.deviceOffer,message.deviceReceipt,!state.running && state.current?.options?.connectionTools==true && state.current?.options?.agentToolsActive==true,controller::connectDevice,{controller.send("connect devices")},onConnections)
                         "actions" -> Column {
@@ -521,12 +562,16 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                 }
                 item(key="chat-end-anchor"){Spacer(Modifier.fillMaxWidth().height(1.dp).testTag("chat-end-anchor"))}
             }
-            val turnIndices=rows.indices.filter{rows[it].kind=="user"}
+            val turnIndices=rows.indices.filter{rows[it].kind=="user" || rows[it].kind=="header"}
             if(turnIndices.size>=2){
                 val activeTurn by remember(list,turnIndices) { derivedStateOf {
                     turnIndices.indexOfLast{it<=list.firstVisibleItemIndex}.coerceAtLeast(0)
                 } }
-                com.meshlit.ui.phone.PhoneTurnAnchors(turnIndices.map{rows[it].message.text},activeTurn,Modifier.align(Alignment.CenterStart)){turn->
+                com.meshlit.ui.phone.PhoneTurnAnchors(turnIndices.map { index ->
+                    val point = rows[index]
+                    val author = if (point.kind == "user") "You" else "Meshlit"
+                    "$author · " + point.message.text.take(120).ifBlank { if (state.running) "In progress" else "Attachment" }
+                },activeTurn,Modifier.align(Alignment.CenterStart)){turn->
                     followLatest=false
                     scope.launch{list.scrollToItem(turnIndices[turn])}
                 }

@@ -1,4 +1,6 @@
 package com.meshlit.ui.modern
+
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -243,6 +245,7 @@ import kotlinx.coroutines.withContext
         Text("History messages: ${options.historyMessages}");Slider(options.historyMessages.toFloat(),{options=options.copy(historyMessages=it.toInt())},valueRange=0f..20f,steps=19)
         Text("History is selected by message count, not measured token count. Reduce history for a smaller context; saved messages are kept.",style=MaterialTheme.typography.bodyMedium)
         Text(if(options.onlineProfileId==null && options.routeId==null) "Loaded context capacity: ${capacity ?: "unknown"} tokens. Model metadata and runtime capacity are different." else "Provider/routed context capacity is not reported here.",style=MaterialTheme.typography.bodyMedium)
+        Row(verticalAlignment=Alignment.CenterVertically){Text("Show reply activity",Modifier.weight(1f));Switch(options.showReplyActivity,{options=options.copy(showReplyActivity=it)},Modifier.semantics{contentDescription="Show reply activity"})}
         Row{Text("Show token speed indicator",Modifier.weight(1f));Switch(options.showTokenStats,{options=options.copy(showTokenStats=it)},Modifier.semantics{contentDescription="Show token speed indicator"})}
         Text("Rates use authoritative runtime/provider counts after completion. Native runtime rate is preferred; otherwise end-to-end average is labelled. Unreported counts stay unavailable. Text callbacks and characters are not tokens.",style=MaterialTheme.typography.bodyMedium)
         }

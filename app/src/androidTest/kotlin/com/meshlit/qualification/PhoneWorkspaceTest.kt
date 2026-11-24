@@ -52,12 +52,12 @@ class PhoneWorkspaceTest {
         compose.runOnIdle { assertEquals(1,sent) }
     }
 
-    @Test fun turnRailOpensAndJumpsToTheChosenPrompt() {
+    @Test fun conversationRailJumpsToTheChosenReply() {
         var selected=0
-        compose.setContent { MeshlitTheme { PhoneTurnAnchors(listOf("First prompt","Second prompt","Third prompt"),1){selected=it} } }
-        compose.onNodeWithContentDescription("Conversation anchors, turn 2 of 3").performClick()
-        compose.onNodeWithText("Third prompt").performClick()
-        compose.runOnIdle { assertEquals(2,selected) }
+        compose.setContent { MeshlitTheme { PhoneTurnAnchors(listOf("You · Question","Meshlit · Reply"),0){selected=it} } }
+        compose.onNodeWithContentDescription("Conversation anchors, point 1 of 2").performClick()
+        compose.onNodeWithText("Meshlit · Reply").performClick()
+        compose.runOnIdle { assertEquals(1,selected) }
     }
 
     @Test fun hubListsMoreThanOnePageAndReturnsPublisherArtOnDevice() {

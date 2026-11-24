@@ -25,8 +25,8 @@ internal fun PhoneTurnAnchors(
     val selected = current.coerceIn(prompts.indices)
     val colors=MaterialTheme.colorScheme
     Box(modifier.width(48.dp).heightIn(min=48.dp,max=168.dp)
-        .clickable(onClickLabel="Browse conversation turns"){open=true}
-        .semantics{contentDescription="Conversation anchors, turn ${selected+1} of ${prompts.size}"},
+        .clickable(onClickLabel="Browse messages and replies"){open=true}
+        .semantics{contentDescription="Conversation anchors, point ${selected+1} of ${prompts.size}"},
         contentAlignment=Alignment.CenterStart) {
         val marks=minOf(prompts.size,20)
         Canvas(Modifier.padding(start=5.dp).size(10.dp,(marks*6).dp)){
@@ -39,7 +39,7 @@ internal fun PhoneTurnAnchors(
         }
     }
     if(open)ModalBottomSheet(onDismissRequest={open=false}){
-        Text("Conversation turns",Modifier.padding(horizontal=20.dp),style=MaterialTheme.typography.titleLarge)
+        Text("Conversation points",Modifier.padding(horizontal=20.dp),style=MaterialTheme.typography.titleLarge)
         val list=androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex=selected)
         LazyColumn(state=list,contentPadding=PaddingValues(12.dp)){
             itemsIndexed(prompts){index,prompt->

@@ -6,6 +6,12 @@ On Android, open **Models → On device** to see the installed model card. Choos
 
 For a larger chat window on an ARM64 phone with the native runner installed, open **Storage and runtime → Context and KV cache → Native local**, choose the context size, and select **Save for next load**. Unload and reload the model to apply the change. The card shows the resulting active context. Android’s device profile offers up to 8,192 tokens on high-capacity phones, subject to model and available-memory limits.
 
+The mobile model indicator is orange on standby, green during generation, blue while starting or loading, violet for a tool call, yellow when approval is needed, and red on failure. Gray means unloaded. A configured remote route is teal. The text beside the dot names its current state.
+
+**Show reply activity** is in Conversation and token settings on Android and the composer’s tools menu on desktop. Expand Activity on a reply to see recorded operations and any user-facing summary supplied by the provider. **Explain answer** prepares a follow-up that asks the model to explain its evidence and assumptions.
+
+After the first exchange, the conversation rail offers a point for each prompt and reply. Tap the rail on Android to choose a message, or select a mark on desktop to jump directly.
+
 The mobile chat header shows the active context window when the runtime reports it. If only the model specification is available, the header labels it as the model maximum. New messages show their local time. Completed replies show elapsed time and token speed when the runtime provides a count. Desktop local chat shows its configured window and the same reply metrics.
 
 In conversations with at least two prompts, the short marks beside the transcript show your position. Hover or focus a desktop mark to preview its prompt and click to jump. On a phone, tap the marks and choose a prompt. **Add to chat → Share screen** opens the system source picker. Desktop shows a live preview in the browser and attaches the frame you choose. Android captures one frame after five seconds. Review the attachment in chat before pressing Send.
