@@ -12,48 +12,82 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 75
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SOURCE: a7951b38f846dd677fd05159957f4d8c9352f1d1
-      RUN: '45298771579'
-      TAG: v2.0.49-studio.1
+      SOURCE: b5628bfbedac456ed4251429bf946df84020ebab
+      RELEASE_SOURCE: 08a02f2757b00d28f8b7ef7a3c1486c647bc1f5b
+      RUN: '45345849303'
+      RELEASE_ID: '456418864'
+      TAG: v2.0.49-studio.2
+      APK: 'Meshlit-Android-arm64-debug.apk'
+      APK_SHA: '9cb9e3bea4faecd5b386efca5d1e7fbcf6dfb3d9155f02f23928865481cbac6f'
+      VSIX: 'Meshlit-Studio.vsix'
+      VSIX_SHA: '61ded321053d35a51a114d41f6d99d5ced8f5eeb04d9bba601f8f68ae4a0fc46'
     steps:
-      - name: Verify all tested packages before publishing
+      - name: Check release target and the completed cross-platform build
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in {1..160}; do
-            if [[ "$(gh run view "$RUN" -R "$REPO" --json status --jq .status)" == completed ]]; then break; fi
-            sleep 20
-          done
+          gh api "repos/$REPO/releases/$RELEASE_ID" > release.json
+          jq -e --arg tag "$TAG" --arg source "$RELEASE_SOURCE" \
+            '.draft and .prerelease and .tag_name == $tag and .target_commitish == $source' release.json
           test "$(gh run view "$RUN" -R "$REPO" --json conclusion,headSha --jq '[.conclusion,.headSha]|join(" ")')" = "success $SOURCE"
-          mkdir assets
+          mkdir incoming
+          for name in "$APK" "$VSIX"; do
+            gh release download "$TAG" -R "$REPO" --pattern "$name" --dir incoming
+          done
+          printf '%s  %s\n' "$APK_SHA" "$APK" "$VSIX_SHA" "$VSIX" > SHA256SUMS.txt
+          (cd incoming && sha256sum --check ../SHA256SUMS.txt)
+
+      - name: Verify desktop attestations and upload packages to the draft
+        shell: bash
+        run: |
+          set -euo pipefail
           for platform in Windows-X64 Linux-X64 macOS-ARM64 macOS-X64; do
-            gh run download "$RUN" -R "$REPO" -D "$platform" -n "Meshlit-Full-Studio-$platform"
-            filename="Meshlit-Studio-$platform.tar.gz"
-            if [[ "$platform" == Windows-X64 ]]; then filename="Meshlit-Studio-$platform.zip"; fi
-            archive="$platform/$filename"
-            (cd "$platform" && sha256sum -c SHA256SUMS.txt)
-            gh attestation verify "$archive" --repo "$REPO" --signer-workflow "$REPO/.github/workflows/full-studio.yml" --source-digest "$SOURCE"
+            name="Meshlit-Studio-$platform.tar.gz"
+            artifact="Meshlit-Full-Studio-$platform"
             if [[ "$platform" == Windows-X64 ]]; then
-              setup="$platform/Meshlit-Studio-Windows-X64-Setup.exe"
-              gh attestation verify "$setup" --repo "$REPO" --signer-workflow "$REPO/.github/workflows/full-studio.yml" --source-digest "$SOURCE"
-              mv "$setup" assets/
+              name="Meshlit-Studio-Windows-X64-Setup.exe"
+              artifact="Meshlit-Studio-Windows-X64-Installer"
             fi
-            mv "$archive" "assets/$filename"
+            gh run download "$RUN" -R "$REPO" -n "$artifact" -D "$platform"
+            if [[ "$platform" != Windows-X64 ]]; then (cd "$platform" && sha256sum --check SHA256SUMS.txt); fi
+            gh attestation verify "$platform/$name" --repo "$REPO" \
+              --signer-workflow "$REPO/.github/workflows/full-studio.yml" --source-digest "$SOURCE"
+            sum=$(sha256sum "$platform/$name" | cut -d' ' -f1)
+            printf '%s  %s\n' "$sum" "$name" >> SHA256SUMS.txt
+            gh api "repos/$REPO/releases/$RELEASE_ID" > release.json
+            jq -e --arg tag "$TAG" '.draft and .tag_name == $tag' release.json
+            existing=$(jq -r --arg asset "$name" '.assets[] | select(.name == $asset) | .digest' release.json)
+            if [[ -n "$existing" ]]; then
+              test "$existing" = "sha256:$sum"
+            else
+              gh release upload "$TAG" -R "$REPO" "$platform/$name"
+            fi
             rm -r "$platform"
           done
-          (cd assets && sha256sum * > SHA256SUMS.txt)
-          cat > notes.md <<'NOTES'
-          Download Windows Setup for a per-user installation, or extract the complete portable archive for your platform.
 
-          This Studio preview adds nearby device discovery, device-ID pairing, per-device GGUF sharing and streamed remote replies. Internet pairing requires a configured HTTPS relay and an access token. The Mac and HP ran the installed IDE checks and the bundled offline model. A Samsung LTE protocol client paired through a private relay and received real model output. The Android 2.0.48 application is a separate download on the v2.0.48-studio.1 release.
-
-          Desktop MeshCoin is an opt-in, non-transferable contribution preview. Each unit has a deterministic 128-character serial. The contributor can self-record for free or agree a percentage with a paired recordkeeper. Signed wallet backups preserve those records. The Hugging Face dashboard supports optional read-token sign-in and paginated public browsing. The LM Studio source uses its official SDK when permitted and falls back to the public model catalog.
-
-          Public GGUF downloads resume from verified byte ranges after interruption. Chat history settings enable encrypted local transcripts, search and branching from a reply. The sidebar can collapse to an icon rail. Meshlit Home has its own menus, local reply preferences, per-reply voting and contextual help for unavailable controls. The two-pane model picker opens from the composer without login and exposes public Hugging Face downloads and in-place LM Studio or Bionic GGUF registration. General Chat distinguishes speakers, identifies the model on replies and groups attachment, access, model, microphone and send/stop controls in the composer. General Chat, the IDE sidebar and welcome screen, and the desktop launchers use the ringed branch symbol. The archives were exercised after extraction. The Windows installer was installed, launched and uninstalled in CI. SHA256SUMS.txt covers all five downloads. GitHub attestations bind them to commit a7951b38f846dd677fd05159957f4d8c9352f1d1. The macOS preview uses ad-hoc signing. Windows publisher signing and Apple notarization are pending.
-          NOTES
-          gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.49-studio.1" --notes-file notes.md assets/*
-          gh release edit "$TAG" -R "$REPO" --draft=false
+      - name: Confirm every release asset digest and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(wc -l < SHA256SUMS.txt)" -eq 6
+          LC_ALL=C sort -k2,2 -o SHA256SUMS.txt SHA256SUMS.txt
+          gh api "repos/$REPO/releases/$RELEASE_ID" > release.json
+          checksum=$(sha256sum SHA256SUMS.txt | cut -d' ' -f1)
+          existing=$(jq -r '.assets[] | select(.name == "SHA256SUMS.txt") | .digest' release.json)
+          if [[ -n "$existing" ]]; then
+            test "$existing" = "sha256:$checksum"
+          else
+            gh release upload "$TAG" -R "$REPO" SHA256SUMS.txt
+          fi
+          gh api "repos/$REPO/releases/$RELEASE_ID" > release.json
+          jq -e --arg tag "$TAG" --arg source "$RELEASE_SOURCE" \
+            '.draft and .prerelease and .tag_name == $tag and .target_commitish == $source and (.assets|length) == 7' release.json
+          while read -r digest name; do
+            jq -e --arg asset "$name" --arg hash "sha256:$digest" \
+              'any(.assets[]; .name == $asset and .digest == $hash and .state == "uploaded")' release.json
+          done < <(cat SHA256SUMS.txt; printf '%s  SHA256SUMS.txt\n' "$checksum")
+          gh release edit "$TAG" -R "$REPO" --draft=false --prerelease --latest=false
