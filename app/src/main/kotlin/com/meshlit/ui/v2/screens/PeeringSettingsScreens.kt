@@ -257,7 +257,11 @@ fun RewardsScreen(onBack: (() -> Unit)? = null) {
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("MeshCoin", style = MaterialTheme.typography.headlineMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.meshlit.R.drawable.ic_meshcoin),
+                        contentDescription = null, modifier = Modifier.size(42.dp))
+                    Text("MeshCoin", style = MaterialTheme.typography.headlineMedium)
+                }
                 Text("Your local contribution record", style = MaterialTheme.typography.bodyMedium)
             }
             if (onBack != null) TextButton(onClick = onBack) { Text("Back") }
