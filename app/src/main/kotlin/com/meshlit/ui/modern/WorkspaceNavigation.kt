@@ -44,7 +44,7 @@ object WorkspaceDestinations {
         "usage","media","training","router","behavior","guardrails","acceleration","hyperl" -> "Models and media"
         "vpn","network","sharding","radar","host-map","device-dashboard","resources","ssh","securitylab","runtime","packages","commands","operations","power","firewall","recovery","logs","audit" -> "Operations"
         "meshchat" -> "Connections"
-        "securityprivacy","guardrails","permissions","legal","identity-recovery" -> "Security & privacy"
+        "securityprivacy","shirudo","guardrails","permissions","legal","identity-recovery" -> "Security & privacy"
         "cloud","huggingface","providers","gateway","tools-automation","mcp-catalog","rag","external","external-services","web-bridge","peers","openclaw","bot-connections","automation","termux","crawler","hooks" -> "Connections"
         else -> "Preferences"
     }
@@ -69,7 +69,7 @@ private fun workspaceIcon(id:String):ImageVector=when(id) {
     "vision"->Icons.Default.Image
     "structured","ide","hyperl"->Icons.Default.Code
     "sessions","commands","ssh"->Icons.Default.Terminal
-    "securitylab","packages","runtime"->Icons.Default.Shield
+    "securitylab","shirudo","packages","runtime"->Icons.Default.Shield
     "jobs","tasks"->Icons.Default.Checklist
     else->settingsIcon(id)
 }

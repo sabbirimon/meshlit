@@ -764,3 +764,7 @@ approvals and history. Meshlit's budgets and device permissions are not inherite
 Disconnecting does not stop host jobs: use Harness Stop first. Android WebView
 login cookies may survive disconnect; forgetting the address is not logout.
 This is not a native Android Harness SDK or a shared Meshlit agent engine yet.
+
+## Shirudo shields
+
+Open **Settings → Privacy & permissions → Shirudo shields** on Android to inspect a Linux node’s exported status JSON. Desktop Studio also supports operator-authorized target actions. [Shirudo workflow](GUI_WORKFLOWS.md#inspect-a-linux-node-with-shirudo)

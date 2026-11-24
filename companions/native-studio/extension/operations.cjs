@@ -3,19 +3,33 @@ const viewHelp=require('./view-help.cjs');
 const os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
 const fs=require('node:fs/promises'),{execFile}=require('node:child_process'),{promisify}=require('node:util');
 const run=promisify(execFile);
+const shirudo=require('./shirudo.cjs');
 const groups={
  cloud:[['Provider accounts',['aws','gcp','azure']],['Model platforms',['hubExplore']]],
  permissions:[['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
  management:[['Chat and permissions',['permissions','voice','liveVoice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
- tools:[['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Community',['moltbook','hubExplore']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
+ tools:[['Network security',['shieldReport','shieldLive','shieldApply']],['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Community',['moltbook','hubExplore']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
  settings:[['Appearance',['theme']],['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
 };
 const titles={cloud:'Cloud providers',permissions:'Permissions',management:'Management',tools:'Tools',settings:'Meshlit Settings'};
 function operations(vscode,context,root,hooks){
  let panel,section,token=0,detail=false;
+ let lastShieldReport;
+ async function showShield(live){
+  const report=await shirudo.inspect(vscode,live);
+  if(!report)return;
+  lastShieldReport={...report,source:live?'Local Linux runtime':'Imported file',readAt:new Date().toISOString()};
+  return showData('Shirudo · '+report.verdict,[
+   ['Source',lastShieldReport.source+' · host-reported status'],['Host',report.host],['Target',report.target?'Yes':'No'],
+   ['Loaded shields',String(report.loaded)],...report.conditions,['TPM attestation','Unverified']
+  ]);
+ }
  function items(){
   const cpu=context.globalState.get('threads',0);
   const data={
+   shieldReport:['Inspect Shirudo report','Open a Linux node’s status JSON',()=>showShield(false)],
+   shieldLive:['Read live Shirudo status','Inspect this Linux target with operator authorization',()=>showShield(true)],
+   shieldApply:['Apply signed Shirudo shield','Review a local .upatch and authorize the verified load',()=>shirudo.applySigned(vscode)],
    theme:['Desktop color theme','Choose a light, dark or high-contrast theme',()=>vscode.commands.executeCommand('workbench.action.selectTheme')],
    welcome:['Welcome and setup','Choose how to start chatting',hooks.welcome],
    permissions:['Permissions','Review access by tool',()=>hooks.go('permissions')],
@@ -73,11 +87,12 @@ function operations(vscode,context,root,hooks){
   mcp:['workbench.mcp.listServer','Use a workbench with MCP server support and reopen this page.']
  };
  function unavailable(id,registered){
+  if(['shieldLive','shieldApply'].includes(id) && (process.platform!=='linux'||![shirudo.runtime,'/usr/bin/pkexec'].every(file=>require('node:fs').existsSync(file))))return 'Configure Shirudo on a supported Linux target. Use Inspect Shirudo report to view an exported report here.';
   if(id==='memory'&&(!vscode.workspace.workspaceFolders?.length||!vscode.workspace.isTrusted))return 'Choose Open coding IDE, open your project folder and review its workspace trust to use Project memory.';
   if(id==='voice'&&process.platform!=='win32')return 'Built-in speech recognition is available on Windows. Use system dictation in the chat message box on this device.';
   if(dependencies[id]&&!registered.has(dependencies[id][0]))return dependencies[id][1];
   if(id==='toolList'&&!vscode.lm?.tools)return 'Open Studio with a workbench that supports the language model tool registry.';
-  const permission={moltbook:'internet',hubExplore:'internet',search:'internet',attach:'files',voice:'microphone'}[id];
+  const permission={shieldReport:'files',moltbook:'internet',hubExplore:'internet',search:'internet',attach:'files',voice:'microphone'}[id];
   return permission&&!hooks.allowed(permission)?'Open Permissions and allow '+hooks.permissionLabels[permission]+'.':'';
  }
  async function describe(target){
@@ -102,6 +117,15 @@ function operations(vscode,context,root,hooks){
      const posts=await require('./community.cjs').feed(AbortSignal.any([stop.signal,AbortSignal.timeout(15000)]));
      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify({source:'Moltbook',untrusted:true,posts}))]);
     }finally{subscription?.dispose();}
+   }
+  }));
+  context.subscriptions.push(vscode.lm.registerTool('meshlit_shirudo_status',{
+   prepareInvocation(){return {confirmationMessages:{title:'Share Shirudo status with the model?',message:'Share the verdict, check states, shield count and time for the last viewed report.'}};},
+   async invoke(){
+    if(lastShieldReport?.source==='Imported file'&&!hooks.allowed('files'))throw Error('File access is disabled.');
+    if(!lastShieldReport)throw Error('Inspect a report in Tools → Network security first.');
+    const {verdict,conditions,loaded,source,readAt}=lastShieldReport;
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify({verdict,conditions,loaded,source,readAt,attested:false}))]);
    }
   }));
   context.subscriptions.push(vscode.lm.registerTool('meshlit_inspect_settings',{

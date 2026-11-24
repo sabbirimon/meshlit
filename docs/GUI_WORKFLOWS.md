@@ -59,3 +59,11 @@ An absent local model usually means its source moved, an index points to a missi
 [Platform rules and permissions](RULEBOOK.md) · Historical Android and Studio audit (archived)
 
 [R7 model cards, chat screenshots and native inference measurements](evidence/2026-11-24-aquos-r7/README.md)
+
+## Inspect a Linux node with Shirudo
+
+In desktop Studio, open **Tools → Network security**. On Android, open **Settings → Privacy & permissions → Shirudo shields**. Export a status report on the Linux target with `/run/shirudo/runtime/usr/bin/shirudo status --json` and open the JSON file in Meshlit. The viewer shows the host’s reported verdict, loaded shield count and individual security checks. A report is a snapshot. Independent proof requires separate TPM attestation.
+
+On a configured Linux desktop, **Read live Shirudo status** requests system authorization to inspect the local target. **Apply signed Shirudo shield** lets the operator choose a local `.upatch`, review its path and authorize the load through polkit. Shirudo verifies the signature. Read live status again after applying a shield. On macOS, Windows and Android, use the report viewer. Studio agents can read the latest viewed summary for the current session using `meshlit_shirudo_status`.
+
+See the [upstream target requirements](https://docs.shirudo.dev/) before setting up a Linux node.

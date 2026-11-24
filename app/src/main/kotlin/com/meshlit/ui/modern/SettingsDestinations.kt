@@ -16,7 +16,7 @@ enum class SettingsGroup(val title:String,val description:String,val destination
     CONNECTIONS("Devices and connections", "Pair devices, manage transports and inspect real capabilities", setOf(
         "devices","network","vpn","sharding","radar","host-map","external-services","web-bridge","device-dashboard","meshchat","remotecommands","p2p","gibberlink","external","ssh","peers")),
     PRIVACY("Privacy & permissions", "Permissions, network rules, identity and data policy", setOf(
-        "securityprivacy","guardrails","permissions","firewall","identity-recovery","crypto","legal","search")),
+        "securityprivacy","guardrails","permissions","firewall","shirudo","identity-recovery","crypto","legal","search")),
     TOOLS("System & developer tools", "Files, diagnostics, optional runtimes and host services", setOf(
         "files","ide","device","resources","power","monitor","operations","recovery","runtime","commands","packages","securitylab","termux","crawler","cloud","audit","logs","rewards")),
     PREFERENCES("App & help", "Appearance, shortcuts, saved configuration and guidance", setOf(
@@ -78,6 +78,7 @@ object SettingsDestinations {
         SettingsDestination("moltbook","Moltbook","Read public posts from the agent community",keywords="social agents public feed"),
         SettingsDestination("agents","Agent management","Delegated permissions, real jobs and registered tools",keywords="autonomous scopes tasks MCP"),
         SettingsDestination("ssh","SSH nodes and connections","Key-authenticated inbound node commands and pinned outbound connections",keywords="server LAN internet VM sandbox agent SSH NAS terminal external inter device"),
+        SettingsDestination("shirudo","Shirudo shields","Inspect a Linux node’s security report",keywords="network cyber security signed shield TPM Linux"),
         SettingsDestination("firewall","Network rules","Persisted Meshlit listener firewall and network status",keywords="ports security IP allow deny"),
         SettingsDestination("device","Device","Device profile, name and hardware capabilities",keywords="role chipset gpu peripherals"),
         SettingsDestination("resources","Resources and sensors","Live RAM, storage, battery, model activity and available sensors",keywords="usage CPU memory camera microphone hardware diagnostics"),

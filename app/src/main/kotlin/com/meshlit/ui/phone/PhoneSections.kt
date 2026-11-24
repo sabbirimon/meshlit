@@ -31,7 +31,7 @@ internal fun phoneIcon(id:String):ImageVector=with(Icons.Outlined) { when(id.rem
     "cloud"->CloudQueue;"operations"->Engineering;"gateway"->Router;"commands"->Terminal;"packages"->Inventory2
     "securitylab"->Security;"providers"->Dns;"power"->BatteryChargingFull;"external"->Cable
     "acceleration"->Speed;"agent-catalog"->CollectionsBookmark;"agent-teams"->Groups;"bot-connections"->Link
-    "moltbook"->Feed;"ssh"->Key;"firewall"->Shield;"device"->PhoneAndroid;"resources"->Memory;"tasks"->Checklist
+    "moltbook"->Feed;"ssh"->Key;"firewall","shirudo"->Shield;"device"->PhoneAndroid;"resources"->Memory;"tasks"->Checklist
     "ide"->Code;"hyperl"->DeveloperBoard;"permissions"->AdminPanelSettings;"files"->FolderOpen
     "termux"->Keyboard;"notifications"->Notifications;"monitor"->MonitorHeart;"audit"->FactCheck;"logs"->ReceiptLong
     "identity-recovery"->Fingerprint;"rewards"->EmojiEvents;"network"->Wifi;"peers"->PeopleOutline

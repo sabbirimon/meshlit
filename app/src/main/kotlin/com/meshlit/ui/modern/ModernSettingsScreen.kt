@@ -123,6 +123,7 @@ import kotlinx.coroutines.*
     if(destination=="agents"){AgentManagementScreen(back,{navigate(it)});return}
     if(destination=="acceleration"){AccelerationScreen(back);return}
     if(destination=="ssh"){SshConnectionsScreen(back);return}
+    if(destination=="shirudo"){ShirudoScreen(back);return}
     if(destination=="firewall"){FirewallSettingsScreen(back);return}
     if(destination=="tasks"){TaskManagerScreen(back,{navigate("operations")});return}
     if(destination=="files"){FileManagerScreen(back);return}
