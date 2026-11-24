@@ -92,6 +92,23 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         save()
     }
 
+    internal suspend fun recordAgentModelReply(clientId:String,clientName:String,instruction:String,provider:String,model:String,text:String):Boolean {
+        ready.await()
+        val id=UUID.nameUUIDFromBytes("meshlit:agent-model-receipts:$clientId".toByteArray()).toString()
+        val now=System.currentTimeMillis()
+        val turns=listOf(ChatMessage(role="user",text=instruction,source="Agent · $clientName",createdAtMs=now),
+            ChatMessage(role="assistant",text=text,source="$provider · $model",createdAtMs=now))
+        val updated=_state.updateAndGet { old ->
+            val existing=old.conversations.firstOrNull { it.id==id }
+            if(existing==null && old.conversations.size>=40) return@updateAndGet old
+            val chat=existing ?: ChatConversation(id=id,title="Agent tasks · ${clientName.take(50)}")
+            val receipt=chat.copy(messages=(chat.messages+turns).takeLast(100),updatedAt=now)
+            old.copy(conversations=if(existing==null) old.conversations+receipt else old.conversations.map { if(it.id==id) receipt else it })
+        }
+        if(updated.conversations.none{it.id==id})return false
+        return try { save(); true } catch(_:java.io.IOException){ false } catch(_:IllegalStateException){ false }
+    }
+
     /** A reviewed inbox item becomes a local Chat draft and never starts a model. */
     internal suspend fun createBotDraft(source: String, eventId: String, text: String) {
         ready.await()
@@ -162,26 +179,52 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         _state.update{old->old.copy(conversations=old.conversations.map{if(it.id==old.selectedId) it.copy(options=options) else it})}
         appScope.launch{runCatching{save()}.onFailure{error->_state.update{it.copy(error="Cannot save chat options: ${error.javaClass.simpleName}")}}}
     }
+    private val namedGrants by lazy {NamedModelGrants(context)}
     /** Check the actual reply route before asking someone to record a voice turn. */
     fun voiceRouteProblem():String? {
         if(!ready.isCompleted) return "Chats are still loading. Try again in a moment."
         if(state.value.running) return "Wait for the current chat reply before starting voice."
         val selected=state.value.current?.options ?: ChatOptions()
+        if(!com.meshlit.BuildProfile.coreCandidate && TaskProvider.entries.any { provider ->
+            providers.profiles.value.any { namedGrants.allows(state.value.selectedId,NamedModelTask(provider,""),it) }
+        })return null
         if(selected.onlineProfileId!=null) return if(providers.profiles.value.any{it.id==selected.onlineProfileId && it.enabled}) null
             else "The chat provider is missing or disabled. Choose a reply model in Conversation settings."
         if(selected.routeId!=null || selected.colibriMode!="OFF" && !selected.usesLocalTools) return null
         return if(coordinator.loadedModel()==null) "Load a local chat model in Models before starting voice. Speech packs recognize and speak; they do not generate a reply." else null
     }
     fun send(text:String,photo:PhotoChatRequest?=null,voiceConversation:Boolean=false,connectionSelection:DeviceConnectionSelection?=null):String? {
+        if(!com.meshlit.BuildProfile.coreCandidate) namedTaskAttachmentProblem(text,photo!=null)?.let {
+            attachmentError(it)
+            return null
+        }
+        val named=if(voiceConversation && !com.meshlit.BuildProfile.coreCandidate)namedModelTask(text) else null
+        if(named!=null){
+            val approved=providers.profiles.value.singleOrNull{namedGrants.allows(state.value.selectedId,named,it)}
+            if(approved!=null && named.task.isNotBlank())return sendNamedTask(text,NamedModelDispatch(named,approved))
+            attachmentError("Open Chat and send ‘connect to ${named.provider.label}’ to enable auto-send for voice.")
+            return null
+        }
+        return sendTurn(text,photo,voiceConversation,connectionSelection,null)
+    }
+
+    internal fun sendNamedTask(text:String,dispatch:NamedModelDispatch):String? {
+        require(namedModelTask(text)==dispatch.request && dispatch.request.task.isNotBlank())
+        return sendTurn(text,null,false,null,dispatch)
+    }
+
+    private fun sendTurn(text:String,photo:PhotoChatRequest?,voiceConversation:Boolean,connectionSelection:DeviceConnectionSelection?,delegation:NamedModelDispatch?):String? {
         if(!ready.isCompleted || _state.value.running || text.isBlank()) return null
         require(text.length<=12000) { "Message is too long" }
         if(_state.value.current==null) newChat()
         val selected=_state.value.selectedId!!
         val user=ChatMessage(role="user",createdAtMs=System.currentTimeMillis(),text=text.trim(),attachmentNote=photo?.let{"Photo attached · original image not retained"},isolatedPhoto=photo?.offline!=null)
-        val assistant=ChatMessage(role="assistant",createdAtMs=System.currentTimeMillis(),text="",source=photo?.label,status=photo?.let{"Analyzing photo"},isolatedPhoto=photo?.offline!=null)
-        val configured=_state.value.current!!.options
+        val assistant=ChatMessage(role="assistant",createdAtMs=System.currentTimeMillis(),text="",source=delegation?.profile?.let{"${it.name} · ${it.model}"} ?: photo?.label,status=photo?.let{"Analyzing photo"},isolatedPhoto=photo?.offline!=null)
+        val configured=if(delegation==null)_state.value.current!!.options else ChatOptions(onlineProfileId=delegation.profile.id,historyMessages=0)
         val hostedProfile:OnlineProfile?
-        try { configured.validate();com.meshlit.BuildProfile.requireChat(configured)
+        try {
+            if(delegation!=null) require(!com.meshlit.BuildProfile.coreCandidate && delegation.request.provider.accepts(delegation.profile) && providers.profiles.value.contains(delegation.profile)){"Provider changed. Review the connection before sending."}
+            configured.validate();com.meshlit.BuildProfile.requireChat(configured)
             hostedProfile=if(photo==null && configured.hostedAgentToolsActive) {
                 providers.profiles.value.singleOrNull{it.id==configured.onlineProfileId && it.hostedToolsAllowed(configured.hostedToolReviewId)}
                     ?: error("Hosted tool permission changed. Review the exact model in Online providers and this chat's settings.")
@@ -211,7 +254,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         val decision=budgetDecision(if(colibriDecision?.route==com.meshlit.workspace.ColibriRoute.HOST) configured.copy(outputBudgetMode=OutputBudgetMode.MANUAL) else configured)
         val options=configured.copy(maxTokens=if(photo!=null) 512 else decision.limit)
         val baseInstructions=companionInstructions(options)+if(voiceConversation) "\nThis is a spoken conversation. Reply naturally and concisely, usually in one to three sentences. Avoid markdown and long lists unless requested. Keep the configured identity and permissions." else ""
-        val history=chatPromptHistory(_state.value.current!!.messages,options.historyMessages)
+        val history=if(delegation!=null) emptyList() else chatPromptHistory(_state.value.current!!.messages,options.historyMessages)
         _state.update { old -> old.copy(running=true,error=null,operationLabel=if(photo!=null) "Analyzing photo" else "Generating",generationStartedMs=android.os.SystemClock.elapsedRealtime(),activeOutputLimit=options.maxTokens,conversations=old.conversations.map { c ->
             if(c.id==selected) c.copy(title=if(c.messages.isEmpty()) text.trim().take(56) else c.title,
                 messages=(c.messages+user+assistant).takeLast(100),updatedAt=System.currentTimeMillis(),draft="") else c }) }
@@ -232,8 +275,8 @@ class ChatController(private val context:Context,private val coordinator:Inferen
             try {
                 val remoteKnowledge = options.onlineProfileId != null || options.routeId != null || options.agentToolsActive ||
                     colibriDecision?.route == com.meshlit.workspace.ColibriRoute.HOST || coordinator.engineTag !in setOf("runanywhere", "llama-native-local")
-                val grounding = if(photo!=null || hostedProfile!=null) "" to emptyList<String>() else knowledge.grounding(user.text,remoteKnowledge,agent=options.agentToolsActive).let{it.prompt to it.sources}
-                val instructions = baseInstructions + grounding.first
+                val grounding = if(delegation!=null || photo!=null || hostedProfile!=null) "" to emptyList<String>() else knowledge.grounding(user.text,remoteKnowledge,agent=options.agentToolsActive).let{it.prompt to it.sources}
+                val instructions = if(delegation!=null) "" else baseInstructions + grounding.first
                 if (grounding.second.isNotEmpty()) _state.update { old -> old.copy(conversations = old.conversations.map { c ->
                     if (c.id == selected) c.copy(messages = c.messages.map { if (it.id == assistant.id) it.copy(knowledgeSources = grounding.second) else it }) else c
                 }) }
@@ -301,7 +344,10 @@ class ChatController(private val context:Context,private val coordinator:Inferen
                         android.os.SystemClock.elapsedRealtime()-started,null,null))
                 } else if(options.onlineProfileId!=null) {
                     activity("Requesting a provider reply")
-                    val (profile,reply)=providers.generate(options.onlineProfileId, (history+user).map{com.meshlit.core.inference.models.OnlineMessage(it.role,it.text)},instructions,options.maxTokens,options.temperature,effort=options.reasoningEffort)
+                    val messages=if(delegation!=null) delegation.request.messages()
+                        else (history+user).map{com.meshlit.core.inference.models.OnlineMessage(it.role,it.text)}
+                    val (profile,reply)=providers.generate(options.onlineProfileId,messages,instructions,options.maxTokens,options.temperature,
+                        effort=options.reasoningEffort,expectedProfile=delegation?.profile)
                     val cost=reply.estimatedCost(profile)
                     val note="${profile.name} · input ${reply.inputTokens ?: "unknown"}, output ${reply.outputTokens ?: "unknown"} tokens · "+
                         (cost?.let{"estimated ${"%.6f".format(it)} ${profile.currency} (user prices)"} ?: "cost unknown")

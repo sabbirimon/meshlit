@@ -85,9 +85,10 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
         kotlinx.coroutines.currentCoroutineContext().ensureActive()
         authorize();requireCurrent(profile,credential);result
     }
-    suspend fun generate(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort=ReasoningEffort.AUTO):Pair<OnlineProfile,OnlineReply> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,agent) { generateManaged(id,messages,system,maxTokens,temperature,agent,effort) }
-    private suspend fun generateManaged(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort=ReasoningEffort.AUTO):Pair<OnlineProfile,OnlineReply> {
+    suspend fun generate(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort=ReasoningEffort.AUTO,expectedProfile:OnlineProfile?=null,authorize:()->Unit={}):Pair<OnlineProfile,OnlineReply> = operations.run(com.meshlit.core.common.control.ManagedFeature.CLOUD,agent) { generateManaged(id,messages,system,maxTokens,temperature,agent,effort,expectedProfile,authorize) }
+    private suspend fun generateManaged(id:String,messages:List<OnlineMessage>,system:String="",maxTokens:Int=1024,temperature:Float=0.7f,agent:Boolean=false,effort:ReasoningEffort,expectedProfile:OnlineProfile?,authorize:()->Unit):Pair<OnlineProfile,OnlineReply> {
         val profile=_profiles.value.firstOrNull{it.id==id} ?: error("Online profile no longer exists")
+        require(expectedProfile==null || expectedProfile==profile){"Provider changed before dispatch. Review it again."}
         require(!agent || profile.agentAllowed) { "This profile does not allow agent cloud requests" }
         profile.validate()
         require(profile.enabled)
@@ -96,6 +97,7 @@ class OnlineProviders(context:Context,private val vault:com.meshlit.cloud.CloudM
         val reply=metered<OnlineReply>(profile,(messages.sumOf{it.text.length.toLong()}+system.length)*4+1024,maxTokens,{it.inputTokens to it.outputTokens}) {
             requireCurrent(profile,credential)
             currentCoroutineContext().ensureActive()
+            authorize()
             client.generate(profile,credential,messages,system,maxTokens,temperature,effort)
         }
         return profile to reply

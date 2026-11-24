@@ -31,13 +31,14 @@ import com.meshlit.ui.theme.ChatTokens as T
     if(page=="ssh"){SshConnectionsScreen{page=if(fromExternalService) "external-services" else null};return}
     if(page=="firewall"){FirewallSettingsScreen{page=null};return}
     if(page=="app"){com.meshlit.ui.v2.screens.DeviceWorkspaceScreen({page=it},focusedPeer);return}
+    if(page=="studio-internet"){StudioInternetPairingScreen{page="app"};return}
     if(page=="saved-qrs"){DeviceManagementScreen({page="app"},{page=it});return}
     if(page=="sharding"){ShardingSettingsScreen(onBack={page="app"});return}
     if(page=="scan"){com.meshlit.ui.v2.screens.V2ScanScreen(onOpenQrPairing={page="app"},onBack={page=initialPage});return}
     if(page=="external-services"){ExternalServiceScreen({page=initialPage}) { fromExternalService=true;page=it };return}
     if(page=="web-bridge"){WebBridgeEnrollmentScreen{page="external-services"};return}
     if(page=="mcp-catalog"){McpCatalogScreen({page="external-services"},{page="gateway"});return}
-    if(page=="providers"){OnlineProvidersScreen{page="external-services"};return}
+    if(page=="providers"){OnlineProvidersScreen(onBack={page="external-services"});return}
     if(page=="gateway"){GatewayScreen{page="mcp-catalog"};return}
     if(page=="radar"){RadarScreen({page=initialPage},{page="scan"},{page="meshchat"},{page="logs"},{page="host-map"},
         {focusedPeer=it;page="app"});return}

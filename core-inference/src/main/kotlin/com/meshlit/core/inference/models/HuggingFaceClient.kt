@@ -8,6 +8,18 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
+private class HubIdentityDenied(val status:Int):IllegalArgumentException(if(status==401)
+    "HF authentication failed (401): check token and permissions" else
+    "HF access denied (403): accept the model license or request repository access")
+const val HF_BEARER_LIMIT=8192
+private val bearerSyntax=Regex("[A-Za-z0-9._~+/-]+=*")
+fun isHubBearer(value:String)=value.length in 1..HF_BEARER_LIMIT && bearerSyntax.matches(value)
+internal fun hubBrowserAccessToken(grant:JsonObject):String {
+    require((grant["token_type"] as? JsonPrimitive)?.contentOrNull.equals("bearer",true)) { "Unexpected Hugging Face token type" }
+    val value=(grant["access_token"] as? JsonPrimitive)?.takeIf{it.isString}?.contentOrNull
+    return requireNotNull(value?.takeIf(::isHubBearer)) { "Invalid Hugging Face access token" }
+}
+
 @Serializable data class HubArtifact(val repo:String,val revision:String,val fileName:String,val sizeBytes:Long?,val sha256:String?,val url:String)
 @Serializable data class HubRepository(val id:String,val revision:String,val private:Boolean,val gated:String,val license:String?,val files:List<HubArtifact>,
     val downloads:Long?=null,val likes:Long?=null,val updated:String?=null,val task:String?=null,
@@ -23,17 +35,16 @@ import java.util.concurrent.TimeUnit
     }
 }
 /** Real Hub discovery and explicit hosted requests. No automatic cloud fallback, redirects or paid retries. */
-class HuggingFaceClient {
-    private val client=OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(60,TimeUnit.SECONDS)
-        .callTimeout(90,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
+class HuggingFaceClient internal constructor(private val client:OkHttpClient) {
+    constructor():this(OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(60,TimeUnit.SECONDS)
+        .callTimeout(90,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build())
     private suspend fun fetch(request:Request):JsonElement=withContext(Dispatchers.IO) {
         val call=client.newCall(request)
         coroutineScope {
             val watcher=launch(Dispatchers.IO){try{awaitCancellation()}finally{call.cancel()}}
             try {call.execute().use { response ->
+                if(response.code==401 || response.code==403) throw HubIdentityDenied(response.code)
                 require(response.isSuccessful) { when(response.code){
-                    401->"HF authentication failed (401): check token and permissions"
-                    403->"HF access denied (403): accept the model license or request repository access"
                     402->"HF billing required (402): check credits or provider billing"
                     404->"HF repository, model or endpoint not found (404)"
                     429->"HF rate limit (429): wait and retry manually"
@@ -48,7 +59,7 @@ class HuggingFaceClient {
         }
     }
     private fun builder(url:String,token:String)=Request.Builder().url(url).header("User-Agent","Meshlit/0.2.3").apply {
-        if(token.isNotBlank()) header("Authorization","Bearer $token")
+        if(token.isNotEmpty()) {require(isHubBearer(token)){"Invalid Hugging Face access token"};header("Authorization","Bearer $token")}
     }
     suspend fun explore(kind: String, query: String, token: String): List<String> {
         require(kind in setOf("models","datasets","spaces") && query.length <= 200)
@@ -102,17 +113,20 @@ class HuggingFaceClient {
     }
     suspend fun hostedModels(token:String):JsonElement=fetch(builder("https://router.huggingface.co/v1/models",token).build())
     suspend fun browserToken(open: suspend (String) -> Unit): String {
-        val grant = fetch(browserGrant(open)).jsonObject
-        require(grant["token_type"]?.jsonPrimitive?.content.equals("bearer", ignoreCase = true))
-        return requireNotNull(grant["access_token"]?.jsonPrimitive?.contentOrNull?.takeIf { it.startsWith("hf_") && it.length <= 512 })
+        return hubBrowserAccessToken(fetch(browserGrant(open)).jsonObject)
     }
-    suspend fun whoAmI(token:String):String {
-        require(token.startsWith("hf_") && token.length<=512 && token.none{it.isWhitespace()}) { "Enter a Hugging Face user access token" }
-        val oauth=token.startsWith("hf_oauth_")
-        val path=if(oauth) "/oauth/userinfo" else "/api/whoami-v2"
-        val identity=fetch(builder("https://huggingface.co"+path,token).build()).jsonObject
-        return identity[if(oauth) "preferred_username" else "name"]?.jsonPrimitive?.contentOrNull?.takeIf{it.isNotBlank() && it.length<=128}
-            ?: error("Hugging Face did not return an account name")
+    suspend fun whoAmI(token:String,browserLogin:Boolean?=false):String {
+        require(isHubBearer(token)) { "Invalid Hugging Face access token" }
+        suspend fun account(oauth:Boolean):String {
+            val path=if(oauth) "/oauth/userinfo" else "/api/whoami-v2"
+            val identity=fetch(builder("https://huggingface.co"+path,token).build()).jsonObject
+            return (identity[if(oauth) "preferred_username" else "name"] as? JsonPrimitive)
+                ?.takeIf{it.isString}?.contentOrNull?.takeIf{it.isNotBlank() && it.length<=128}
+                ?: error("Hugging Face did not return an account name")
+        }
+        // Accounts saved before source tracking can contain either credential type.
+        return if(browserLogin!=null) account(browserLogin) else try { account(false) }
+            catch(_:HubIdentityDenied){account(true)}
     }
     suspend fun generate(config:HostedModelConfig,token:String,prompt:String,maxTokens:Int=256):JsonElement {
         config.validate();require(config.enabled) { "Hosted requests are disabled" };require(token.isNotBlank()) { "Save an inference-enabled HF token" }

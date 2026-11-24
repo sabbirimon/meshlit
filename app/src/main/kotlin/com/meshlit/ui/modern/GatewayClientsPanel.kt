@@ -17,6 +17,8 @@ import java.util.Date
 @OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun GatewayClientsPanel(host:GatewayHost) {
     val clients by host.clients.collectAsState()
+    val routes by host.namedRoutes.collectAsState()
+    val profiles by com.meshlit.di.koinInject<com.meshlit.providers.OnlineProviders>().profiles.collectAsState()
     var name by remember{mutableStateOf("")}
     var models by remember{mutableStateOf(host.settings.value.modelId)}
     var tools by remember{mutableStateOf("")}
@@ -30,6 +32,14 @@ import java.util.Date
     val clipboard=LocalClipboardManager.current
     SettingsFeatureSection("Client access and resource limits") {
         Text("Issue a separate API key for each desktop, phone or web backend. Permissions, model IDs, expiry and limits are enforced. Client edits stop the gateway and cancel its pending jobs; restart after changing access.")
+        com.meshlit.chat.TaskProvider.entries.forEach { provider ->
+            val route=profiles.singleOrNull { profile->profile.agentAllowed && provider.accepts(profile) &&
+                com.meshlit.chat.namedProfileBinding(profile)==routes[provider.name] }
+            if(route!=null) OutlinedButton(onClick={
+                models="cloud:${route.id}";tools="named_model_task";scopes=setOf(GatewayScope.CHAT,GatewayScope.MCP)
+                if(name.isBlank())name="${provider.label} agent"
+            }) {Text("Fill for ${provider.label} tasks")}
+        }
         OutlinedTextField(name,{if(it.length<=80) name=it},Modifier.fillMaxWidth(),label={Text("Client name")})
         OutlinedTextField(models,{models=it},Modifier.fillMaxWidth(),label={Text("Allowed model IDs, comma separated")})
         FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){GatewayScope.entries.forEach{scope->

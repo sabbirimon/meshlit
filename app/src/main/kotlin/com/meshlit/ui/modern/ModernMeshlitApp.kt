@@ -239,9 +239,12 @@ fun ModernMeshlitApp() {
     val openMenu:()->Unit={scope.launch{drawer.open()}}
     var mediaKind by rememberSaveable { mutableStateOf("vision") }
     var researchOpen by rememberSaveable { mutableStateOf(false) }
+    var providerPreset by rememberSaveable {mutableStateOf<String?>(null)}
     fun select(id:String) {
+        providerPreset=when(id){"setup-gemini"->"GEMINI";"setup-chatgpt"->"CHATGPT";else->null}
         if (id == "research-topic" && !com.meshlit.BuildProfile.coreCandidate) { researchOpen=true; return }
         val destination=when(id) {
+            "setup-gemini","setup-chatgpt" -> "providers"
             "create-image","create-video" -> {mediaKind=id.removePrefix("create-");"media"}
             "research-topic" -> "search"
             else -> id
@@ -359,6 +362,7 @@ fun ModernMeshlitApp() {
                         "devices","agents","settings" -> if(!primaryDetail) PhoneWorkspacePage(tab,::select){primaryDetail=true}
                             else if(tab=="devices") ModernNetworkScreen(onBack={primaryDetail=false},onDashboard={select("device-dashboard")}, initialPage="app")
                             else ModernSettingsScreen(initialDestination=tab,onExit={primaryDetail=false})
+                        "providers" -> OnlineProvidersScreen(onBack={select(previousHub)},initialProvider=providerPreset)
                         "monitor" -> ModernMonitorScreen()
                         "media" -> MediaGenerationScreen(initialKind=mediaKind,initialPrompt=chatDraftState.value,returnMediaToChat=mediaKind in setOf("image","video","speech"),onAddToChat={file->chats.addMediaToChat(file);select("chat")},onBack={select("chat")})
                         "vision" -> MediaGenerationScreen(onBack={select("chat")},initialKind="vision")
@@ -502,8 +506,37 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
         }
         return
     }
-    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection || shieldIntent!=null || toolRequest!=null) && draft.isNotBlank()
-    val send={ if(canSend && toolRequest!=null) {
+    val namedTask=remember(draft){if(!com.meshlit.BuildProfile.coreCandidate)namedModelTask(draft) else null}
+    val grants=remember(context){NamedModelGrants(context)}
+    var reviewNamed by remember(state.selectedId){mutableStateOf<NamedModelTask?>(null)}
+    fun sendNamed(request:NamedModelTask,profile:com.meshlit.core.inference.models.OnlineProfile,automatic:Boolean){
+        if(namedModelTask(draft)!=request)return
+        if(request.task.isEmpty()){
+            if(controller.state.value.current==null)controller.newChat()
+        }else{
+            followLatest=true
+            if(controller.sendNamedTask(draft,NamedModelDispatch(request,profile))==null)return
+        }
+        controller.state.value.selectedId?.let{id->if(automatic)grants.allow(id,request,profile) else grants.revoke(id,request)}
+        editDraft("");reviewNamed=null
+        if(request.task.isEmpty())android.widget.Toast.makeText(context,
+            if(automatic)"Auto-send enabled for ${request.provider.label}" else "${profile.name} is ready. Ask ${request.provider.label} a question.",
+            android.widget.Toast.LENGTH_SHORT).show()
+    }
+    reviewNamed?.let {request->
+        val prior=profiles.singleOrNull{grants.allows(state.selectedId,request,it)}
+        NamedTaskDialog(request,profiles,prior,onChoose={profile,automatic->sendNamed(request,profile,automatic)},
+            onSetup={reviewNamed=null;onTool("setup-"+request.provider.name.lowercase())},onRevoke={grants.revoke(state.selectedId,request);reviewNamed=null},
+            onDismiss={reviewNamed=null})
+    }
+    val canSend=!state.running && draft.length<=(if(photo!=null) 4000 else 12000) && if(photo!=null) (namedTask!=null || chosenVision!=null || chosenOffline!=null) else (hasChatModel || nativeConnection || shieldIntent!=null || toolRequest!=null || namedTask!=null) && draft.isNotBlank()
+    val send={ if(canSend && namedTask!=null && photo!=null) {
+        controller.attachmentError(NAMED_TASK_ATTACHMENT_ERROR)
+    } else if(canSend && namedTask!=null) {
+        keyboard?.hide()
+        val prior=profiles.singleOrNull{grants.allows(state.selectedId,namedTask,it)}
+        if(prior!=null && namedTask.task.isNotEmpty())sendNamed(namedTask,prior,true) else reviewNamed=namedTask
+    } else if(canSend && toolRequest!=null) {
         editDraft("");keyboard?.hide();pickedPin=pinIntent;catalogQuery=if(pinIntent==null)toolRequest else null
         toolArguments=if(pinIntent!=null)toolRequest.substringAfter(' ',"") else ""
         customize=true
@@ -655,7 +688,12 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         captureFilePath=target.path
                         captureUri=androidx.core.content.FileProvider.getUriForFile(context,"${context.packageName}.fileprovider",target)
                         camera.launch(checkNotNull(captureUri))
-                    }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions,onTool=onTool,onCustomize={pin->pickedPin=pin;customize=true},pins=pins,options=access,onUpdate={next->
+                    }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions,onTool={id->
+                        if(id=="reset-model-autosend"){
+                            grants.clear(state.selectedId)
+                            android.widget.Toast.makeText(context,"Model auto-send off for this chat",android.widget.Toast.LENGTH_SHORT).show()
+                        }else onTool(id)
+                    },onCustomize={pin->pickedPin=pin;customize=true},pins=pins,options=access,onUpdate={next->
                         runCatching {controller.setOptions(next)}.onFailure {controller.attachmentError(it.message ?: "Could not change tool access")}
                     })}
                 },tools={

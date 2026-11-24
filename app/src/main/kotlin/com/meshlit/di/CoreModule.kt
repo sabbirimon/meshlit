@@ -576,7 +576,7 @@ val coreModule = module {
     single { com.meshlit.training.TrainingHost(androidContext(),get()) }
     single { com.meshlit.security.LabPackages(androidContext(),get()) }
     single { com.meshlit.security.SecurityLab(androidContext(),get()) }
-    single { com.meshlit.gateway.GatewayHost(androidContext(),get(),get(),get(),{get()}) }
+    single { com.meshlit.gateway.GatewayHost(androidContext(),get(),get(),get(),{get()},{get()},{get()}) }
     single { com.meshlit.recovery.ReplicaHost(androidContext(), get()) }
     single { com.meshlit.operations.OperationsControl.get(androidContext()) }
     single { com.meshlit.operations.ClusterControls.get(androidContext()) }

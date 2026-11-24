@@ -41,8 +41,8 @@ import kotlinx.coroutines.withContext
                     status="Finish signing in on huggingface.co, then return here."
                     try {
                         val grant=client.browserToken { browser.openUri(it) }
-                        val name=client.whoAmI(grant)
-                        withContext(Dispatchers.IO){credentials.saveToken(grant)}
+                        val name=client.whoAmI(grant,browserLogin=true)
+                        withContext(Dispatchers.IO){credentials.saveToken(grant,browserLogin=true)}
                         account=name;hasSavedToken=true;status="Account connected."
                     }catch(_:kotlinx.coroutines.TimeoutCancellationException){status="Sign-in expired. Try again."}
                     catch(e:CancellationException){throw e}
@@ -52,7 +52,7 @@ import kotlinx.coroutines.withContext
                 TextButton(onClick={browser.openUri("https://huggingface.co/join")}){Text("Create a Hugging Face account")}
                 Text(if(hasSavedToken) "Hub token saved" else "No Hub token saved",style=MaterialTheme.typography.bodySmall)
                 account?.let{Text("Verified as $it",style=MaterialTheme.typography.titleMedium)}
-                OutlinedTextField(token,{token=it.take(512)},Modifier.fillMaxWidth(),label={Text("New Hugging Face access token")},singleLine=true,visualTransformation=PasswordVisualTransformation())
+                OutlinedTextField(token,{if(it.length<=com.meshlit.core.inference.models.HF_BEARER_LIMIT)token=it},Modifier.fillMaxWidth(),label={Text("New Hugging Face access token")},singleLine=true,visualTransformation=PasswordVisualTransformation())
                 Button(enabled=token.isNotBlank() && !busy,onClick={scope.launch {
                     busy=true;status=""
                     try {
@@ -64,7 +64,7 @@ import kotlinx.coroutines.withContext
                 }}){Text("Verify and save Hub token")}
                 OutlinedButton(enabled=hasSavedToken && !busy,onClick={scope.launch {
                     busy=true;status=""
-                    try{account=withContext(Dispatchers.IO){client.whoAmI(credentials.token())};status="Account checked now"}
+                    try{account=withContext(Dispatchers.IO){client.whoAmI(credentials.token(),credentials.browserLogin())};status="Account checked now"}
                     catch(e:CancellationException){throw e}catch(_:Exception){status="Saved token could not be verified now"}
                     finally{busy=false}
                 }}){Text("Check saved account")}

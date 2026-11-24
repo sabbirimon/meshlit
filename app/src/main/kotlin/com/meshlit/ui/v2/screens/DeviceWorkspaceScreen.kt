@@ -260,6 +260,9 @@ fun DeviceWorkspaceScreen(onNavigate: (String) -> Unit, initialPeerNodeId: Strin
             Button({ add = true }, Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Add device") }
             OutlinedButton({ qr = true }, Modifier.fillMaxWidth(), enabled = own != null) { Icon(Icons.Default.QrCode, null); Spacer(Modifier.width(8.dp)); Text("QR / paste") }
         } }
+        item { OutlinedButton(onClick = { onNavigate("studio-internet") }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Computer, null); Spacer(Modifier.width(8.dp)); Text("Pair Studio desktop by ID")
+        } }
         item { OutlinedButton(onClick = { onNavigate("scan") }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Devices, null); Spacer(Modifier.width(8.dp)); Text("Browse nearby devices")
         } }

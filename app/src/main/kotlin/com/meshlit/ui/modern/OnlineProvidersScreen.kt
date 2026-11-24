@@ -16,7 +16,7 @@ import kotlinx.coroutines.*
 import java.util.UUID
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun OnlineProvidersScreen(onBack:()->Unit) {
+@Composable fun OnlineProvidersScreen(onBack:()->Unit,initialProvider:String?=null) {
     val providers=koinInject<OnlineProviders>();val profiles by providers.profiles.collectAsStateWithLifecycle()
     val scope=rememberCoroutineScope();val context=androidx.compose.ui.platform.LocalContext.current
     var editing by remember{mutableStateOf<OnlineProfile?>(null)}
@@ -32,6 +32,14 @@ import java.util.UUID
     var inputRate by remember{mutableStateOf("")};var outputRate by remember{mutableStateOf("")}
     fun cancelCatalog(){catalogRevision++;catalogJob?.cancel();catalogJob=null;busy=false;discovered=emptyList();catalogAt=null}
     fun edit(profile:OnlineProfile){cancelCatalog();editing=profile;key="";modelQuery="";prices=emptyList();inputRate=profile.inputPricePerMillion?.toString().orEmpty();outputRate=profile.outputPricePerMillion?.toString().orEmpty()}
+    LaunchedEffect(initialProvider) {
+        val preset=when(initialProvider){
+            "GEMINI" -> OnlineProfile(UUID.randomUUID().toString(),"Gemini","https://generativelanguage.googleapis.com/v1beta",protocol=OnlineProtocol.GEMINI)
+            "CHATGPT" -> OnlineProfile(UUID.randomUUID().toString(),"OpenAI","https://api.openai.com/v1",protocol=OnlineProtocol.OPENAI)
+            else -> return@LaunchedEffect
+        }
+        edit(profiles.firstOrNull{it.endpoint==preset.endpoint && it.protocol==preset.protocol} ?: preset)
+    }
     DisposableEffect(Unit){onDispose{catalogJob?.cancel()}}
     LaunchedEffect(editing?.id,editing?.endpoint,editing?.protocol,editing?.credentialEnvironmentId,editing?.credentialVariable,editing?.requiresApiKey,profiles) {
         cancelCatalog();storedKey=null
@@ -44,6 +52,7 @@ import java.util.UUID
     LazyColumn(Modifier.fillMaxSize().safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         item{TextButton(onClick=onBack){Text("Back")};Text("Model connections",style=MaterialTheme.typography.headlineSmall)
             Text("Requests send conversation content to the selected provider. Keys are encrypted locally. Local failures never trigger a cloud request. API access and billing are separate from consumer chat subscriptions.")}
+        if(initialProvider==null || editing==null){
         item{OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),"Grok (xAI API)","https://api.x.ai/v1"))}){Text("Connect Grok model API")}}
         item{OmniRouteDashboardSetup(providers){address->cancelCatalog();key="";dashboard=address}}
         items(profiles,key={it.id}){profile->Card{Column(Modifier.padding(16.dp)){Text(profile.name,style=MaterialTheme.typography.titleMedium);Text("${profile.model.ifBlank{"Model not selected"}} · ${if(profile.enabled) "Enabled" else "Disabled"}");Text(profile.endpoint,style=MaterialTheme.typography.bodySmall)
@@ -70,6 +79,7 @@ import java.util.UUID
                 Triple("Gemini","https://generativelanguage.googleapis.com/v1beta",OnlineProtocol.GEMINI),Triple("Hugging Face","https://router.huggingface.co/v1",OnlineProtocol.OPENAI_COMPATIBLE),
                 Triple("OmniRoute (optional)","",OnlineProtocol.OPENAI_COMPATIBLE),Triple("FreeLLMAPI (experimental)","",OnlineProtocol.OPENAI_COMPATIBLE),
                 Triple("Agentgateway / LiteLLM","",OnlineProtocol.OPENAI_COMPATIBLE),Triple("Custom compatible","",OnlineProtocol.OPENAI_COMPATIBLE)).forEach{(name,url,protocol)->OutlinedButton(onClick={edit(OnlineProfile(UUID.randomUUID().toString(),name,url,protocol=protocol,gateway=when { name.startsWith("OmniRoute") -> OnlineGateway.OMNIROUTE; name.startsWith("FreeLLMAPI") -> OnlineGateway.FREELLMAPI; name.startsWith("Agentgateway") -> OnlineGateway.CUSTOM; else -> OnlineGateway.DIRECT }))}){Text(name)}}}}
+        }
         editing?.let{profile->item{Card{Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("Configure ${profile.name}",style=MaterialTheme.typography.titleMedium)
             Text("Source: ${profile.sourceKind.name.lowercase().replace('_',' ')}")
@@ -142,7 +152,7 @@ import java.util.UUID
             profile.priceCheckedAtMs?.let{Text("Price snapshot: ${java.util.Date(it)} · ${profile.pricingSource}. Refresh before relying on it.",style=MaterialTheme.typography.bodySmall)}
             Text("Prices are your assumptions, not a provider quote. Estimates exclude cache discounts, tools, taxes and unreported reasoning usage.",style=MaterialTheme.typography.bodySmall)
             Row {
-                Button(onClick={try{val input=inputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid input price")};val output=outputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid output price")};providers.save(profile.copy(inputPricePerMillion=input,outputPricePerMillion=output,pricingSource=profile.pricingSource ?: "User reviewed rates",priceCheckedAtMs=System.currentTimeMillis()),key.takeIf{it.isNotBlank()});cancelCatalog();editing=null;key=""}catch(_:Exception){error="Profile could not be saved. Check its endpoint, model, key and numeric price fields."}}){Text("Save profile")}
+                Button(onClick={try{val input=inputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid input price")};val output=outputRate.takeIf{it.isNotBlank()}?.let{it.toDoubleOrNull() ?: error("Invalid output price")};providers.save(profile.copy(inputPricePerMillion=input,outputPricePerMillion=output,pricingSource=profile.pricingSource ?: "User reviewed rates",priceCheckedAtMs=System.currentTimeMillis()),key.takeIf{it.isNotBlank()});cancelCatalog();editing=null;key="";if(initialProvider!=null)onBack()}catch(_:Exception){error="Profile could not be saved. Check its endpoint, model, key and numeric price fields."}}){Text("Save profile")}
                 TextButton(onClick={cancelCatalog();editing=null;key=""}){Text("Cancel")}
             }
         }}}}

@@ -114,6 +114,7 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
             for ((id,label) in listOf("create-image" to "Generate image","create-video" to "Generate video","research-topic" to "Research a topic","bot-connections" to "Bots and agents")) {
                 ListItem(modifier=Modifier.clickable{menu=false;onTool(id)},headlineContent={Text(label)})
             }
+            ListItem(modifier=Modifier.clickable{menu=false;onTool("reset-model-autosend")},headlineContent={Text("Reset model auto-send")},supportingContent={Text("Ask before sending to named models in this chat")})
             for(pin in pins)ListItem(modifier=Modifier.clickable{menu=false;onCustomize(pin)},headlineContent={Text(pin.title)},supportingContent={Text("/tool "+pin.command)})
             ListItem(modifier=Modifier.clickable{menu=false;onCustomize(null)},headlineContent={Text("All tools and services")},leadingContent={Icon(Icons.Default.Tune,null)})
             for((id,label) in listOf("models" to "Models and providers","files" to "Browse device files","devices" to "Devices and pairing","ssh" to "SSH connections","ide" to "Coding workspace","agents" to "Agent management","mcp-catalog" to "MCP tools","gateway" to "Allow model clients","providers" to "External model providers","shirudo" to "Shirudo shields")){

@@ -16,6 +16,20 @@ Type **/tools** in either composer to browse available destinations and connecte
 
 On Android, share a reply through **Response actions → Share response** to an app that accepts text. Choose **Meshlit** when sharing text back and review **Add to draft**. For an outside client on Android, open **+ → Allow model clients**, choose the model ID, issue a scoped client key for that model, and start the gateway. Keep the gateway screen open. Configure the client with the displayed loopback port and its own bearer key. Cross-device clients need an authenticated encrypted tunnel. Keep the owner token private. To use an outside model from Android chat, open **+ → External model providers** and select the configured provider in chat. Use **+ → MCP tools** for a tool server. On desktop, **Ask another model** opens a registered route and prepares a draft. **Allow local model clients** opens the local server controls.
 
+### Ask another model from chat
+
+Type **Connect to Gemini** or **Connect to ChatGPT** to choose the provider and model. Then try **Ask Gemini to summarize: …** or **Tell ChatGPT: review this function …**. A delegated reply appears in the same conversation. Paste the specific material after the instruction.
+
+Choose **Always send named tasks** on desktop or **Auto-send named tasks here in this chat** on Android to skip the prompt on later tasks for the approved destination. Desktop access settings let you revoke automatic sending. On Android, use the connection dialog in the same chat. A configured provider API handles in-chat replies. On Android, the installed consumer app can also receive a task via sharing and show its answer there.
+
+On Mac or Linux, select **Dictate a named task** in the desktop microphone menu. Start system dictation and finish the instruction with **send task now**. For example, say “Ask Gemini to suggest three names for my app, send task now.” Windows can use built-in voice input. Android can route a final voice transcription through the same named-task permission as a typed request.
+
+For a desktop agent in a trusted workspace, choose **Always allow, including agents** for the selected provider. Its `meshlit_delegate_model_task` tool accepts a `request` such as `Ask Gemini to suggest three names for my app`. On Android, enable agent access on the provider profile and select it under **Agent Gateway → Named model tasks**. In the client key form, use **Fill for Gemini tasks** or **Fill for ChatGPT tasks** and issue the scoped key. Start the gateway. The client can call `named_model_task` with an `instruction` field. Its reply also appears in **Agent tasks** in chat history.
+
+Desktop **+ → Generate image → FLUX.1 schnell** can generate an image using the public Hugging Face Space with Internet permission. Enter the prompt to send. The preview appears in chat, where **Download file** saves the original. Availability depends on the Space’s free capacity.
+
+A live provider check received a text response from a separate local Ollama service running Gemma 4 E4B. A second check invoked the public FLUX generator through the desktop composer and verified identical bytes in its WebP preview and download. [Generated sailboat](evidence/2026-11-24-live-providers/flux-sailboat.webp)
+
 After the first exchange, the conversation rail offers a point for each prompt and reply. Tap the rail on Android to choose a message, or select a mark on desktop to jump directly.
 
 The mobile chat header shows the active context window when the runtime reports it. If only the model specification is available, the header labels it as the model maximum. New messages show their local time. Completed replies show elapsed time and token speed when the runtime provides a count. Desktop local chat shows its configured window and the same reply metrics.
@@ -45,6 +59,12 @@ On a phone, open the chat menu and choose **Models and imports**. **On device** 
 On a Samsung phone, open **Settings → Agents** to inspect profiles, teams and the registry. Select **More tools** for logs and connections. Long-press a settings shortcut for its description. The device radar shows live discovery while scanning. Devices without position data appear in the inset. The phone model library puts local import and URL download ahead of recommendations.
 
 Desktop replies show elapsed time and any token counts returned by the engine. Decode speed excludes startup when reported by the engine. Overall speed includes time spent preparing the request and loading the model. Older saved replies may have no measurements.
+
+## Pair an Android phone with Studio over the internet
+
+1. On the desktop, open **Devices → Enable nearby pairing → Configure internet relay**. Enter `https://meshlit-relay.imon.com.bd` and the relay operator’s access token. Keep **Devices** open and choose **Copy my device ID**.
+2. On Android, open **Devices → Pair Studio desktop by ID**. Enter the relay token and the desktop’s 20-character device ID, then tap **Pair desktop**. Compare the phone ID on this screen with the ID on the desktop approval prompt.
+3. After approval, the desktop appears in **Saved desktops**. Tap **Verify connection** to reconnect after reopening the phone app. The phone checks the desktop’s saved public key and node identity. **Forget** removes the saved desktop. **Forget relay token** separately removes the relay credential.
 
 ## Connect a Hugging Face account
 

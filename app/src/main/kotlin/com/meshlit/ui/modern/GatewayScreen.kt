@@ -63,6 +63,7 @@ import kotlinx.coroutines.*
             }}
             item {Text("Endpoints: /mcp · /a2a · /.well-known/agent-card.json · /v1/resources · /v1/models · /v1/chat/completions. All require Bearer authentication. Browser origins are rejected. LAN/off-grid and internet clients need a verified encrypted private tunnel or host HTTPS gateway. Web apps should keep the client key on their backend, not in browser scripts. The owner token bypasses client quotas; keep it private. Copying places a secret on your clipboard.")}
             item {Text("Connect an external agentgateway/LiteLLM endpoint through Online providers → Custom compatible. Use its exact HTTPS API base, gateway key and model alias. Provider keys can stay on the host.")}
+            item {NamedAgentRoutePanel(host)}
             item {GatewayClientsPanel(host)}
             item {Text("Remote MCP / A2A routes",style=MaterialTheme.typography.titleMedium)}
             item {Text("Human-enrolled JSON routes: exact HTTPS endpoint (or loopback tunnel), bearer token, protocol MCP/A2A, explicit agentEnabled and MCP allowedTools. Credentials remain encrypted. Discovered tools are untrusted data; remote actions may have effects. JSON-response transport only; OAuth and SSE remain separate adapters.")}
@@ -75,5 +76,33 @@ import kotlinx.coroutines.*
             item {GatewayRoutingPanel(host)}
             error?.let {item {Text(it,color=MaterialTheme.colorScheme.error)}}
         }
+    }
+}
+
+@Composable private fun NamedAgentRoutePanel(host:GatewayHost) {
+    val profiles by koinInject<com.meshlit.providers.OnlineProviders>().profiles.collectAsState()
+    val grants by host.namedRoutes.collectAsState()
+    var problem by remember { mutableStateOf<String?>(null) }
+    SettingsFeatureSection("Named model tasks") {
+        Text("Choose where scoped agents can send a text instruction. Replies return to the client and appear under Agent tasks in chat history.")
+        com.meshlit.chat.TaskProvider.entries.forEach { provider ->
+            val options=profiles.filter { it.agentAllowed && provider.accepts(it) }
+            val bound=grants[provider.name]
+            val selected=options.firstOrNull { com.meshlit.chat.namedProfileBinding(it)==bound }
+            Text(provider.label,style=MaterialTheme.typography.titleSmall)
+            options.forEach { profile ->
+                Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("${profile.name} · ${profile.model}\n${profile.endpoint}\nAllowed model ID: cloud:${profile.id}",Modifier.weight(1f))
+                    Switch(selected==profile,{ enabled ->
+                        try {host.setNamedRoute(provider,if(enabled)profile else null);problem=null}
+                        catch(_:Exception){problem="Could not save this model grant. Review the online profile."}
+                    })
+                }
+            }
+            if(options.isEmpty())Text("Enable agent access on a ${provider.label} profile in Online providers.")
+            if(bound!=null && selected==null) TextButton(onClick={host.setNamedRoute(provider,null)}){Text("Remove inactive grant")}
+        }
+        Text("Grant the client MCP and CHAT, its exact cloud model ID, and the tool named_model_task. Changing a route stops the gateway. Start it again to serve clients.")
+        problem?.let { Text(it,color=MaterialTheme.colorScheme.error) }
     }
 }

@@ -1,6 +1,9 @@
 package com.meshlit.gateway
 
 import android.content.Context
+import com.meshlit.chat.*
+import com.meshlit.providers.OnlineProviders
+import com.meshlit.core.inference.models.OnlineProfile
 import com.meshlit.control.AgentBackend
 import com.meshlit.core.mcp.control.*
 import com.meshlit.core.mcp.gateway.*
@@ -14,12 +17,26 @@ import java.util.UUID
 
 @Serializable data class GatewaySettings(val port:Int=18893,val modelId:String="",val policy:GatewayPolicy=GatewayPolicy())
 /** Configuration edits are human-only; restart/rekey revokes the old listener and running request handlers. */
-class GatewayHost(context:Context,private val backend:AgentBackend,private val lab:com.meshlit.security.SecurityLab,private val packages:com.meshlit.security.LabPackages,private val search:()->com.meshlit.search.AppSearchService) {
+class GatewayHost(context:Context,private val backend:AgentBackend,private val lab:com.meshlit.security.SecurityLab,private val packages:com.meshlit.security.LabPackages,private val search:()->com.meshlit.search.AppSearchService,private val providers:()->OnlineProviders,private val chats:()->ChatController) {
     private val operations = com.meshlit.operations.OperationsControl.get(context).gate
     private val store=EncryptedCredentialStore(context,"agent-gateway")
     val remoteRoutes=RemoteRoutes(context)
     val routing=UnifiedRouting(context,backend,remoteRoutes,{settings.value.policy})
     private val json=Json {ignoreUnknownKeys=true}
+    private val _namedRoutes=MutableStateFlow(store.get("named-routes")?.let {
+        runCatching { json.decodeFromString<Map<String,String>>(it) }.getOrNull()
+    }.orEmpty())
+    internal val namedRoutes=_namedRoutes.asStateFlow()
+
+    @Synchronized internal fun setNamedRoute(provider:TaskProvider,profile:OnlineProfile?) {
+        if(profile!=null) require(profile.agentAllowed && provider.accepts(profile) && profile in providers().profiles.value)
+        stop()
+        val next=if(profile==null) _namedRoutes.value-provider.name
+            else _namedRoutes.value+(provider.name to namedProfileBinding(profile))
+        store.putCommitted("named-routes",json.encodeToString(next))
+        _namedRoutes.value=next
+    }
+
     private val _settings=MutableStateFlow(store.get("settings")?.let {runCatching {json.decodeFromString<GatewaySettings>(it)}.getOrNull()} ?: GatewaySettings())
     val settings=_settings.asStateFlow()
     private val _clients=MutableStateFlow(store.get("clients")?.let{runCatching{json.decodeFromString<List<GatewayClient>>(it).also{list->require(list.size<=64);require(list.map{client->client.id}.distinct().size==list.size);list.forEach{client->client.validate()}}}.getOrNull()} ?: emptyList())
@@ -64,6 +81,10 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
     @Synchronized fun stop() {remoteRoutes.resetSession();epoch.incrementAndGet();server?.stop();server=null;_running.value=false;val ids=owned.keys.toList();owned.clear();expirations.values.forEach{it.cancel()};expirations.clear();cleanupScope.launch {backend.controller.ready.await();ids.forEach {id->backend.controller.jobs.value.firstOrNull {it.command.requestId==id && !it.terminal}?.let {backend.controller.cancel(id)}}}}
     private fun tools()=buildJsonArray {
         fun tool(name:String,description:String,schema:JsonObject)=add(buildJsonObject {put("name",name);put("description",description);put("inputSchema",schema)})
+        tool("named_model_task","Send a single text task to the owner-selected Gemini or ChatGPT model and return its answer.",buildJsonObject {
+            put("type","object");put("additionalProperties",false);put("required",buildJsonArray{add("instruction")})
+            put("properties",buildJsonObject{put("instruction",buildJsonObject{put("type","string");put("maxLength",12000);put("description","For example: Ask Gemini to summarize this paragraph.")})})
+        })
         tool("meshlit_command_submit","Submit a durable command; saved agent permissions remain required",AgentCommandSchema.describe())
         tool("gateway_prompt_protection_set","Change only optional prompt-pattern protection; separate owner delegation and this exact client tool grant are required",buildJsonObject {
             put("type","object");put("additionalProperties",false);put("required",buildJsonArray{add("enabled")})
@@ -89,6 +110,7 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
         }
         if(name.startsWith("remote_")) return remoteRoutes.invoke(name,args)
         val result=when(name) {
+            "named_model_task"->delegateNamedTask(args)
             "gateway_prompt_protection_set"->{require(args.keys==setOf("enabled"));setAgentPromptProtection(args["enabled"]!!.jsonPrimitive.boolean)}
             "gateway_routes_list"->{val principal=currentGatewayClient();json.encodeToJsonElement(routing.routes.value.filter{it.enabled && it.agentAllowed && (it.protocol!=RouteProtocol.LLM || principal.allowsModel("route:${it.id}"))})}
             "gateway_route_execute"->{
@@ -110,6 +132,33 @@ class GatewayHost(context:Context,private val backend:AgentBackend,private val l
             else->{require(name.startsWith("remote_"));remoteRoutes.invoke(name,args)}
         }
         return buildJsonObject {put("content",buildJsonArray {add(buildJsonObject {put("type","text");put("text",result.toString())})});put("isError",false)}
+    }
+    private suspend fun delegateNamedTask(args:JsonObject):JsonObject {
+        require(args.keys==setOf("instruction"))
+        val instruction=args.getValue("instruction").jsonPrimitive.also {require(it.isString)}.content
+        require(instruction.length<=12000)
+        val request=requireNotNull(namedModelTask(instruction))
+        val principal=currentGatewayClient()
+        val started=epoch.get()
+        val service=providers()
+        val profile=requireNotNull(service.profiles.value.singleOrNull {
+            namedProfileBinding(it)==namedRoutes.value[request.provider.name]
+        })
+        fun authorize() {
+            require(running.value && epoch.get()==started && access.active(principal))
+            require(profile in service.profiles.value)
+            requireAgentTaskGrant(principal,request,profile,namedRoutes.value[request.provider.name])
+        }
+        authorize()
+        val reply=service.generate(profile.id,request.messages(),
+            maxTokens=minOf(1024,principal.maxOutputTokens),agent=true,expectedProfile=profile,authorize=::authorize).second
+        authorize()
+        settings.value.policy.check(reply.text,true)
+        val clientName=clients.value.first {it.id==principal.id}.name
+        val recorded=chats().recordAgentModelReply(principal.id,clientName,instruction,profile.name,profile.model,reply.text)
+        return buildJsonObject {
+            put("provider",request.provider.label);put("model",profile.model);put("text",reply.text);put("savedToChat",recorded)
+        }
     }
     private suspend fun admit(command:AgentCommand):AgentJob {
         operations.requireAllowed(com.meshlit.core.common.control.ManagedFeature.GATEWAY,true)
