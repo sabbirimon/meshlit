@@ -66,6 +66,8 @@ Desktop replies show elapsed time and any token counts returned by the engine. D
 2. On Android, open **Devices → Pair Studio desktop by ID**. Enter the relay token and the desktop’s 20-character device ID, then tap **Pair desktop**. Compare the phone ID on this screen with the ID on the desktop approval prompt.
 3. After approval, the desktop appears in **Saved desktops**. Tap **Verify connection** to reconnect after reopening the phone app. The phone checks the desktop’s saved public key and node identity. **Forget** removes the saved desktop. **Forget relay token** separately removes the relay credential.
 
+On November 24, 2026, a Samsung Galaxy A20s paired with a test Studio instance on a Mac through the public hostname using LTE and free WARP. After a force-stop and relaunch, **Verify connection** checked the same saved identity. The desktop recorded one pairing approval across both sessions. The screenshot hides the desktop name. [Samsung reconnect result](evidence/2026-11-24-live-providers/samsung-relay-reconnected.png)
+
 ## Connect a Hugging Face account
 
 Public, ungated models work as a guest. On desktop, choose **Sign in** in the model browser. On Android, open **Models → Hugging Face → Sign in or create an account**. Choose **Sign in with Hugging Face** to open the official browser consent screen. If you need an account, choose **Create a Hugging Face account**, complete the provider's signup, return to Meshlit and select sign-in again. Keep the originating Meshlit window or screen open until authorization returns.
