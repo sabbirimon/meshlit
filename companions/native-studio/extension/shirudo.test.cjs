@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
-const {parseReport,importReport,applySigned} = require('./shirudo.cjs');
+const {parseReport,importReport,exportReport,applySigned} = require('./shirudo.cjs');
 const report = {schema:1,host:'lab',is_target:true,status:'tampered',conditions:[{type:'ChainIntact',status:'ALERT'}],upatches_loaded:[{}]};
 
 test('preserves an unhealthy verdict and reads the selected file', async t=>{
@@ -12,7 +12,14 @@ test('preserves an unhealthy verdict and reads the selected file', async t=>{
     t.after(()=>fs.rm(dir,{force:true,recursive:true}));
     const file=path.join(dir,'report.json');
     await fs.writeFile(file,JSON.stringify(report));
-    assert.deepEqual(await importReport(file),{host:'lab',target:true,verdict:'tampered',conditions:[['ChainIntact','ALERT']],loaded:1});
+    const {raw,scan,...summary}=await importReport(file);
+    assert.equal(scan.alerts,1);
+    assert.equal(scan.missing.length,6);
+    assert.equal(raw,JSON.stringify(report));
+    const destination=path.join(dir,'export.json');
+    await exportReport({window:{showSaveDialog:async()=>({scheme:'file',fsPath:destination})}},{raw});
+    assert.equal(await fs.readFile(destination,'utf8'),raw);
+    assert.deepEqual(summary,{host:'lab',target:true,verdict:'tampered',conditions:[['ChainIntact','ALERT']],loaded:1});
     await fs.writeFile(file,Buffer.alloc(1024*1024+1));
     await assert.rejects(importReport(file),/1 MiB/);
 });

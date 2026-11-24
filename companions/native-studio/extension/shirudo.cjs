@@ -5,6 +5,7 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const path = require('node:path');
 const run = promisify(execFile);
+const {randomUUID} = require('node:crypto');
 const runtime = '/run/shirudo/runtime/usr/bin/shirudo';
 const limit = 1024 * 1024;
 const verdicts = new Set(['ok','tampered','lsm-off','init-pending','reboot-pending','degraded']);
@@ -21,7 +22,10 @@ function parseReport(text) {
         return [c.type, c.status];
     });
     if (new Set(conditions.map(([name])=>name)).size !== conditions.length) throw Error('Duplicate Shirudo condition.');
-    return { host:doc.host.replace(/[\p{C}]/gu,'').slice(0,128), target:doc.is_target, verdict:doc.status,
+    const missing = [...conditionNames].filter(name=>!conditions.some(([type])=>type===name));
+    const scan = {ok:0,warnings:0,alerts:0,missing};
+    for (const [,status] of conditions) scan[{OK:'ok',WARN:'warnings',ALERT:'alerts'}[status]]++;
+    return { raw:text, scan, host:doc.host.replace(/[\p{C}]/gu,'').slice(0,128), target:doc.is_target, verdict:doc.status,
         conditions, loaded:doc.upatches_loaded.length };
 }
 
@@ -32,7 +36,7 @@ async function importReport(file) {
         if (!stat.isFile() || stat.size > limit) throw Error('Select a regular JSON file of at most 1 MiB.');
         const chunks = [];
         for await (const chunk of handle.createReadStream({autoClose:false, end:limit})) chunks.push(chunk);
-        return parseReport(Buffer.concat(chunks).toString('utf8'));
+        return parseReport(new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(Buffer.concat(chunks)));
     } finally { await handle.close(); }
 }
 
@@ -53,6 +57,18 @@ async function inspect(vscode, chooseLocal) {
     if (uri) return importReport(uri.fsPath);
 }
 
+async function exportReport(vscode, report) {
+    if (!report) throw Error('Open or scan a Shirudo report first.');
+    const uri=await vscode.window.showSaveDialog({saveLabel:'Export original JSON',filters:{'Shirudo report':['json']}});
+    if (!uri) return;
+    if (uri.scheme!=='file') throw Error('Select a local file destination.');
+    const tmp=path.join(path.dirname(uri.fsPath),'.meshlit-shirudo-'+randomUUID()+'.tmp');
+    try {
+        await fs.writeFile(tmp,report.raw,{flag:'wx',mode:0o600});
+        await fs.rename(tmp,uri.fsPath);
+    } finally { await fs.rm(tmp,{force:true}); }
+}
+
 async function applySigned(vscode) {
     const [uri] = await vscode.window.showOpenDialog({openLabel:'Review signed shield',filters:{'Signed Shirudo shield':['upatch']},canSelectMany:false}) || [];
     if (!uri) return;
@@ -65,4 +81,4 @@ async function applySigned(vscode) {
     await onTarget(['upatch','load',file],120000);
     await vscode.window.showInformationMessage('Shirudo loaded the signed shield. Read live status to inspect the target.');
 }
-module.exports = { parseReport, importReport, inspect, applySigned, runtime };
+module.exports = { parseReport, importReport, inspect, exportReport, applySigned, runtime };

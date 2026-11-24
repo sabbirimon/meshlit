@@ -768,3 +768,5 @@ This is not a native Android Harness SDK or a shared Meshlit agent engine yet.
 ## Shirudo shields
 
 Open **Settings → Privacy & permissions → Shirudo shields** on Android to inspect a Linux node’s exported status JSON. Desktop Studio also supports operator-authorized target actions. [Shirudo workflow](GUI_WORKFLOWS.md#inspect-a-linux-node-with-shirudo)
+
+Importing a Shirudo report scans its seven expected security checks. The summary counts alerts and warnings and names any missing checks. **Export original JSON** on Android or **Tools → Network security → Export Shirudo report** on desktop saves a reusable copy with the original fields.

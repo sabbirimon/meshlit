@@ -20,7 +20,9 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
-private fun readShieldReport(input: InputStream): List<Pair<String,String>> {
+private data class ShieldReport(val bytes: ByteArray, val rows: List<Pair<String,String>>)
+
+private fun readShieldReport(input: InputStream): ShieldReport {
     val bytes = ByteArrayOutputStream()
     val buffer = ByteArray(8192)
     while (true) {
@@ -37,7 +39,8 @@ private fun readShieldReport(input: InputStream): List<Pair<String,String>> {
     val conditions = doc.getJSONArray("conditions")
     require(conditions.length() <= known.size)
     val seen = mutableSetOf<String>()
-    return buildList {
+    val alertCounts = mutableMapOf<String,Int>()
+    val details = buildList {
         add("Reported status" to verdict)
         add("Host" to doc.getString("host").filter { !it.isISOControl() && Character.getType(it) != Character.FORMAT.toInt() }.take(128))
         add("Target" to if (doc.getBoolean("is_target")) "Yes" else "No")
@@ -47,26 +50,32 @@ private fun readShieldReport(input: InputStream): List<Pair<String,String>> {
             val name = condition.getString("type")
             val state = condition.getString("status")
             require(name in known && seen.add(name) && state in setOf("OK","WARN","ALERT"))
+            alertCounts[state] = (alertCounts[state] ?: 0) + 1
             add(name to state)
         }
         add("TPM attestation" to "Unverified")
     }
+    val scan = listOf(
+        "Scan summary" to "${alertCounts["ALERT"] ?: 0} alerts · ${alertCounts["WARN"] ?: 0} warnings · ${alertCounts["OK"] ?: 0} passed",
+        "Missing checks" to ((known - seen).joinToString().ifEmpty { "None" })
+    )
+    return ShieldReport(bytes.toByteArray(), details.take(2) + scan + details.drop(2))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable internal fun ShirudoScreen(back: () -> Unit) {
     val resolver = LocalContext.current.contentResolver
     val scope = rememberCoroutineScope()
-    var rows by remember { mutableStateOf(emptyList<Pair<String,String>>()) }
+    var report by remember { mutableStateOf<ShieldReport?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             loading = true
-            rows = emptyList()
+            report = null
             error = null
             try {
-                rows = withContext(Dispatchers.IO) { requireNotNull(resolver.openInputStream(uri)).use(::readShieldReport) }
+                report = withContext(Dispatchers.IO) { requireNotNull(resolver.openInputStream(uri)).use(::readShieldReport) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -74,6 +83,22 @@ private fun readShieldReport(input: InputStream): List<Pair<String,String>> {
             } finally {
                 loading = false
             }
+        }
+    }
+    val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val current = report
+        if (uri != null && current != null) scope.launch {
+            error = null
+            loading = true
+            try {
+                withContext(Dispatchers.IO) {
+                    requireNotNull(resolver.openOutputStream(uri,"wt")).use { it.write(current.bytes) }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                error = "Could not write the report to that destination."
+            } finally { loading = false }
         }
     }
     Scaffold(topBar = { CenterAlignedTopAppBar(title = { Text("Shirudo shields") }, navigationIcon = {
@@ -84,10 +109,14 @@ private fun readShieldReport(input: InputStream): List<Pair<String,String>> {
             Text("Linux node report", style = MaterialTheme.typography.titleLarge)
             Text("On your Shirudo target, export shirudo status --json. Open that file here to inspect its shields and security checks.")
             Button(onClick = { picker.launch(arrayOf("application/json","text/plain","application/octet-stream")) }, enabled = !loading) {
-                Text(if (loading) "Reading report…" else "Open report")
+                Text("Import and scan report")
             }
+            if (report != null) OutlinedButton(onClick = { exporter.launch("shirudo-status.json") }, enabled = !loading) {
+                Text("Export original JSON")
+            }
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            rows.forEach { (label,value) ->
+            report?.rows.orEmpty().forEach { (label,value) ->
                 ListItem(headlineContent = { Text(label) }, supportingContent = { Text(value) })
             }
         }
