@@ -120,13 +120,22 @@ jobs:
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:
           subject-path: ${{ env.SUITE_ARCHIVE }}
+      - name: Upload the single-file Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Meshlit-Studio-Windows-X64-Installer
+          path: dist/Meshlit-Studio-Windows-X64-Setup.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
       - uses: actions/upload-artifact@v4
+        if: runner.os != 'Windows'
         with:
           name: Meshlit-Full-Studio-${{ runner.os }}-${{ runner.arch }}
           compression-level: 0
           path: |
             ${{ env.SUITE_ARCHIVE }}
-            dist/*-Setup.exe
             dist/STUDIO-CONTENTS.json
             dist/SHA256SUMS.txt
           retention-days: 14
