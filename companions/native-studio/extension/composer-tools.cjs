@@ -31,9 +31,7 @@ function composer(vscode,context,hooks){
     const files=new Map();
     const byteLimit=32*1024*1024;
     function cacheFile(part) {
-        const extensions={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif','audio/wav':'wav',
-            'video/mp4':'mp4','video/webm':'webm','application/pdf':'pdf','text/markdown':'md','text/plain':'txt'};
-        const extension=extensions[part.mimeType]||'bin';
+        const extension=require('./attachment-preview.cjs').extension(part.mimeType);
         let total=part.data.length;
         for(const bytes of files.values())total+=bytes.length;
         while(files.size && (files.size>=8 || total>byteLimit)){
@@ -44,6 +42,28 @@ function composer(vscode,context,hooks){
         const filename='meshlit-'+require('node:crypto').randomUUID()+'.'+extension;
         files.set(filename,Buffer.from(part.data));
         return filename;
+    }
+    function fromBase64(mimeType,data){
+        if(typeof data!=='string' || !data.length || data.length>Math.ceil(byteLimit/3)*4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(data))return;
+        const bytes=Buffer.from(data,'base64');
+        if(bytes.length && bytes.length<=byteLimit)return cacheFile({mimeType,data:bytes});
+    }
+    function replyFiles(message){
+        const names=[];
+        const parts=[...(Array.isArray(message?.content)?message.content:[]),...(Array.isArray(message?.images)?message.images:[])];
+        for(const part of parts.slice(0,8)){
+            const url=part?.image_url?.url;
+            if(typeof url!=='string'||!url.startsWith('data:image/'))continue;
+            const split=url.indexOf(';base64,');
+            const mime=url.slice(5,split);
+            if(split<0||!['image/png','image/jpeg','image/webp','image/gif'].includes(mime))continue;
+            const name=fromBase64(mime,url.slice(split+8));if(name)names.push(name);
+        }
+        if(message?.audio?.data){
+            const name=fromBase64(message.audio.mimeType||'audio/wav',message.audio.data);
+            if(name)names.push(name);
+        }
+        return names.filter(name=>files.has(name));
     }
     async function download(filename){
         if(filename===undefined){
@@ -71,6 +91,13 @@ function composer(vscode,context,hooks){
         const attachments=[];
         const output=(result.content||[]).map(part=>{
             if(typeof part.value==='string')return part.value;
+            const block=part.value||part;
+            const encoded=block.resource||block;
+            if(encoded.mimeType && typeof (encoded.blob||encoded.data)==='string'){
+                const name=fromBase64(encoded.mimeType,encoded.blob||encoded.data);
+                if(name){attachments.push(name);return name;}
+                return 'Attachment unavailable';
+            }
             if(part.data instanceof Uint8Array){
                 const mime=part.mimeType||'application/octet-stream';
                 if(part.data.length>byteLimit)return '['+mime+' exceeds the 32 MiB download limit]';
@@ -160,6 +187,6 @@ function composer(vscode,context,hooks){
         if(pick)return launch(pick.target);
         throw Error('Unknown tool. Use /tools to search the catalog.');
     }
-    return {menu,shortcut,activate,download,pins:()=>list().map(({title,command})=>({title,command}))};
+    return {menu,shortcut,activate,download,replyFiles,preview:name=>require('./attachment-preview.cjs').preview(name,files.get(name)),pins:()=>list().map(({title,command})=>({title,command}))};
 }
 module.exports={entries,shieldIntent,composer};

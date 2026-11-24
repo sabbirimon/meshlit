@@ -36,3 +36,18 @@ test('tool result download writes the selected bytes and only resolves cached fi
  assert.deepEqual(saved,Buffer.from(data));
  await assert.rejects(host.download('../outside'),/expired/);
 });
+test('media from a model uses the same preview and download path as a tool',()=>{
+ const host=composer({}, {globalState:{get:()=>[]}}, {});
+ const [file]=host.replyFiles({images:[{image_url:{url:'data:image/png;base64,AQID'}}]});
+ assert.deepEqual(host.preview(file),{kind:'image',mime:'image/png',data:'AQID'});
+ assert.deepEqual(host.replyFiles({images:[{image_url:{url:'https://example.org/private.png'}}]}),[]);
+ assert.deepEqual(host.preview('missing'),{kind:'missing'});
+});
+test('source and unsupported attachments stay inert in previews',()=>{
+ const {preview,extension}=require('./attachment-preview.cjs');
+ assert.equal(extension('audio/mpeg'),'mp3');
+ assert.deepEqual(preview('sample.html',Buffer.from('<script>alert(1)</script>')),{kind:'text',text:'<script>alert(1)</script>',truncated:false});
+ assert.equal(preview('large.py',Buffer.alloc(18000)).text.length,16000);
+ assert.deepEqual(preview('archive.bin',Buffer.alloc(0)),{kind:'file'});
+ assert.deepEqual(preview('broken.docx',Buffer.from('invalid')),{kind:'file'});
+});

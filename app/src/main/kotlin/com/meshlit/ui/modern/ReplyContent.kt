@@ -83,6 +83,7 @@ import kotlinx.coroutines.launch
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text(block.language.ifBlank{"code"},Modifier.weight(1f),style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant)
                         TextButton(onClick={wrap=!wrap}){Text(if(wrap) "Scroll" else "Wrap")}
+                        DownloadCode(block.language, block.text)
                         IconButton(onClick={clipboard.setText(AnnotatedString(block.text))}){Icon(Icons.Default.ContentCopy,"Copy code")}
                     }
                     // Vertical viewport is bounded; long code remains selectable and scrollable.

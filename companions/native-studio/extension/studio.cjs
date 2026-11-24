@@ -527,7 +527,7 @@ async function activate(context) {
             const sentAt=Date.now();
             const started=performance.now();
             const progress=text=>sendUI('progress',{text});
-            let answer,count,rate,promptTokens;
+            let answer,count,rate,promptTokens,files=[];
             const last=messages.length-1;
             if(file){
                 if(file.mime){
@@ -558,7 +558,10 @@ async function activate(context) {
                 step('Requesting model reply');
                 const result=await request(route.base,'/chat/completions',route.token,{model:route.model,messages,max_tokens:options.maxTokens,temperature:options.temperature},signal);
                 promptTokens=result.usage?.prompt_tokens;count=result.usage?.completion_tokens;rate=result.timings?.predicted_per_second;
-                answer=result.choices?.[0]?.message?.content;
+                const message=result.choices?.[0]?.message;
+                files=composer.replyFiles(message);
+                answer=Array.isArray(message?.content)?message.content.map(part=>part.text||'').filter(Boolean).join('\n'):message?.content;
+                if(!answer && files.length)answer='Generated attachment';
                 const supplied=result.choices?.[0]?.message?.reasoning_summary;
                 if(typeof supplied==='string' && supplied.trim())summary=displayOutput(supplied.slice(0,4000),context.globalState.get('filter-output',true));
             }
@@ -576,7 +579,7 @@ async function activate(context) {
             const metrics=usage.join(' · ');
             const id=crypto.randomUUID();replyIds.add(id);if(replyIds.size>512)replyIds.delete(replyIds.values().next().value);
             step('Received model reply');
-            history=[...history,{role:'user',createdAtMs:sentAt,content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,createdAtMs:Date.now(),content:output,model:modelName(selected),metrics,activity,summary}].slice(-128);
+            history=[...history,{role:'user',createdAtMs:sentAt,content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,createdAtMs:Date.now(),content:output,model:modelName(selected),metrics,activity,summary,files}].slice(-128);
             await recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
@@ -587,10 +590,15 @@ async function activate(context) {
     }
     function chat() {
         if(panel) { panel.reveal(); return; }
-        panel=vscode.window.createWebviewPanel('meshlit.chat','Meshlit · General Chat',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[],retainContextWhenHidden:true});
+        const pdfRoot=vscode.Uri.joinPath(context.extensionUri,'media','pdf');
+        panel=vscode.window.createWebviewPanel('meshlit.chat','Meshlit · General Chat',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[pdfRoot],retainContextWhenHidden:true});
         const nonce=crypto.randomBytes(20).toString('hex');
         panel.iconPath=vscode.Uri.file(brand.file);
-        panel.webview.html=page(nonce,firstRun(),brand.markup);
+        panel.webview.html=page(nonce,firstRun(),brand.markup,{
+            origin:panel.webview.cspSource,
+            module:panel.webview.asWebviewUri(vscode.Uri.joinPath(pdfRoot,'pdf.min.mjs')).toString(),
+            worker:panel.webview.asWebviewUri(vscode.Uri.joinPath(pdfRoot,'pdf.worker.min.mjs')).toString()
+        });
         panel.onDidDispose(()=>{screenSession?.abort();active?.abort();panel=undefined;ready=false;});
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
@@ -655,7 +663,17 @@ async function activate(context) {
                 }
                 if(msg.op==='silence')speech?.abort();
                 if(msg.op==='copy'&&typeof msg.text==='string')await vscode.env.clipboard.writeText(msg.text.slice(0,128000));
+                if(msg.op==='previewFile' && typeof msg.filename==='string'){
+                    sendUI('filePreview',{filename:msg.filename,preview:composer.preview(msg.filename)});return;
+                }
                 if(msg.op==='downloadToolFile' && typeof msg.filename==='string')await composer.download(msg.filename);
+                if(msg.op==='exportCode' && typeof msg.text==='string'){
+                    const types={python:'py',javascript:'js',typescript:'ts',c:'c',cpp:'cpp','c++':'cpp',go:'go',rust:'rs',html:'html',css:'css',json:'json',bash:'sh',sh:'sh',kotlin:'kt',java:'java',sql:'sql',yaml:'yaml',markdown:'md'};
+                    const ext=Object.hasOwn(types,msg.language)?types[msg.language]:'txt';
+                    const dest=await vscode.window.showSaveDialog({saveLabel:'Download code',filters:{Source:[ext]}});
+                    if(dest)await vscode.workspace.fs.writeFile(dest,Buffer.from(msg.text.slice(0,128000)));
+                    return;
+                }
                 if(msg.op==='export'&&typeof msg.text==='string'){
                     const dest=await vscode.window.showSaveDialog({saveLabel:'Download reply',filters:{Markdown:['md'],Text:['txt']}});
                     if(dest)await vscode.workspace.fs.writeFile(dest,Buffer.from(msg.text.slice(0,128000)));

@@ -61,6 +61,8 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
 
 @Composable internal fun ComposerToolPicker(initial:ComposerPin?,draft:String,initialQuery:String?,onClose:()->Unit,onRoute:(String)->Unit,onDraft:(String)->Unit) {
     val ctx=LocalContext.current
+    val media=koinInject<com.meshlit.media.MediaGeneration>()
+    val chat=koinInject<com.meshlit.chat.ChatController>()
     val gateway=koinInject<GatewayHost>().remoteRoutes
     val scope=rememberCoroutineScope()
     var pins by remember {mutableStateOf(savedComposerPins(ctx))}
@@ -145,7 +147,24 @@ internal fun savedComposerPins(context:Context):List<ComposerPin>{
                         val name=pin.target.removePrefix("mcp:")
                         val input=Json.parseToJsonElement(args).jsonObject
                         val result=withContext(Dispatchers.IO){gateway.invoke(name,input,agent=false)}
-                        onDraft("Tool result · "+name+"\n"+result.toString());onClose()
+                        val parts=result["content"] as? JsonArray
+                        val reports=mutableListOf<String>()
+                        var attached=false
+                        for(part in parts.orEmpty().take(16)){
+                            val item=part as? JsonObject ?: continue
+                            val resource=item["resource"] as? JsonObject
+                            val body=resource ?: item
+                            val mime=(body["mimeType"] as? JsonPrimitive)?.contentOrNull
+                            val data=((body["blob"] ?: body["data"]) as? JsonPrimitive)?.contentOrNull
+                            val text=(body["text"] as? JsonPrimitive)?.contentOrNull
+                            if(mime!=null && (data!=null || resource!=null && text!=null)){
+                                val file=media.saveToolFile(mime,data,text)
+                                chat.addMediaToChat(file)
+                                attached=true
+                            }else if(text!=null)reports+=text
+                        }
+                        if(reports.isNotEmpty() || !attached)onDraft("Tool result · "+name+"\n"+(reports.takeIf{it.isNotEmpty()}?.joinToString("\n") ?: result.toString()))
+                        onClose()
                     }catch(e:CancellationException){throw e}catch(_:Exception){message="Tool call failed. Check the arguments and approved route."}finally{busy=false;confirm=null}
                 }else{
                     val id=aliases[pin.target]?:pin.target

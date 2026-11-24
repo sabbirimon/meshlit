@@ -48,6 +48,8 @@ def package_extension(suite):
     if not npm:
         raise RuntimeError("Node.js and npm are required to package the LM Studio catalog client")
     subprocess.run([npm, "ci", "--ignore-scripts", "--omit=dev", "--no-audit", "--no-fund"], cwd=sdk, check=True)
+    pdf_viewer = src.parent / "pdf-viewer"
+    subprocess.run([npm, "ci", "--ignore-scripts", "--omit=optional", "--no-audit", "--no-fund"], cwd=pdf_viewer, check=True)
     name = "meshlit-native.vsix"
     manifest = """<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
     <Metadata><Identity Language="en-US" Id="native-studio" Version="2.0.49" Publisher="meshlit"/>
@@ -64,6 +66,9 @@ def package_extension(suite):
         for file in sorted(sdk.rglob("*")):
             if file.is_file() and not file.is_symlink() and ".bin" not in file.parts:
                 bundle.write(file, "extension/catalog-sdk/" + file.relative_to(sdk).as_posix())
+        pdf = pdf_viewer / "node_modules/pdfjs-dist"
+        for asset in ["build/pdf.min.mjs", "build/pdf.worker.min.mjs", "LICENSE"]:
+            bundle.write(pdf / asset, "extension/media/pdf/" + Path(asset).name)
         legacy = ROOT / "companions/studio-runtime/extension"
         bundle.write(legacy / "media/meshlit.svg", "extension/legacy/media/meshlit.svg")
         bundle.write(ROOT / "desktopApp/src/main/resources/icons/meshlit.png", "extension/media/meshlit.png")

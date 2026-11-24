@@ -360,7 +360,7 @@ fun ModernMeshlitApp() {
                             else if(tab=="devices") ModernNetworkScreen(onBack={primaryDetail=false},onDashboard={select("device-dashboard")}, initialPage="app")
                             else ModernSettingsScreen(initialDestination=tab,onExit={primaryDetail=false})
                         "monitor" -> ModernMonitorScreen()
-                        "media" -> MediaGenerationScreen(initialKind=mediaKind,initialPrompt=chatDraftState.value,onAddToChat={file->chats.addMediaToChat(file);select("chat")},onBack={select("chat")})
+                        "media" -> MediaGenerationScreen(initialKind=mediaKind,initialPrompt=chatDraftState.value,returnMediaToChat=mediaKind in setOf("image","video","speech"),onAddToChat={file->chats.addMediaToChat(file);select("chat")},onBack={select("chat")})
                         "vision" -> MediaGenerationScreen(onBack={select("chat")},initialKind="vision")
                         "voice" -> HandsFreeVoiceDialog(chats){select("chat")}
                         "structured" -> ModernStructuredScreen()

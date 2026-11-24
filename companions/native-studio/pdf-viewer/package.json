@@ -1,0 +1,7 @@
+{
+  "name": "meshlit-pdf-preview",
+  "private": true,
+  "dependencies": {
+    "pdfjs-dist": "6.5.438"
+  }
+}

@@ -26,7 +26,7 @@ import com.meshlit.core.inference.models.OnlineProtocol
 import kotlinx.coroutines.*
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
-@Composable fun MediaGenerationScreen(initialKind:String="vision",initialPrompt:String="",onAddToChat:(suspend (java.io.File)->Unit)?=null,onBack:()->Unit) {
+@Composable fun MediaGenerationScreen(initialKind:String="vision",initialPrompt:String="",returnMediaToChat:Boolean=false,onAddToChat:(suspend (java.io.File)->Unit)?=null,onBack:()->Unit) {
     val media=koinInject<MediaGeneration>();val videos by media.videos.collectAsStateWithLifecycle()
     val providers=koinInject<OnlineProviders>();val profiles by providers.profiles.collectAsStateWithLifecycle()
     val scope=rememberCoroutineScope();val context=LocalContext.current
@@ -54,7 +54,7 @@ import kotlinx.coroutines.*
         if(kind=="speech") OutlinedTextField(voice,{voice=it},label={Text("Voice ID")},singleLine=true)
         if(kind=="vision") {OutlinedButton(enabled=!running,onClick={pick.launch(arrayOf("image/*"))}){Text(if(image==null) "Upload an image" else "Replace selected image")};if(image!=null) Text("Image selected · resized locally before upload")}
         OutlinedTextField(prompt,{prompt=it},Modifier.fillMaxWidth(),label={Text(if(kind=="speech") "Text to speak" else "Prompt / question")},minLines=3,maxLines=7)
-        Row{Button(enabled=!running && profile!=null && prompt.isNotBlank(),onClick={run{result=media.generate(profile!!,kind,model,prompt,voice,image)}}){Text(if(kind=="video") "Create 4-second video job" else "Run")};TextButton(enabled=running,onClick={job?.cancel()}){Text("Stop request")}}
+        Row{Button(enabled=!running && profile!=null && prompt.isNotBlank(),onClick={run{val output=media.generate(profile!!,kind,model,prompt,voice,image);result=output;if(returnMediaToChat && output.file!=null)onAddToChat?.invoke(output.file)}}){Text(if(kind=="video") "Create 4-second video job" else "Run")};TextButton(enabled=running,onClick={job?.cancel()}){Text("Stop request")}}
         if(running) LinearProgressIndicator(Modifier.fillMaxWidth())
         result?.text?.let{SelectionContainer{Text(it)};MessageActions(it)}
         result?.file?.let{file->
@@ -82,7 +82,11 @@ import kotlinx.coroutines.*
             Text("${video.job.id} · ${video.job.status} · progress ${video.job.progress?.let{"$it%"} ?: "unknown"}")
             video.job.error?.let{Text(it)}
             Row{TextButton(enabled=!running,onClick={run{media.refresh(video)}}){Text("Check status")}
-                if(video.job.status=="completed") TextButton(enabled=!running,onClick={run{result=media.download(video)}}){Text("Download MP4")}}
+                if(video.job.status=="completed") TextButton(enabled=!running,onClick={run{
+                    val output=media.download(video)
+                    result=output
+                    if(returnMediaToChat && output.file!=null)onAddToChat?.invoke(output.file)
+                }}){Text(if(returnMediaToChat)"Preview in chat" else "Preview video")}}
             TextButton(enabled=!running,onClick={media.forget(video)}){Text("Forget local reference (keeps remote job)")}
         }}}
         if(files.isNotEmpty()) Text("Local generated files",style=MaterialTheme.typography.titleMedium)

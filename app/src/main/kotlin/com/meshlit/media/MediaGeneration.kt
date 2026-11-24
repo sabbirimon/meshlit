@@ -58,7 +58,24 @@ class MediaGeneration(private val context:Context,private val providers:OnlinePr
         MediaResult(client.videoContent(p,providers.resolveToken(p),video.job.id,target("mp4")),"video/mp4")
     }
     fun forget(video:SavedVideo){save(_videos.value.filterNot{it.profileId==video.profileId && it.job.id==video.job.id})}
-    fun files()=directory.listFiles().orEmpty().filter{it.isFile && it.extension in setOf("png","wav","mp4")}.sortedByDescending{it.lastModified()}
+    private val extensions=mapOf("image/png" to "png","image/jpeg" to "jpg","image/webp" to "webp","image/gif" to "gif",
+        "video/mp4" to "mp4","video/webm" to "webm","audio/mpeg" to "mp3","audio/mp3" to "mp3","audio/ogg" to "ogg",
+        "audio/wav" to "wav","audio/x-wav" to "wav","audio/mp4" to "m4a","audio/flac" to "flac",
+        "application/pdf" to "pdf","text/markdown" to "md","text/plain" to "txt","application/json" to "json","application/xml" to "xml",
+        "application/javascript" to "js","text/javascript" to "js","text/css" to "css","text/html" to "html","text/x-python" to "py",
+        "text/csv" to "csv","application/vnd.openxmlformats-officedocument.wordprocessingml.document" to "docx")
+    fun mimeFor(filename:String)=extensions.entries.firstOrNull { it.value==filename.substringAfterLast('.') }?.key ?: "application/octet-stream"
+    suspend fun saveToolFile(mime:String,encoded:String?,text:String?):File=withContext(Dispatchers.IO) {
+        lock.withLock {
+            val ext=extensions[mime.substringBefore(';').lowercase()] ?: if(mime.startsWith("text/"))"txt" else "bin"
+            require((encoded?.length ?: text?.length ?: 0) in 1..11_184_812) { "Attachment exceeds the tool file limit" }
+            val bytes=if(encoded!=null)android.util.Base64.decode(encoded,android.util.Base64.DEFAULT) else requireNotNull(text).toByteArray()
+            require(bytes.size in 1..8*1024*1024)
+            val file=target(ext)
+            try {file.writeBytes(bytes);file} catch(e:Exception){file.delete();throw e}
+        }
+    }
+    fun files()=directory.listFiles().orEmpty().filter{it.isFile && (it.extension in extensions.values || it.extension=="bin")}.sortedByDescending{it.lastModified()}
     fun delete(file:File){require(file.parentFile?.canonicalFile==directory.canonicalFile);check(file.delete())}
     internal suspend fun readImage(uri:Uri):ByteArray=withContext(Dispatchers.IO) {
         require(uri.scheme=="content")

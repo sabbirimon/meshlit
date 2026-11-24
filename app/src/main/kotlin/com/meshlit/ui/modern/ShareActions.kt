@@ -92,12 +92,11 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     val scope=rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var status by remember(filename) { mutableStateOf<String?>(null) }
-    val mime=when(filename.substringAfterLast('.')) {
-        "png" -> "image/png"
-        "mp4" -> "video/mp4"
-        "wav" -> "audio/wav"
-        else -> return
+    val mime=media.mimeFor(filename)
+    val source by produceState<File?>(null,filename) {
+        value=withContext(Dispatchers.IO){media.files().firstOrNull {it.name==filename}}
     }
+    source?.let { ChatFilePreview(it,mime) }
     val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(mime)) { uri ->
         if(uri!=null) scope.launch {
             busy=true
@@ -115,9 +114,28 @@ internal fun shareGeneratedFile(context:Context,file:File) {
             finally {busy=false}
         }
     }
-    TextButton(enabled=!busy,onClick={save.launch(File(filename).name)}) {
+    TextButton(enabled=!busy && source!=null,onClick={save.launch(File(filename).name)}) {
         Icon(Icons.Default.FileDownload,null)
         Text("Download file")
     }
     status?.let { Text(it,style=MaterialTheme.typography.bodySmall) }
+}
+
+@Composable internal fun DownloadCode(language:String,source:String) {
+    val context=LocalContext.current
+    val scope=rememberCoroutineScope()
+    val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")){uri->
+        if(uri!=null)scope.launch {
+            try {withContext(Dispatchers.IO){
+                requireNotNull(context.contentResolver.openOutputStream(uri,"wt")).bufferedWriter().use{it.write(source)}
+            }} catch(e:CancellationException){throw e}
+            catch(e:Exception){android.widget.Toast.makeText(context,"Could not save code",android.widget.Toast.LENGTH_SHORT).show()}
+        }
+    }
+    val extension=when(language.lowercase()){
+        "python"->"py";"javascript"->"js";"typescript"->"ts";"rust"->"rs";"kotlin"->"kt";"bash","sh"->"sh";"c++"->"cpp"
+        "go","html","css","json","c","cpp","java","sql","yaml"->language.lowercase()
+        else->"txt"
+    }
+    IconButton(onClick={save.launch("source.$extension")}){Icon(Icons.Default.FileDownload,"Download code")}
 }
