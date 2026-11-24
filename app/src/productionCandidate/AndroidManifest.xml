@@ -3,6 +3,7 @@
     <!-- Review candidate only. File/media access uses explicit SAF/photo picker grants. -->
     <!-- Keep the overlay independently lintable; SMS is removed below. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" tools:node="remove" />
     <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" tools:node="remove" />
@@ -20,6 +21,7 @@
         <service android:name="com.meshlit.core.net.capture.MeshlitCaptureVpnService" tools:node="remove" />
         <receiver android:name="com.meshlit.network.termux.TermuxResultReceiver" tools:node="remove" />
         <activity android:name=".browser.BrowserActivity" tools:node="remove" />
+        <service android:name=".chat.ChatScreenCapture" tools:node="remove" />
         <service android:name=".bots.BotInboxService" tools:node="remove" />
         <service android:name=".inference.InferenceForegroundService" tools:node="remove" />
         <service android:name=".sandbox.RuntimeForegroundService" tools:node="remove" />
