@@ -17,3 +17,9 @@ The two larger-window checks ran the Meshlit native server through ADB loopback.
 [4,096-token run](native-4096-long-prompt.json) · [1.5B model run](native-8192-1.5b.json) · [Qwen’s published model card](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) · [Related HyperL projection across Intel, AMD and Adreno GPUs](https://github.com/sabbirimon/HyperL/blob/feature/native-mlir-engine/docs/evidence/intel-amd-adreno-projection-2026-11-24.json)
 
 The packaged native runner passed five consecutive replies, cancellation, and recovery on the R7. [Per-reply timings and token counts](installed-native-repeat.json).
+
+### Shirudo report viewer
+
+The AQUOS R7 opened a schema 1 JSON fixture through the Android file picker. The screenshot shows the supplied `tampered` verdict and the `ChainIntact` alert. This checks the viewer on physical hardware. Live shield enforcement requires a configured Linux target.
+
+![Shirudo report fixture on the AQUOS R7](shirudo-report-fixture.png)
