@@ -7,7 +7,8 @@ function account(vscode, context, fetcher = fetch) {
     async function request(url, options = {}) {
         if (new URL(url).origin !== origin) throw Error('Unsupported Hugging Face request origin');
         const token = await context.secrets.get(secretKey);
-        const headers = token ? {Authorization:'Bearer '+token} : {};
+        const headers = {...options.headers};
+        if(token)headers.Authorization='Bearer '+token;
         return fetcher(url, {...options, headers, referrerPolicy:'no-referrer'});
     }
     async function profile(token) {

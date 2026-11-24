@@ -1,5 +1,5 @@
 'use strict';
-const fs = require('node:fs/promises'), path = require('node:path'), crypto = require('node:crypto');
+const fs = require('node:fs/promises'), path = require('node:path');
 const {imported} = require('./catalog.cjs');
 const HUB = 'https://huggingface.co';
 const repoPattern = /^[\w.-]+\/[\w.-]+$/;
@@ -23,33 +23,53 @@ function files(repo, data) {
         .map(s=>({name:s.rfilename,bytes:s.size,sha:s.lfs.sha256,url:HUB+'/'+repo+'/resolve/'+data.sha+'/'+s.rfilename.split('/').map(encodeURIComponent).join('/')}));
 }
 async function download(item, dir, signal, progress, fetcher=fetch) {
-    await fs.mkdir(dir,{recursive:true});
-    const output=path.join(dir,item.sha+'.gguf');
-    const temp=path.join(dir,crypto.randomUUID()+'.partial');
-    const h=await fs.open(temp,'wx'); let received=0, closed=false;
-    const hash=crypto.createHash('sha256');
-    try {
-        const response=await fetcher(item.url,{signal});
-        if(!response.ok)throw Error('Download returned HTTP '+response.status);
-        for await(const chunk of response.body) {
-            signal.throwIfAborted();
-            received+=chunk.length;
-            if(received>item.bytes)throw Error('Model download exceeds declared size');
-            hash.update(chunk);
-            await h.writeFile(chunk);
-            progress(received/item.bytes);
+    signal.throwIfAborted();
+    if(!/^[a-f0-9]{64}$/.test(item.sha)||!Number.isSafeInteger(item.bytes)||item.bytes<24)throw Error('Invalid model download manifest');
+    const cache=path.join(dir,'.downloads');
+    await fs.mkdir(cache,{recursive:true,mode:0o700});
+    const output=path.join(dir,item.sha+'.gguf'),temp=path.join(cache,item.sha+'.partial.gguf');
+    const db=new (require('node:sqlite').DatabaseSync)(path.join(cache,item.sha+'.lock.sqlite'));
+    try{
+        try{db.exec('BEGIN IMMEDIATE');}catch(e){if(e.errcode===5)throw Error('Another Studio window is already downloading this model.');throw e;}
+        const existing=await fs.stat(output).catch(e=>{if(e.code!=='ENOENT')throw e;});
+        if(existing){
+            const route=await imported(output,signal);
+            if(route.sha256!==item.sha||route.bytes!==item.bytes)throw Error('Cached GGUF digest or size mismatch');
+            return {...route,model:path.posix.basename(item.name)};
         }
-        if(received!==item.bytes||hash.digest('hex')!==item.sha)throw Error('Downloaded model size or SHA-256 mismatch');
-        await h.close(); closed=true;
+        let offset=(await fs.stat(temp).catch(e=>{if(e.code!=='ENOENT')throw e;}))?.size||0;
+        if(offset>item.bytes){await fs.rm(temp);offset=0;}
+        if(offset<item.bytes){
+            const response=await fetcher(item.url,{signal,headers:offset?{Range:'bytes='+offset+'-'}:{}});
+            if(!response.ok)throw Error('Download returned HTTP '+response.status);
+            if(response.status===206){
+                const expected='bytes '+offset+'-'+(item.bytes-1)+'/'+item.bytes;
+                if(response.headers.get('content-range')!==expected)throw Error('The model server returned an unexpected byte range.');
+            }else if(response.status===200)offset=0;
+            else throw Error('Unexpected model download response');
+            const handle=await fs.open(temp,offset?'a':'w',0o600);
+            let received=offset,oversize=false;
+            try{
+                progress(offset/item.bytes);
+                for await(const chunk of response.body){
+                    signal.throwIfAborted();received+=chunk.length;
+                    if(received>item.bytes){oversize=true;throw Error('Model download exceeds declared size');}
+                    await handle.writeFile(chunk);progress(received/item.bytes);
+                }
+                if(received!==item.bytes)throw Error('Incomplete download. Select this variant again to resume.');
+            }finally{await handle.close();if(oversize)await fs.rm(temp,{force:true});}
+        }
         signal.throwIfAborted();
-        try { await fs.link(temp,output); } catch(err) {if(err.code!=='EEXIST')throw err;}
-        const route=await imported(output);
-        if(route.sha256!==item.sha)throw Error('Cached GGUF digest mismatch');
-        return {...route,model:path.posix.basename(item.name)};
-    } finally {
-        if(!closed)await h.close();
-        await fs.rm(temp,{force:true});
-    }
+        let route;
+        try{
+            route=await imported(temp,signal);
+            if(route.sha256!==item.sha||route.bytes!==item.bytes)throw Error('Downloaded model SHA-256 or size mismatch');
+        }catch(e){if(!signal.aborted)await fs.rm(temp,{force:true});throw e;}
+        signal.throwIfAborted();
+        await fs.rename(temp,output);
+        return {...route,file:output,model:path.posix.basename(item.name)};
+    }finally{db.close();}
+
 }
 async function install(vscode,directory,item,fetcher=fetch) {
     const ok=await vscode.window.showInformationMessage('Download '+item.name+' ('+(item.bytes/1024**3).toFixed(2)+' GiB) from '+item.repo+' into Studio storage?',{modal:true},'Download');
@@ -59,7 +79,10 @@ async function install(vscode,directory,item,fetcher=fetch) {
         let last=0;
         try{return await download(item,directory,AbortSignal.any([ctl.signal,AbortSignal.timeout(3600000)]),fraction=>{
             const now=Math.floor(100*fraction);if(now>last){progress.report({increment:now-last});last=now;}
-        },fetcher);}finally{sub.dispose();}
+        },fetcher);}catch(error){
+            if(!ctl.signal.aborted)throw error;
+            vscode.window.showInformationMessage('Download paused. Choose this variant again to resume.');
+        }finally{sub.dispose();}
     });
 }
 module.exports={metadata,files,download,install};

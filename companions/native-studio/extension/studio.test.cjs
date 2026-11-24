@@ -41,7 +41,7 @@ test('Hub discovery pins eligible GGUF revisions and downloads verified bytes',a
         for(const bad of [{...item,sha:'0'.repeat(64)},{...item,bytes:10}])
             await assert.rejects(download(bad,dir,signal,()=>{},get));
         await assert.rejects(download(item,dir,AbortSignal.abort(),()=>{},get));
-        assert.deepEqual(await fs.readdir(dir),[sha+'.gguf']);
+        assert.deepEqual((await fs.readdir(dir)).sort(),['.downloads',sha+'.gguf']);
     }finally{await fs.rm(dir,{recursive:true,force:true});}
 });
 
@@ -148,4 +148,35 @@ test('Hugging Face sign-in validates before saving and keeps credentials inside 
 
 test('wallet view loads during native Studio activation',()=>{
     assert.equal(typeof require('./wallet-view.cjs').walletView,'function');
+});
+
+test('Hub downloads resume at the saved byte and restart on a full response',async t=>{
+    const {download}=require('./hub.cjs'),data=Buffer.alloc(256);data.write('GGUF');data.writeUInt32LE(3,4);
+    const item={sha:crypto.createHash('sha256').update(data).digest('hex'),bytes:data.length,name:'weights.gguf',url:'https://huggingface.co/test/model'};
+    const signal=new AbortController().signal;
+    for(const ranges of [true,false]){
+        const dir=await fs.mkdtemp(path.join(os.tmpdir(),'meshlit-resume-'));
+        t.after(()=>fs.rm(dir,{force:true,recursive:true}));
+        await assert.rejects(download(item,dir,signal,()=>{},async()=>new Response(data.subarray(0,96))),/resume/);
+        const get=async(url,opts)=>{
+            assert.equal(opts.headers.Range,'bytes=96-');
+            return ranges?new Response(data.subarray(96),{status:206,headers:{'content-range':'bytes 96-255/256'}}):new Response(data);
+        };
+        assert.equal((await download(item,dir,signal,()=>{},get)).sha256,item.sha);
+    }
+});
+
+test('encrypted chat history survives restart, isolates routes and forks concurrent continuations',async t=>{
+    const {ChatHistory}=require('./chat-history.cjs'),keys=new Map();
+    const secrets={get:k=>keys.get(k),store:(k,v)=>keys.set(k,v),delete:k=>keys.delete(k)};
+    const dir=await fs.mkdtemp(path.join(os.tmpdir(),'meshlit-history-'));
+    t.after(()=>fs.rm(dir,{recursive:true,force:true}));
+    const id=crypto.randomUUID(),row={title:'private prompt',messages:[{role:'user',content:'private words'}]};
+    const first=new ChatHistory(dir,secrets);assert.equal(await first.save('A',id,0,row),undefined);
+    first.enable(true);await first.save('A',id,0,row);first.close();
+    const w=new ChatHistory(dir,secrets);t.after(()=>w.close());
+    assert.equal((await w.recent('A'))[0][1].title,row.title);assert.equal((await w.recent('B')).length,0);
+    assert.equal((await fs.readFile(path.join(dir,'chat-history.sqlite'))).includes(Buffer.from(row.title)),false);
+    await w.save('A',id,1,row);const fork=await w.save('A',id,1,row);assert.notEqual(id,fork.id);
+    await w.forget(id);assert.equal((await w.recent('A')).length,1);w.enable(false);assert.deepEqual(await w.recent('A'),[]);
 });

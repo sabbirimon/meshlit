@@ -194,6 +194,48 @@ async function activate(context) {
         }
     }
     const threads=new Map();
+    let diskHistory;
+    const archive=()=>diskHistory ||= new (require('./chat-history.cjs').ChatHistory)(context.globalStorageUri.fsPath,context.secrets);
+    context.subscriptions.push({dispose:()=>diskHistory?.close()});
+    const historyScope=()=>modelId(settings())+':'+Number(context.globalState.get('filter-output',true));
+    async function loadRecents(){
+        const scope=historyScope(),saved=await archive().recent(scope);
+        if(scope!==historyScope())return;
+        for(const [id,row] of saved)if(!threads.has(id))threads.set(id,row);
+        threadList();
+    }
+    async function historyOptions(){
+        if(active)throw Error('Finish the current reply before changing chat history.');
+        const store=archive();
+        const selection=await vscode.window.showQuickPick([
+            store.enabled()?'Pause saving on this device':'Save future chats on this device',
+            ...(threads.size?['Find a recent chat']:[]),
+            ...(history.length?['Branch from a reply']:[]),
+            ...(currentThread&&threads.get(currentThread)?.version?['Delete this saved chat']:[])
+        ],{title:'Local chat history',placeHolder:'Message text is encrypted on this device. Each model has its own history.'});
+        if(!selection)return;
+        if(selection==='Find a recent chat'){
+            const picked=await vscode.window.showQuickPick([...threads].reverse().map(([id,row])=>({id,label:row.title,detail:row.messages.at(-1)?.content.slice(0,160)})),{title:'Find a recent chat',matchOnDetail:true});
+            if(picked&&!active&&threads.has(picked.id)){currentThread=picked.id;history=threads.get(picked.id).messages;showThread();}
+            return;
+        }
+        if(selection==='Branch from a reply'){
+            const parent=currentThread,scope=historyScope();
+            const pick=await vscode.window.showQuickPick(history.map((m,index)=>({label:m.content.slice(0,120),index,role:m.role})).filter(m=>m.role==='assistant'),{title:'Start a new chat after this reply'});
+            if(!pick||active||parent!==currentThread||scope!==historyScope())return;
+            history=history.slice(0,pick.index+1);currentThread=crypto.randomUUID();
+            threads.set(currentThread,{title:'Branch · '+(threads.get(parent)?.title||'Chat'),messages:history});
+            await recordChat(history);showThread();return;
+        }
+        if(selection.startsWith('Delete')){
+            const id=currentThread;
+            if(!await vscode.window.showWarningMessage('Delete this saved chat from this device?',{modal:true},'Delete'))return;
+            await store.forget(id);threads.delete(id);currentThread=undefined;history=[];sendUI('clear',{});threadList();return;
+        }
+        store.enable(selection.startsWith('Save'));
+        if(store.enabled())await loadRecents();else resetChats();
+        vscode.window.showInformationMessage(store.enabled()?'Future chats will be saved on this device.':'Saving paused. Resume saving to reopen previous chats.');
+    }
     const replyIds=new Set();
     const savedVotes=()=>context.globalState.get('reply-votes',{});
     async function rateReply(id,value){
@@ -213,19 +255,30 @@ async function activate(context) {
         const votes=savedVotes();
         return history.map(message=>message.id?{...message,vote:votes[message.id]}:message);
     }
+    function showThread(){
+        pendingFile=undefined;sendUI('attachment',{name:''});
+        for(const message of history)if(message.id)replyIds.add(message.id);
+        sendUI('restore',{messages:restoredHistory()});threadList();
+    }
     function threadList(){
         const items=Array.from(threads,([id,t])=>({id,title:t.title})).reverse();
         panel?.webview.postMessage({type:'threads',items,current:currentThread});
     }
     function resetChats(){
         pendingFile=undefined;sendUI('attachment',{name:''});history=[];threads.clear();currentThread=undefined;
-        panel?.webview.postMessage({type:'clear'});threadList();
+        panel?.webview.postMessage({type:'clear'});threadList();void loadRecents().catch(e=>vscode.window.showWarningMessage(e.message));
     }
-    function recordChat(messages){
+    async function recordChat(messages){
         if(!currentThread)currentThread=crypto.randomUUID();
         const title=threads.get(currentThread)?.title||messages[0].content.slice(0,72);
-        threads.set(currentThread,{title,messages});
-        if(threads.size>12)threads.delete(threads.keys().next().value);
+        const scope=historyScope();
+        let version=threads.get(currentThread)?.version||0;
+        try{
+            const saved=await archive().save(scope,currentThread,version,{title,messages});
+            if(saved){currentThread=saved.id;version=saved.version;}
+        }catch(err){vscode.window.showWarningMessage('This chat is available in this window. Saving failed: '+err.message);}
+        threads.set(currentThread,{title,messages,version});
+        if(threads.size>50)threads.delete(threads.keys().next().value);
         threadList();
     }
     const packaged={kind:'local',model:'meshlit-local'};
@@ -377,7 +430,7 @@ async function activate(context) {
         const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(240000)]);
         try {
             const selected=settings(),options=generationSettings(selected);
-            const messages=[...history.map(({role,content})=>({role,content})),{role:'user',content:prompt}];
+            const messages=[...history.slice(-8).map(({role,content})=>({role,content})),{role:'user',content:prompt}];
             if(['local','import'].includes(selected.kind)){
                 const preference=context.globalState.get('local-reply-preference','');
                 if(preference)messages.unshift({role:'system',content:'The user prefers these response styles: '+preference});
@@ -421,8 +474,8 @@ async function activate(context) {
             else if(Number.isSafeInteger(count)&&count>0)sendUI('metrics',{text:count+' tokens · '+(count/seconds).toFixed(1)+' tokens/s including startup'});
             else sendUI('metrics',{text:seconds.toFixed(1)+' s · runtime did not report token count'});
             const id=crypto.randomUUID();replyIds.add(id);if(replyIds.size>512)replyIds.delete(replyIds.values().next().value);
-            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,content:output,model:modelName(selected)}].slice(-8);
-            recordChat(history);
+            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,content:output,model:modelName(selected)}].slice(-128);
+            await recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
     }
@@ -443,9 +496,10 @@ async function activate(context) {
                 if(msg.op==='rateReply')await rateReply(msg.id,msg.vote);
                 if(msg.op==='replyPreference')await replyPreference();
                 if(msg.op==='sidebar'&&typeof msg.compact==='boolean')await context.globalState.update('compact-sidebar',msg.compact);
-                if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();}
+                if(msg.op==='historyOptions')return await historyOptions();
+                if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
                 if(msg.op==='new'&&!active){await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
-                if(msg.op==='thread'&&!active&&threads.has(msg.id)){pendingFile=undefined;sendUI('attachment',{name:''});currentThread=msg.id;history=threads.get(msg.id).messages;panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();}
+                if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;showThread();}
                 if(msg.op==='useSuggestion'){
                     if(active||changing)return;
                     const model=suggestion;
