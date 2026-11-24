@@ -135,3 +135,7 @@ For a multi-file app, send `/project` followed by a description. Review the gene
 In the full Android app, type **open Calculator**, then tap the matching app. You can also use its package name. To allow control, type **operate Calculator**, review the package and open the Android automation settings. Enable the Android service and select Phone tools in Agent mode for actions inside the app. Choosing **Ask in chat** sends the original text through the regular chat path.
 
 Android **App permissions** links to Accessibility, Usage access and Security. Android asks you to make any grant in system settings. Desktop **Permissions → System permissions** opens platform-specific controls, including Screen Time on macOS and App diagnostics on Windows. Linux controls vary by desktop environment.
+
+For a hands-free task, load a local tool-capable model and send **use Calculator to calculate 37 times 8**. On first use, select the app and review the phone-agent and chat Autopilot grants. Subsequent exact-name requests in the same authorized chat session can launch it directly. The agent may inspect, tap and type within that package. Stop cancels further work. Protected screens, password fields and Android permission approvals require a person. Model and accessibility support varies by app.
+
+If the app is missing, choose **Search app store** or **Install a local APK…**. The latter opens App permissions to select a trusted APK and request installation through Android. After installing, return to the draft and send it again.

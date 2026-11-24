@@ -71,7 +71,8 @@ class LocalChatTools(private val inference:InferenceCoordinator,private val gate
             return result
         }
         try {
-        val direct=if(connectionSelection!=null) {
+        val appTask=latestUserMessage?.let(::androidAppTask)?.takeIf{options.phoneTools && connectionSelection==null}
+        val direct=if(appTask!=null) null else if(connectionSelection!=null) {
             require(options.connectionTools && "device_connection" in selectedTools){"Connection tools are not selected"}
             DirectChatToolIntent("device_connection",kotlinx.serialization.json.buildJsonObject {
                 put("action",kotlinx.serialization.json.JsonPrimitive("connect"));put("offerId",kotlinx.serialization.json.JsonPrimitive(connectionSelection.offerId));put("sourceId",kotlinx.serialization.json.JsonPrimitive(connectionSelection.sourceId))
@@ -86,6 +87,14 @@ class LocalChatTools(private val inference:InferenceCoordinator,private val gate
         check(inference.engineTag in setOf("runanywhere","onnx-ort","llama-native-local")) {
             "Chat tool planning requires an on-device model. Switch from the cluster or remote runtime before using chat tools."
         }
+        val appSession=appTask?.let { task ->
+            AndroidAppSession(::dispatch).also {
+                status("Opening ${task.name}")
+                it.open(task.name)
+            }
+        }
+        val plannerPrompt=appTask?.let{"The selected Android app is already open. Start with android_control snapshot. Use only snapshot, click and type. Inspect the result after each action. User task: ${it.instruction}"} ?: prompt
+        val plannerTools=if(appTask==null) tools else listOf(selectedTools.getValue("android_control"))
         LocalToolLoop(complete={planningPrompt->
             gate.run(ManagedFeature.INFERENCE,true) {
                 val chatMl=usesChatMlPrompt(inference.engineTag,templateName)
@@ -94,7 +103,7 @@ class LocalChatTools(private val inference:InferenceCoordinator,private val gate
                     expectedModelPath=model.modelPath,onDeviceOnly=true,publishEvents=false,onToken={}))
                 when(result){is MeshlitResult.Success->result.value.finalText;is MeshlitResult.Failure->error("Local tool planning failed: ${result.error.tag}")}
             }
-        },invoke=::dispatch,checkAllowed={gate.requireAllowed(ManagedFeature.AUTOMATION,true)},maxCalls=if(options.phoneTools) 8 else 3,requireFirstTool=options.phoneTools && latestUserMessage?.let(::requiresPhoneToolCall)==true).run(prompt,tools,status)
+        },invoke={request -> if(appSession!=null) appSession.step(request) else dispatch(request)},checkAllowed={gate.requireAllowed(ManagedFeature.AUTOMATION,true)},maxCalls=if(appTask!=null) 7 else if(options.phoneTools) 8 else 3,requireFirstTool=appTask!=null || options.phoneTools && latestUserMessage?.let(::requiresPhoneToolCall)==true).run(plannerPrompt,plannerTools,status).let{if(appTask!=null) it.copy(calls=it.calls+1) else it}
         }
         answer.also{
             logs.info(LogSource.AGENT,"LocalAgent","Task finished",mapOf("calls" to it.calls))

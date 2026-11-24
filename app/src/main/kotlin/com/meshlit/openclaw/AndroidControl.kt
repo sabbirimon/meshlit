@@ -48,7 +48,10 @@ class AndroidControl(private val context:Context,private val settings:SettingsRe
                 val exactPackage=apps.firstOrNull{it.packageName==name}
                 exactPackage?.packageName ?: apps.filter{it.label.equals(name,true)}.map{it.packageName}.distinct().singleOrNull()
                     ?: return@McpToolSpec denied("No unique launchable app matches that name. Choose its exact package.")
-            } else service.foregroundPackage()
+            } else service.foregroundPackage().also { foreground ->
+                if(value("package")?.let{it != foreground} == true)
+                    return@McpToolSpec denied("The selected app is no longer in the foreground. Return to it and retry.")
+            }
             if(target.isBlank() || target in settings.androidAutomationHighRiskPackagesFlow.first()) return@McpToolSpec denied("Target requires human control")
             if(!allApps() && target !in packages()) return@McpToolSpec denied("Target is outside saved delegation")
             val request=when(action){
@@ -66,6 +69,7 @@ class AndroidControl(private val context:Context,private val settings:SettingsRe
             if(!response.ok) return@McpToolSpec McpToolResult.Error(McpToolResult.ErrorCode.EXEC_FAILED,response.error ?: "Action failed")
             McpToolResult.Json(buildJsonObject{
                 put("ok",true)
+                if(action=="open")put("package",target)
                 if(response is AutomationResponse.SnapshotResponse){
                     put("package",response.snapshot.packageName)
                     put("nodes",buildJsonArray{response.snapshot.flatten().take(512).forEach{node ->add(buildJsonObject{
