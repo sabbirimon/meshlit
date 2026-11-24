@@ -1,8 +1,4 @@
 # Reward metering, fraud controls and monetary settlement plan
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Status: design, 2026-10-23. No Meshlit credit is currently transferable, redeemable, purchasable or a monetary claim. The current `ContributionReceipt` is a self-signed, local record of a completed hosted job's reported output tokens. Its signature protects that device's history from accidental modification; it does not prove work to an independent buyer.
 

@@ -1,8 +1,4 @@
 # Layer execution, heterogeneous devices and recovery
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 User direction, 2026-10-06: implement genuine layer/pipeline sharding, local
 RunAnywhere inference by default, optional VM, a hive of mixed devices and
@@ -72,7 +68,7 @@ WAN have separate tests. A cluster-backed coding session still needs a
 trusted-project edit and review acceptance test.
 [Studio USB evidence](desktop/evidence/studio-mac-samsung-usb-native-20261106.json) ·
 [Earlier physical WAN evidence](desktop/evidence/mixed-mac-samsung-wan-native-20261103.json) ·
-[Current gates](../TODO.md#studio-source-selection-and-device-acceptance--2026-11-06).
+Current gates (archived).
 
 ## Reload an Android coordinator after worker loss
 

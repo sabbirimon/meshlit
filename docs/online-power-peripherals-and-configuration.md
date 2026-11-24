@@ -1,8 +1,4 @@
 # Online models, power, peripherals and portable configuration
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-06. This is the current implementation guide; validation is in
 `../PROGRESS.md`. Source implementation is not proof of a paid API call, external

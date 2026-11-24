@@ -1,8 +1,4 @@
 # Meshlit Studio for VS Code — initial workspace handoff
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Run **Meshlit: Open Workspace in Studio** from the Command Palette. Choose a trusted Meshlit executable/app when prompted. Local trusted folders only; repository settings cannot override the launcher, and no shell command is constructed from the folder path. Nothing is uploaded and no model call occurs.
 

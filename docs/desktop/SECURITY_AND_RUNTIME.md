@@ -1,8 +1,4 @@
 # Desktop/server security, automation, VM and container design
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-10. This records requested contracts and current boundaries;
 unimplemented backends must remain unavailable in UI and tool discovery.

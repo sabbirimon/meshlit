@@ -1,12 +1,8 @@
 # Custom local models and real fine-tuning
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 ## Current request reconciliation — 2026-11-06
 
-The [Chat/Studio request inventory](CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md)
+The Chat/Studio request inventory (archived)
 reconciles this plan with the current main shell, passwordless local chat, bounded
 project autonomy, bots, personalities, voice/translation and media requests.
 Earlier architecture choices and completion labels below retain their dated

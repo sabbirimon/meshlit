@@ -1,10 +1,6 @@
 # Meshlit build and validation
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
-Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
-**Paused checkpoint — 2026-10-24:** see [source status and resumption gates](docs/PAUSED_CHECKPOINT_2026-10-24.md). The commands below are for use after work resumes; the latest build45 run did not finish lint or final device qualification.
+**Paused checkpoint — 2026-10-24:** see source status and resumption gates (archived). The commands below are for use after work resumes; the latest build45 run did not finish lint or final device qualification.
 
 
 Read `AGENT_BUILD.md` for architecture and handoff details. Android Studio Opus checkout
@@ -13,7 +9,7 @@ Do not overwrite another agent's changes when porting these files.
 
 ## Detailed stabilization guide
 
-See [desktop stabilization build guide](docs/desktop/STABILIZATION_BUILD_GUIDE.md) for portable Java/model/native inputs, bounded Gradle commands, Intel DMG/PKG packaging, recovered-payload checks, Android regression/device preparation and troubleshooting. The linked [milestone plan](docs/desktop/STABILIZATION_PLAN.md) defines future acceptance; the current planning update does not run those tests or implement missing features.
+See [desktop stabilization build guide](docs/desktop/STABILIZATION_BUILD_GUIDE.md) for portable Java/model/native inputs, bounded Gradle commands, Intel DMG/PKG packaging, recovered-payload checks, Android regression/device preparation and troubleshooting. The linked milestone plan (archived) defines future acceptance; the current planning update does not run those tests or implement missing features.
 
 ## Android
 Requires JDK 21, Android SDK platform 37, build tools and NDK 28.2.13676358.

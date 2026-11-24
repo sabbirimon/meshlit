@@ -1,8 +1,4 @@
 # Meshlit user manual
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 [Desktop and Android GUI guide](GUI_WORKFLOWS.md) · [Meshlit operating rules](RULEBOOK.md)
 
@@ -22,7 +18,7 @@ is distinct from OpenLive's separate call/transcript UI. Native inline Studio
 subtitles, image/video/sound generation, persistent bot workers and actual RL
 remain open. Final packaged navigation and human-audio qualification are pending.
 
-[Current request/acceptance inventory](CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+Current request/acceptance inventory (archived).
 
 Start with the [illustrated user guide](visual-guide.html): 20 practical chapters,
 seven original screenshots and four vector graphics covering Android, Studio,
@@ -159,7 +155,7 @@ related destinations by purpose. Build-profile restrictions still apply. Quick
 access is separate from authorization: pinning a destination grants no permission.
 
 For a complete route inventory and verification boundaries, see
-[Android settings audit](ANDROID_SETTINGS_AUDIT.md), the existing
+Android settings audit (archived), the existing
 [full feature guide](USER_GUIDE.md), and the build's settings audit evidence.
 A source-reviewed setting is not automatically device-tested.
 
@@ -455,4 +451,4 @@ refresh and filter its returned models, select one and Save. Keys remain encrypt
 and are not injected into the dashboard. Free-model availability and quotas come
 from the provider; a key alone does not make all models free.
 
-[Repair locations, limits and latest validation](AGENT_CHAT_CHECKPOINT_2026-10-31.md).
+Repair locations, limits and latest validation (archived).

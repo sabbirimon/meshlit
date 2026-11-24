@@ -1,8 +1,4 @@
 # Connected capabilities — active source build
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 The owner authorizes adapting compatible upstream features, combining overlapping integrations, removing unsuitable features/settings and improving Android and Studio usability. Existing data, model files, identities, grants and saved settings remain intact. This is an active working-tree increment; compilation/protocol fixtures do not qualify live external services.
 

@@ -1,8 +1,4 @@
 # OpenAI mathematics: applications to Meshlit and HyperL
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Reviewed 2026-10-26. Source snapshot: `openai/math` commit
 `1581d4cbdd69a0faf34b2089614fe2a814316a6a`. This is a targeted engineering assessment,

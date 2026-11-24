@@ -1,8 +1,4 @@
 # Meshlit as an authenticated model and agent hub
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-08. Current application: Android Full builds. The built-in gateway
 runs only while its visible screen remains open. It is not an always-on background

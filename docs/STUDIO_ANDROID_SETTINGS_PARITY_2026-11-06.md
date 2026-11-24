@@ -1,8 +1,4 @@
 # Android and Studio settings parity audit — 2026-11-06
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 This is a source and navigation audit of the working checkout. It is not a fresh Android build, device test, provider login test or proof of complete feature parity. The current Code OSS Studio shell and the older Compose desktop are separate UI implementations. Older desktop functionality is not counted as available in the current shell unless a current command exposes it.
 

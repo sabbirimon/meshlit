@@ -1,8 +1,4 @@
 # Meshlit voice companion
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 The current companion uses pinned OpenLive source, installed outside this tree.
 See [setup and the Studio tuning dashboard](../../docs/VOICE_AND_VISION.md).

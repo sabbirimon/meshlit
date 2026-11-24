@@ -1,8 +1,4 @@
 # Physical Android acceptance: Samsung and phone clusters
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 The user authorized ADB testing of a connected Samsung on 2026-10-06. This is
 independent of consent to root, optional permissions, autonomy or OS-wide changes.

@@ -1,8 +1,4 @@
 # Physical Mac GPU and Samsung layer execution
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 2026-11-02 qualification of the pinned native runtime. This is a development
 execution proof, separate from automatic cluster provisioning and the Studio GUI.

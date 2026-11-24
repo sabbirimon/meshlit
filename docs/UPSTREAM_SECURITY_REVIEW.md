@@ -1,8 +1,4 @@
 # Upstream integration security review
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Reviewed 2026-10-31. **The optional upstream applications are not cleared for
 production deployment.** Source/build success and health checks do not resolve

@@ -1,8 +1,4 @@
 # Optional Soup training host
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 This original Meshlit companion drives an owner-installed **Soup 0.75.0** CLI.
 It does not bundle Soup/PyTorch into Android and does not perform synthetic

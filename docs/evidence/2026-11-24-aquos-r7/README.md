@@ -1,8 +1,4 @@
 # AQUOS R7 model library and inference checks
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../../PLAN.md) · [Progress](../../../PROGRESS.md) · [Document status](../../DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Meshlit ran these checks on a physical Sharp AQUOS R7 (A202SH) with 12 GB of RAM and a Snapdragon 8 Gen 1 (SM8450). Android reported eight online CPU cores. The model card and chat screenshots were captured over USB from the installed ARM64 debug build on November 24, 2026.
 

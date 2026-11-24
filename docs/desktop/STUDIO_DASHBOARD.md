@@ -1,8 +1,4 @@
 # Studio home
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 General Chat opens in an empty Studio window. Use the model and device controls above the conversation, or enter a request such as **connect Ollama**, **use LM Studio**, **use LM Bionic**, **choose an online provider**, **pair my laptop**, or **open coding IDE**. These requests open setup before a model is ready. Enter credentials in the connection dialog. Use **Dashboards** for management and search. The coding IDE opens in a separate window. In the Code OSS edition, a saved startup preference takes precedence.
 

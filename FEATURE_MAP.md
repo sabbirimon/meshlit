@@ -1,25 +1,21 @@
 # Meshlit structured feature and architecture map
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
-Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Current 2026-11-06 increment: separate Chat/project windows, grouped Management,
 model/source identity, local session usage, scoped autonomy, message actions,
 personality/voice tuning, Bots, credentials and explicit SSH profiles. The
 structured map contains 105 feature areas with individual status/limits.
-[Request inventory](docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md) ·
-[Platform/hosting gates](docs/CROSS_PLATFORM_HOSTING_PLAN_2026-11-06.md).
+Request inventory (archived) ·
+Platform/hosting gates (archived).
 
 
 Current resource-network increment: model/shard admission, secure pairing,
 fair bounded forwarding, scoped external resource discovery and smart replica
 path routing. Source, runtime proof, commercial settlement and physical-link
-support remain distinct. See [progress](docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md)
+support remain distinct. See progress (archived)
 and [architecture](docs/OPEN_RESOURCE_NETWORK.md).
 
 
-Current increment: grouped settings, project memory, optional agent companions and voice diagnostics are tracked in [the structured map](docs/feature-map.json) and [the 2026-10-31 checkpoint](docs/CHECKPOINT_2026-10-31.md). Runtime, hardware and security acceptance remain separate.
+Current increment: grouped settings, project memory, optional agent companions and voice diagnostics are tracked in [the structured map](docs/feature-map.json) and the 2026-10-31 checkpoint (archived). Runtime, hardware and security acceptance remain separate.
 
 
 Updated 2026-10-09. This is the map of the separate Meshlit implementation, not the
@@ -308,7 +304,7 @@ Additional MCP environment/SSH tools are separate from that operation count.
 | Configuration profiles | Strict v1 export/import, preview and local preflight | No secrets/trust/delegation; multi-store apply reports partial failures |
 
 Read [implementation details](docs/online-power-peripherals-and-configuration.md)
-and [declarative federation plan](docs/declarative-federation-roadmap.md).
+and declarative federation plan (archived).
 Future compact-memory replication, cross-cluster task leases, WAN brokers and IaC
 providers are planned explicitly and must not be exposed as completed services.
 
@@ -418,8 +414,8 @@ Counts describe source/plans, not completion. New areas include manual replica
 metadata, MCP/A2A connectors, Terraform saved-plan and storage/DSP companions,
 managed stop/capacity dashboard, unified routing, SDK/topology probes, platform/native
 contracts and authenticated network measurements. See
-[continuation](docs/CONTINUATION_2026_10_08.md) and
-[platform plan](docs/PLATFORM_ADAPTER_PLAN.md) for explicit acceptance boundaries.
+continuation (archived) and
+platform plan (archived) for explicit acceptance boundaries.
 HyperL foundation was owner-merged through PR #1. The production-library port adds
 a human-only Settings workbench, twelve CPU recipes, memory admission and controlled
 source generation. [Workflow/provenance](docs/hyperl/APP_AND_LIBRARY.md) records its

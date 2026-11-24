@@ -1,8 +1,4 @@
 # DeepSeek Harness host integration
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Meshlit opens the **real upstream web workspace** inside Studio's integrated
 Chromium browser and Android's in-app host view. This is optional and separate

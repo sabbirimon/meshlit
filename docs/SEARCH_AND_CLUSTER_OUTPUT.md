@@ -1,8 +1,4 @@
 # Global search, chat search and cluster output controls
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Implemented in the shared modern Android interface for both flavors, phone and
 wide windows. These controls use the current UI and inference pipeline.

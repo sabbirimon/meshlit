@@ -1,8 +1,4 @@
 # Meshlit Studio on desktop and Android
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Desktop chat uses workbench theme colors for the title and speaker labels. The title stays centered as the sidebar opens or closes. Android centers the model name in the chat header and uses the phone’s system typeface by default. Its status bar and system navigation follow the appearance selected in Meshlit, including when the phone uses a different theme.
 
@@ -60,6 +56,6 @@ Desktop **Cloud providers → Hugging Face Hub** and Android **Hugging Face dash
 
 An absent local model usually means its source moved, an index points to a missing shard, or no compatible runtime is configured. Reopen the picker and inspect the file or package. If an account request fails, check the credential and repository entitlement before retrying a large download. If a cloud CLI cannot return inventory, open the provider's console to verify the account. For all three cases, preserve the original weights, chats and receipts while troubleshooting.
 
-[Platform rules and permissions](RULEBOOK.md) · [Historical Android and Studio audit](OLD_ANDROID_STUDIO_REQUEST_AUDIT.md)
+[Platform rules and permissions](RULEBOOK.md) · Historical Android and Studio audit (archived)
 
 [R7 model cards, chat screenshots and native inference measurements](evidence/2026-11-24-aquos-r7/README.md)

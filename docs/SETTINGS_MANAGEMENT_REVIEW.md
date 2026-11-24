@@ -1,13 +1,9 @@
 # Settings and management source review
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Reviewed 2026-10-31 for the desktop evolution work. This is a bounded source and
 contract review, not a claim that every setting was exercised on every platform.
 Build, installed-app, provider, native hardware and paired-device evidence remain
-separate. See [the implementation plan](DESKTOP_EVOLUTION_PLAN.md),
+separate. See the implementation plan (archived),
 [user manual](USER_MANUAL.md) and the current PROGRESS record for validation.
 
 ## Authority and persistence map

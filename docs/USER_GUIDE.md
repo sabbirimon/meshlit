@@ -1,8 +1,4 @@
 # Meshlit full app guide and configuration tutorial
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 [Desktop and Android GUI guide](GUI_WORKFLOWS.md) · [Meshlit operating rules](RULEBOOK.md)
 
@@ -22,7 +18,7 @@ is distinct from OpenLive's separate call/transcript UI. Native inline Studio
 subtitles, image/video/sound generation, persistent bot workers and actual RL
 remain open. Final packaged navigation and human-audio qualification are pending.
 
-[Current request/acceptance inventory](CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+Current request/acceptance inventory (archived).
 
 Current resource sharing, sync modes and health controls are described in the
 [detailed manual](USER_MANUAL.md#share-resources-with-external-clients) and
@@ -75,7 +71,7 @@ follow show the last retained real captures from earlier builds.
 3. **Attach a photo.** In Chat, tap **+**, select or capture an image, type the
    question and choose a vision-capable provider. **Send** stays disabled until
    that provider is configured. The bundled local text model does not read
-   photos. The separate native vision probe in [progress](../PROGRESS.md) does
+   photos. The separate native vision probe in progress (archived) does
    not establish in-app offline photo chat.
 4. **Keep tools explicit.** Local model web/phone tools begin off. Save the
    required agent and app scopes, enable only the tool class needed for that
@@ -154,7 +150,7 @@ The local monitor samples actual CPU/RAM/processes with charts/history. The huma
 
 Studio's **Devices** shortcut opens a dashboard of saved phone/desktop/cluster addresses and the last successful check. “Previously reached” does not mean online now. Use **Manage and test** to enter a trusted HTTPS endpoint and a session-only client key. **Resources** shows the local computer's measured load; **Security & privacy** shows current host access and can revoke it, clear the session key and stop the active request. The command-line host client also supports `--status` for a machine-readable local capability report on desktop, server or container hosts. This is an operator status command, not a server or worker runtime. Studio discovery, group chat, native layer sharding, agents, MCP and Hooks remain pending where marked in the menu.
 
-Compatible remote hosts require explicit access and their exact endpoint/token. Prompts go to that selected host; only literal loopback may use HTTP. Desktop chats/provider credentials are session-only; appearance, engine options, imported model references and saved node labels/addresses persist. Reported token usage stays unknown when unavailable. Both Intel installer launchers pass recovered-payload checks, but clean-machine installation, signing/notarization and other platforms remain separate gates. See [desktop install guide](MACOS_OFFLINE.md) and [feature tracker](DESKTOP_FEATURE_TRACKER.md).
+Compatible remote hosts require explicit access and their exact endpoint/token. Prompts go to that selected host; only literal loopback may use HTTP. Desktop chats/provider credentials are session-only; appearance, engine options, imported model references and saved node labels/addresses persist. Reported token usage stays unknown when unavailable. Both Intel installer launchers pass recovered-payload checks, but clean-machine installation, signing/notarization and other platforms remain separate gates. See [desktop install guide](MACOS_OFFLINE.md) and feature tracker (archived).
 
 HarmonyOS NEXT has a separate native ArkTS/ArkUI 26.0.0 source target, with English
 as default, 简体中文, persisted appearance, bounded complete-response HTTPS chat and
@@ -272,7 +268,7 @@ Online providers support existing protocol adapters such as OpenAI/compatible, A
 
 For hosted **Agent web search**, review the exact OpenAI or compatible endpoint/model in **Online providers**, enable agent use, bind that reviewed connection in **Conversation settings**, and choose **Agent**. The model can propose one public query per turn. Meshlit asks before sending that query and returning search results to the same model. Phone, files and other local tools do not go to the hosted model.
 
-Use **Bots and connections** to configure your own AstrBot chat or Grok Bot routine endpoint and review each request. **Bot inbox** can also accept signed messages in the background while its notification is active. Accepted messages wait for review and can be saved as local Chat drafts. AstrBot returns a private chat reply. A Grok Bot trigger reports that it started the routine. The OpenClaw gateway and xAI model connections are separate. [Setup and limits](AGENT_CHAT_CHECKPOINT_2026-10-31.md#meshlit-continuation--2026-11-05).
+Use **Bots and connections** to configure your own AstrBot chat or Grok Bot routine endpoint and review each request. **Bot inbox** can also accept signed messages in the background while its notification is active. Accepted messages wait for review and can be saved as local Chat drafts. AstrBot returns a private chat reply. A Grok Bot trigger reports that it started the routine. The OpenClaw gateway and xAI model connections are separate. Setup and limits (archived).
 
 Online profiles can reference an API vault environment and variable name. The environment must match the endpoint origin and remain unexpired. A reference overrides a legacy saved key. Agent requests need both profile and environment approval; changing the API endpoint cannot redirect that bound secret.
 

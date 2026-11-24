@@ -51,7 +51,9 @@
         "app/src/main/kotlin/com/meshlit/ui/modern/MoltbookScreen.kt",
         "app/src/main/kotlin/com/meshlit/control/AgentBackend.kt"
       ],
-      "authority": ["CLOUD"]
+      "authority": [
+        "CLOUD"
+      ]
     },
     {
       "id": "local-inference",
@@ -436,7 +438,6 @@
         "AGENTS.md",
         "AGENT_BUILD.md",
         "BUILD.md",
-        "PROGRESS.md",
         "FEATURE_MAP.md"
       ],
       "authority": []
@@ -616,8 +617,7 @@
       "title": "External live media and paired radio/DSP carriers",
       "status": "planned",
       "sources": [
-        "docs/media-iot-and-radio-nodes.md",
-        "docs/declarative-federation-roadmap.md"
+        "docs/media-iot-and-radio-nodes.md"
       ],
       "authority": []
     },
@@ -770,7 +770,6 @@
       "title": "Signed GitHub/Play update and rollback channels",
       "status": "planned-not-implemented",
       "sources": [
-        "PLAN.md",
         "docs/PLAY_DISTRIBUTION.md"
       ]
     },
@@ -1093,7 +1092,7 @@
         "ohosApp/entry/src/main/cpp/runtime_capabilities.cpp"
       ],
       "limitations": [
-        "NEXT local inference unavailable; no Android APK/JNI fallback; English default/\u7b80\u4f53\u4e2d\u6587 second; complete-response host client; rich-reader parity open"
+        "NEXT local inference unavailable; no Android APK/JNI fallback; English default/简体中文 second; complete-response host client; rich-reader parity open"
       ],
       "docs": [
         "docs/MULTIPLATFORM_NEXT.md",
@@ -1483,7 +1482,7 @@
     "feature-ghosty",
     "shared-workspace"
   ],
-  "acceptanceLedger": "PROGRESS.md",
+  "acceptanceLedger": "docs/RELEASE_EVIDENCE.md",
   "phoneProof": false,
   "oversizedModelProof": false,
   "unregisteredModuleDirectories": [

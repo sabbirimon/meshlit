@@ -1,8 +1,4 @@
 # Meshlit operating rules
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 | Activity | Who controls it | What to check |
 | --- | --- | --- |
@@ -15,4 +11,4 @@ Scope: Android/shared reference; desktop ports have separate acceptance. Phase l
 | Model edits | The operator supplies the source digest, output budget and separate destination. | Preserve the original. Inspect a proposed tensor change, evaluate it against a baseline on held-out cases and retain a rollback before activation. |
 | Release status | Each build has a platform, version and test record. | A debug APK, a successful compiler check and a release-qualified installer provide different evidence. Check the release ledger for the target being deployed. |
 
-[GUI walkthrough](GUI_WORKFLOWS.md) · [Project progress](../PROGRESS.md)
+[GUI walkthrough](GUI_WORKFLOWS.md) · Project progress (archived)

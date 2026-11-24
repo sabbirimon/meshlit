@@ -1,8 +1,4 @@
 # Verification and performance — 2026-11-02
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 This is evidence for the current working tree based on d4361ab, not a claim that every advertised function works on every device. No source publication or release was performed.
 
@@ -39,7 +35,7 @@ Current workbench Node suite: 90 passing tests, including automation deadline/re
 | Final Android lints | Both passed with zero errors, 396 warnings and 19 hints per flavor. |
 | Studio | 127 JVM tests passed, one physical SSH fixture skipped, including four streaming tests. 79 workbench Node tests and 21 Python/runtime/packaging tests passed. |
 | Crawler | Nine policy/service tests passed in its existing environment; no live Chromium claim. |
-| Inventory | 98 features, 38 operations and 40 modules validate. The [settings audit](ANDROID_SETTINGS_AUDIT.md) traces all 73 routes to source; this is separate from physical execution of every setting. |
+| Inventory | 98 features, 38 operations and 40 modules validate. The settings audit (archived) traces all 73 routes to source; this is separate from physical execution of every setting. |
 
 On Samsung SM-A207F / Android 11, settings categories/search, voice navigation, rewards/network navigation, chat tool settings, search settings, chat presentation, response rendering, network observations, encrypted usage/credential transactions, encrypted knowledge imports/grant separation, HyperL native CPU/storage, and the native GibberLink codec passed. The owner enabled HyperL manually. Its editor then passed CPU execution, Metal/Vulkan source export, invalid-input/budget rejection, permissions-screen controls, and Monitor navigation after correcting the test's scrolling. Codec PCM tests do not prove over-air phone-to-phone delivery.
 

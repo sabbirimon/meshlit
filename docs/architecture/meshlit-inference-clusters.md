@@ -1,8 +1,4 @@
 # Dedicated inference runtime and HyperL cluster plan
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 2026-10-29. The owner requested a Meshlit-owned runtime inspired by DeepInfer,
 device-to-device and cluster support, and improvements to HyperL. The dedicated

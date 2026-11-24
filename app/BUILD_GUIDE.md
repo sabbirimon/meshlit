@@ -1,8 +1,4 @@
 # Build Guide — Meshlit (Android Device Cluster & Local-Agent Orchestrator)
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 A phone-cluster app that discovers nearby (and optionally remote) Android devices,
 assigns each one a role, and runs local LLM inference, MCP tool servers, agents,

@@ -1,8 +1,4 @@
 # Usage history and model budgets
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Implementation increment: 2026-10-26. This extends the Studio/mobile LTS plan with a shared, device-local accounting authority. It does not complete cross-device billing or all inference adapters.
 

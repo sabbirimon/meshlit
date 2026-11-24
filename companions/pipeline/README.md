@@ -1,8 +1,4 @@
 # Native host worker without the Android app
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 A Linux server/NAS or desktop can join the phone's approved layer-worker list
 without installing Meshlit. `worker.py` starts an installed CPU GGML RPC worker

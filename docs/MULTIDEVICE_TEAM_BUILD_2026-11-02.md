@@ -1,8 +1,4 @@
 # Adaptive resources, device results and agent teams — active build
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Owner requests: adaptive multicore with Android headroom; separate Overdrive/all-core and Overdrive+/selected pressure overrides; live charts/gauges and process status; optional dynamic notifications/alarm sound; local/external/paired sensor data; bidirectional device results and dynamic task coordination; multi-agent teams on one device, multiple devices, local clusters and remote clusters. Pairing and full settings/function verification come after implementation.
 
@@ -31,7 +27,7 @@ Initial CPU/HyperL compile and policy tests passed. One unchanged HookEngine tim
 
 Both Android and Studio require parity. Additional active workstreams cover WAN-ready outbound pairing (live WAN test explicitly deferred), source-bound bidirectional observations, logical CPU/RAM/GPU resource admission and leases, central declarative cluster reconciliation/fleet adapters, selective/full configuration backup/restore/reset, and eventual distributed HyperL tensor/runtime execution. Pure schemas/allocators are foundations, not live distributed-memory proof.
 
-Shared user-directed and supervised-autonomous teams, owner-only team delegation, bounded manager JSON, editable Agency Agents role templates, restart-safe encrypted histories, pause/Stop and revocation are implemented in current source. See [Connected capabilities](CONNECTED_CAPABILITIES_2026-11-02.md) for OpenViking, Google Artemis, Strata and earlier companion integration boundaries, and [UX review](UX_REVIEW_2026-11-02.md) for the owner's feature-pruning/UI direction. Final phone/Studio deployment, combined build/lint and live qualification remain open.
+Shared user-directed and supervised-autonomous teams, owner-only team delegation, bounded manager JSON, editable Agency Agents role templates, restart-safe encrypted histories, pause/Stop and revocation are implemented in current source. See [Connected capabilities](CONNECTED_CAPABILITIES_2026-11-02.md) for OpenViking, Google Artemis, Strata and earlier companion integration boundaries, and UX review (archived) for the owner's feature-pruning/UI direction. Final phone/Studio deployment, combined build/lint and live qualification remain open.
 
 ## Agent-to-agent conversation increment
 

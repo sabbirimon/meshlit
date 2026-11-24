@@ -1,8 +1,4 @@
 # Studio upstream runtime qualification
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 ## Current Chat settings and remaining features — 2026-11-06
 
@@ -20,7 +16,7 @@ is distinct from OpenLive's separate call/transcript UI. Native inline Studio
 subtitles, image/video/sound generation, persistent bot workers and actual RL
 remain open. Final packaged navigation and human-audio qualification are pending.
 
-[Current request/acceptance inventory](../../docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+Current request/acceptance inventory (archived).
 
 Meshlit will reuse a full Code OSS workbench and the Google Antigravity agent
 SDK rather than implement another editor or agent loop. This directory contains a development workbench extension, SDK host and Kotlin
@@ -200,7 +196,7 @@ tool policies. Models and the composer source picker expose bundled inference,
 approved model servers, third-party APIs, and already-running LAN or remote
 cluster coordinators. Agent teams, bots, MCP connectors, and device checks have
 separate controls. The coordinator owns native layer placement, and the local
-IDE retains workspace and tool approvals. [Studio and cluster test evidence](../../PROGRESS.md#studio-chat-and-cluster-routing--2026-11-06).
+IDE retains workspace and tool approvals. Studio and cluster test evidence (archived).
 
 ## Workspace review — 2026-11-05
 

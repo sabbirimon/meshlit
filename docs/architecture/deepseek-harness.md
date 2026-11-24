@@ -1,8 +1,4 @@
 # DeepSeek Harness integration plan and implementation
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-30. Optional integration into both Meshlit Studio and Android;
 source pin `f3803c96974ad4a94195fb97e5c637e9c2a3afe3`, npm `0.2.2-alpha.2`.

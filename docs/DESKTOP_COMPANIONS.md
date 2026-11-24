@@ -1,8 +1,4 @@
 # Desktop companion services
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Meshlit Studio now connects to the full workspaces of Claude-Mem, OpenMausBot
 and OpenBot through **Settings → Companion services** (`Meshlit: Companion

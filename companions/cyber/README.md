@@ -1,8 +1,4 @@
 # Meshlit Security Lab companions
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Original Python 3 tools; no upstream cyber suite is bundled. Install inside an
 owner-provisioned Linux VM, not on the Android host or ordinary SSH machine.

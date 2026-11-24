@@ -1,8 +1,4 @@
 # Release gates by platform and channel
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Updated 2026-10-10. Each release records its source, admitted feature scope, actual checks, failures and unqualified gates. Historical phase/slice numbers and old fixed test counts are not current acceptance criteria. Owner authorization is required for publication; source branch naming is recorded rather than assumed to be dev.
 

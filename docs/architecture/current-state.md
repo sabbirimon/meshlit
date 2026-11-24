@@ -1,8 +1,4 @@
 # Current architecture and evidence boundaries
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 ## Current Chat settings and remaining features — 2026-11-06
 
@@ -20,7 +16,7 @@ is distinct from OpenLive's separate call/transcript UI. Native inline Studio
 subtitles, image/video/sound generation, persistent bot workers and actual RL
 remain open. Final packaged navigation and human-audio qualification are pending.
 
-[Current request/acceptance inventory](../../docs/CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+Current request/acceptance inventory (archived).
 
 ## Session usage, action scope, and runtime identity — 2026-11-06
 
@@ -69,7 +65,7 @@ Workspace agent modes continue through the SDK and retain separate tool grants.
 Studio selects a compatible completion endpoint, including an already-running
 coordinator. The coordinator owns its native layer placement. Agent teams can
 assign bounded jobs across hosts. Model-layer execution has separate evidence
-and does not depend on a team label. [Current evidence](../../PROGRESS.md#studio-chat-and-cluster-routing--2026-11-06) ·
+and does not depend on a team label. Current evidence (archived) ·
 [Layer qualification](../layer-pipeline-and-recovery.md).
 
 ## Open resource network continuation — 2026-10-31
@@ -77,7 +73,7 @@ and does not depend on a team label. [Current evidence](../../PROGRESS.md#studio
 See [architecture and topology matrix](../OPEN_RESOURCE_NETWORK.md) for the
 current inclusive product direction, independent pairing/data paths, smart sync
 routing, load balancing and fallback semantics. Current repairs and verification
-are in [resource progress](../RESOURCE_NETWORK_PROGRESS_2026-10-31.md). Existing
+are in resource progress (archived). Existing
 storage sharding, native model-layer execution and whole-request routing must not
 be conflated. Commercial settlement and cross-owner WAN orchestration are open.
 
@@ -89,7 +85,7 @@ The current Android bundled starter is pinned Qwen2.5 0.5B Instruct Q4_K_M
 The structured feature map inventories 40 modules. The newer Code OSS Studio
 adds protected project notes, reviewed tool controls and optional source companions;
 the earlier Compose Studio still owns several engine/device dashboards. See the
-[current checkpoint](../CHECKPOINT_2026-10-31.md) and
+current checkpoint (archived) and
 [settings authority review](../SETTINGS_MANAGEMENT_REVIEW.md) for current boundaries.
 The following dated sections retain historical context; they do not override
 newer source and build evidence.

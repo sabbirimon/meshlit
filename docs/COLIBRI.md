@@ -1,8 +1,4 @@
 # Colibri: optional host inference
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 The integration targets JustVugg/colibri revision
 `bf2442915d6e3dd4cdfd2eb9c2a3d2aa44a25850`. Colibri is Apache-2.0; its

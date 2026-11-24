@@ -1,8 +1,4 @@
 # HyperL v1 implementation and compatibility
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 HyperL is original Apache-2.0 code in `core-gpu`, focused on AI/security/vision
 compute foundations. `hyperl/1` is a small versioned kernel IR, not yet a complete

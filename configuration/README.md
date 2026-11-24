@@ -1,8 +1,4 @@
 # Portable configuration
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](../docs/DOCUMENTATION_STATUS.md).
-Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Import `meshlit-default-v1.json` from Settings → Configuration Profiles, inspect
 the preview, then apply it. It disables no existing credentials or scopes and

@@ -1,8 +1,4 @@
 # External MCP and OpenClaw integration
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 The previous page is preserved in
 `../history/bring-your-own-server-before-2026-10-06.md`. Its claims about bundled

@@ -1,8 +1,4 @@
 # Meshlit Native Studio
-<!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
-Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
-<!-- meshlit-document-tracking:end -->
 
 Studio uses a blue branching icon with a circular rim joined to the trunk at its base for its launcher, running app and Windows installer. Artwork credits are in [NOTICE](../../NOTICE).
 
@@ -69,7 +65,7 @@ The offline acceptance test opens an Extension Development Host with a disposabl
 
 Launch **Meshlit** with no arguments to open **General chat**. The welcome screen has a message composer, a model selector and a navigation rail for models, devices, app control and settings. Recent chats are available within this running session and model route. Switching provider clears the previous conversations from that route.
 
-Choose **Open coding IDE** and select a folder to open a separate project window with Explorer, editor tabs and a terminal. The Home window stays available. Home opens as an empty window. The launcher supplies its packaged toolchain environment directly at startup. Project trust applies when you choose a project. Home and the project IDE share the bundled workbench runtime and use separate window layouts. This restores the CS-01 window contract in the [older Studio design](../CHAT_STUDIO_REQUEST_RECONCILIATION_2026-11-06.md).
+Choose **Open coding IDE** and select a folder to open a separate project window with Explorer, editor tabs and a terminal. The Home window stays available. Home opens as an empty window. The launcher supplies its packaged toolchain environment directly at startup. Project trust applies when you choose a project. Home and the project IDE share the bundled workbench runtime and use separate window layouts. This restores the CS-01 window contract in the older Studio design (archived).
 
 The package check launches Home first and requires a visible, initialized chat view with zero project folders. A second isolated test opens the IDE and compiles a C program. An **Extension Development Host** title and a workspace containing `hello.c` identify that test.
 
@@ -85,7 +81,7 @@ Use **Back** to return from model management, permissions or tools. Open a proje
 
 **Attach file or image** adds one UTF-8 text file up to 32 KiB or PNG, JPEG or WebP up to 4 MiB. Preview the filename in the composer and click it to remove it. Sending an attachment to a provider asks for confirmation naming the destination. Images require a vision-capable provider. **Internet search** offers Wikipedia results with source links in the draft, or opens a DuckDuckGo query in your browser. **Voice** uses Windows speech recognition with microphone permission and requires a locally installed speech language. Other systems can use system dictation. Replies support Copy, Reply, Save and local read-aloud with Stop. Linux read-aloud uses an installed Speech Dispatcher client. Open **Permissions** to allow or block internet search, voice input, file reads, provider attachment sharing and read-aloud. Studio saves each choice across restarts. Device pairing, app control and the reply filter have their own controls.
 
-Optional local workers are Transformers with SafeTensors, ONNX Runtime GenAI, OpenVINO GenAI and MLX-LM. Provide a trusted model folder and an environment with the corresponding libraries. The current worker loads the model per request. Raw arrays, pickle checkpoints and compiled binaries require the architecture, tokenizer and matching runtime shown in the catalog. [Model format milestones](../DESKTOP_STUDIO_PLAN.md#studio-model-format-support--2026-11-24)
+Optional local workers are Transformers with SafeTensors, ONNX Runtime GenAI, OpenVINO GenAI and MLX-LM. Provide a trusted model folder and an environment with the corresponding libraries. The current worker loads the model per request. Raw arrays, pickle checkpoints and compiled binaries require the architecture, tokenizer and matching runtime shown in the catalog. Model format milestones (archived)
 
 The Windows build workflow produces a per-user Setup.exe alongside the portable ZIP and exercises installation, General Chat startup and uninstall. Check the asset list for the particular release you download.
 
