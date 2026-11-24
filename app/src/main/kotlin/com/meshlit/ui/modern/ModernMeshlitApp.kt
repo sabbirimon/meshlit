@@ -239,8 +239,8 @@ fun ModernMeshlitApp() {
                         WorkspaceDock(tab,onSelect={select(it)})
                     }
                 }},
-                topBar={if(!ownHeader) TopAppBar(expandedHeight=48.dp,
-                    title={if(tab=="chat") Column(Modifier.heightIn(min=T.touch).clickable(onClickLabel="Choose model",onClick={if(localSelected)select("models") else showChatOptions=true}).testTag("chat-model-header"),verticalArrangement=Arrangement.Center) {
+                topBar={if(!ownHeader) CenterAlignedTopAppBar(expandedHeight=48.dp,
+                    title={if(tab=="chat") Column(Modifier.heightIn(min=T.touch).clickable(onClickLabel="Choose model",onClick={if(localSelected)select("models") else showChatOptions=true}).testTag("chat-model-header"),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
                         Row(verticalAlignment=Alignment.CenterVertically) {
                             Text(modelTitle,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium,
                                 modifier=Modifier.weight(1f,fill=false).testTag("chat-model-name"))

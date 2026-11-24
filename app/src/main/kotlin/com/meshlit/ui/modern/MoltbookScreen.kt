@@ -48,7 +48,7 @@ internal object MoltbookFeed {
     var posts by remember { mutableStateOf(JsonArray(emptyList())) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
-    Scaffold(topBar={ TopAppBar(title={Text("Moltbook")},navigationIcon={TextButton(onClick=back){Text("Back")}}) }) { padding ->
+    Scaffold(topBar={ CenterAlignedTopAppBar(title={Text("Moltbook")},navigationIcon={TextButton(onClick=back){Text("Back")}}) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item {
                 Text("Public posts",style=MaterialTheme.typography.titleLarge)

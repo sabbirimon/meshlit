@@ -4,6 +4,8 @@ Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
+Desktop chat uses workbench theme colors for the title and speaker labels. The title stays centered as the sidebar opens or closes. Android uses its existing theme and centers the model name above its status.
+
 ## Start a conversation
 
 | Task | Desktop Studio | Android |

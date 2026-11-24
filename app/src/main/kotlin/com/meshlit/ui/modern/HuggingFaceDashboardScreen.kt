@@ -31,7 +31,7 @@ import kotlinx.coroutines.withContext
     var status by remember{mutableStateOf("")}
     var busy by remember{mutableStateOf(false)}
     var hasSavedToken by remember{mutableStateOf(credentials.token().isNotBlank())}
-    Scaffold(topBar={TopAppBar(title={Text("Hugging Face dashboard")},navigationIcon={TextButton(onClick=onBack){Text("Back")}})}) { padding ->
+    Scaffold(topBar={CenterAlignedTopAppBar(title={Text("Hugging Face dashboard")},navigationIcon={TextButton(onClick=onBack){Text("Back")}})}) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).safeDrawingPadding(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 Text("Account and credentials",style=MaterialTheme.typography.titleLarge)

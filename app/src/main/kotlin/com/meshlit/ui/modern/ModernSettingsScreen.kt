@@ -142,7 +142,7 @@ import kotlinx.coroutines.*
     if(destination=="automation"){com.meshlit.ui.screens.cloud.AndroidAutomationSettingsScreen(repository,back);return}
     if(destination=="hooks"){com.meshlit.ui.screens.settings.HooksScreen(back,{navigate("hook:$it")});return}
     if(destination?.startsWith("hook:")==true){com.meshlit.ui.screens.settings.HookEditorScreen(destination!!.removePrefix("hook:"),back);return}
-    Scaffold(topBar={TopAppBar(expandedHeight=48.dp,colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent),title={Text(SettingsDestinations.all.firstOrNull{it.id==destination}?.title ?: "Settings",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)},
+    Scaffold(topBar={CenterAlignedTopAppBar(expandedHeight=48.dp,colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent),title={Text(SettingsDestinations.all.firstOrNull{it.id==destination}?.title ?: "Settings",style=MaterialTheme.typography.titleMedium,color=MaterialTheme.colorScheme.onSurface)},
         navigationIcon={if(destination!=null || onExit!=null) IconButton(onClick={if(destination!=null) back() else onExit?.invoke()}){
             Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")} else if(onMenu!=null) IconButton(onClick=onMenu){Icon(Icons.Default.Menu,"Menu")}})}){padding ->
         when(destination){
