@@ -129,3 +129,9 @@ On desktop, `/app describe your app` asks the selected model for a single HTML a
 Use `/ssh build host`, `/ssh test host`, or “SSH to host and build my app” with a saved host. Select the existing project folder and its npm, Cargo or Gradle task, then approve the displayed target and command. Meshlit checks the known SSH host key and returns the exit status and output to the draft. Android chat can request the structured actions delegated to a paired SSH node. Enable SSH node tools and choose a compatible agent route.
 
 For a multi-file app, send `/project` followed by a description. Review the generated source and file list before saving into a new project directory. For a local checkout, `/build` and `/test` ask you to select the folder and task, then return the process output and exit status to chat. Build tools and project dependencies must already be installed. For interactive edits to an existing project, open it in the coding IDE and use an installed coding agent.
+
+## Open an installed Android app from chat
+
+In the full Android app, type **open Calculator**, then tap the matching app. You can also use its package name. To allow control, type **operate Calculator**, review the package and open the Android automation settings. Enable the Android service and select Phone tools in Agent mode for actions inside the app. Choosing **Ask in chat** sends the original text through the regular chat path.
+
+Android **App permissions** links to Accessibility, Usage access and Security. Android asks you to make any grant in system settings. Desktop **Permissions → System permissions** opens platform-specific controls, including Screen Time on macOS and App diagnostics on Windows. Linux controls vary by desktop environment.

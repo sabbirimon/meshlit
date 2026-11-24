@@ -3,6 +3,7 @@
     <!-- Review candidate only. File/media access uses explicit SAF/photo picker grants. -->
     <!-- Keep the overlay independently lintable; SMS is removed below. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:node="remove" />
     <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" tools:node="remove" />

@@ -44,6 +44,11 @@ fun permissionFeatures()=listOf(
     val launcher=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){revision++}
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event ->if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME) revision++};lifecycle.lifecycle.addObserver(observer);onDispose{lifecycle.lifecycle.removeObserver(observer)}}
+    fun openSystemPage(action: String) {
+        try { context.startActivity(Intent(action)) }
+        catch (_: android.content.ActivityNotFoundException) { notice = "This settings page is unavailable on this device." }
+        catch (_: SecurityException) { notice = "Android restricted access to this settings page." }
+    }
     Scaffold(topBar={TopAppBar(title={Text("App permissions")},navigationIcon={IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("permissions-list"),contentPadding=PaddingValues(T.large),verticalArrangement=Arrangement.spacedBy(T.medium)){
             item{Text("Choose what Meshlit can access",style=MaterialTheme.typography.headlineSmall)
@@ -60,7 +65,16 @@ fun permissionFeatures()=listOf(
                     }
                 }}
             }}
-            item{if(!com.meshlit.BuildConfig.PLAY_REVIEW) OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))}){Text("Accessibility for Android control")}
+            item{
+                if(!com.meshlit.BuildConfig.PLAY_REVIEW && !com.meshlit.BuildProfile.coreCandidate) {
+                    OutlinedButton(onClick={openSystemPage(Settings.ACTION_ACCESSIBILITY_SETTINGS)}){Text("Accessibility for Android control")}
+                    val usageGranted = remember(revision) {
+                        val ops = context.getSystemService(android.app.AppOpsManager::class.java)
+                        ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), context.packageName) == android.app.AppOpsManager.MODE_ALLOWED
+                    }
+                    OutlinedButton(onClick={openSystemPage(Settings.ACTION_USAGE_ACCESS_SETTINGS)}){Text("Usage access · " + if(usageGranted) "allowed" else "off")}
+                }
+                OutlinedButton(onClick={openSystemPage(Settings.ACTION_SECURITY_SETTINGS)}){Text("Android security settings")}
                 OutlinedButton(onClick={context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:${context.packageName}")))}){Text("Open Android app settings")}
                 Text("If Android no longer shows a permission prompt, use app settings. Accessibility and battery exemptions remain separate system choices.")}
             if(!com.meshlit.BuildConfig.PLAY_REVIEW) item{
