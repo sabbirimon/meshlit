@@ -139,3 +139,7 @@ Android **App permissions** links to Accessibility, Usage access and Security. A
 For a hands-free task, load a local tool-capable model and send **use Calculator to calculate 37 times 8**. On first use, select the app and review the phone-agent and chat Autopilot grants. Subsequent exact-name requests in the same authorized chat session can launch it directly. The agent may inspect, tap and type within that package. Stop cancels further work. Protected screens, password fields and Android permission approvals require a person. Model and accessibility support varies by app.
 
 If the app is missing, choose **Search app store** or **Install a local APK…**. The latter opens App permissions to select a trusted APK and request installation through Android. After installing, return to the draft and send it again.
+
+## Run a desktop app task
+
+In native Studio, allow **Permissions → Desktop app Autopilot**. Select a local model and type **use TextEdit to type "Hello"** on macOS, or use **Notepad** on Windows. Supported Linux editors include gedit, Kate and Mousepad. When prompted, review the app and allow it for this chat. Studio can open the app, inspect accessible controls, press buttons and set text, up to eight actions per request. Exact quoted text can be entered directly when there is one editable field. Other requests use the local model to select controls. **Stop app control** revokes the session grants. Blocking **Desktop app Autopilot** cancels the active run.

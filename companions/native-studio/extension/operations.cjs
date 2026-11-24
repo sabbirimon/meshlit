@@ -6,7 +6,7 @@ const run=promisify(execFile);
 const shirudo=require('./shirudo.cjs');
 const groups={
  cloud:[['Provider accounts',['aws','gcp','azure']],['Model platforms',['hubExplore']]],
- permissions:[['System permissions',['osAccessibility','osUsage','osSecurity']],['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
+ permissions:[['System permissions',['osAccessibility','osUsage','osSecurity']],['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','appAutopilot','control','stopControl','pair']]],
  management:[['Chat and permissions',['permissions','voice','liveVoice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
  tools:[['Network security',['shieldReport','shieldLive','shieldExport','shieldApply']],['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Community',['moltbook','hubExplore']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
  settings:[['Appearance',['theme']],['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['permissions','pair','stopControl']],['Developer',['server','inventory']]]
