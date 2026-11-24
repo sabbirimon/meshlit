@@ -459,8 +459,8 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                             }
                         }
                         "header" -> Row(Modifier.fillMaxWidth().padding(top=20.dp),verticalAlignment=Alignment.CenterVertically) {
-                            Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_meshlit_notification),null,
-                                Modifier.size(24.dp),tint=colors.primary)
+                            Icon(androidx.compose.ui.res.painterResource(R.drawable.meshlit_mark),null,
+                                Modifier.size(24.dp),tint=androidx.compose.ui.graphics.Color.Unspecified)
                             Spacer(Modifier.width(10.dp))
                             Text(message.source ?: "Meshlit",style=MaterialTheme.typography.titleSmall,color=colors.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false))
                             if(state.running && message.id==controller.generationId && chatToolActivity(state.activeTool)!=null) ChatToolActivityIndicator(checkNotNull(state.activeTool))

@@ -60,8 +60,8 @@ import kotlinx.coroutines.withContext
         LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(horizontal=28.dp,vertical=36.dp),
             verticalArrangement=Arrangement.spacedBy(20.dp)) {
             item {
-                Icon(androidx.compose.ui.res.painterResource(com.meshlit.R.drawable.ic_meshlit_notification),null,
-                    Modifier.size(44.dp),tint=MaterialTheme.colorScheme.primary)
+                Icon(androidx.compose.ui.res.painterResource(com.meshlit.R.drawable.meshlit_mark),null,
+                    Modifier.size(44.dp),tint=androidx.compose.ui.graphics.Color.Unspecified)
                 Spacer(Modifier.height(24.dp))
                 Text("Welcome to Meshlit",style=MaterialTheme.typography.headlineLarge)
                 Spacer(Modifier.height(12.dp))

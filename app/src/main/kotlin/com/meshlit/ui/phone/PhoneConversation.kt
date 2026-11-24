@@ -27,7 +27,7 @@ import com.meshlit.R
 internal fun PhoneGreeting(title:String, status:@Composable ()->Unit) {
     Column(horizontalAlignment=Alignment.CenterHorizontally,
         modifier=Modifier.fillMaxWidth().padding(horizontal=28.dp)) {
-        Icon(painterResource(R.drawable.ic_meshlit_notification),null,Modifier.size(38.dp),tint=MaterialTheme.colorScheme.primary)
+        Icon(painterResource(R.drawable.meshlit_mark),null,Modifier.size(38.dp),tint=androidx.compose.ui.graphics.Color.Unspecified)
         Spacer(Modifier.height(24.dp))
         Text(title,style=MaterialTheme.typography.headlineLarge.copy(fontWeight=FontWeight.Normal,lineHeight=40.sp),
             textAlign=TextAlign.Center,color=MaterialTheme.colorScheme.onBackground)
