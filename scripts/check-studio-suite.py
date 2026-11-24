@@ -88,7 +88,9 @@ exports.run = async () => {
         const prompt = 'Reply to this greeting in one short sentence: Hello!';
         const answer = await api.generate(prompt);
         if (!answer || !answer.trim()) throw Error('Missing offline reply');
-        mark('local reply received');
+        const stats=api.lastReplyMetrics();
+        if(!stats?.includes('s elapsed')||!stats.includes('output tokens')||!stats.includes('tokens/s'))throw Error('Offline reply is missing token measurements');
+        mark('local reply received · '+stats);
         fs.writeFileSync(path.join(folder,'reply.txt'),answer);
         const until = Date.now()+300000;
         while(Date.now()<until) {

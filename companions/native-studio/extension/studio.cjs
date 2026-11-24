@@ -447,7 +447,7 @@ async function activate(context) {
             }
             const started=performance.now();
             const progress=text=>sendUI('progress',{text});
-            let answer,count,rate;
+            let answer,count,rate,promptTokens;
             const last=messages.length-1;
             if(file){
                 if(file.mime){
@@ -473,18 +473,22 @@ async function activate(context) {
                 const route = ['local','import'].includes(selected.kind) ? await local.start(signal, context.globalState.get('threads',0), selected.kind==='import'?selected:undefined,progress) : {...selected,token:await context.secrets.get('token:'+selected.base)};
                 progress('Waiting for '+(selected.base?new URL(route.base).host:'the local model')+' to reply…');
                 const result=await request(route.base,'/chat/completions',route.token,{model:route.model,messages,max_tokens:options.maxTokens,temperature:options.temperature},signal);
-                count=result.usage?.completion_tokens;rate=result.timings?.predicted_per_second;
+                promptTokens=result.usage?.prompt_tokens;count=result.usage?.completion_tokens;rate=result.timings?.predicted_per_second;
                 answer=result.choices?.[0]?.message?.content;
             }
             if (typeof answer !== 'string' || !answer.trim()) throw Error('Model returned an empty response');
             signal.throwIfAborted();
             const output=displayOutput(answer,context.globalState.get('filter-output',true));
             const seconds=(performance.now()-started)/1000;
-            if(Number.isFinite(rate)&&rate>0)sendUI('metrics',{text:rate.toFixed(1)+' tokens/s · decode'});
-            else if(Number.isSafeInteger(count)&&count>0)sendUI('metrics',{text:count+' tokens · '+(count/seconds).toFixed(1)+' tokens/s including startup'});
-            else sendUI('metrics',{text:seconds.toFixed(1)+' s · runtime did not report token count'});
+            const usage=[seconds.toFixed(1)+' s elapsed'];
+            if(Number.isSafeInteger(promptTokens)&&promptTokens>=0)usage.push(promptTokens+' input tokens');
+            if(Number.isSafeInteger(count)&&count>=0)usage.push(count+' output tokens');
+            if(Number.isFinite(rate)&&rate>0)usage.push(rate.toFixed(1)+' tokens/s decode');
+            else if(Number.isSafeInteger(count)&&count>0&&seconds>0)usage.push((count/seconds).toFixed(1)+' tokens/s overall');
+            else usage.push('Token speed unavailable');
+            const metrics=usage.join(' · ');
             const id=crypto.randomUUID();replyIds.add(id);if(replyIds.size>512)replyIds.delete(replyIds.values().next().value);
-            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,content:output,model:modelName(selected)}].slice(-128);
+            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,content:output,model:modelName(selected),metrics}].slice(-128);
             await recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
@@ -573,7 +577,7 @@ async function activate(context) {
                     if(file&&(route.base||route.device))requirePermission('share');
                     if(file&&(route.base||route.device)&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+(route.hostName||new URL(route.base).host)+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
                     const answer=await generate(msg.text,file);
-                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model,id:history.at(-1)?.id});
+                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model,id:history.at(-1)?.id,metrics:history.at(-1)?.metrics});
                 }
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.name==='AbortError'?'Generation stopped.':err.name==='TimeoutError'?'The model timed out. Check Models & providers, then retry.':err.message}); }
         });
@@ -610,7 +614,7 @@ async function activate(context) {
         await vscode.commands.executeCommand('workbench.action.toggleZenMode');
         chat();
     }
-    return {generate, unload:()=>local.stop(), homeStatus:()=>({home,ready,visible:!!panel?.visible,folders:vscode.workspace.workspaceFolders?.length||0})};
+    return {generate, lastReplyMetrics:()=>history.at(-1)?.metrics, unload:()=>local.stop(), homeStatus:()=>({home,ready,visible:!!panel?.visible,folders:vscode.workspace.workspaceFolders?.length||0})};
 }
 exports.activate=activate;
 exports.deactivate=()=>{active?.abort();local?.stop();};

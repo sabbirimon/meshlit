@@ -8,7 +8,7 @@ const groups={
  permissions:[['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
  management:[['Chat and permissions',['permissions','voice','liveVoice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
  tools:[['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Community',['moltbook','hubExplore']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
- settings:[['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
+ settings:[['Appearance',['theme']],['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
 };
 const titles={cloud:'Cloud providers',permissions:'Permissions',management:'Management',tools:'Tools',settings:'Meshlit Settings'};
 function operations(vscode,context,root,hooks){
@@ -16,6 +16,7 @@ function operations(vscode,context,root,hooks){
  function items(){
   const cpu=context.globalState.get('threads',0);
   const data={
+   theme:['Desktop color theme','Choose a light, dark or high-contrast theme',()=>vscode.commands.executeCommand('workbench.action.selectTheme')],
    welcome:['Welcome and setup','Choose how to start chatting',hooks.welcome],
    permissions:['Permissions','Review access by tool',()=>hooks.go('permissions')],
    liveVoice:['Voice and vision','OpenLive settings, voice previews and companion controls',()=>vscode.commands.executeCommand('meshlit.voice')],
@@ -65,6 +66,7 @@ function operations(vscode,context,root,hooks){
  }
  async function showData(title,pairs){detail=true;await panel?.webview.postMessage({type:'details',title,pairs});}
  const dependencies={
+  theme:['workbench.action.selectTheme','Use a workbench with the color theme picker enabled.'],
   liveVoice:['meshlit.voice','Enable the Meshlit voice companion and reopen this page.'],
   ssh:['meshlit.sshDashboard','Enable the Meshlit SSH integration and reopen this page.'],
   memory:['meshlit.memory','Enable the Meshlit project memory extension and reopen this page.'],
