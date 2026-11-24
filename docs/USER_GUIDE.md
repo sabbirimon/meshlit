@@ -1,8 +1,10 @@
 # Meshlit full app guide and configuration tutorial
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-23: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+[Desktop and Android GUI guide](GUI_WORKFLOWS.md) · [Meshlit operating rules](RULEBOOK.md)
 
 ## Current Chat settings and remaining features — 2026-11-06
 

@@ -4,12 +4,13 @@ const os=require('node:os'),path=require('node:path'),crypto=require('node:crypt
 const fs=require('node:fs/promises'),{execFile}=require('node:child_process'),{promisify}=require('node:util');
 const run=promisify(execFile);
 const groups={
+ cloud:[['Provider accounts',['aws','gcp','azure']],['Model platforms',['hubExplore']]],
  permissions:[['Chat tool permissions',['internet','microphone','files','share','speech']],['Model and internet access',['models','search','attach','guard']],['Device access',['voice','control','stopControl','pair']]],
  management:[['Chat and permissions',['permissions','voice','liveVoice','search','attach']],['Models and compute',['models','server','cpu']],['Connections and access',['pair','ssh','mcp','guard']],['Host resources',['resources','inventory']]],
- tools:[['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
+ tools:[['Internet and media',['search','attach','voice']],['Desktop tools',['control','stopControl','ssh']],['Developer tools',['ide','compiler','memory']],['Community',['moltbook','hubExplore']],['Connectors and diagnostics',['mcp','toolList','resources','inventory']]],
  settings:[['Chat and inference',['welcome','models','cpu','guard']],['Devices and permissions',['pair','stopControl']],['Developer',['server','inventory']]]
 };
-const titles={permissions:'Permissions',management:'Management',tools:'Tools',settings:'Meshlit Settings'};
+const titles={cloud:'Cloud providers',permissions:'Permissions',management:'Management',tools:'Tools',settings:'Meshlit Settings'};
 function operations(vscode,context,root,hooks){
  let panel,section,token=0,detail=false;
  function items(){
@@ -37,24 +38,83 @@ function operations(vscode,context,root,hooks){
     const m=JSON.parse(await fs.readFile(path.join(root,'STUDIO-CONTENTS.json'),'utf8'));
     return showData('Installed components',Object.entries(m.components).map(([key,v])=>[key,v.files+' files · '+((v.applicationBytes+v.modelBytes)/1024**2).toFixed(1)+' MiB']));}],
    mcp:['MCP servers','Review installed server configurations',()=>vscode.commands.executeCommand('workbench.mcp.listServer')],
+   moltbook:['Moltbook','Read ten recent public posts from www.moltbook.com',async()=>{
+       const posts=await require('./community.cjs').feed(AbortSignal.timeout(15000));
+       return showData('Moltbook',posts.length?posts.map(p=>[p.title,p.text]):[['Recent posts','No posts returned']]);}],
+   hubExplore:['Hugging Face Hub','Explore models, datasets and Spaces',async()=>{
+       const kind=await vscode.window.showQuickPick(['models','datasets','spaces'],{title:'Explore Hugging Face'});
+       if(!kind)return;
+       const query=await vscode.window.showInputBox({title:'Search '+kind,prompt:'Search by name or leave empty to browse'});
+       if(query===undefined)return;
+       const url=new URL('https://huggingface.co/api/'+kind);
+       url.search=new URLSearchParams({search:query.slice(0,200),limit:'20'});
+       const response=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(15000)});
+       if(!response.ok)throw Error('Hub returned HTTP '+response.status);
+       const entries=await response.json();
+       const picked=await vscode.window.showQuickPick(entries.filter(e=>typeof e.id==='string').map(e=>e.id),{title:'Open a Hugging Face '+kind+' page'});
+       if(picked && /^[\w.-]+\/[\w.-]+$/.test(picked))await vscode.env.openExternal(vscode.Uri.parse('https://huggingface.co/'+(kind==='models'?'':kind+'/')+picked));}],
    toolList:['Registered model tools','Inspect the tool inventory exposed by installed extensions',async()=>{
        const list=(vscode.lm?.tools||[]).slice(0,128).map(t=>[String(t.name),String(t.description||'').slice(0,300)]);
        return showData('Registered model tools',list.length?list:[['Installed tools','No model tools registered in this host']]);}],
    compiler:['Check bundled compiler','Run Zig version on this device',async()=>{const r=await run(path.join(root,'toolchain',process.platform==='win32'?'zig.exe':'zig'),['version'],{timeout:10000,maxBuffer:4096,windowsHide:true});vscode.window.showInformationMessage('Bundled Zig '+r.stdout.trim());}]
   };
+  const cloud=require('./cloud-providers.cjs');
+  for(const [id,item] of Object.entries(cloud.providers))data[id]=[item.name,'Read account details or open the console',()=>cloud.show(id,vscode,showData)];
   for(const [id,label] of Object.entries(hooks.permissionLabels))data[id]=[label,hooks.allowed(id)?'Allowed':'Blocked',()=>hooks.editPermission(id)];
   return data;
  }
  async function showData(title,pairs){detail=true;await panel?.webview.postMessage({type:'details',title,pairs});}
- function unavailable(id){
+ const dependencies={
+  liveVoice:['meshlit.voice','Enable the Meshlit voice companion and reopen this page.'],
+  ssh:['meshlit.sshDashboard','Enable the Meshlit SSH integration and reopen this page.'],
+  memory:['meshlit.memory','Enable the Meshlit project memory extension and reopen this page.'],
+  mcp:['workbench.mcp.listServer','Use a workbench with MCP server support and reopen this page.']
+ };
+ function unavailable(id,registered){
   if(id==='memory'&&(!vscode.workspace.workspaceFolders?.length||!vscode.workspace.isTrusted))return 'Choose Open coding IDE, open your project folder and review its workspace trust to use Project memory.';
   if(id==='voice'&&process.platform!=='win32')return 'Built-in speech recognition is available on Windows. Use system dictation in the chat message box on this device.';
-  const permission={search:'internet',attach:'files',voice:'microphone'}[id];
+  if(dependencies[id]&&!registered.has(dependencies[id][0]))return dependencies[id][1];
+  if(id==='toolList'&&!vscode.lm?.tools)return 'Open Studio with a workbench that supports the language model tool registry.';
+  const permission={moltbook:'internet',hubExplore:'internet',search:'internet',attach:'files',voice:'microphone'}[id];
   return permission&&!hooks.allowed(permission)?'Open Permissions and allow '+hooks.permissionLabels[permission]+'.':'';
  }
- function render(){
-  const data=items();
-  return panel?.webview.postMessage({type:'render',title:titles[section],groups:groups[section].map(([title,ids])=>({title,items:ids.map(id=>({id,label:data[id][0],detail:data[id][1],reason:unavailable(id)}))}))});
+ async function describe(target){
+  const registered=new Set(await vscode.commands.getCommands(true)), data=items();
+  return groups[target].map(([title,ids])=>({title,items:ids.map(id=>({
+   id,label:data[id][0],detail:data[id][1],reason:unavailable(id,registered)
+  }))}));
+ }
+ async function render(){
+  const version=token,target=section;
+  const sections=await describe(target);
+  if(version===token&&target===section&&!detail)return panel?.webview.postMessage({type:'render',title:titles[target],groups:sections});
+ }
+ if(vscode.lm?.registerTool){
+  context.subscriptions.push(vscode.lm.registerTool('meshlit_moltbook_read',{
+   async invoke(_,cancel){
+    if(!hooks.allowed('internet'))throw Error('Allow Internet search in Permissions to read Moltbook.');
+    const stop=new AbortController();
+    const subscription=cancel?.onCancellationRequested(()=>stop.abort());
+    try{
+     if(cancel?.isCancellationRequested)throw Error('Request cancelled');
+     const posts=await require('./community.cjs').feed(AbortSignal.any([stop.signal,AbortSignal.timeout(15000)]));
+     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify({source:'Moltbook',untrusted:true,posts}))]);
+    }finally{subscription?.dispose();}
+   }
+  }));
+  context.subscriptions.push(vscode.lm.registerTool('meshlit_inspect_settings',{
+   async invoke(options){
+    const target=options.input?.section;
+    if(target!==undefined&&!Object.hasOwn(groups,target))throw Error('Unknown settings section');
+    const sections=[];
+    for(const name of target?[target]:Object.keys(groups)){
+     const entries=(await describe(name)).flatMap(group=>group.items.map(({id,label,reason})=>({id,label,available:!reason,reason})));
+     sections.push({section:name,controls:entries});
+    }
+    const result={schema:'meshlit.settings.catalog.v1',sections};
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify(result))]);
+   }
+  }));
  }
  function open(target){
   if(!Object.hasOwn(groups,target))throw Error('Unknown Studio dashboard');
@@ -69,13 +129,16 @@ function operations(vscode,context,root,hooks){
    if(m?.op==='back')return detail?(detail=false,render()):hooks.back();
    if(m?.op==='section'&&Object.hasOwn(groups,m.target))return hooks.go(m.target);
    if(running||m?.op!=='action'||!groups[section].some(([,ids])=>ids.includes(m.id)))return;
-   if(unavailable(m.id))return;
    const version=token;running=true;
-   try{await items()[m.id][2]();}catch(e){vscode.window.showErrorMessage(e.message);}finally{running=false;if(version===token&&!detail)render();}
+   try{
+    const registered=new Set(await vscode.commands.getCommands(true));
+    if(version!==token||unavailable(m.id,registered))return;
+    await items()[m.id][2]();
+   }catch(e){vscode.window.showErrorMessage(e.message);}finally{running=false;if(version===token&&!detail)render();}
   });
   const n=crypto.randomBytes(18).toString('hex');
   panel.iconPath=vscode.Uri.file(hooks.brand.file);
-  panel.webview.html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'nonce-${n}';script-src 'nonce-${n}'"><style nonce="${n}">body{max-width:940px;margin:24px auto;padding:0 24px;font:14px/1.5 var(--vscode-font-family);color:var(--vscode-foreground)}nav{display:flex;gap:9px;flex-wrap:wrap}button{font:inherit;color:inherit;background:var(--vscode-button-secondaryBackground);border:1px solid var(--vscode-panel-border);border-radius:7px;padding:6px 12px;cursor:pointer}button:disabled{opacity:.6}button:focus-visible{outline:2px solid var(--vscode-focusBorder)}h1{margin:32px 0 16px}h2{font-size:16px}section{border-top:1px solid var(--vscode-panel-border);padding:8px 0 20px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.card{text-align:left;display:grid;gap:4px;padding:12px}.card span,dt{color:var(--vscode-descriptionForeground);font-size:12px}dd{margin:0 0 8px}nav svg{width:26px;height:26px;vertical-align:middle}${viewHelp.styles}</style></head><body><nav>${hooks.brand.markup}<button id="back">← Back</button><button id="chat">General chat</button><button data-page="management">Management</button><button data-page="tools">Tools</button><button data-page="settings">Settings</button></nav><h1></h1><main></main><script nonce="${n}">${viewHelp.script}const a=acquireVsCodeApi(),main=document.querySelector('main'),title=document.querySelector('h1'),tag=(name,text)=>{const e=document.createElement(name);e.textContent=text;return e};document.querySelector('#back').onclick=()=>a.postMessage({op:'back'});document.querySelector('#chat').onclick=()=>a.postMessage({op:'chat'});for(const b of document.querySelectorAll('[data-page]'))b.onclick=()=>a.postMessage({op:'section',target:b.dataset.page});window.addEventListener('message',({data:m})=>{title.textContent=m.title;main.replaceChildren();if(m.type==='details'){const dl=tag('dl','');for(const [k,v]of m.pairs)dl.append(tag('dt',k),tag('dd',v));main.append(dl);return;}for(const g of m.groups){const section=tag('section',''),cards=tag('div','');cards.className='cards';section.append(tag('h2',g.title),cards);for(const i of g.items){const b=tag('button','');b.className='card';setAvailability(b,i.reason);b.append(tag('strong',i.label),tag('span',i.detail));b.onclick=()=>a.postMessage({op:'action',id:i.id});cards.append(b);}main.append(section);}});a.postMessage({op:'ready'});</script></body></html>`;
+  panel.webview.html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'nonce-${n}';script-src 'nonce-${n}'"><style nonce="${n}">body{max-width:940px;margin:24px auto;padding:0 24px;font:14px/1.5 var(--vscode-font-family);color:var(--vscode-foreground)}nav{display:flex;gap:9px;flex-wrap:wrap}button{font:inherit;color:inherit;background:var(--vscode-button-secondaryBackground);border:1px solid var(--vscode-panel-border);border-radius:7px;padding:6px 12px;cursor:pointer}button:disabled{opacity:.6}button:focus-visible{outline:2px solid var(--vscode-focusBorder)}h1{margin:32px 0 16px}h2{font-size:16px}section{border-top:1px solid var(--vscode-panel-border);padding:8px 0 20px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}.card{text-align:left;display:grid;gap:4px;padding:12px}.card span,dt{color:var(--vscode-descriptionForeground);font-size:12px}dd{margin:0 0 8px}nav svg{width:26px;height:26px;vertical-align:middle}${viewHelp.styles}</style></head><body><nav>${hooks.brand.markup}<button id="back">← Back</button><button id="chat">General chat</button><button data-page="management">Management</button><button data-page="tools">Tools</button><button data-page="cloud">Cloud</button><button data-page="settings">Settings</button></nav><h1></h1><main></main><script nonce="${n}">${viewHelp.script}const a=acquireVsCodeApi(),main=document.querySelector('main'),title=document.querySelector('h1'),tag=(name,text)=>{const e=document.createElement(name);e.textContent=text;return e};document.querySelector('#back').onclick=()=>a.postMessage({op:'back'});document.querySelector('#chat').onclick=()=>a.postMessage({op:'chat'});for(const b of document.querySelectorAll('[data-page]'))b.onclick=()=>a.postMessage({op:'section',target:b.dataset.page});window.addEventListener('message',({data:m})=>{title.textContent=m.title;main.replaceChildren();if(m.type==='details'){const dl=tag('dl','');for(const [k,v]of m.pairs)dl.append(tag('dt',k),tag('dd',v));main.append(dl);return;}for(const g of m.groups){const section=tag('section',''),cards=tag('div','');cards.className='cards';section.append(tag('h2',g.title),cards);for(const i of g.items){const b=tag('button','');b.className='card';setAvailability(b,i.reason);b.append(tag('strong',i.label),tag('span',i.detail));b.onclick=()=>a.postMessage({op:'action',id:i.id});cards.append(b);}main.append(section);}});a.postMessage({op:'ready'});</script></body></html>`;
  }
  context.subscriptions.push({dispose:()=>panel?.dispose()});
  return {open};

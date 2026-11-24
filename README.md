@@ -6,9 +6,11 @@
 
 # Meshlit — Many devices. One mind.
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-24: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+[Desktop and Android GUI guide](docs/GUI_WORKFLOWS.md) · [Meshlit operating rules](docs/RULEBOOK.md)
 
 [Native Studio model management](docs/desktop/FULL_STUDIO.md#managing-models-in-native-studio) covers local GGUF discovery and import, providers, authenticated local serving and device pairing. HyperL owns accelerator translation.
 

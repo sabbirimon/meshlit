@@ -50,7 +50,7 @@ async function download(item, dir, signal, progress, fetcher=fetch) {
         if(offset>item.bytes){await fs.rm(temp);offset=0;}
         if(offset<item.bytes){
             const response=await fetcher(item.url,{signal,headers:offset?{Range:'bytes='+offset+'-'}:{}});
-            if(!response.ok)throw Error('Download returned HTTP '+response.status);
+            if(!response.ok)throw Error('Download returned HTTP '+response.status+([401,403].includes(response.status)?'. For a private or gated repository, sign in to Hugging Face with a read token and check access on its model card.':''));
             if(response.status===206){
                 const expected='bytes '+offset+'-'+(item.bytes-1)+'/'+item.bytes;
                 if(response.headers.get('content-range')!==expected)throw Error('The model server returned an unexpected byte range.');

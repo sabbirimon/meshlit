@@ -53,7 +53,7 @@ class AgentBackend(private val context:Context,private val settings:SettingsRepo
     }
     private fun required(command:AgentCommand):Scope?=when(command.operation){
         AgentOperation.BROWSER_STATUS,AgentOperation.BROWSER_AUTONOMOUS_RUN,AgentOperation.BROWSER_STOP->Scope.BROWSER
-        AgentOperation.CLOUD_PROFILES,AgentOperation.ENVIRONMENT_PROFILES,AgentOperation.CLOUD_EXECUTE->Scope.CLOUD
+        AgentOperation.MOLTBOOK_READ,AgentOperation.CLOUD_PROFILES,AgentOperation.ENVIRONMENT_PROFILES,AgentOperation.CLOUD_EXECUTE->Scope.CLOUD
         AgentOperation.CHECKPOINT_LIST,AgentOperation.CHECKPOINT_SAVE,AgentOperation.CHECKPOINT_RESTORE,AgentOperation.CHECKPOINT_DELETE->Scope.RECOVERY
         AgentOperation.SETTINGS_PATCH->Scope.SETTINGS
         AgentOperation.MODEL_OPTIONS_SET,AgentOperation.MODEL_IMPORT_SOURCES,AgentOperation.MODEL_STARTUP_SET,AgentOperation.MODEL_DOWNLOAD,AgentOperation.MODEL_ADD_URL,AgentOperation.MODEL_IMPORT,AgentOperation.MODEL_LOAD,AgentOperation.MODEL_GENERATE,AgentOperation.MODEL_UNLOAD,AgentOperation.MODEL_DELETE->Scope.MODELS
@@ -89,6 +89,7 @@ class AgentBackend(private val context:Context,private val settings:SettingsRepo
     private suspend fun executeCommand(command:AgentCommand,agent:Boolean):JsonElement {
         command.validate();library.ready.await()
         return when(command.operation){
+            AgentOperation.MOLTBOOK_READ -> buildJsonObject { put("source","Moltbook");put("untrusted",true);put("posts",com.meshlit.ui.modern.MoltbookFeed.read()) }
             AgentOperation.BROWSER_STATUS->browser.status()
             AgentOperation.BROWSER_STOP->{withContext(Dispatchers.Main.immediate){browser.stop()};buildJsonObject{put("stopRequested",true)}}
             AgentOperation.BROWSER_AUTONOMOUS_RUN->browser.run(command.prompt!!,command.browserMaxSteps,agent){
@@ -96,6 +97,15 @@ class AgentBackend(private val context:Context,private val settings:SettingsRepo
             }
             AgentOperation.CLOUD_PROFILES,AgentOperation.ENVIRONMENT_PROFILES,AgentOperation.CLOUD_EXECUTE->executeCloud(command,com.meshlit.core.cloudmcp.management.CloudActor.HUMAN)
             AgentOperation.SETTINGS_READ -> settings.flow.first().let{config ->buildJsonObject{
+                put("settingsDestinations", buildJsonArray {
+                    com.meshlit.ui.modern.SettingsDestinations.all.forEach { entry ->
+                        add(buildJsonObject {
+                            put("id", entry.id)
+                            put("title", entry.title)
+                            put("group", entry.group.name)
+                        })
+                    }
+                })
                 put("themeMode",config.themeMode.name);put("accentHue",config.accentHue.name);put("dynamicColors",config.dynamicColors)
                 put("uiFont",config.uiFont.name);put("surfaceStyle",config.surfaceStyle.name);put("animationsEnabled",config.animationsEnabled);put("fontScale",config.fontScale);put("cpuPolicy",buildJsonObject{val cpu=com.meshlit.models.AccelerationPreferences(context);put("revision",cpu.revision());put("mode",cpu.cpuMode().name);put("workers",cpu.threadLimit())});put("startupModelEnabled",library.startupEnabled.value);put("startupModelId",library.startupId.value);put("startupModelStatus",library.startupStatus.value)
                 put("delegation",buildJsonObject{Scope.entries.forEach{put(it.name,delegated(it))}})

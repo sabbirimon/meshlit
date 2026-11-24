@@ -79,6 +79,12 @@ test('MeshCoin verifies signed blocks, retry-safe keeper allocations and individ
     await assert.rejects(k.sync(p,call),/enable receipt sharing/);
     w.set('share:'+k.owner,true);await k.sync(p,call);await k.sync(p,call);
     assert.equal(w.totals().earned,8);assert.equal(w.totals().paid,2);assert.equal(k.totals().kept,2);
+    // Simulate a contributor restoring the same chain from before the keeper acknowledged it.
+    w.db.prepare('DELETE FROM acks WHERE hash=?').run(b.hash);
+    assert.equal(w.totals().pending,2);
+    await k.sync(p,call);
+    assert.equal(w.totals().paid,2);
+    assert.equal(k.totals().kept,2);
     const bad=structuredClone(b);bad.receipt.generatedTokens=500;
     k.db.prepare('UPDATE blocks SET body=? WHERE owner=?').run(JSON.stringify(bad),w.owner);
     assert.throws(()=>k.totals(),/verify/);

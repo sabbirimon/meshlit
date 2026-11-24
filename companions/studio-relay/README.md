@@ -1,4 +1,8 @@
 # Studio device relay
+<!-- meshlit-document-tracking:start -->
+Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../../docs/DOCUMENTATION_STATUS.md).
+Scope: optional host/schema/reference; not a bundled qualified service. Phase labels in older sections retain their original scope.
+<!-- meshlit-document-tracking:end -->
 
 Run on a host with Node.js 22 or later and a WebSocket-capable HTTPS reverse proxy. Install dependencies with `npm ci --ignore-scripts` in this directory and set `MESHLIT_RELAY_TOKEN` to a random secret of at least 32 characters. Start with `npm start`. Proxy the exact path `/v1/devices` to the loopback port specified by `PORT` (default 8765). Keep the access token outside source control. TLS between the verified Studio endpoints carries the model traffic inside the WebSocket tunnel.
 

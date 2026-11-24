@@ -94,6 +94,46 @@ fun ModernMeshlitApp() {
                 }
         }
     }
+    var showReadableExport by rememberSaveable { mutableStateOf(false) }
+    var exportConversationId by rememberSaveable { mutableStateOf<String?>(null) }
+    var exportRevision by rememberSaveable { mutableLongStateOf(0L) }
+    var readableFormat by rememberSaveable { mutableStateOf(ConversationExport.MARKDOWN) }
+    val readableLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        val snapshot = state.conversations.find { it.id == exportConversationId && it.updatedAt == exportRevision }
+        val format = readableFormat
+        exportConversationId = null
+        if (uri != null) scope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching {
+                val conversation = requireNotNull(snapshot) { "Chat changed. Select it again to export." }
+                val text = requireNotNull(format.render(conversation.messages)) { "No matching messages to export" }
+                requireNotNull(context.contentResolver.openOutputStream(uri, "wt")) { "Cannot open selected file" }
+                    .bufferedWriter(Charsets.UTF_8).use { it.write(text) }
+            } }
+            android.widget.Toast.makeText(context, result.fold({ "Chat export saved" }, { "Export failed: ${it.message}" }),
+                android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    if (showReadableExport) {
+        val current = state.current
+        val messages = current?.messages.orEmpty()
+        val hasCode = remember(messages) { ConversationExport.CODE.render(messages) != null }
+        AlertDialog(onDismissRequest = { showReadableExport = false }, title = { Text("Export current chat") },
+            text = { Column {
+                Text("Choose what to save in a readable file.")
+                ConversationExport.entries.forEach { format ->
+                    TextButton(enabled = current != null && !state.running && (format != ConversationExport.CODE || hasCode), onClick = {
+                        if (current != null) {
+                            readableFormat = format
+                            exportConversationId = current.id
+                            exportRevision = current.updatedAt
+                            showReadableExport = false
+                            readableLauncher.launch("Meshlit-chat-${current.id.take(8)}.${format.suffix}")
+                        }
+                    }) { Text(format.label) }
+                }
+                if (!hasCode) Text("Code export is available when a reply contains a fenced code block.")
+            } }, confirmButton = { TextButton(onClick = { showReadableExport = false }) { Text("Close") } })
+    }
     var showGlobalSearch by remember{mutableStateOf(false)}
     var showChatSearch by rememberSaveable{mutableStateOf(false)}
     var chatSearchQuery by rememberSaveable{mutableStateOf("")}
@@ -220,6 +260,9 @@ fun ModernMeshlitApp() {
                             DropdownMenuItem(text={Text("Search this chat")},onClick={chatMenu=false;showChatSearch=true;chatSearchMessage=null})
                             DropdownMenuItem(text={Text("Conversation and token settings")},onClick={chatMenu=false;showChatOptions=true})
                             DropdownMenuItem(text={Text("Model details")},onClick={chatMenu=false;showCapabilities=true})
+                            DropdownMenuItem(text={Text("Export current chat…")},enabled=state.current?.messages?.isNotEmpty()==true && !state.running,onClick={
+                                chatMenu=false;showReadableExport=true
+                            })
                             DropdownMenuItem(text={Text("Export full conversation")},enabled=state.current!=null && !state.running,onClick={
                                 chatMenu=false;exportChat=state.current?.copy(draft="")
                                 exportLauncher.launch("Meshlit-chat-${state.current?.id?.take(8) ?: "export"}.json")
@@ -420,8 +463,9 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                         "user" -> Row(Modifier.fillMaxWidth().padding(top=T.small),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically) {
                             IconButton(onClick={replyTo(message)},enabled=!state.running) {Icon(Icons.AutoMirrored.Filled.Reply,"Reply to your message",Modifier.size(18.dp),tint=colors.onSurfaceVariant)}
                             val currentMatch=searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key
-                            Surface(shape=MaterialTheme.shapes.extraLarge,color=if(currentMatch) colors.secondaryContainer else colors.surfaceContainerHigh,modifier=Modifier.weight(1f,fill=false).widthIn(max=T.bubbleMax).then(if(currentMatch) Modifier.testTag("chat-search-current-match") else Modifier)) {
+                            Surface(shape=MaterialTheme.shapes.extraLarge,color=if(currentMatch) colors.secondaryContainer else colors.primaryContainer,modifier=Modifier.weight(1f,fill=false).widthIn(max=T.bubbleMax).then(if(currentMatch) Modifier.testTag("chat-search-current-match") else Modifier)) {
                                 Column(Modifier.padding(horizontal=14.dp,vertical=10.dp)) {
+                                    Text("You",style=MaterialTheme.typography.labelMedium)
                                     message.attachmentNote?.let{Text(it,style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant);Spacer(Modifier.height(6.dp))}
                                     SelectionContainer {Text(message.text,style=MaterialTheme.typography.bodyLarge)}
                                 }

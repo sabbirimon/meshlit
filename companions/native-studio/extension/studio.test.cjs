@@ -133,7 +133,7 @@ test('Hugging Face sign-in validates before saving and keeps credentials inside 
     const store=new Map(),profile=new Map(),seen=[];
     const context={secrets:{get:k=>store.get(k),store:(k,v)=>store.set(k,v),delete:k=>store.delete(k)},globalState:{get:(k,d)=>profile.get(k)||d,update:(k,v)=>profile.set(k,v)}};
     let accepted=false;
-    const hf=account({window:{showInputBox:async opts=>{assert.equal(opts.password,true);return 'unit-test-token'}}},context,async(url,init)=>{
+    const hf=account({window:{showQuickPick:async()=>"Use an existing read token",showInputBox:async opts=>{assert.equal(opts.password,true);return 'unit-test-token'}}},context,async(url,init)=>{
         seen.push([url,init.headers.Authorization]);return new Response(JSON.stringify({name:'test-account'}),{status:accepted?200:401});
     });
     await assert.rejects(hf.signIn(),/rejected/);assert.equal(store.size,0);

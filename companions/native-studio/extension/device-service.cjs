@@ -81,7 +81,7 @@ class Devices {
                 }else{
                     if(!peer)throw Error('Pair this device first');
                     if(msg.op==='identity'){line(socket,{identity:this.identityCard()});this.hooks.audit?.('identity.verified',key);}
-                    else if(msg.op==='walletPage'&&this.hooks.wallet){const wallet=await this.hooks.wallet();line(socket,{blocks:wallet.page(key,msg.height,msg.anchor)});}
+                    else if(msg.op==='walletPage'&&this.hooks.wallet){const wallet=await this.hooks.wallet();const blocks=wallet.page(key,msg.height,msg.anchor);line(socket,{blocks,confirmationDigest:blocks.length<16?wallet.confirmationDigest(wallet.owner,walletId(key)):undefined});}
                     else if(msg.op==='walletAck'&&this.hooks.wallet){const wallet=await this.hooks.wallet();wallet.acknowledge(key,msg.hash,msg.proof);line(socket,{ok:true});}
                     else if(msg.op==='models')line(socket,{models:this.hooks.inventory(key)});
                     else if(msg.op==='chat'){

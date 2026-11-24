@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-11-23",
+  "updated": "2026-11-24",
   "index": "docs/DOCUMENTATION_STATUS.md",
   "phaseLedger": "docs/phase-progress.json",
   "countsExcludingGeneratedIndex": {
-    "active": 177,
+    "active": 180,
     "historical": 19,
     "protected": 8,
     "template": 1,
@@ -128,21 +128,21 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit implementation and qualification plan",
-      "contentSha256WithoutTrackingBlock": "f38efd74048e79417ef316c16957820cbb3eee94e5cdea465170e9871818ad28"
+      "contentSha256WithoutTrackingBlock": "f5b5dbbcb4a49215b993176cc6ac7d2ec6cae5a02fec726a7b0adb2c262dd2d1"
     },
     {
       "path": "PROGRESS.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "c3d6dbf8415104dd054c6c58dd1fb56a3d49c3ecb78bf302802f1201e3126a90"
+      "contentSha256WithoutTrackingBlock": "2419ce607440c0586812f7f29bc329a4b469e19db32f8976d95cfcda2bb047c8"
     },
     {
       "path": "README.md",
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit \u2014 Many devices. One mind.",
-      "contentSha256WithoutTrackingBlock": "64db6f931551e8456f076a0cb5c720117f1d00cb05bf3b5608c63ad00858536d"
+      "contentSha256WithoutTrackingBlock": "2cf648250483bbe62ddf3745950953c976e2c7ff81a770da1876ca75e4aa9ce9"
     },
     {
       "path": "REQUESTS.md",
@@ -297,6 +297,13 @@
       "scope": "optional host/schema/reference; not a bundled qualified service",
       "title": "Meshlit Universal Search Provider Companion",
       "contentSha256WithoutTrackingBlock": "10239ba608854c68443a915f2ee56fa3501b157cf349fa8c25e082e7fb0d32b6"
+    },
+    {
+      "path": "companions/studio-relay/README.md",
+      "class": "active",
+      "scope": "optional host/schema/reference; not a bundled qualified service",
+      "title": "Studio device relay",
+      "contentSha256WithoutTrackingBlock": "ef2db43f85798c2a1808febd31930f6ccc304e6f2a31aa916940918c6917f129"
     },
     {
       "path": "companions/studio-runtime/README.md",
@@ -534,7 +541,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit desktop Studio implementation plan",
-      "contentSha256WithoutTrackingBlock": "5655297cc6e7df998d2f72f4744584851478f3ba2649b880fb2686fb7b7da756"
+      "contentSha256WithoutTrackingBlock": "6a6f57a73d2be6e74ae0b07bdcbe516bd4ef1c3848bbf3b22ec9d554752db528"
     },
     {
       "path": "docs/DEVICE_COMPATIBILITY.md",
@@ -563,6 +570,13 @@
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Experimental GibberLink with English transcript",
       "contentSha256WithoutTrackingBlock": "91505b580d037e3bf0b440b42d2884e3f32838febfa962c354ca40db6e5234b9"
+    },
+    {
+      "path": "docs/GUI_WORKFLOWS.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit Studio on desktop and Android",
+      "contentSha256WithoutTrackingBlock": "6e1534986144ff7cc5633e75bd6db8e87ea3c6f3c0da9b2b155bfcc4a30187bd"
     },
     {
       "path": "docs/HIGH_IMPACT_BACKLOG_2026-10-24.md",
@@ -667,7 +681,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Older Android Studio request and plan audit",
-      "contentSha256WithoutTrackingBlock": "9f45865e9a9978ae027f2f3bd30435331f0d8762831f70c34f3adc5bd3afc1f4"
+      "contentSha256WithoutTrackingBlock": "a934efd9fde3620da6ce0e67d1eb161a51db86ed2b21af36674e807e49d1bd13"
     },
     {
       "path": "docs/OPEN_RESOURCE_NETWORK.md",
@@ -765,7 +779,14 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Reward metering, fraud controls and monetary settlement plan",
-      "contentSha256WithoutTrackingBlock": "c86ab4d96636c1afde2d0df08550e24f3e8989217b15ba0390d354335f9fbc86"
+      "contentSha256WithoutTrackingBlock": "f498fbaf8c44ab9f050d79f7c7ce454d42f1171264ebb7365bbe2aaba6dd0ac6"
+    },
+    {
+      "path": "docs/RULEBOOK.md",
+      "class": "active",
+      "scope": "Android/shared reference; desktop ports have separate acceptance",
+      "title": "Meshlit operating rules",
+      "contentSha256WithoutTrackingBlock": "400a21c520b84de171b07d4cf2dc9d2ab5776d4ec70c6a057c84001ea9dba45a"
     },
     {
       "path": "docs/SEARCH_AND_CLUSTER_OUTPUT.md",
@@ -898,14 +919,14 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit full app guide and configuration tutorial",
-      "contentSha256WithoutTrackingBlock": "02dda192b1814ff082ebbe92347585872f2f7ebf412191ac2fd174e87157d7ab"
+      "contentSha256WithoutTrackingBlock": "93e716447914d2485e446efce9a2310675c844d4aa72a216006445ca1532bf18"
     },
     {
       "path": "docs/USER_MANUAL.md",
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit user manual",
-      "contentSha256WithoutTrackingBlock": "e8de950aceb587ff6a6cb8caf893b14f1f9a2a30e234ad7f0f867092ea63d9de"
+      "contentSha256WithoutTrackingBlock": "3f69b70312c93b2af998574c039c3157c5be07658e94296d2b99c238b25ce0e2"
     },
     {
       "path": "docs/UX_REVIEW_2026-11-02.md",
@@ -1031,7 +1052,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Declarative deployment and federated clusters",
-      "contentSha256WithoutTrackingBlock": "b8f86134e2022c018977525d5aeef907cdf161bf39c45279f4ecceaae99ef5c2"
+      "contentSha256WithoutTrackingBlock": "4ac2afe064d0359a1355573d460c3f30fd8e641673ae1225ece26956930167e8"
     },
     {
       "path": "docs/desktop/CROSS_PLATFORM_PRERELEASE.md",
@@ -1059,7 +1080,7 @@
       "class": "active",
       "scope": "desktop/server; individual acceptance gates apply",
       "title": "Meshlit Native Studio",
-      "contentSha256WithoutTrackingBlock": "6ed43c11202636603e5e1c82da9d2460506f8da3281167cf9ff7d75e756989e5"
+      "contentSha256WithoutTrackingBlock": "cf0b13e8181c367e19e1b4c30b762cf5dda05a5d48a1b73cf13a173a33b8dcee"
     },
     {
       "path": "docs/desktop/INFERENCE_PROFILES.md",

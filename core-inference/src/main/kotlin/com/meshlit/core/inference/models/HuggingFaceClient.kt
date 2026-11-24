@@ -48,6 +48,14 @@ class HuggingFaceClient {
     private fun builder(url:String,token:String)=Request.Builder().url(url).header("User-Agent","Meshlit/0.2.3").apply {
         if(token.isNotBlank()) header("Authorization","Bearer $token")
     }
+    suspend fun explore(kind: String, query: String, token: String): List<String> {
+        require(kind in setOf("models","datasets","spaces") && query.length <= 200)
+        val url = "https://huggingface.co/api/$kind".toHttpUrl().newBuilder()
+            .addQueryParameter("search",query).addQueryParameter("limit","20").build()
+        return fetch(builder(url.toString(),token).build()).jsonArray.mapNotNull {
+            it.jsonObject["id"]?.jsonPrimitive?.contentOrNull?.takeIf { id -> id.matches(Regex("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")) }
+        }
+    }
     suspend fun search(query:String,token:String=""):List<String> {
         require(query.length in 1..200)
         val url="https://huggingface.co/api/models".toHttpUrl().newBuilder().addQueryParameter("search",query)
@@ -74,10 +82,17 @@ class HuggingFaceClient {
             data["gated"]?.jsonPrimitive?.content ?: "unknown",(data["cardData"] as? JsonObject)?.get("license")?.jsonPrimitive?.contentOrNull,files)
     }
     suspend fun hostedModels(token:String):JsonElement=fetch(builder("https://router.huggingface.co/v1/models",token).build())
+    suspend fun browserToken(open: suspend (String) -> Unit): String {
+        val grant = fetch(browserGrant(open)).jsonObject
+        require(grant["token_type"]?.jsonPrimitive?.content.equals("bearer", ignoreCase = true))
+        return requireNotNull(grant["access_token"]?.jsonPrimitive?.contentOrNull?.takeIf { it.startsWith("hf_") && it.length <= 512 })
+    }
     suspend fun whoAmI(token:String):String {
         require(token.startsWith("hf_") && token.length<=512 && token.none{it.isWhitespace()}) { "Enter a Hugging Face user access token" }
-        val identity=fetch(builder("https://huggingface.co/api/whoami-v2",token).build()).jsonObject
-        return identity["name"]?.jsonPrimitive?.contentOrNull?.takeIf{it.isNotBlank() && it.length<=128}
+        val oauth=token.startsWith("hf_oauth_")
+        val path=if(oauth) "/oauth/userinfo" else "/api/whoami-v2"
+        val identity=fetch(builder("https://huggingface.co"+path,token).build()).jsonObject
+        return identity[if(oauth) "preferred_username" else "name"]?.jsonPrimitive?.contentOrNull?.takeIf{it.isNotBlank() && it.length<=128}
             ?: error("Hugging Face did not return an account name")
     }
     suspend fun generate(config:HostedModelConfig,token:String,prompt:String,maxTokens:Int=256):JsonElement {

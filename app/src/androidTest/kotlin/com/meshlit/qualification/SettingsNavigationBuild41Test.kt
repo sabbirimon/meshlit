@@ -12,12 +12,12 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Checks the installed app's actual Basic/Advanced and wallet navigation. */
+/** Checks the installed app's actual Basic/Advanced and local cryptography navigation. */
 @RunWith(AndroidJUnit4::class)
 class SettingsNavigationBuild41Test {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
 
-    @Test fun advancedMenuAndCrossTabSearchReachRewardsAndNetwork() {
+    @Test fun advancedMenuAndCrossTabSearchReachCryptoAndNetwork() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         assertTrue("Owner must accept the app notices manually",LegalAgreementStore(context).accepted())
         val preferences = context.getSharedPreferences("settings-navigation", 0)
@@ -33,31 +33,31 @@ class SettingsNavigationBuild41Test {
         if(compose.onAllNodesWithText("Later").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("Later").performClick()
         compose.onNodeWithContentDescription("Menu").performClick()
         compose.onNodeWithContentDescription("Settings").performClick()
-        compose.onNodeWithText("Basic").performClick()
+        compose.onNodeWithText("General").performClick()
         compose.onNodeWithTag("open-dashboards").assertExists()
-        compose.onNodeWithText("Everyday preferences.", substring=true).assertExists()
+        compose.onNodeWithText("Your everyday preferences", substring=true).assertExists()
         compose.onNodeWithTag("settings-list").performScrollToNode(hasTestTag("settings-entry-voice-settings"))
         compose.onNodeWithTag("settings-entry-voice-settings").performClick()
         compose.onNodeWithTag("voice-panel").assertExists()
         compose.onNodeWithContentDescription("Voice settings").assertExists()
         compose.onNodeWithContentDescription("End and close voice").performClick()
-        compose.onNodeWithTag("settings-list").performScrollToNode(hasText("Advanced"))
-        compose.onNodeWithText("Advanced").performClick()
-        compose.onNodeWithText("Technical controls and integrations").assertExists()
+        compose.onNodeWithTag("settings-list").performScrollToNode(hasText("Advanced tools"))
+        compose.onNodeWithText("Advanced tools").performClick()
+        compose.onNodeWithText("Choose a topic.",substring=true).assertExists()
         compose.onNodeWithTag("settings-list").performScrollToNode(hasTestTag("settings-group-MODELS"))
         compose.onNodeWithTag("settings-group-MODELS").performClick()
         compose.onNodeWithTag("settings-all-categories").assertExists()
         // Search must escape the current model category and include every permitted setting.
-        compose.onNodeWithTag("settings-search").performTextInput("rewards")
+        compose.onNodeWithTag("settings-search").performTextInput("sha256")
         closeSoftKeyboard()
-        compose.onNodeWithText("Mesh rewards wallet").performClick()
-        compose.onNodeWithText("Your local contribution record").assertExists()
-        compose.onNodeWithText("Back").performClick()
+        compose.onNodeWithText("Local cryptography").performClick()
+        compose.onNodeWithText("Work locally", substring=true).assertExists()
+        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithTag("settings-search").performTextReplacement("network")
         closeSoftKeyboard()
         compose.onNodeWithText("Network and pairing").performClick()
         compose.onNodeWithText("Connect devices").assertExists()
-        println("MESHLIT_SETTINGS_NAVIGATION basic=true voice=true categories=true cross_category_search=true rewards=true network=true")
+        println("MESHLIT_SETTINGS_NAVIGATION basic=true voice=true categories=true cross_category_search=true crypto=true network=true")
         } finally {
             if (hadAdvanced) preferences.edit().putBoolean("advanced", previousAdvanced).commit()
             else preferences.edit().remove("advanced").commit()

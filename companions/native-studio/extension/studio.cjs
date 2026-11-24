@@ -204,16 +204,26 @@ async function activate(context) {
         for(const [id,row] of saved)if(!threads.has(id))threads.set(id,row);
         threadList();
     }
+    async function exportConversation(){
+        if(active)throw Error('Finish the current reply before exporting.');
+        const choices=require('./chat-export.cjs').exportOptions(history);
+        if(!choices.length){vscode.window.showInformationMessage('Open a conversation with messages to export.');return;}
+        const picked=await vscode.window.showQuickPick(choices,{title:'Export current chat',placeHolder:'Choose what to save in a readable file'});
+        if(!picked)return;
+        const dest=await vscode.window.showSaveDialog({saveLabel:'Save chat export',filters:{[picked.label]:[picked.extension]}});
+        if(dest)await vscode.workspace.fs.writeFile(dest,Buffer.from(picked.text,'utf8'));
+    }
     async function historyOptions(){
         if(active)throw Error('Finish the current reply before changing chat history.');
         const store=archive();
         const selection=await vscode.window.showQuickPick([
             store.enabled()?'Pause saving on this device':'Save future chats on this device',
             ...(threads.size?['Find a recent chat']:[]),
-            ...(history.length?['Branch from a reply']:[]),
+            ...(history.length?['Branch from a reply','Export current chat']:[]),
             ...(currentThread&&threads.get(currentThread)?.version?['Delete this saved chat']:[])
         ],{title:'Local chat history',placeHolder:'Message text is encrypted on this device. Each model has its own history.'});
         if(!selection)return;
+        if(selection==='Export current chat')return exportConversation();
         if(selection==='Find a recent chat'){
             const picked=await vscode.window.showQuickPick([...threads].reverse().map(([id,row])=>({id,label:row.title,detail:row.messages.at(-1)?.content.slice(0,160)})),{title:'Find a recent chat',matchOnDetail:true});
             if(picked&&!active&&threads.has(picked.id)){currentThread=picked.id;history=threads.get(picked.id).messages;showThread();}
@@ -496,6 +506,7 @@ async function activate(context) {
                 if(msg.op==='rateReply')await rateReply(msg.id,msg.vote);
                 if(msg.op==='replyPreference')await replyPreference();
                 if(msg.op==='sidebar'&&typeof msg.compact==='boolean')await context.globalState.update('compact-sidebar',msg.compact);
+                if(msg.op==='exportChat')return await exportConversation();
                 if(msg.op==='historyOptions')return await historyOptions();
                 if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
                 if(msg.op==='new'&&!active){await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
@@ -528,7 +539,7 @@ async function activate(context) {
                     return;
                 }
                 if(msg.op==='back')back();
-                if(['tools','management','settings','permissions'].includes(msg.op))go(msg.op);
+                if(['tools','management','settings','permissions','cloud'].includes(msg.op))go(msg.op);
                 if(msg.op==='web'&&!active)await webSearch();
                 if(msg.op==='voice'&&!active)await voice();
                 if(msg.op==='attach'&&!active)await chooseAttachment();
@@ -567,7 +578,7 @@ async function activate(context) {
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.name==='AbortError'?'Generation stopped.':err.name==='TimeoutError'?'The model timed out. Check Models & providers, then retry.':err.message}); }
         });
     }
-    for(const [cmd,fn] of Object.entries({chat,management:()=>go('management'),tools:()=>go('tools'),settings:()=>go('settings'),models:()=>go('models'),ide,cpu,pair,guardrails,control})) {
+    for(const [cmd,fn] of Object.entries({chat,exportChat:exportConversation,management:()=>go('management'),tools:()=>go('tools'),settings:()=>go('settings'),models:()=>go('models'),ide,cpu,pair,guardrails,control})) {
         context.subscriptions.push(vscode.commands.registerCommand('meshlit.studio.'+cmd,async()=>{try {return await fn();} catch(err){vscode.window.showErrorMessage(err.message);}}));
     }
     context.subscriptions.push({dispose:()=>{active?.abort();local.stop();}});

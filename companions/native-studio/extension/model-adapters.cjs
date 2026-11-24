@@ -158,7 +158,10 @@ async function inspect(source,hint) {
     const tokenizerPresent = entries.has('tokenizer.json') || entries.has('tokenizer.model');
     const configured = entries.has('config.json') && tokenizerPresent && !config.auto_map;
     const markers=[['mlc-chat-config.json','mlc'],['genai_config.json','onnx'],['openvino_model.xml','openvino'],['saved_model.pb','tensorflow'],['pytorch_model.bin','pytorch'],['pytorch_model.bin.index.json','pytorch']];
+    const hasSafeWeights=[...entries].some(n=>n.endsWith('.safetensors'));
     if(!indexed) for(const [name,id] of markers) if(entries.has(name)){
+        // Transformers repositories may publish both serializations. Prefer the safe weights.
+        if(id==='pytorch' && hasSafeWeights)continue;
         if(id==='openvino')await inspectFile(path.join(dir,name));
         if(id==='onnx' && ![...entries].some(n=>n.endsWith('.onnx')))throw Error('ONNX GenAI package has no top-level ONNX graph');
         const adapters=id==='onnx'?['onnx-genai']:id==='openvino'&&entries.has('openvino_tokenizer.xml')&&entries.has('openvino_detokenizer.xml')?['openvino-genai']:[];
@@ -175,8 +178,8 @@ async function inspect(source,hint) {
     if(weights.length){
         const mlx=!!(config.quantization?.group_size && config.quantization?.bits && !config.quantization_config);
         const rwkv=/^rwkv/i.test(config.model_type||'');
-        const prep=!indexed && configured && (!mlx || config.model_file == null);
-        return result(input,mlx?'mlx':rwkv?'rwkv':'safetensors','weight filenames and package metadata',{...data,adapters:prep?[mlx?'mlx-lm':'transformers']:[]});
+        const prep=(!indexed || index==='model.safetensors.index.json') && configured && (!mlx || config.model_file == null);
+        return result(prep?dir:input,mlx?'mlx':rwkv?'rwkv':'safetensors','weight filenames and package metadata',{...data,adapters:prep?[mlx?'mlx-lm':'transformers']:[]});
     }
     if(entries.has('flax_model.msgpack')){
         return result(input,'flax','Flax MessagePack checkpoint and package metadata',{...data,adapters:configured?['flax-transformers']:[]});

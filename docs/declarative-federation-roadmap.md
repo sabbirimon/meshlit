@@ -1,6 +1,6 @@
 # Declarative deployment and federated clusters
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-23: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Document status](DOCUMENTATION_STATUS.md).
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
@@ -25,6 +25,45 @@ and oversized-model acceptance. Device groups and role plans do not implement
 consensus or a replicated task log. SSH command execution is real, while automated
 SSH worker deployment remains planned. Web/API enrollment is real, but does not
 make a browser or switch a compute node.
+
+## Meshlit Grid design for nested groups and clusters
+
+Proposed rollout, 2026-11-24. A Grid is a privately administered collection of groups. Groups organize people, projects and access. A cluster schedules work on enrolled nodes. Start with one parent per group and one home group per cluster so every job has a single policy path. A node may offer capacity to several approved clusters. Its local lease ledger arbitrates all allocations against the same physical budget.
+
+| Scope | Example | Authority |
+| --- | --- | --- |
+| Grid | Personal Grid | The owner creates top-level groups, sets ceilings and approves federation partners. |
+| Group and subgroup | Home → Private or Lab → Shared research | A group admin manages membership and subgroups within a signed delegation. Members of sibling groups have separate access. |
+| Cluster | Home LAN or Lab Batch | A cluster operator admits owner-approved workers, configures queues, and can drain or cancel jobs in scope. |
+| Node and resource | Mac CPU, HP CPU, Samsung client | The device owner chooses allowed coordinators, runtime, CPU threads, memory, network, and power limits and can stop sharing locally. Each accelerator needs evidence from the executing runtime. |
+| Job | A private chat or a batch of numbered documents | A submitter selects a permitted model, job type and data destination, can see their results and can cancel their own job. |
+
+### Permissions and delegation
+
+Evaluate the user's signed grant, every ancestor ceiling, the cluster policy, the node owner's consent and the job's requested scope. All must permit the action. A subgroup can narrow inherited limits. A denial at any level wins. Adding a member to one group grants access only to its explicitly delegated scope. A person with several memberships submits under one selected group. The scheduler never combines grants from different groups into a wider permission.
+
+Use distinct actions for viewing health, submitting inference, reading results, enrolling workers, editing policy, cancelling another user's job, invoking a named tool, and sending data to another cluster. Give an auditor read access to scoped event metadata. Prompt, file, output and wallet access each require their own grant. A coordinator receives a short-lived service identity scoped to the job and named workers. Human or agent submission goes through the same checks. A cluster operator cannot enable a tool, delegate wider access, or raise device limits through a job.
+
+On grant revocation, invalidate the membership revision and deny new work and lease renewals. Reachable workers stop affected jobs, acknowledge release and reject late results. A disconnected worker stops when its short lease expires. Log the requesting identity, effective group, policy revision, node identity, job and attempt IDs, decision, and signed receipt. Keep prompt text out of the default audit record.
+
+### Scheduling and placement
+
+1. The submitter chooses a project, cluster and workload. Before submission, Studio previews which nodes may receive prompts, files, activations or outputs and any optional recordkeeping reward.
+2. The scheduler checks policy, model hash, runtime compatibility, fresh capacity offers and reservations. Private jobs queue locally when the selected destination is unavailable. For shared queues, apply group quotas and fair scheduling under the parent quota.
+3. For independent tasks, assign numbered inputs to workers and aggregate results by input ID. Retry eligible failed items and commit one result and at most one contribution receipt per item. For one model split across workers, require a complete layer plan, matching model and runtime, and measured memory and link capacity. If a shard fails, stop that attempt and restart from an approved checkpoint or the original input.
+4. A peer cluster receives a distinct signed handoff for a named job, destination, data class, budget and expiry. Both administrators' policies and the destination node must allow it. Exchange bounded tasks over WAN first. Enable cross-cluster layer execution only after measuring its latency, output correctness and recovery on that route.
+
+### Scenarios and rollout gates
+
+| Milestone | Exercise | Pass condition |
+| --- | --- | --- |
+| Personal LAN | Samsung submits a private job to the Mac. HP is enrolled for batch work only. | The Mac produces the reply. HP receives no private payload. Studio explains the placement and records the actual executing node. |
+| Nested groups | Home/Private and Lab/Shared borrow the same Mac. Both request its last available capacity. A Lab viewer tries to read a Home result. | The node honors its ceiling, the other job queues and the cross-group read is denied. A subgroup admin cannot widen the parent grant. |
+| Process aggregation | Mac and HP process a batch of independent inputs. Disconnect one worker after completion but before acknowledgement. | Retried items preserve input order and return one committed output and receipt per item. Unrelated completed items remain available. |
+| Model sharding | Split a supported model across two verified LAN workers. Compare against the same prompt and decoding settings on one node. Remove a worker mid-run. | Record actual layer ownership, output comparison, latency, memory and cancellation or recovery. Surface the interrupted attempt. |
+| WAN federation | Two private groups approve a batch handoff. Revoke the grant during a partition and reconnect the remote worker. | Expired or revoked work cannot renew, stale output cannot replace a committed result, and a duplicate receipt earns no second reward. |
+
+Deliver membership, permission inspection and a single-cluster job first. Add multi-node batch aggregation and the nested-group contention tests next. Gate layer sharding and WAN federation independently. Surface each mode and its evidence under **Devices → Grid**, with a group tree, cluster workers, job queue and access inspector. Show the rule or runtime check that blocks a disabled action and who can change it.
 
 ## Desired-state contract, following the IaC model
 

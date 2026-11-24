@@ -77,7 +77,7 @@ class WebBridgeHost(private val context:Context,private val backend:AgentBackend
     private fun prefix(device:EnrolledDevice)="web_${DeviceDirectory.hash(device.id).take(16)}_"
     private fun required(operation:AgentOperation)=when(operation){
         AgentOperation.BROWSER_STATUS,AgentOperation.BROWSER_AUTONOMOUS_RUN,AgentOperation.BROWSER_STOP->DeviceAccess.BROWSER
-        AgentOperation.CLOUD_PROFILES,AgentOperation.ENVIRONMENT_PROFILES,AgentOperation.CLOUD_EXECUTE->DeviceAccess.CLOUD
+        AgentOperation.MOLTBOOK_READ,AgentOperation.CLOUD_PROFILES,AgentOperation.ENVIRONMENT_PROFILES,AgentOperation.CLOUD_EXECUTE->DeviceAccess.CLOUD
         AgentOperation.RECOVERY_STATUS,AgentOperation.CHECKPOINT_LIST,AgentOperation.CHECKPOINT_SAVE,AgentOperation.CHECKPOINT_RESTORE,AgentOperation.CHECKPOINT_DELETE->DeviceAccess.RECOVERY
         AgentOperation.SETTINGS_PATCH->DeviceAccess.SETTINGS
         AgentOperation.MODEL_OPTIONS_SET,AgentOperation.MODEL_DOWNLOAD,AgentOperation.MODEL_ADD_URL,AgentOperation.MODEL_IMPORT,AgentOperation.MODEL_IMPORT_SOURCES,

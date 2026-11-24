@@ -12,7 +12,7 @@ enum class SettingsGroup(val title:String,val description:String,val destination
     MODELS("Models & voice", "Models, speech, online providers and numerical tools", setOf(
         "models","voice-settings","media","providers","huggingface","router","behavior","training","acceleration","hyperl","colibri","rag","usage")),
     AGENTS("Agents & memory", "Remember preferences, review jobs and connect approved tools", setOf(
-        "personalization","tasks","connected-capabilities","agent-catalog","agent-teams","agents","bot-connections","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
+        "personalization","tasks","connected-capabilities","agent-catalog","agent-teams","agents","moltbook","bot-connections","agent-registry","agent-logs","tools-automation","mcp-catalog","gateway","openclaw","automation","hooks","deepseek-harness")),
     CONNECTIONS("Devices and connections", "Pair devices, manage transports and inspect real capabilities", setOf(
         "devices","network","vpn","sharding","radar","host-map","external-services","web-bridge","device-dashboard","meshchat","remotecommands","p2p","gibberlink","external","ssh","peers")),
     PRIVACY("Privacy & permissions", "Permissions, network rules, identity and data policy", setOf(
@@ -75,6 +75,7 @@ object SettingsDestinations {
         SettingsDestination("agent-catalog","Agent role library","Search and adapt Agency Agents role templates",keywords="agency agent selection roles specialists"),
         SettingsDestination("agent-teams","Agent teams","Planner, worker and reviewer teams across approved local and remote devices",keywords="multi agent teams local remote cluster"),
         SettingsDestination("bot-connections","Bots and connections","Custom bot profiles, AstrBot chat, Grok Bot routines and OpenClaw",keywords="bots messaging automation agent custom integrations webhook Grok AstrBot"),
+        SettingsDestination("moltbook","Moltbook","Read public posts from the agent community",keywords="social agents public feed"),
         SettingsDestination("agents","Agent management","Delegated permissions, real jobs and registered tools",keywords="autonomous scopes tasks MCP"),
         SettingsDestination("ssh","SSH nodes and connections","Key-authenticated inbound node commands and pinned outbound connections",keywords="server LAN internet VM sandbox agent SSH NAS terminal external inter device"),
         SettingsDestination("firewall","Network rules","Persisted Meshlit listener firewall and network status",keywords="ports security IP allow deny"),

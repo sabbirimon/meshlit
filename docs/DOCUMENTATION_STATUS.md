@@ -1,6 +1,6 @@
 # Markdown documentation status and workstream tracking
 
-Reconciled 2026-11-23. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
+Reconciled 2026-11-24. This index covers every tracked first-party, historical, protected and third-party Markdown file. The index itself is generated; counts below exclude this index to avoid self-hashing.
 
 [Plan](../PLAN.md) · [Progress](../PROGRESS.md) · [Milestone gates](../BUILD_MILESTONES.md) · [Desktop feature tracker](DESKTOP_FEATURE_TRACKER.md) · [Release evidence](RELEASE_EVIDENCE.md)
 
@@ -24,7 +24,7 @@ Phase names are independent workstreams, not a unified numbered stage or an over
 
 ## Coverage and maintenance
 
-177 active, 19 historical, 8 protected, 1 template, 6 third-party; 212 Markdown documents including this index.
+180 active, 19 historical, 8 protected, 1 template, 6 third-party; 215 Markdown documents including this index.
 
 Active files receive current tracking links. Historical records retain exact dated claims; protected licences/attribution/versioned policies, third-party texts and PR templates are indexed without content edits. Runtime evidence is read from the named ledger, never inferred from a document date or checksum.
 
@@ -71,6 +71,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [companions/node/README.md](../companions/node/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/pipeline/README.md](../companions/pipeline/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/search/README.md](../companions/search/README.md) | optional host/schema/reference; not a bundled qualified service |
+| [companions/studio-relay/README.md](../companions/studio-relay/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/studio-runtime/README.md](../companions/studio-runtime/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/training/README.md](../companions/training/README.md) | optional host/schema/reference; not a bundled qualified service |
 | [companions/voice/README.md](../companions/voice/README.md) | optional host/schema/reference; not a bundled qualified service |
@@ -105,6 +106,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/DEVICE_COMPATIBILITY.md](DEVICE_COMPATIBILITY.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/DISCOVERY_AND_COMMUNITY.md](DISCOVERY_AND_COMMUNITY.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/GIBBERLINK.md](GIBBERLINK.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/GUI_WORKFLOWS.md](GUI_WORKFLOWS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/HIGH_IMPACT_BACKLOG_2026-10-24.md](HIGH_IMPACT_BACKLOG_2026-10-24.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md](LINUX_DISTRIBUTIONS_AND_LAB_TOOLS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/LOCAL_INFERENCE_HOSTS_2026-11-02.md](LOCAL_INFERENCE_HOSTS_2026-11-02.md) | Android/shared reference; desktop ports have separate acceptance |
@@ -131,6 +133,7 @@ Run `python3 scripts/update-doc-tracking.py --write` after updating plans, then 
 | [docs/RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) | cross-platform tracking; feature and device gates remain separate |
 | [docs/RESOURCE_NETWORK_PROGRESS_2026-10-31.md](RESOURCE_NETWORK_PROGRESS_2026-10-31.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/REWARD_METERING_AND_SETTLEMENT.md](REWARD_METERING_AND_SETTLEMENT.md) | Android/shared reference; desktop ports have separate acceptance |
+| [docs/RULEBOOK.md](RULEBOOK.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SEARCH_AND_CLUSTER_OUTPUT.md](SEARCH_AND_CLUSTER_OUTPUT.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SECURITY_LAB_AND_HARDWARE_ACCESS.md](SECURITY_LAB_AND_HARDWARE_ACCESS.md) | Android/shared reference; desktop ports have separate acceptance |
 | [docs/SESSION_HANDOFF.md](SESSION_HANDOFF.md) | cross-platform tracking; feature and device gates remain separate |

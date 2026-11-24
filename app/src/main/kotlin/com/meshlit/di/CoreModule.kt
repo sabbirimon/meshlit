@@ -247,12 +247,8 @@ val coreModule = module {
     // The static `TermuxResultReceiver` (declared in
     // AndroidManifest.xml with permission=com.termux.permission.RUN_COMMAND)
     // forwards its broadcast into `TermuxReceiverRegistry.bus`.
-    // We wire that field from a separate factory so the bridge and
-    // the static receiver share the SAME bus instance.
-    single {
-        val bus = get<com.meshlit.network.termux.ResultBus>()
-        com.meshlit.network.termux.TermuxReceiverRegistry.bus = bus
-        bus
+    single<com.meshlit.network.termux.ResultBus> {
+        get<InMemoryResultBus>().also { com.meshlit.network.termux.TermuxReceiverRegistry.bus = it }
     }
     // The agent dispatcher writes every termux invocation to a
     // JSONL ledger under filesDir/agent/termux-audit.jsonl. The

@@ -24,7 +24,13 @@ exports.run=async()=>{
     while(Date.now()<deadline){
         const s=api.homeStatus();
         if(s.home && s.ready && s.visible && s.folders===0){
-            fs.writeFileSync(path.join(__dirname,'home.json'),JSON.stringify({...s,appName:vscode.env.appName}));
+            const result=await vscode.lm.invokeTool('meshlit_inspect_settings',{input:{},toolInvocationToken:undefined});
+            const catalog=JSON.parse(result.content[0].value);
+            if(catalog.schema!=='meshlit.settings.catalog.v1'||catalog.sections.length!==5)throw Error('Missing settings catalog');
+            const controls=catalog.sections.flatMap(s=>s.controls);
+            if(controls.some(c=>typeof c.available!=='boolean'||!c.label||(!c.available&&!c.reason)))throw Error('Invalid settings availability');
+            if(!controls.some(c=>c.id==='memory'&&!c.available))throw Error('Project memory needs a trusted workspace');
+            fs.writeFileSync(path.join(__dirname,'home.json'),JSON.stringify({...s,appName:vscode.env.appName,catalog}));
             for(const id of ['settings','tools','management','models'])await vscode.commands.executeCommand('meshlit.studio.'+id);
             await vscode.commands.executeCommand('meshlit.studio.chat');
             return;

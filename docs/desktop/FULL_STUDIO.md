@@ -1,10 +1,10 @@
 # Meshlit Native Studio
-
-Studio uses a blue branching icon with a circular rim joined to the trunk at its base for its launcher, running app and Windows installer. Artwork credits are in [NOTICE](../../NOTICE).
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-23: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-24: [Plan](../../PLAN.md) · [Progress](../../PROGRESS.md) · [Document status](../DOCUMENTATION_STATUS.md).
 Scope: desktop/server; individual acceptance gates apply. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+Studio uses a blue branching icon with a circular rim joined to the trunk at its base for its launcher, running app and Windows installer. Artwork credits are in [NOTICE](../../NOTICE).
 
 Extract the complete directory. Run Meshlit.exe on Windows, Meshlit on Linux, or Meshlit.app on macOS. Keep the editor, models, inference and toolchain folders beside the launcher. First launch installs the bundled Meshlit extension into a dedicated local editor profile. General Chat opens in an empty window. Choose **Open coding IDE** to open a project in a separate window. Open a terminal with **Terminal → New Terminal**. The bundled Zig toolchain supplies the C and C++ drivers. Try `zig version`, `zig cc hello.c -o hello` or `zig c++ hello.cpp -o hello`.
 

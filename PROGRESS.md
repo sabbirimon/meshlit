@@ -1,8 +1,12 @@
 # Meshlit progress and evidence
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-24: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+[Desktop and Android GUI guide](docs/GUI_WORKFLOWS.md) · [Meshlit operating rules](docs/RULEBOOK.md)
+
+The November 24 candidate adds browser-based Hub authorization, portable conversation export, Moltbook reading, desktop cloud account inspection and recordkeeper confirmation recovery. Public model discovery, local Mac generation and Android settings navigation have device evidence. Interactive HF consent, public relay access, platform signing and full-model dual-GPU execution require separate qualification.
 
 2026-11-24. Studio added a two-pane GGUF catalog and device-aware starter suggestions. A deterministic Flax GPT-2 MessagePack package produced the same four generated tokens through the Studio worker and HyperL CLI on Intel macOS. LM Studio instance control passed a loopback HTTP contract test. [Scope and remaining checks](docs/DESKTOP_STUDIO_PLAN.md#device-aware-discovery-and-adapter-delivery).
 

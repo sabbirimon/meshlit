@@ -109,18 +109,29 @@ CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,stamp TEXT,session TEXT,
         if(!row||JSON.parse(row.body).keeper!==keeper||!verify(peer,ackBytes(hash,keeper),proof))throw Error('Recordkeeper signature does not match the agreed block');
         this.db.prepare('INSERT OR IGNORE INTO acks VALUES(?,?)').run(hash,JSON.stringify({key:peer,signature:proof}));
     }
+    confirmationDigest(owner,keeper){
+        const rows=this.db.prepare("SELECT b.hash FROM blocks b JOIN acks a ON a.hash=b.hash WHERE b.owner=? AND json_extract(b.body,'$.keeper')=? ORDER BY b.hash").all(owner,keeper);
+        return sha(bytes(DOMAIN,'ack-set',...rows.map(row=>row.hash)));
+    }
     async sync(peer,call){
         const owner=walletId(peer.key);
         let last=this.verified(owner,peer.key,peer.node).at(-1);
+        let reconcile=false;
         for(;;){
-            const {blocks}=await call({op:'walletPage',height:last?.height||0,anchor:last?.hash||ZERO});
+            const {blocks,confirmationDigest}=await call({op:'walletPage',height:last?.height||0,anchor:last?.hash||ZERO});
             if(!Array.isArray(blocks)||blocks.length>16||blocks.some((b,i)=>b.height!==(last?.height||0)+i+1))throw Error('Invalid or repeated chain page');
             this.acceptPage(peer,blocks);if(blocks.length)last=blocks.at(-1);
-            if(blocks.length<16)break;
+            if(blocks.length<16){
+                if(confirmationDigest!==undefined&&!HEX.test(confirmationDigest))throw Error('Invalid acknowledgment digest');
+                reconcile=confirmationDigest!==undefined&&confirmationDigest!==this.confirmationDigest(owner,this.owner);
+                break;
+            }
         }
         for(const b of this.verified(owner,peer.key,peer.node)){
-            if(b.keeper!==this.owner||this.db.prepare('SELECT 1 FROM acks WHERE hash=?').get(b.hash))continue;
-            const proof=sign(this.identity.privateKey,ackBytes(b.hash,this.owner));
+            if(b.keeper!==this.owner)continue;
+            const saved=this.db.prepare('SELECT proof FROM acks WHERE hash=?').get(b.hash);
+            if(saved&&!reconcile)continue;
+            const proof=saved?JSON.parse(saved.proof).signature:sign(this.identity.privateKey,ackBytes(b.hash,this.owner));
             const answer=await call({op:'walletAck',hash:b.hash,proof});
             if(answer.ok!==true)throw Error('The contributor did not confirm the recordkeeping acknowledgment');
             this.db.prepare('INSERT OR IGNORE INTO acks VALUES(?,?)').run(b.hash,JSON.stringify({key:this.identity.key,signature:proof}));

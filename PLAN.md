@@ -1,8 +1,10 @@
 # Meshlit implementation and qualification plan
 <!-- meshlit-document-tracking:start -->
-Tracking reconciled 2026-11-23: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
+Tracking reconciled 2026-11-24: [Plan](PLAN.md) · [Progress](PROGRESS.md) · [Document status](docs/DOCUMENTATION_STATUS.md).
 Scope: cross-platform tracking; feature and device gates remain separate. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
+
+[Desktop and Android GUI guide](docs/GUI_WORKFLOWS.md) · [Meshlit operating rules](docs/RULEBOOK.md)
 
 The current [Studio delivery plan](docs/DESKTOP_STUDIO_PLAN.md#device-aware-discovery-and-adapter-delivery) tracks device-aware model discovery, provider control, format qualification and remote lifecycle work.
 
