@@ -11,7 +11,7 @@
 [Native Studio model management](docs/desktop/FULL_STUDIO.md#managing-models-in-native-studio) covers local GGUF discovery and import, providers, authenticated local serving and device pairing. HyperL owns accelerator translation.
 
 
-**Download Native Studio.** The Windows x64, Linux x64 and Apple Silicon preview opens to General Chat and includes a separate coding IDE. On Windows, extract the complete ZIP and open `Meshlit.exe`. [Windows ZIP](https://github.com/sabbirimon/meshlit/releases/download/v2.0.48-studio.1/Meshlit-Studio-Windows-X64.zip) · [All Studio downloads and checksums](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.48-studio.1)
+**Download Meshlit Studio.** The current preview includes an Android ARM64 debug APK, a single-file Windows x64 installer, Linux x64, and macOS builds for Apple Silicon and Intel. [Windows installer](https://github.com/sabbirimon/meshlit/releases/download/v2.0.49-studio.2/Meshlit-Studio-Windows-X64-Setup.exe) · [All downloads and checksums](https://github.com/sabbirimon/meshlit/releases/tag/v2.0.49-studio.2)
 
 **Which parts use Kotlin?** The native desktop package uses a Rust launcher, a JavaScript workbench extension, llama.cpp for inference and a bundled C/C++ toolchain. Its build checks the package for JVM binaries and Java archives. The full Android app, shared modules and earlier Compose desktop sources still contain Kotlin. GitHub counts source bytes across the default branch. The Android port is ongoing. [Desktop and Android migration status](docs/desktop/NATIVE_MIGRATION.md)
 
@@ -21,8 +21,7 @@
 window, with separate workspace IDE windows, bot details and grouped management.
 The Intel Mac development build retains Qwen2.5 1.5B as its local default and adds
 Qwen3 4B with Thinking On/Off. Native replies and Stop were verified; enough free
-RAM is required. Android defaults are unchanged. These source changes are newer
-than the published beta listed above.
+RAM is required. Android defaults are unchanged.
 
 ![Meshlit Studio application and model-engine map](docs/assets/meshlit-studio-map-20261106.svg)
 

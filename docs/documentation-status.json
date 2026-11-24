@@ -27,7 +27,7 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "afe7c5ce2b01ca0b25cab0d86d748331d9e6dc11669e400773fc00c5b008cb53"
+      "sha256": "b2843537f9806a9d2679f09f079bcc10c3725cc9b82c35f351b686ac84a8d873"
     },
     {
       "path": "AGENT_BUILD.md",
@@ -55,7 +55,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "6c3300e5fe853f73bbde080c66d78350abc64e7a91fe22d3a4ba56606b1419cc"
+      "sha256": "c076ef32d72888de392f3151ee7b635f9e3e4421cfe7afcb708f973bd910fc49"
     },
     {
       "path": "SECURITY.md",
