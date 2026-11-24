@@ -43,6 +43,11 @@ def inventory(folder):
 
 def package_extension(suite):
     src = ROOT / "companions/native-studio/extension"
+    sdk = src.parent / "catalog-sdk"
+    npm = shutil.which("npm")
+    if not npm:
+        raise RuntimeError("Node.js and npm are required to package the LM Studio catalog client")
+    subprocess.run([npm, "ci", "--ignore-scripts", "--omit=dev", "--no-audit", "--no-fund"], cwd=sdk, check=True)
     name = "meshlit-native.vsix"
     manifest = """<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
     <Metadata><Identity Language="en-US" Id="native-studio" Version="2.0.49" Publisher="meshlit"/>
@@ -56,6 +61,9 @@ def package_extension(suite):
         for file in sorted(src.iterdir()):
             if (file.suffix in (".cjs", ".json") or file.name == "model_worker.py") and ".test." not in file.name:
                 bundle.write(file, "extension/" + file.name)
+        for file in sorted(sdk.rglob("*")):
+            if file.is_file() and not file.is_symlink() and ".bin" not in file.parts:
+                bundle.write(file, "extension/catalog-sdk/" + file.relative_to(sdk).as_posix())
         legacy = ROOT / "companions/studio-runtime/extension"
         bundle.write(legacy / "media/meshlit.svg", "extension/legacy/media/meshlit.svg")
         bundle.write(ROOT / "desktopApp/src/main/resources/icons/meshlit.png", "extension/media/meshlit.png")

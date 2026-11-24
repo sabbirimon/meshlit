@@ -75,6 +75,43 @@ function register(vscode,context,hooks) {
     let service,starting,acceptUntil=0;
     const grants=key=>context.globalState.get('model-access:'+deviceId(key),[]);
     const serving=require('./remote-models.cjs').serving(hooks.root,hooks.models,grants,hooks.threads,hooks.log);
+    const {Wallet,walletId,validUUID}=require('./meshcoin.cjs');
+    let walletInstance;
+    async function wallet(){
+        const id=await identity();
+        if(!walletInstance)walletInstance=new Wallet(require('node:path').join(context.globalStorageUri.fsPath,'contributions'),id);
+        return walletInstance;
+    }
+    function audit(event,key){
+        if(!service)return;
+        const session=service.session;
+        wallet().then(w=>w.audit(session,event,key?walletId(key):'')).catch(e=>hooks.log('Node audit: '+e.message));
+    }
+    async function nodeDetails(peer){
+        const id=await identity(),w=await wallet();let card;
+        if(peer&&service){
+            const response=await service.call(service.locate(peer),{op:'identity'},AbortSignal.timeout(10000));
+            card=response.identity;
+            if(card?.contributor!==walletId(peer.key)||card.node!==peer.node||!validUUID(card.session))throw Error('The peer did not return a matching live node identity');
+            audit('peer.identity.verified',peer.key);
+        }else if(peer)throw Error('Enable device networking to check this peer’s live session.');
+        else card=service?.identityCard()||{application:'bd.com.imon.meshlit.studio',version:require('./package.json').version,node:id.node,contributor:walletId(id.key),session:null};
+        const doc=await vscode.workspace.openTextDocument({language:'json',content:JSON.stringify({identity:card,localAudit:w.events().filter(e=>!peer||e.peer===card.contributor)},null,2)});
+        await vscode.window.showTextDocument(doc,{preview:true});
+    }
+    const showWallet=require('./wallet-view.cjs').walletView(vscode,context,wallet,peers,()=>nodeDetails(),()=>service,require('./legacy/brand.cjs'));
+    async function hostedGeneration(key,msg,signal,delta){
+        const w=await wallet();
+        const policy=w.config('record',false)?w.config('keeper',{}):null;
+        const job=validUUID(msg.jobId)?msg.jobId:crypto.randomUUID();
+        const requestId=crypto.createHash('sha256').update(key+'\n'+job).digest('hex');
+        audit('inference.started',key);
+        try{
+            const result=await serving.generate(key,msg,signal,delta);signal.throwIfAborted();
+            if(policy!==null)try{w.record(requestId,result.count,policy);}catch(e){hooks.log('Contribution was not recorded: '+e.message);}
+            audit('inference.completed',key);return result;
+        }catch(e){audit('inference.interrupted',key);throw e;}
+    }
     let writes=Promise.resolve();
     function save(peer) {
         const work=writes.then(async()=>{
@@ -92,8 +129,8 @@ function register(vscode,context,hooks) {
             const id=await identity();
             const next=new Devices(id,{peers,save,accepting:()=>Date.now()<acceptUntil,
                 approve:async(name,code)=>await vscode.window.showInformationMessage('Pair with '+name+'? Device ID '+code,{modal:true},'Pair device')==='Pair device',
-                inventory:serving.inventory,generate:serving.generate});
-            await next.start();service=next;
+                inventory:serving.inventory,generate:hostedGeneration,wallet,audit});
+            await next.start();service=next;audit('network.started');
             const url=context.globalState.get('device-relay');
             if(url){
                 const token=await context.secrets.get('device-relay-token');
@@ -103,7 +140,7 @@ function register(vscode,context,hooks) {
         })().finally(()=>{starting=undefined;});
         return starting;
     }
-    function stop(){service?.stop();service=undefined;serving.stop();}
+    function stop(){audit('network.stopped');service?.stop();service=undefined;serving.stop();}
     async function connect(item) {
         const svc=await start(), signal=AbortSignal.timeout(90000);
         const reply=await svc.call(item,{op:'pair',node:svc.node,name:svc.name},signal);
@@ -151,8 +188,10 @@ function register(vscode,context,hooks) {
             {label:'Configure internet relay',description:context.globalState.get('device-relay',''),op:'relay'},
             {label:'Turn off device networking',op:'disable'}
         ]:[{label:'Enable nearby pairing',description:'Make this computer visible on the LAN',op:'enable'}];
-        const pick=await vscode.window.showQuickPick([...options,{label:'Pair using a link',op:'receive'},{label:'Share this device for 10 minutes',op:'share'},...(hosting?[{label:'Stop sharing identity',op:'stop'}]:[]),...peers().map(peer=>({label:peer.name,description:deviceId(peer.key),peer}))],{title:'Devices'});
+        const pick=await vscode.window.showQuickPick([{label:'Node identity and audit',op:'identity'},{label:'MeshCoin contribution wallet',op:'wallet'},...options,{label:'Pair using a link',op:'receive'},{label:'Share this device for 10 minutes',op:'share'},...(hosting?[{label:'Stop sharing identity',op:'stop'}]:[]),...peers().map(peer=>({label:peer.name,description:deviceId(peer.key),peer}))],{title:'Devices'});
         if(!pick)return;
+        if(pick.op==='identity')return nodeDetails();
+        if(pick.op==='wallet')return showWallet();
         if(pick.op==='enable'){await start();await context.globalState.update('device-network',true);return manage();}
         if(pick.op==='disable'){stop();await context.globalState.update('device-network',false);return;}
         if(pick.op==='copy')return vscode.env.clipboard.writeText(service.id);
@@ -181,7 +220,8 @@ function register(vscode,context,hooks) {
             hosting?.stop();hosting=await invite(await identity(),choice.ip,os.hostname().slice(0,128));
             await vscode.env.clipboard.writeText(hosting.link);vscode.window.showInformationMessage('Pairing link copied. Paste it on the other device within 10 minutes.');return;
         }
-        const action=await vscode.window.showQuickPick([...(service?['Use a shared model','Share models']:[]),'Verify again','Forget device'],{title:pick.peer.name});
+        const action=await vscode.window.showQuickPick([...(service?['Use a shared model','Share models','Live node identity']:[]),'Verify again','Forget device'],{title:pick.peer.name});
+        if(action==='Live node identity')return nodeDetails(pick.peer);
         if(action==='Use a shared model')return chooseRemote(pick.peer);
         if(action==='Share models'){
             const key=pick.peer.key,choices=hooks.models().map(m=>({label:m.name,id:m.id,picked:grants(key).includes(m.id)}));
@@ -194,6 +234,9 @@ function register(vscode,context,hooks) {
             vscode.window.showInformationMessage('Identity verified: '+pick.peer.name);
         }
         if(action==='Forget device'){
+            const w=await wallet(), id=walletId(pick.peer.key);
+            w.set('share:'+id,false);
+            if(w.config('keeper',null)?.keeper===id)w.set('keeper',null);
             serving.stop();await context.globalState.update('model-access:'+deviceId(pick.peer.key),undefined);
             await context.globalState.update('verified-peers',peers().filter(p=>p.key!==pick.peer.key));
         }
@@ -203,6 +246,7 @@ function register(vscode,context,hooks) {
         if(!peer||!service)throw Error('Open Devices and enable the paired connection');
         return service.call(service.locate(peer),{op:'chat',model:route.remoteModel,messages,...options},signal,onDelta);
     };
+    manage.wallet=showWallet;
     manage.restore=()=>context.globalState.get('device-network',false)?start():Promise.resolve();
     context.subscriptions.push({dispose:()=>{hosting?.stop();stop();}});return manage;
 }

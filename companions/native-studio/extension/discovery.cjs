@@ -26,51 +26,77 @@ function repoInput(query){
 }
 
 const {render}=require('./picker-view.cjs');
-const picks=[
-    ['lmstudio-community/Bonsai-27B-GGUF','Bonsai 27B','Compact quantized model from PrismML. Check the publisher card for runtime requirements.'],
-    ['bartowski/granite-3.1-2b-instruct-GGUF','Granite 3.1 2B','An instruction model from IBM.'],
-    ['unsloth/Phi-4-mini-instruct-GGUF','Phi 4 Mini Instruct','Compact instruction model from Microsoft.'],
-    ['bartowski/Mistral-7B-Instruct-v0.3-GGUF','Mistral 7B Instruct v0.3','A seven-billion-parameter instruction model from Mistral AI.'],
-    ['lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF','Qwen2.5 0.5B Instruct','Compact instruction-following model from Qwen.'],
-    ['lmstudio-community/gemma-3-1b-it-GGUF','Gemma 3 1B','A local instruction model from Google.'],
-    ['lmstudio-community/Qwen2.5-Coder-1.5B-Instruct-GGUF','Qwen2.5 Coder 1.5B','Code-focused model from Qwen.'],
-    ['lmstudio-community/SmolLM2-360M-Instruct-GGUF','SmolLM2 360M','Small instruction model from Hugging Face.']
-];
-async function readCard(repo,revision,signal){
-    const res=await fetch('https://huggingface.co/'+repo+'/raw/'+revision+'/README.md',{signal});
+const hf=require('./hugging-face.cjs');
+async function readCard(repo,revision,signal,fetcher=fetch){
+    const res=await fetcher('https://huggingface.co/'+repo+'/raw/'+revision+'/README.md',{signal});
     if(!res.ok)return 'Publisher README unavailable. Open the model card for details.';
     const reader=res.body.getReader(),chunks=[];let length=0;
     try{while(length<24000){const {done,value}=await reader.read();if(done)break;chunks.push(Buffer.from(value).subarray(0,24000-length));length+=value.length;}}
     finally{await reader.cancel();}
     return Buffer.concat(chunks).toString('utf8').replace(/^---[\s\S]*?\n---\s*/, '').replace(/<[^>]{0,1000}>/g,'').replace(/!\[[^\]]*\]\([^)]*\)/g,'').trim().slice(0,12000)||'Open the publisher model card for details.';
 }
-function chooseFile(vscode, metadata, files, brand, local=[]) {
+function chooseFile(vscode, metadata, files, brand, local=[], account, lmOptions={}) {
     const panel = vscode.window.createWebviewPanel('meshlit.discovery','Meshlit · Find a model',vscode.ViewColumn.Active,{enableScripts:true,localResourceRoots:[]});
     return new Promise(resolve => {
         let request, version, revision, selected, repos = new Set(), choices = [];
-        const snapshots=new Map();
+        const lm=require('./lm-catalog.cjs').catalog(lmOptions);
+        const publicLm=require('./lm-public.cjs').publicCatalog();
+        let preferPublic=false;
+        const snapshots=new Map(), rows=new Map(), logos=new Map();
+        let next, scope, changingAccount=false, transferred=false;
+        const lifetime=new AbortController();
         const capacity = budget();
-        panel.onDidDispose(() => {request?.abort();resolve(undefined);});
+        panel.onDidDispose(() => {request?.abort();lifetime.abort();if(!transferred)lm.dispose();resolve(undefined);});
         panel.webview.onDidReceiveMessage(async msg => {
+            if(msg?.op==='account' && account && !changingAccount){
+                changingAccount=true;
+                try{
+                    if(msg.action==='tokens'){await vscode.env.openExternal(vscode.Uri.parse('https://huggingface.co/settings/tokens'));return;}
+                    if(msg.action==='in')await account.signIn();
+                    else if(msg.action==='out')await account.signOut();
+                    else return;
+                    request?.abort();snapshots.clear();rows.clear();repos.clear();next=undefined;
+                    await panel.webview.postMessage({op:'account',name:await account.name()});
+                }catch(error){vscode.window.showErrorMessage(error.message);}
+                finally{changingAccount=false;}
+                return;
+            }
+            if(msg?.op==='logo'){
+                const row=rows.get(msg.repo);
+                let publisher=row?.publisher;
+                if(!publisher&&row?.lmPublic){
+                    const detail=await publicLm.summary(row.id,AbortSignal.any([lifetime.signal,AbortSignal.timeout(9000)])).catch(()=>undefined);
+                    publisher=detail?.publisher;
+                }
+                if(!publisher)return;
+                if(!logos.has(publisher))logos.set(publisher,hf.avatar(publisher,AbortSignal.any([lifetime.signal,AbortSignal.timeout(7000)])).catch(()=>undefined));
+                const url=await logos.get(publisher);
+                if(url&&!lifetime.signal.aborted)await panel.webview.postMessage({op:'logo',publisher,repo:msg.repo,url});
+                return;
+            }
             if(msg?.op==='copy'&&repos.has(msg.repo))return vscode.env.clipboard.writeText(msg.repo);
             if(msg?.op==='source'&&(['vendor','more'].includes(msg.action)||(msg.action==='local'&&local.some(x=>x.id===msg.id)))){
                 resolve({action:msg.action,id:msg.id});panel.dispose();return;
             }
             if(msg?.op==='readme'&&msg.seq===version&&msg.repo===selected&&/^[a-f0-9]{40}$/.test(revision)){
                 const controller=request;
-                const text=await readCard(selected,revision,AbortSignal.any([controller.signal,AbortSignal.timeout(8000)])).catch(()=>'Open the publisher model card to read the README.');
+                const text=await readCard(selected,revision,AbortSignal.any([controller.signal,AbortSignal.timeout(8000)]),account?.request).catch(()=>'Open the publisher model card to read the README.');
                 if(!controller.signal.aborted)await panel.webview.postMessage({op:'readme',seq:msg.seq,text});
                 return;
             }
-            if(msg?.op==='card'&&repos.has(msg.repo))return vscode.env.openExternal(vscode.Uri.parse('https://huggingface.co/'+msg.repo));
+            if(msg?.op==='card'&&repos.has(msg.repo))return vscode.env.openExternal(vscode.Uri.parse((rows.get(msg.repo)?.lmPublic?'https://lmstudio.ai/':rows.get(msg.repo)?.lm?'https://lmstudio.ai/models/':'https://huggingface.co/')+msg.repo));
             if (msg?.op === 'close') return panel.dispose();
-            if (msg?.op === 'ready') return panel.webview.postMessage({op:'ready',capacity,local,caption:size(capacity)+' · CPU memory budget'});
+            if (msg?.op === 'ready') return panel.webview.postMessage({op:'ready',capacity,local,account:await account?.name(),caption:size(capacity)+' · CPU memory budget'});
             if (msg?.op === 'download') {
                 const item = choices.find(f => f.sha === msg.sha);
-                if (item && msg.seq === version) {resolve(item);panel.dispose();}
+                if(item && msg.seq===version) {
+                    if(item.option){transferred=true;resolve({...item,action:'lm-download',dispose:lm.dispose});}
+                    else resolve(item);
+                    panel.dispose();
+                }
                 return;
             }
-            if (!['search','details'].includes(msg?.op) || !Number.isSafeInteger(msg.seq)) return;
+            if (!['search','page','details'].includes(msg?.op) || !Number.isSafeInteger(msg.seq)) return;
             request?.abort();
             const controller = new AbortController();
             request = controller;
@@ -79,39 +105,70 @@ function chooseFile(vscode, metadata, files, brand, local=[]) {
             const signal = AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]);
             const post = payload => !controller.signal.aborted && panel.webview.postMessage({...payload,seq:msg.seq});
             try {
-                if (msg.op === 'search') {
-                    repos = new Set();
-                    if (typeof msg.q !== 'string' || msg.q.length > 220 || !['','likes','downloads','lastModified'].includes(msg.sort)) throw Error('Invalid search');
-                    if(!msg.q){
-                        const previews=await Promise.all(picks.map(async ([id,name,summary])=>{
-                            let data=snapshots.get(id);
-                            try{if(!data){data=await metadata('https://huggingface.co/api/models/'+id+'?blobs=true',signal);snapshots.set(id,data);}}
-                            catch{return {id,name,summary};}
-                            const sizes=files(id,data).map(f=>f.bytes);
-                            return {id,name,summary,minBytes:sizes.length?Math.min(...sizes):undefined,likes:data.likes||0,downloads:data.downloads||0,lastModified:Date.parse(data.lastModified)||0};
-                        }));
-                        if(controller.signal.aborted)return;
-                        if(msg.sort)previews.sort((a,b)=>(b[msg.sort]||0)-(a[msg.sort]||0));
-                        repos=new Set(previews.map(x=>x.id));await post({op:'results',items:previews});return;
+                if(msg.op==='search'||msg.op==='page'){
+                    const append=msg.op==='page', source=msg.source||'hub';
+                    if(!['hub','mine','lm'].includes(source)||typeof msg.q!=='string'||msg.q.length>220||!['','likes','downloads','lastModified'].includes(msg.sort))throw Error('Invalid search');
+                    const key=JSON.stringify([source,msg.q,msg.sort]);
+                    if(append && (!next||scope!==key))return;
+                    if(!append){next=undefined;rows.clear();repos.clear();scope=key;}
+                    let items, page={};
+                    if(source==='lm'){
+                        if(!preferPublic){
+                            try{items=await lm.list(msg.q,msg.sort,signal);}
+                            catch{preferPublic=true;}
+                        }
+                        if(preferPublic)items=await publicLm.list(msg.q,msg.sort,signal);
+                    }else{
+                        const exact=source==='hub'&&repoInput(msg.q);
+                        if(exact)items=[{id:exact,publisher:exact.split('/')[0],summary:'Hugging Face repository'}];
+                        else{
+                            const params=new URLSearchParams({limit:'50'});
+                            if(source==='mine'){
+                                const name=await account?.name();
+                                if(!name)throw Error('Sign in to Hugging Face to see your model repositories.');
+                                params.set('author',name);
+                            }else params.set('filter','gguf');
+                            if(msg.q)params.set('search',msg.q);
+                            if(msg.sort){params.set('sort',msg.sort);params.set('direction','-1');}
+                            for(const field of ['author','likes','downloads','lastModified','tags','pipeline_tag'])params.append('expand',field);
+                            items=hf.modelRows(await metadata(append?next:'https://huggingface.co/api/models?'+params,signal,page));
+                        }
                     }
-                    const exact=repoInput(msg.q);
-                    if(exact){repos.add(exact);await post({op:'results',items:[{id:exact,summary:'Hugging Face repository'}]});return;}
-                    const params = new URLSearchParams({filter:'gguf',limit:'30',search:msg.q});
-                    if (msg.sort) {params.set('sort',msg.sort);params.set('direction','-1');}
-                    const rows = await metadata('https://huggingface.co/api/models?'+params,signal);
-                    const items = rows.filter(m=>typeof m.id==='string' && /^[\w-][\w.-]*\/[\w-][\w.-]*$/.test(m.id)).map(m=>({
-                        id:m.id,summary:[Number.isFinite(m.downloads)?m.downloads+' downloads':'',Number.isFinite(m.likes)?m.likes+' likes':'',m.lastModified?'Updated '+String(m.lastModified).slice(0,10):''].filter(Boolean).join(' · ')
-                    }));
-                    if (controller.signal.aborted) return;
-                    repos = new Set(items.map(m=>m.id));
-                    await post({op:'results',items});
+                    if(controller.signal.aborted)return;
+                    next=page.next;
+                    for(const item of items){rows.set(item.id,item);repos.add(item.id);}
+                    await post({op:'results',items:[...rows.values()],more:!!next});
                 } else {
                     if (!repos.has(msg.repo)) throw Error('Select a repository from the search results');
+                    const row=rows.get(msg.repo);
+                    if(row?.lmPublic){
+                        const entry=await publicLm.details(row,signal);
+                        const groups=await Promise.all(entry.sources.map(async repo=>{
+                            const data=await metadata('https://huggingface.co/api/models/'+repo+'?blobs=true',signal);
+                            return files(repo,data).map(item=>({...item,repo}));
+                        }));
+                        if(controller.signal.aborted)return;
+                        choices=groups.flat();selected=row.id;revision=undefined;
+                        await post({op:'files',metrics:[row.downloads.toLocaleString()+' downloads',Number.isFinite(row.likes)?row.likes+' likes':'',row.lastModified?'Updated '+new Date(row.lastModified).toISOString().slice(0,10):''],
+                            facts:row.caps,readme:entry.readme||row.summary,description:row.summary,files:choices.map(({name,sha,bytes})=>({name,sha,bytes,size:size(bytes)}))});
+                        return;
+                    }
+                    if(row?.lm){
+                        selected=row.id;revision=undefined;
+                        const options=await lm.variants(row,signal);
+                        if(controller.signal.aborted)return;
+                        choices=options;
+                        await post({op:'files',metrics:[row.downloads.toLocaleString()+' downloads',row.likes.toLocaleString()+' likes',row.staff?'LM Studio staff pick':''],facts:[...row.facts,...row.caps],
+                            description:row.summary,readme:row.summary,files:options.map(({name,bytes,sha,fit,format})=>({name,bytes,sha,fit,format,size:size(bytes)}))});
+                        return;
+                    }
                     const data = snapshots.get(msg.repo)||await metadata('https://huggingface.co/api/models/'+msg.repo+'?blobs=true',signal);
                     if (controller.signal.aborted) return;
+                    if(snapshots.size>=100)snapshots.delete(snapshots.keys().next().value);
+                    snapshots.set(msg.repo,data);
                     selected=msg.repo;revision=data.sha;
                     choices = files(msg.repo,data).map(item=>({...item,repo:msg.repo}));
-                    const facts = ['GGUF','Bundled runtime: CPU'];
+                    const facts = choices.length?['GGUF','Bundled runtime: CPU']:[];
                     if(data.siblings?.some(file=>/(^|\/)mmproj[-_.]/i.test(file.rfilename)))facts.push('Vision weights');
                     for(const capability of ['vision','image-text-to-text','tool-use','reasoning'])if(data.tags?.includes(capability))facts.push(capability);
                     if (typeof data.gguf?.architecture === 'string') facts.push(data.gguf.architecture);

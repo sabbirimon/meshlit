@@ -58,3 +58,37 @@ test('cancelling a paired stream stops the host request and allows another',asyn
     await Promise.race([end,require('node:timers/promises').setTimeout(3000,undefined,{ref:false}).then(()=>{throw Error('Host kept generating');})]);
     assert.ok((await a.service.call(target,{op:'models'},AbortSignal.timeout(3000))).models.length);
 });
+test('MeshCoin verifies signed blocks, retry-safe keeper allocations and individual serials',async t=>{
+    const {Wallet,walletId,coinSerial}=require('./meshcoin.cjs'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+    const host=peer(t),keeper=peer(t),root=fs.mkdtempSync(path.join(os.tmpdir(),'studio-meshcoin-'));
+    const w=new Wallet(path.join(root,'host'),host.identity),k=new Wallet(path.join(root,'keeper'),keeper.identity);
+    t.after(()=>{w.close();k.close();fs.rmSync(root,{recursive:true,force:true})});
+    const target={id:host.service.id,host:'127.0.0.1'};
+    host.service.hooks.wallet=async()=>w;
+    await host.service.start({host:'127.0.0.1',advertise:false});target.port=host.service.port;
+    await keeper.service.start({host:'127.0.0.1',advertise:false});
+    const call=msg=>keeper.service.call(target,msg,AbortSignal.timeout(4000));
+    await assert.rejects(call({op:'identity'}),/Pair/);
+    await call({op:'pair',name:'Keeper',node:keeper.identity.node});
+    const card=(await call({op:'identity'})).identity;assert.equal(card.contributor,w.owner);assert.notEqual(card.session,keeper.service.session);
+    assert.equal(w.record('off',50),undefined);w.set('record',true);
+    const b=w.record('job1',10,{keeper:k.owner,bps:2000});
+    assert.equal(w.record('job1',10,{}),undefined);assert.equal(w.record('no-usage',undefined,{}),undefined);
+    assert.equal(coinSerial(b,1).length,128);assert.notEqual(coinSerial(b,1),coinSerial(b,2));assert.throws(()=>coinSerial(b,11));
+    const p={key:host.identity.key,node:host.identity.node};
+    await assert.rejects(k.sync(p,call),/enable receipt sharing/);
+    w.set('share:'+k.owner,true);await k.sync(p,call);await k.sync(p,call);
+    assert.equal(w.totals().earned,8);assert.equal(w.totals().paid,2);assert.equal(k.totals().kept,2);
+    const bad=structuredClone(b);bad.receipt.generatedTokens=500;
+    k.db.prepare('UPDATE blocks SET body=? WHERE owner=?').run(JSON.stringify(bad),w.owner);
+    assert.throws(()=>k.totals(),/verify/);
+    const restored=new Wallet(path.join(root,'restore'),host.identity);
+    try{
+        const backup=w.backup();
+        restored.restore(backup);restored.restore(backup);
+        assert.deepEqual(restored.totals(),w.totals());
+        assert.throws(()=>restored.restore({...backup,owner:k.owner}));
+        assert.throws(()=>restored.restore({...backup,acks:[{...backup.acks[0],signature:'00'}]}));
+    }finally{restored.close();}
+
+});

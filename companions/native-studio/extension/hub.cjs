@@ -3,9 +3,10 @@ const fs = require('node:fs/promises'), path = require('node:path'), crypto = re
 const {imported} = require('./catalog.cjs');
 const HUB = 'https://huggingface.co';
 const repoPattern = /^[\w.-]+\/[\w.-]+$/;
-async function metadata(url, signal) {
-    const response = await fetch(url, {signal, redirect:'error'});
-    if (!response.ok) throw Error('Model Hub returned HTTP '+response.status);
+async function metadata(url, signal, fetcher=fetch, page) {
+    const response = await fetcher(url, {signal, redirect:'error'});
+    if (!response.ok) throw Error('Model Hub returned HTTP '+response.status+([401,403].includes(response.status)?'. Sign in with a read token and check your access on the publisher model card.':''));
+    if(page)page.next=require('./hugging-face.cjs').nextPage(response.headers.get('link'));
     const chunks=[]; let size=0;
     for await (const part of response.body) {
         size+=part.length;
@@ -50,7 +51,7 @@ async function download(item, dir, signal, progress, fetcher=fetch) {
         await fs.rm(temp,{force:true});
     }
 }
-async function install(vscode,directory,item) {
+async function install(vscode,directory,item,fetcher=fetch) {
     const ok=await vscode.window.showInformationMessage('Download '+item.name+' ('+(item.bytes/1024**3).toFixed(2)+' GiB) from '+item.repo+' into Studio storage?',{modal:true},'Download');
     if(!ok)return;
     return vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:'Downloading '+item.name,cancellable:true},async(progress,token)=>{
@@ -58,7 +59,7 @@ async function install(vscode,directory,item) {
         let last=0;
         try{return await download(item,directory,AbortSignal.any([ctl.signal,AbortSignal.timeout(3600000)]),fraction=>{
             const now=Math.floor(100*fraction);if(now>last){progress.report({increment:now-last});last=now;}
-        });}finally{sub.dispose();}
+        },fetcher);}finally{sub.dispose();}
     });
 }
 module.exports={metadata,files,download,install};

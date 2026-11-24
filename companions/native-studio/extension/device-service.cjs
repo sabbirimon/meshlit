@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 const tls = require('node:tls');
+const crypto=require('node:crypto');
+const {walletId}=require('./meshcoin.cjs');
 const net = require('node:net');
 const os = require('node:os');
 const {once} = require('node:events');
@@ -26,6 +28,7 @@ async function* frames(socket) {
 class Devices {
     constructor(identity,hooks) {
         this.tls=credentials(identity);this.key=identity.key;this.id=deviceId(identity.key);
+        this.session=crypto.randomUUID();this.startedAt=new Date().toISOString();
         this.name=os.hostname().slice(0,128);this.node=identity.node;
         this.hooks=hooks;this.nearby=new Map();this.sockets=new Set();this.pendingApproval=false;
         this.lastPrompt=new Map();
@@ -42,6 +45,10 @@ class Devices {
                 if(this.nearby.size<128||this.nearby.has(p.id))this.nearby.set(p.id,p);
             });} catch(e){this.stop();throw e;}
         }
+    }
+    identityCard(){
+        return {application:'bd.com.imon.meshlit.studio',version:require('./package.json').version,
+            node:this.node,contributor:walletId(this.key),device:this.id,session:this.session,startedAt:this.startedAt};
     }
     known(key) {return this.hooks.peers().find(p=>p.key===key);}
     async serve(socket) {
@@ -70,9 +77,13 @@ class Devices {
                         } finally {this.pendingApproval=false;}
                     }
                     line(socket,{ok:true,name:this.name,node:this.node});
+                    this.hooks.audit?.('pair.verified',key);
                 }else{
                     if(!peer)throw Error('Pair this device first');
-                    if(msg.op==='models')line(socket,{models:this.hooks.inventory(key)});
+                    if(msg.op==='identity'){line(socket,{identity:this.identityCard()});this.hooks.audit?.('identity.verified',key);}
+                    else if(msg.op==='walletPage'&&this.hooks.wallet){const wallet=await this.hooks.wallet();line(socket,{blocks:wallet.page(key,msg.height,msg.anchor)});}
+                    else if(msg.op==='walletAck'&&this.hooks.wallet){const wallet=await this.hooks.wallet();wallet.acknowledge(key,msg.hash,msg.proof);line(socket,{ok:true});}
+                    else if(msg.op==='models')line(socket,{models:this.hooks.inventory(key)});
                     else if(msg.op==='chat'){
                         if(this.generating)throw Error('Host is busy');
                         this.generating=true;
@@ -104,7 +115,7 @@ class Devices {
             await once(socket,'secureConnect',{signal:AbortSignal.any([signal,AbortSignal.timeout(5000)])});
             const key=socketKey(socket);
             if(deviceId(key)!==device.id || device.key && device.key!==key)throw Error('Device identity changed');
-            line(socket,msg);
+            line(socket,msg.op==='chat'&&!msg.jobId?{...msg,jobId:crypto.randomUUID()}:msg);
             for await(const answer of frames(socket)){
                 if(answer.error)throw Error(answer.error);
                 if(typeof answer.text==='string'){onDelta(answer.text);continue;}

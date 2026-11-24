@@ -57,12 +57,16 @@ async function activate(context) {
         ],{title:'Output guardrails · currently '+(enabled?'on':'off')});
         if(choice) {await context.globalState.update('filter-output',choice.enabled);resetChats();status();}
     }
+    const hfAccount=require('./hugging-face.cjs').account(vscode,context);
     async function browseModels(){
         const hub=require('./hub.cjs');
         const state=dashboardState();
         const inventory=[...state.library,...state.providers].map(row=>({...row,local:true,summary:row.detail}));
-        const item=await discovery.chooseFile(vscode,hub.metadata,hub.files,brand,inventory);
+        const lmRoute=[settings(),...routes()].find(r=>r.kind==='LM Studio' && r.base);
+        const lmOptions=lmRoute?{baseUrl:lmRoute.base.replace(/^http/,'ws').replace(/\/v1\/?$/,''),apiToken:await context.secrets.get('token:'+lmRoute.base)}:{};
+        const item=await discovery.chooseFile(vscode,(url,signal,page)=>hub.metadata(url,signal,hfAccount.request,page),hub.files,brand,inventory,hfAccount,lmOptions);
         if(!item)return;
+        if(item.action==='lm-download'){try{return await require('./lm-catalog.cjs').install(vscode,item);}finally{await item.dispose();}}
         if(item.action==='more')return select();
         if(item.action==='vendor')return select({label:'Import from LM Studio or Bionic…'});
         if(item.action==='local'){
@@ -108,7 +112,7 @@ async function activate(context) {
             if(choice==='Import from Hugging Face…'){
                 const hub=require('./hub.cjs'),dir=path.join(context.globalStorageUri.fsPath,'models');
                 if(!forced?.item)return browseModels();
-                route=await hub.install(vscode,dir,forced.item);
+                route=await hub.install(vscode,dir,forced.item,hfAccount.request);
                 if(!route)return;
             } else if(choice==='Import from LM Studio or Bionic…'){
                 const file=await require('./catalog.cjs').pickLibraryFile(vscode);
@@ -490,6 +494,7 @@ async function activate(context) {
                 if(msg.op==='pickModel'&&!active&&!changing){changing=true;try{await browseModels();}finally{changing=false;}}
                 if(msg.op==='tuneChat'&&!active)await tuneModel();
                 if(msg.op==='pair') await pair();
+                if(msg.op==='wallet')await pair.wallet();
                 if(msg.op==='control') await control();
                 if(msg.op==='guard' && !active) await guardrails();
                 if(msg.op==='ide') await ide();

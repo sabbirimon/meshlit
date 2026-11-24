@@ -127,3 +127,21 @@ test('import sources accept public Hugging Face repository links and list single
   assert.deepEqual(await libraryFiles(dir),[path.join(repo,'Q4.gguf')]);
  }finally{await fs.rm(dir,{recursive:true,force:true});}
 });
+
+test('Hugging Face sign-in validates before saving and keeps credentials inside the Hub origin',async()=>{
+    const {account,nextPage,modelRows}=require('./hugging-face.cjs');
+    const store=new Map(),profile=new Map(),seen=[];
+    const context={secrets:{get:k=>store.get(k),store:(k,v)=>store.set(k,v),delete:k=>store.delete(k)},globalState:{get:(k,d)=>profile.get(k)||d,update:(k,v)=>profile.set(k,v)}};
+    let accepted=false;
+    const hf=account({window:{showInputBox:async opts=>{assert.equal(opts.password,true);return 'unit-test-token'}}},context,async(url,init)=>{
+        seen.push([url,init.headers.Authorization]);return new Response(JSON.stringify({name:'test-account'}),{status:accepted?200:401});
+    });
+    await assert.rejects(hf.signIn(),/rejected/);assert.equal(store.size,0);
+    accepted=true;await hf.signIn();assert.equal(await hf.name(),'test-account');
+    await hf.request('https://huggingface.co/api/models');assert.equal(seen.at(-1)[1],'Bearer unit-test-token');
+    await assert.rejects(hf.request('https://example.org/'),/origin/);
+    await hf.signOut();await hf.request('https://huggingface.co/api/models');assert.equal(seen.at(-1)[1],undefined);
+    assert.equal(nextPage('<https://example.org/api/models?cursor=a>; rel="next"'),undefined);
+    assert.match(nextPage('</api/models?cursor=abc>; rel="next"'),/^https:\/\/huggingface.co\/api\/models/);
+    assert.equal(modelRows([{id:'community/weights',tags:['base_model:quantized:Qwen/test']}])[0].publisher,'Qwen');
+});

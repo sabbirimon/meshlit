@@ -54,6 +54,7 @@ import java.io.File
  * that survives lives in `AppModule.kt`, the DI definition site).
  */
 class MeshlitApplication : android.app.Application() {
+    val liveSessionId: String = java.util.UUID.randomUUID().toString()
 
     private val log = AppLoggerFactory.appLogger("MeshlitApplication")
 

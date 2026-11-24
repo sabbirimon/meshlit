@@ -38,6 +38,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --prefix companions/studio-relay --ignore-scripts
+      - run: npm ci --prefix companions/native-studio/catalog-sdk --ignore-scripts
       - run: node --test companions/native-studio/extension/studio.test.cjs companions/native-studio/extension/model-adapters.test.cjs companions/native-studio/extension/device.test.cjs
         env:
           MESHLIT_RELAY_TEST: '1'
