@@ -16,8 +16,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      SOURCE: 328a91bf4da7bf06ab57b0365fc6bbdee5559a68
-      RUN: '45298471291'
+      SOURCE: a7951b38f846dd677fd05159957f4d8c9352f1d1
+      RUN: '45298771579'
       TAG: v2.0.49-studio.1
     steps:
       - name: Verify all tested packages before publishing
@@ -53,7 +53,7 @@ jobs:
 
           Desktop MeshCoin is an opt-in, non-transferable contribution preview. Each unit has a deterministic 128-character serial. The contributor can self-record for free or agree a percentage with a paired recordkeeper. Signed wallet backups preserve those records. The Hugging Face dashboard supports optional read-token sign-in and paginated public browsing. The LM Studio source uses its official SDK when permitted and falls back to the public model catalog.
 
-          Public GGUF downloads resume from verified byte ranges after interruption. Chat history settings enable encrypted local transcripts, search and branching from a reply. The sidebar can collapse to an icon rail. Meshlit Home has its own menus, local reply preferences, per-reply voting and contextual help for unavailable controls. The two-pane model picker opens from the composer without login and exposes public Hugging Face downloads and in-place LM Studio or Bionic GGUF registration. General Chat distinguishes speakers, identifies the model on replies and groups attachment, access, model, microphone and send/stop controls in the composer. General Chat, the IDE sidebar and welcome screen, and the desktop launchers use the ringed branch symbol. The archives were exercised after extraction. The Windows installer was installed, launched and uninstalled in CI. SHA256SUMS.txt covers all five downloads. GitHub attestations bind them to commit 328a91bf4da7bf06ab57b0365fc6bbdee5559a68. The macOS preview uses ad-hoc signing. Windows publisher signing and Apple notarization are pending.
+          Public GGUF downloads resume from verified byte ranges after interruption. Chat history settings enable encrypted local transcripts, search and branching from a reply. The sidebar can collapse to an icon rail. Meshlit Home has its own menus, local reply preferences, per-reply voting and contextual help for unavailable controls. The two-pane model picker opens from the composer without login and exposes public Hugging Face downloads and in-place LM Studio or Bionic GGUF registration. General Chat distinguishes speakers, identifies the model on replies and groups attachment, access, model, microphone and send/stop controls in the composer. General Chat, the IDE sidebar and welcome screen, and the desktop launchers use the ringed branch symbol. The archives were exercised after extraction. The Windows installer was installed, launched and uninstalled in CI. SHA256SUMS.txt covers all five downloads. GitHub attestations bind them to commit a7951b38f846dd677fd05159957f4d8c9352f1d1. The macOS preview uses ad-hoc signing. Windows publisher signing and Apple notarization are pending.
           NOTES
           gh release create "$TAG" -R "$REPO" --target "$SOURCE" --prerelease --draft --title "Meshlit Studio v2.0.49-studio.1" --notes-file notes.md assets/*
           gh release edit "$TAG" -R "$REPO" --draft=false
