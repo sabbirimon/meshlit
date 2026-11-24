@@ -4,7 +4,9 @@ Tracking reconciled 2026-11-24: [Plan](../PLAN.md) · [Progress](../PROGRESS.md)
 Scope: Android/shared reference; desktop ports have separate acceptance. Phase labels in older sections retain their original scope.
 <!-- meshlit-document-tracking:end -->
 
-Desktop chat uses workbench theme colors for the title and speaker labels. The title stays centered as the sidebar opens or closes. Android centers the model name above its status. Its status bar and system navigation follow the appearance selected in Meshlit, including when the phone uses a different theme.
+Desktop chat uses workbench theme colors for the title and speaker labels. The title stays centered as the sidebar opens or closes. Android centers the model name in the chat header and uses the phone’s system typeface by default. Its status bar and system navigation follow the appearance selected in Meshlit, including when the phone uses a different theme.
+
+On a phone, open the chat menu and choose **Models and imports**. **On device** opens file import, URL import and installed models. **Hugging Face** searches GGUF repositories. **LM Studio** opens the public catalog. Choose a family, a variant, a repository and then the file size you want to download. Transfers appear under **On device**. Long-press the attachment, chat-tools or voice icon to see its label.
 
 ## Start a conversation
 
@@ -22,7 +24,7 @@ Desktop chat uses workbench theme colors for the title and speaker labels. The t
 2. Choose the GGUF file you want. Keep Studio open while the download finishes. A registered download should appear in the local model list. Select it, send a short message and check the model named on the reply.
 3. For an existing desktop installation, choose **Import from LM Studio or Bionic**. If the list is empty, choose the folder selected in that app's model settings. Meshlit can use a complete single-file GGUF in place. Keep the original file at that location.
 4. For other desktop formats, choose **Import model file** or **Import model folder**. Packages may require a local tokenizer, an index and every weight shard. Review the reported adapter before selecting a runtime. An inventory entry alone does not establish that the model can generate on your hardware.
-5. On Android, open **Settings → Hugging Face dashboard** for Hub search and **Models → Import** for a file already on the phone. Choose the file through the system picker. After import, use Models to load it and check the status before chatting. Desktop folders on another device must first be made available to the phone.
+5. On Android, open **Models and imports → Hugging Face** for repository search, **LM Studio** for catalog families, or **On device → Import** for a file already on the phone. Choose the file through the system picker. After import, use Models to load it and check the status before chatting. Desktop folders on another device must first be made available to the phone.
 
 On a Samsung phone, open **Settings → Agents** to inspect profiles, teams and the registry. Select **More tools** for logs and connections. Long-press a settings shortcut for its description. The device radar shows live discovery while scanning. Devices without position data appear in the inset. The phone model library puts local import and URL download ahead of recommendations.
 

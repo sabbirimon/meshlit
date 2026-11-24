@@ -199,7 +199,7 @@ object MeshlitMonoStyles {
 /** Keep the established size/weight hierarchy; only replace the requested UI family. */
 fun typographyFor(font:UiFont):Typography {
     if(font==UiFont.FIGTREE) return MeshlitTypography
-    val family=when(font){UiFont.FIGTREE->MeshlitFigtree;UiFont.SYSTEM->FontFamily.SansSerif;UiFont.SERIF->FontFamily.Serif;UiFont.MONO->MeshlitMapleMono}
+    val family=when(font){UiFont.FIGTREE->MeshlitFigtree;UiFont.SYSTEM->FontFamily.Default;UiFont.SERIF->FontFamily.Serif;UiFont.MONO->MeshlitMapleMono}
     val t=MeshlitTypography
     return t.copy(displayLarge=t.displayLarge.copy(fontFamily=family),displayMedium=t.displayMedium.copy(fontFamily=family),displaySmall=t.displaySmall.copy(fontFamily=family),
         headlineLarge=t.headlineLarge.copy(fontFamily=family),headlineMedium=t.headlineMedium.copy(fontFamily=family),headlineSmall=t.headlineSmall.copy(fontFamily=family),

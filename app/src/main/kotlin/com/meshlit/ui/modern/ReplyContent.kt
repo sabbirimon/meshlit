@@ -30,6 +30,7 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -67,7 +68,7 @@ import kotlinx.coroutines.launch
         is ReplyBlock.Prose -> Row(modifier.fillMaxWidth().padding(start=(minOf(block.indent,4)*12).dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             if(block.quote) Box(Modifier.width(3.dp).heightIn(min=24.dp).background(colors.primary))
             block.marker?.let{Text(it,Modifier.widthIn(min=22.dp),style=MaterialTheme.typography.bodyLarge,color=colors.onSurfaceVariant)}
-            val type=when(block.heading){1->MaterialTheme.typography.headlineSmall;2->MaterialTheme.typography.titleLarge;in 3..6->MaterialTheme.typography.titleMedium;else->MaterialTheme.typography.bodyLarge}
+            val type=when(block.heading){1->MaterialTheme.typography.headlineSmall;2->MaterialTheme.typography.titleLarge;in 3..6->MaterialTheme.typography.titleMedium;else->MaterialTheme.typography.bodyLarge.copy(fontSize=18.sp,lineHeight=28.sp)}
             SelectionContainer(Modifier.weight(1f)) {
                 Text(richReply(block.spans),style=if(block.heading>0) type.copy(fontWeight=FontWeight.SemiBold) else type,
                     color=if(block.heading>0) colors.primary else colors.onSurface,

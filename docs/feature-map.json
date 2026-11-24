@@ -67,9 +67,11 @@
     },
     {
       "id": "models",
-      "title": "Model downloads, imports, startup and management",
+      "title": "On-device imports, Hugging Face and LM Studio model discovery",
       "status": "implemented",
       "sources": [
+        "app/src/main/kotlin/com/meshlit/ui/phone/PhoneModelPicker.kt",
+        "app/src/main/kotlin/com/meshlit/models/LmStudioCatalog.kt",
         "app/src/main/kotlin/com/meshlit/models/ModelLibrary.kt",
         "core-inference/src/main/kotlin/com/meshlit/core/inference/models/ModelDownload.kt"
       ],

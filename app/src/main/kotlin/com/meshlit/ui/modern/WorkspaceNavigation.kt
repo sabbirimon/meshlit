@@ -95,8 +95,8 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
         }
         OutlinedTextField(query,{query=it.take(600)},Modifier.fillMaxWidth().padding(horizontal=T.medium).testTag("workspace-search"),singleLine=true,
             textStyle=MaterialTheme.typography.bodyMedium,placeholder={Text("Find a page or tool")},leadingIcon={Icon(Icons.Default.Search,null)},
-            trailingIcon={if(query.isNotBlank()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear menu search")}},shape=RoundedCornerShape(16.dp))
-        FilledTonalButton(onClick=onNew,enabled=!state.running,modifier=Modifier.fillMaxWidth().padding(T.medium)) {
+            trailingIcon={if(query.isNotBlank()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear menu search")}},shape=RoundedCornerShape(8.dp))
+        TextButton(onClick=onNew,enabled=!state.running,modifier=Modifier.fillMaxWidth().padding(T.medium)) {
             Icon(Icons.Default.Add,null,Modifier.size(18.dp));Spacer(Modifier.width(T.small));Text("New chat")
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("app-drawer"),contentPadding=PaddingValues(horizontal=T.medium,vertical=T.tiny),
@@ -158,9 +158,8 @@ internal fun WorkspaceSidebar(state:ChatState,current:String,style:SidebarStyle,
 
 @Composable private fun WorkspaceNavigationCard(entry:WorkspaceDestination,selected:Boolean,onSelect:(String)->Unit,modifier:Modifier,rows:Boolean=false,searchQuery:String="") {
     val colors=MaterialTheme.colorScheme
-    Surface(onClick={onSelect(entry.id)},modifier=modifier.testTag("workspace-${entry.id}"),shape=RoundedCornerShape(14.dp),
-        color=if(selected) colors.secondaryContainer else colors.surfaceContainerLow,
-        border=BorderStroke(1.dp,if(selected) colors.primary.copy(alpha=0.55f) else colors.outlineVariant.copy(alpha=0.28f))) {
+    Surface(onClick={onSelect(entry.id)},modifier=modifier.testTag("workspace-${entry.id}"),shape=RoundedCornerShape(6.dp),
+        color=if(selected) colors.surfaceContainerHigh else colors.surface) {
         if(rows) Row(Modifier.heightIn(min=T.touch).padding(horizontal=T.medium,vertical=T.small),verticalAlignment=Alignment.CenterVertically,
             horizontalArrangement=Arrangement.spacedBy(T.medium)) {
             SettingsIconTile(entry.id)

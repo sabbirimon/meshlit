@@ -42,7 +42,7 @@ data class MeshlitThemeConfig(
     val themeMode: ThemeMode = ThemeMode.DARK,
     val dynamicColors: Boolean = false,
     val fontScale: Float = 1.0f,
-    val uiFont: UiFont = UiFont.FIGTREE,
+    val uiFont: UiFont = UiFont.SYSTEM,
     val uiLanguage: com.meshlit.workspace.WorkspaceLanguage = com.meshlit.workspace.WorkspaceLanguage.ENGLISH,
     val surfaceStyle: SurfaceStyle = SurfaceStyle.SOLID,
     val workspaceLayout: WorkspaceLayout = WorkspaceLayout.ADAPTIVE,

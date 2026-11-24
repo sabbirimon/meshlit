@@ -29,18 +29,19 @@ internal fun WorkspaceDock(selected:String,onSelect:(String)->Unit) {
         Triple("agents","Agents",Icons.Outlined.SmartToy),
         Triple("settings","Settings",Icons.Outlined.Settings),
     ).filter{com.meshlit.BuildProfile.routeAllowed(it.first)}
-    Surface(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=10.dp,vertical=4.dp).testTag("workspace-dock"),shape=RoundedCornerShape(24.dp),border=androidx.compose.foundation.BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant),color=MaterialTheme.colorScheme.surfaceContainerLow) {
-        Row(Modifier.fillMaxWidth().padding(horizontal=4.dp).selectableGroup()) {
-            items.forEach{(id,label,icon)->
+    val colors=MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth().navigationBarsPadding().testTag("workspace-dock")) {
+        HorizontalDivider(color=colors.outlineVariant)
+        Row(Modifier.fillMaxWidth().selectableGroup()) {
+            items.forEach { (id,label,icon) ->
                 val active=selected==id
-                Column(Modifier.weight(1f).heightIn(min=52.dp).selectable(active,role=Role.Tab,onClick={onSelect(id)}).testTag("dock-$id")
-                    .padding(vertical=4.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-                    Surface(shape=RoundedCornerShape(12.dp),color=if(active)MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent) {
-                        Icon(icon,null,Modifier.padding(horizontal=14.dp,vertical=3.dp).size(19.dp),
-                            tint=if(active)MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Text(label,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.labelSmall,
-                        color=if(active)MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.weight(1f).heightIn(min=64.dp).selectable(active,role=Role.Tab,onClick={onSelect(id)})
+                    .testTag("dock-$id").padding(vertical=6.dp), horizontalAlignment=Alignment.CenterHorizontally,
+                    verticalArrangement=Arrangement.Center) {
+                    val tint=if(active) colors.primary else colors.onSurfaceVariant
+                    Icon(icon,null,Modifier.size(22.dp),tint=tint)
+                    Spacer(Modifier.height(4.dp))
+                    Text(label,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.labelMedium,color=tint)
                 }
             }
         }

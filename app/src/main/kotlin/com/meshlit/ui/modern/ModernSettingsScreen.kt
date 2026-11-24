@@ -135,7 +135,9 @@ import kotlinx.coroutines.*
     if(destination=="openclaw"){OpenClawScreen(back);return}
     if(destination=="audit"){AuditTelemetryScreen(back);return}
     if(destination=="logs"){ModernLogsScreen(back);return}
-    if(destination=="models"){ModernModelsScreen(back);return}
+    if(destination=="models"){Scaffold(topBar={CenterAlignedTopAppBar(title={Text("Models")},navigationIcon={
+        IconButton(onClick=back){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back")}})}){padding->
+        Box(Modifier.padding(padding)){com.meshlit.ui.phone.PhoneModelPicker()}};return}
     if(destination=="identity-recovery"){com.meshlit.ui.v2.screens.RecoveryScreen();return}
     if(destination=="devices"){ModernNetworkScreen(back,{navigate("device-dashboard")},initialPage="app");return}
     if(destination=="network"){ModernNetworkScreen(back,{navigate("device-dashboard")},onDevices={navigate("devices")});return}
@@ -171,7 +173,7 @@ import kotlinx.coroutines.*
                     }}}
                     else -> {
                         item {OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().testTag("settings-search"),singleLine=true,placeholder={Text("Search settings")},
-                            leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear search")}},shape=RoundedCornerShape(28.dp))}
+                            leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty()) IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Clear search")}},shape=RoundedCornerShape(8.dp))}
                         item {Row(horizontalArrangement=Arrangement.spacedBy(T.small)){
                             FilterChip(!advanced,{advanced=false;selectedGroup=null;prefs.edit().putBoolean("advanced",false).apply()},label={Text("General")})
                             FilterChip(advanced,{advanced=true;selectedGroup=null;prefs.edit().putBoolean("advanced",true).apply()},label={Text("Advanced tools")})
@@ -235,12 +237,11 @@ import kotlinx.coroutines.*
     var details by remember(entry.id){mutableStateOf(false)}
     val colors=MaterialTheme.colorScheme
     Surface(modifier=Modifier.fillMaxWidth(),
-        shape=RoundedCornerShape(18.dp),color=colors.surfaceContainerLow,
-        border=androidx.compose.foundation.BorderStroke(1.dp,colors.outlineVariant)) {
+        color=colors.background) {
         ListItem(modifier=Modifier.testTag("settings-entry-${entry.id}").combinedClickable(role=androidx.compose.ui.semantics.Role.Button,
             onClickLabel="Open ${entry.title}",onLongClickLabel="Show details",onLongClick={details=true},onClick=onSelect),
             leadingContent={SettingsIconTile(entry.id)},
-            headlineContent={Text(entry.title,color=colors.onSurface,style=MaterialTheme.typography.titleSmall)},
+            headlineContent={Text(entry.title,color=colors.onSurface,style=MaterialTheme.typography.bodyLarge)},
             supportingContent=if(expanded) {{Text(entry.description,color=colors.onSurfaceVariant)}} else null,
             trailingContent={Icon(Icons.Default.ChevronRight,null)},colors=ListItemDefaults.colors(containerColor=Color.Transparent))
     }

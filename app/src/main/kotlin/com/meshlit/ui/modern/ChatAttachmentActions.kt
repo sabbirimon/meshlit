@@ -69,7 +69,7 @@ private fun ByteArray.hasPrefix(prefix:ByteArray)=size>=prefix.size && prefix.in
             require(text.length<=11000){"Combined attachments exceed the chat text budget"};onText(text)
         }catch(c:CancellationException){throw c}catch(e:Exception){error=e.message}finally{busy=false}}
     }
-    IconButton(enabled=enabled && !busy,onClick={menu=true}){Icon(Icons.Default.Add,"Add photo, file or chat options")}
+    TouchIcon(Icons.Default.Add,"Add photo, file or chat options",enabled=enabled && !busy){menu=true}
     if(menu) ModalBottomSheet(onDismissRequest={menu=false}) { Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom=20.dp)) {
         Text("Add to chat",Modifier.padding(horizontal=24.dp,vertical=10.dp),style=MaterialTheme.typography.titleLarge)
         if(!com.meshlit.BuildProfile.coreCandidate) ListItem(modifier=Modifier.clickable{menu=false;onPhoto()},headlineContent={Text("Photo from device")},supportingContent={Text("Choose a photo, review its model, then use Send")},leadingContent={Icon(Icons.Default.Image,null)})

@@ -18,6 +18,8 @@ On 2026-11-24 the Studio and HyperL development branches gained the same model a
 The native workbench now packages the Voice and vision companion dashboard under Management. Physical Windows companion capture and full Android parity remain open. [Desktop details](docs/desktop/FULL_STUDIO.md#voice-and-vision-in-the-native-workbench).
 
 
+The refreshed Android build passed five physical Samsung interaction checks. These include a 48 dp composer target, a long press that did not submit, system-bar contrast in both themes and public file discovery over LTE in both phone model catalogs. An earlier rapid-search test exposed a canceled request overwriting newer results. The fixed run reached the Bonsai GGUF options through LM Studio and the 1.1 MB stories260K GGUF through Hugging Face. These checks stopped at file selection. Windows distribution now publishes the tested Setup executable separately.
+
 ## HyperL engine priority — 2026-11-06
 
 The owner moved the custom model engine into standalone HyperL; Studio will be

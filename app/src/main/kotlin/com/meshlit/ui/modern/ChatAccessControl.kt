@@ -2,7 +2,7 @@ package com.meshlit.ui.modern
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -10,15 +10,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.meshlit.chat.*
 
-@Composable internal fun ChatAccessControl(options:ChatOptions,enabled:Boolean,onMode:(ChatApprovalMode)->Unit,onTools:()->Unit,onExecutionMode:(ChatExecutionMode)->Unit,modifier:Modifier=Modifier) {
+@Composable internal fun ChatAccessControl(options:ChatOptions,enabled:Boolean,onMode:(ChatApprovalMode)->Unit,onTools:()->Unit,onExecutionMode:(ChatExecutionMode)->Unit,modifier:Modifier=Modifier,extraOptions:@Composable ()->Unit={}) {
     var menu by remember{mutableStateOf(false)}
     var confirm by remember{mutableStateOf(false)}
     Box(modifier) {
-        TextButton(onClick={menu=true},enabled=enabled,modifier=Modifier.fillMaxWidth().testTag("chat-access-indicator"),contentPadding=PaddingValues(horizontal=4.dp)) {
-            Icon(Icons.Default.Shield,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp))
-            Text(if(options.executionMode==ChatExecutionMode.CHAT)"Chat · tools off" else if(options.hostedAgentToolsActive)"Agent · ask" else when(options.approvalMode){ChatApprovalMode.ASK->"Agent · ask";ChatApprovalMode.AUTO_READS->"Agent · auto reads";ChatApprovalMode.SELECTED_TOOLS->"Agent · approved tools"},style=MaterialTheme.typography.labelMedium,maxLines=2)
-        }
+        TouchIcon(Icons.Default.Tune, "Chat tools and permissions", Modifier.testTag("chat-access-indicator"),enabled) { menu=true }
         DropdownMenu(menu,{menu=false}) {
+            extraOptions()
             ChatExecutionMode.entries.forEach { mode -> DropdownMenuItem(
                 text={Text(mode.label+when {
                     options.executionMode==mode -> " ✓"

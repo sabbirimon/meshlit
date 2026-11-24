@@ -37,7 +37,7 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     context.startActivity(Intent.createChooser(send,"Share output"))
 }
 
-@Composable internal fun MessageActions(text:String,usage:ChatTokenUsage?=null,onReply:(()->Unit)?=null) {
+@Composable internal fun MessageActions(text:String,usage:ChatTokenUsage?=null,showMetrics:Boolean=false,onReply:(()->Unit)?=null) {
     val clipboard=LocalClipboardManager.current
     val context=LocalContext.current
     var error by remember{mutableStateOf<String?>(null)}
@@ -53,28 +53,32 @@ internal fun shareGeneratedFile(context:Context,file:File) {
     }}
     if(reader) ReplyReader(text){reader=false}
     if(details) TokenUsageDetails(usage){details=false}
-    Surface(shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surfaceContainerLow) { Row {
-        onReply?.let { reply -> IconButton(onClick=reply){Icon(Icons.AutoMirrored.Filled.Reply,"Reply to response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)} }
+    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
         IconButton(onClick={clipboard.setText(AnnotatedString(text))}){
             Icon(Icons.Default.ContentCopy,"Copy response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        IconButton(onClick={try {
-            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                .putExtra(Intent.EXTRA_TEXT,text),"Share response"))
-        }catch(e:Exception){error="No sharing app is available"}}){
-            Icon(Icons.Default.Share,"Share response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
         IconButton(onClick={reader=true}){
             Icon(Icons.Default.OpenInFull,"Read full response",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        androidx.compose.foundation.layout.Box {
         IconButton(onClick={menu=true}){
             Icon(Icons.Default.MoreVert,"Response actions",Modifier.size(18.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(menu,{menu=false}) {
+            onReply?.let { reply -> DropdownMenuItem(text={Text("Reply")},onClick={menu=false;reply()}) }
+            DropdownMenuItem(text={Text("Share response")},onClick={menu=false;try {
+                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,text),"Share response"))
+            } catch(e:Exception){error="No sharing app is available"}})
             DropdownMenuItem(text={Text("Save response as Markdown")},enabled=!busy,onClick={menu=false;export.launch("meshlit-response.md")})
             DropdownMenuItem(text={Text("Response token details")},onClick={menu=false;details=true})
         }
-    } }
+        }
+        if(showMetrics && usage!=null) TextButton(onClick={details=true}) {
+            Text(usage.tokensPerSecond?.let{java.lang.String.format(java.util.Locale.ROOT,"%.1f tok/s",it)}
+                ?: java.lang.String.format(java.util.Locale.ROOT,"%.1f s",usage.elapsedMs/1000.0),
+                color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium)
+        }
+    }
     error?.let{AlertDialog(onDismissRequest={error=null},title={Text("Cannot share")},text={Text(it)},
         confirmButton={TextButton(onClick={error=null}){Text("OK")}})}
 }

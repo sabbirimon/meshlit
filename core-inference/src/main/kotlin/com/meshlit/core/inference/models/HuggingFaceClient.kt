@@ -57,7 +57,7 @@ class HuggingFaceClient {
         }
     }
     suspend fun search(query:String,token:String=""):List<String> {
-        require(query.length in 1..200)
+        require(query.length<=200)
         val url="https://huggingface.co/api/models".toHttpUrl().newBuilder().addQueryParameter("search",query)
             .addQueryParameter("filter","gguf").addQueryParameter("limit","20").build()
         return fetch(builder(url.toString(),token).build()).jsonArray.mapNotNull{it.jsonObject["id"]?.jsonPrimitive?.contentOrNull}

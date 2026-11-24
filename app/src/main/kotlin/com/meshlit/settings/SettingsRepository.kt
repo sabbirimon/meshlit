@@ -61,7 +61,7 @@ open class SettingsRepository(private val context: Context?, private val storeOv
                 ?: MeshlitThemeConfig.Default.themeMode,
             dynamicColors = prefs[Keys.dynamicColors] ?: MeshlitThemeConfig.Default.dynamicColors,
             uiLanguage = com.meshlit.workspace.WorkspaceLanguage.fromTag(prefs[Keys.uiLanguage]),
-            uiFont = com.meshlit.ui.theme.UiFont.entries.firstOrNull{it.name==prefs[Keys.uiFont]} ?: com.meshlit.ui.theme.UiFont.FIGTREE,
+            uiFont = com.meshlit.ui.theme.UiFont.entries.firstOrNull{it.name==prefs[Keys.uiFont]} ?: com.meshlit.ui.theme.UiFont.SYSTEM,
             surfaceStyle = com.meshlit.ui.theme.SurfaceStyle.entries.firstOrNull{it.name==prefs[Keys.surfaceStyle]} ?: com.meshlit.ui.theme.SurfaceStyle.SOLID,
             workspaceLayout = com.meshlit.ui.theme.WorkspaceLayout.entries.firstOrNull{it.name==prefs[Keys.workspaceLayout]} ?: com.meshlit.ui.theme.WorkspaceLayout.ADAPTIVE,
             sidebarStyle = com.meshlit.ui.theme.SidebarStyle.entries.firstOrNull{it.name==prefs[Keys.sidebarStyle]} ?: com.meshlit.ui.theme.SidebarStyle.CARDS,

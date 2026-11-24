@@ -345,6 +345,7 @@ dependencies {
     // supported minSdk (pure-Java), unlike Ktor 3 client which needs
     // DEX 040 bytecode from API 33.
     implementation(libs.okhttp.core)
+    implementation("org.jsoup:jsoup:1.21.2")
     implementation(libs.nanohttpd.core)
     implementation("org.bouncycastle:bcprov-jdk18on:1.86")
 

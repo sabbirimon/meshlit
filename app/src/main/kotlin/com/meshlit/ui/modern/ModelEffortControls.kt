@@ -47,7 +47,7 @@ internal fun chatSupportedEfforts(options:com.meshlit.chat.ChatOptions,profiles:
 @Composable internal fun ReasoningEffortButton(effort:ReasoningEffort,allowed:Set<ReasoningEffort>,enabled:Boolean,onChange:(ReasoningEffort)->Unit) {
     var menu by remember{mutableStateOf(false)}
     Box {
-        TextButton(onClick={menu=true},enabled=enabled,modifier=Modifier.testTag("chat-effort-selector"),contentPadding=PaddingValues(horizontal=6.dp)){Text("${effort.label} ▾",style=MaterialTheme.typography.labelMedium)}
+        TextButton(onClick={menu=true},enabled=enabled,modifier=Modifier.testTag("chat-effort-selector"),contentPadding=PaddingValues(horizontal=6.dp)){Text("Reasoning effort · ${effort.label}",style=MaterialTheme.typography.labelMedium)}
         DropdownMenu(menu,{menu=false}) {
             DropdownMenuItem(text={Text(if(allowed.isEmpty())"Auto only · model support unavailable" else "Reasoning effort")},enabled=false,onClick={})
             ReasoningEffort.entries.forEach { value ->
