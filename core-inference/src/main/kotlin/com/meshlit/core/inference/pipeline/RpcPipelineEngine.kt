@@ -55,10 +55,13 @@ class RpcPipelineEngine(private val port:Int,private val credential:String,priva
             put("stop",buildJsonArray{request.stopSequences.forEach {add(it)}})
         }
         val call=client.newCall(Request.Builder().url("http://127.0.0.1:$port/completion")
-            .header("Authorization","Bearer $credential").post(payload.toString().toRequestBody("application/json".toMediaType())).build())
+            .header("Authorization","Bearer $credential").header("Connection","close").post(payload.toString().toRequestBody("application/json".toMediaType())).build())
         try {
             coroutineScope {
-                val watcher=launch(Dispatchers.IO){try{awaitCancellation()}finally{call.cancel()}}
+                val reading = java.util.concurrent.atomic.AtomicBoolean(true)
+                val watcher = launch(Dispatchers.IO, start=CoroutineStart.UNDISPATCHED) {
+                    try { awaitCancellation() } finally { if (reading.get()) call.cancel() }
+                }
                 try {
                     call.execute().use { response ->
                         require(response.code==200){"Pipeline request failed (HTTP ${response.code})"}
@@ -69,7 +72,8 @@ class RpcPipelineEngine(private val port:Int,private val credential:String,priva
                             val line=source.readUtf8LineStrict(65536)
                             if(!line.startsWith("data:")) continue
                             val data=line.removePrefix("data:").trim()
-                            if(data=="[DONE]") {finished=true;break}
+                            if(data=="[DONE]") {finished=true;continue}
+                            if (finished) continue
                             val chunk=Json.parseToJsonElement(data).jsonObject
                             require("error" !in chunk){"Native pipeline reported an error"}
                             val content=chunk["content"]?.jsonPrimitive?.content.orEmpty()
@@ -85,12 +89,15 @@ class RpcPipelineEngine(private val port:Int,private val credential:String,priva
                                     chunk["stop_type"]?.jsonPrimitive?.contentOrNull=="word" || chunk["stopped_word"]?.jsonPrimitive?.booleanOrNull==true->FinishReason.STOP_SEQUENCE
                                     else->FinishReason.NATURAL_STOP
                                 }
-                                finished=true;break
+                                finished=true
                             }
                         }
                         require(finished){"Pipeline stream ended before completion"}
                     }
-                } finally {watcher.cancel()}
+                } finally {
+                    reading.set(false)
+                    watcher.cancel()
+                }
             }
             val duration=(System.nanoTime()-started)/1_000_000
             val result=InferenceResult(promptTokens,tokens,duration,rate,

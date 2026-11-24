@@ -19,3 +19,5 @@ The two larger-window checks ran the Meshlit native server through ADB loopback.
 | ![Qwen model card with quantization, capabilities and separate model and active context sizes](model-library.png) | ![On-device chat showing the prompt, reply, timestamps, token count, decode rate and elapsed time](chat-metrics.png) |
 
 [4,096-token run](native-4096-long-prompt.json) · [1.5B model run](native-8192-1.5b.json) · [Qwen’s published model card](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF) · [Related HyperL projection across Intel, AMD and Adreno GPUs](https://github.com/sabbirimon/HyperL/blob/feature/native-mlir-engine/docs/evidence/intel-amd-adreno-projection-2026-11-24.json)
+
+The packaged native runner passed five consecutive replies, cancellation, and recovery on the R7. [Per-reply timings and token counts](installed-native-repeat.json).
