@@ -135,7 +135,7 @@
       "class": "active",
       "scope": "cross-platform tracking; feature and device gates remain separate",
       "title": "Meshlit progress and evidence",
-      "contentSha256WithoutTrackingBlock": "193b16887957ba25169c556f11246e875792d145e8e8c2d69338c161ab2c4c63"
+      "contentSha256WithoutTrackingBlock": "5128cd813879283a09ec52a3cb7ff4aff37d0142e4cb16e06b9af39d7e4b20cf"
     },
     {
       "path": "README.md",
@@ -576,7 +576,7 @@
       "class": "active",
       "scope": "Android/shared reference; desktop ports have separate acceptance",
       "title": "Meshlit Studio on desktop and Android",
-      "contentSha256WithoutTrackingBlock": "9fc9bec51afd4ef93b30ce043f6541a5fec8b492e2036ab89502e97bb8444d25"
+      "contentSha256WithoutTrackingBlock": "635be288bb264651e40a21490b121fb1bf426f6f3b12550b81d33f1b9c3757b4"
     },
     {
       "path": "docs/HIGH_IMPACT_BACKLOG_2026-10-24.md",

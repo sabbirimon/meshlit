@@ -86,7 +86,7 @@ internal fun modelFeatures(repo: HubRepository?): List<String> {
         Text("Model specifications",style=MaterialTheme.typography.titleMedium)
         ModelFacts(listOfNotNull(
             (task ?: "Text generation".takeIf{starter})?.let{"Model type" to it},
-            (repository?.parameters?.let { modelNumber(it) } ?: "0.49B".takeIf{starter})?.let{"Parameters" to it},
+            if (starter) "Parameters" to "0.49B" else repository?.parameters?.let { "GGUF parameters" to modelNumber(it) },
             (meta?.architecture ?: repository?.architecture)?.let{"Architecture" to it},
             meta?.blocks?.let{"Layers" to modelNumber(it)},
             (meta?.maxContext?.toLong() ?: repository?.contextLength)?.let{"Model context" to (modelNumber(it)+" tokens")},
