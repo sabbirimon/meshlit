@@ -379,6 +379,8 @@ async function activate(context) {
         if(!selected.value&&id==='speech')speech?.abort();
         status();
     }
+    let screenSession;
+    context.subscriptions.push({dispose:()=>screenSession?.abort()});
     async function chooseAttachment(){
         requirePermission('files');
         const files=await vscode.window.showOpenDialog({canSelectMany:false,openLabel:'Attach to the next message'});
@@ -425,7 +427,7 @@ async function activate(context) {
         if(!panel)return;
         const route=settings();
         const native=['local','import'].includes(route.kind);
-        const state=native ? local.route?'Loaded':local.pending?'Loading':'Selected · unloaded'
+        const state=native ? local.route?'Loaded · '+local.route.contextSize+' configured context':local.pending?'Loading':'Selected · unloaded'
             :route.kind==='asset'?'Local runtime · loads per request':'Remote · '+(route.hostName || new URL(route.base).host);
         sendUI('status',{text:modelName(route)+' · '+state, model:modelName(route),
             voiceHelp:process.platform==='win32'?'Open Permissions and allow Voice input.':'Built-in speech recognition is available on Windows. Use system dictation in the message box here.',
@@ -445,6 +447,7 @@ async function activate(context) {
                 const preference=context.globalState.get('local-reply-preference','');
                 if(preference)messages.unshift({role:'system',content:'The user prefers these response styles: '+preference});
             }
+            const sentAt=Date.now();
             const started=performance.now();
             const progress=text=>sendUI('progress',{text});
             let answer,count,rate,promptTokens;
@@ -486,9 +489,10 @@ async function activate(context) {
             if(Number.isFinite(rate)&&rate>0)usage.push(rate.toFixed(1)+' tokens/s decode');
             else if(Number.isSafeInteger(count)&&count>0&&seconds>0)usage.push((count/seconds).toFixed(1)+' tokens/s overall');
             else usage.push('Token speed unavailable');
+            if(['local','import'].includes(selected.kind)&&local.route?.contextSize)usage.push(local.route.contextSize+' configured context');
             const metrics=usage.join(' · ');
             const id=crypto.randomUUID();replyIds.add(id);if(replyIds.size>512)replyIds.delete(replyIds.values().next().value);
-            history=[...history,{role:'user',content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,content:output,model:modelName(selected),metrics}].slice(-128);
+            history=[...history,{role:'user',createdAtMs:sentAt,content:prompt+(file?' [Attached: '+file.name+']':'')},{role:'assistant',id,createdAtMs:Date.now(),content:output,model:modelName(selected),metrics}].slice(-128);
             await recordChat(history);
             return output;
         } finally { if(active===controller) active=undefined;scheduleUnload();management.refresh(); }
@@ -503,7 +507,7 @@ async function activate(context) {
         const nonce=crypto.randomBytes(20).toString('hex');
         panel.iconPath=vscode.Uri.file(brand.file);
         panel.webview.html=page(nonce,firstRun(),brand.markup);
-        panel.onDidDispose(()=>{active?.abort();panel=undefined;ready=false;});
+        panel.onDidDispose(()=>{screenSession?.abort();active?.abort();panel=undefined;ready=false;});
         panel.webview.onDidReceiveMessage(async msg=>{
             if(!msg || typeof msg!=='object') return;
             try {
@@ -513,7 +517,7 @@ async function activate(context) {
                 if(msg.op==='exportChat')return await exportConversation();
                 if(msg.op==='historyOptions')return await historyOptions();
                 if(msg.op==='ready') {ready=true;const compact=context.globalState.get('compact-sidebar');if(typeof compact==='boolean')sendUI('sidebar',{compact});updateWelcome(firstRun());sendUI('navigation',{back:navigation.length>1});status();if(history.length)panel?.webview.postMessage({type:'restore',messages:restoredHistory()});threadList();await loadRecents();}
-                if(msg.op==='new'&&!active){await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
+                if(msg.op==='new'&&!active){screenSession?.abort();await finishWelcome();pendingFile=undefined;sendUI('attachment',{name:''});history=[];currentThread=undefined;panel?.webview.postMessage({type:'clear'});threadList();}
                 if(msg.op==='thread'&&!active&&threads.has(msg.id)){currentThread=msg.id;history=threads.get(msg.id).messages;showThread();}
                 if(msg.op==='useSuggestion'){
                     if(active||changing)return;
@@ -547,6 +551,17 @@ async function activate(context) {
                 if(msg.op==='web'&&!active)await webSearch();
                 if(msg.op==='voice'&&!active)await voice();
                 if(msg.op==='attach'&&!active)await chooseAttachment();
+                if(msg.op==='screenFrame'&&!active){
+                    requirePermission('files');
+                    screenSession?.abort();
+                    const session=new AbortController();screenSession=session;
+                    const thread=currentThread, ownerPanel=panel;
+                    const frame=await require('./screen-share.cjs').chooseScreenFrame(
+                        url=>vscode.env.openExternal(vscode.Uri.parse(url)),AbortSignal.any([session.signal,AbortSignal.timeout(120000)]));
+                    if(frame && panel===ownerPanel && thread===currentThread && !active && !session.signal.aborted){
+                        requirePermission('files');pendingFile=frame;sendUI('attachment',{name:frame.name});
+                    }
+                }
                 if(msg.op==='dropAttachment'){pendingFile=undefined;sendUI('attachment',{name:''});}
                 if(msg.op==='speak'&&typeof msg.text==='string'){
                     requirePermission('speech');speech?.abort();const controller=new AbortController();speech=controller;
@@ -577,7 +592,7 @@ async function activate(context) {
                     if(file&&(route.base||route.device))requirePermission('share');
                     if(file&&(route.base||route.device)&&!await vscode.window.showInformationMessage('Send '+file.name+' to '+(route.hostName||new URL(route.base).host)+' with this message?',{modal:true},'Send attachment'))throw Error('Attachment was not sent.');
                     const answer=await generate(msg.text,file);
-                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model,id:history.at(-1)?.id,metrics:history.at(-1)?.metrics});
+                    pendingFile=undefined;sendUI('attachment',{name:''});sendUI('answer',{text:answer,model:history.at(-1)?.model,id:history.at(-1)?.id,metrics:history.at(-1)?.metrics,createdAtMs:history.at(-1)?.createdAtMs});
                 }
             } catch(err) { panel?.webview.postMessage({type:'error',text:err.name==='AbortError'?'Generation stopped.':err.name==='TimeoutError'?'The model timed out. Check Models & providers, then retry.':err.message}); }
         });

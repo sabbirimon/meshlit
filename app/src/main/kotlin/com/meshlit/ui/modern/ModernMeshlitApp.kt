@@ -171,15 +171,18 @@ fun ModernMeshlitApp() {
         options.routeId!=null -> "Model route · ${if(state.running) "Working" else "Configured"}"
         hostPolicy -> "Host policy · ${options.colibriMode}"
         else -> {
-            val location=when(coordinator.engineTag){"runanywhere","onnx-ort","llama-native-local"->"On-device model";"llama-rpc-layer"->"Cluster model";else->"Selected model"}
             val status=when(runtime){is CoordinatorState.Ready->"Ready";is CoordinatorState.Generating->"Generating";is CoordinatorState.Loading->"Loading";CoordinatorState.Starting->"Starting";is CoordinatorState.Error->"Unavailable";else->"Not loaded"}
-            "$location · $status"
+            val contextLabel=loaded?.contextSize?.takeIf{it>0}?.let{"$it ctx"}
+                ?:localEntry?.metadata?.maxContext?.let{"$it model max · active ctx unknown"} ?: "Context unreported"
+            "$status · $contextLabel"
         }
     }
     if(showCapabilities) ModelCapabilitiesDialog(if(localSelected)localEntry else null,modelTitle,
         runtimeInfo=if(localSelected)loaded else null,sourceLabel=modelStatus){showCapabilities=false}
     val drawer=rememberDrawerState(DrawerValue.Closed)
     var tab by rememberSaveable { mutableStateOf("chat") }
+    var primaryDetail by rememberSaveable(tab) { mutableStateOf(false) }
+    var previousHub by rememberSaveable { mutableStateOf("chat") }
     val chatPhotoState=remember{mutableStateOf<android.net.Uri?>(null)}
     val chatPhotoProviderState=remember{mutableStateOf("")}
     val chatDraftState=rememberSaveable{mutableStateOf("")}
@@ -202,7 +205,7 @@ fun ModernMeshlitApp() {
     var settingsOrigin by rememberSaveable { mutableStateOf("chat") }
     if(!com.meshlit.BuildProfile.coreCandidate) com.meshlit.permissions.FirstLaunchPermissionSetup{tab="permissions"}
     LaunchedEffect(chats) { chats.ready.await() }
-    BackHandler(tab!="chat"){tab="chat"}
+    BackHandler(tab!="chat"){if(primaryDetail)primaryDetail=false else {tab=if(tab in setOf("settings","agents","devices","models")) "chat" else previousHub}}
     BackHandler(tab=="chat" && !closing){closing=true}
     LaunchedEffect(closing){if(closing){delay(360);(context as? android.app.Activity)?.finish()}}
     val config=com.meshlit.ui.theme.LocalMeshlitThemeConfig.current
@@ -210,6 +213,7 @@ fun ModernMeshlitApp() {
     val colors=MaterialTheme.colorScheme
     val openMenu:()->Unit={scope.launch{drawer.open()}}
     fun select(id:String) {
+        if(tab in setOf("chat","settings","agents","devices","models")) previousHub=tab
         if(id in WorkspaceDestinations.settingsIds && tab!="settings" && tab !in WorkspaceDestinations.settingsIds) settingsOrigin=tab
         tab=if(com.meshlit.BuildProfile.routeAllowed(id)) id else "about"
         scope.launch{drawer.close()}
@@ -231,7 +235,8 @@ fun ModernMeshlitApp() {
         }
         val body:@Composable ()->Unit={
             val settingsPage=tab=="settings" || tab in WorkspaceDestinations.settingsIds
-            val ownHeader=settingsPage || tab in setOf("media","vision","voice")
+            val hub=tab in setOf("settings","agents","devices") && !primaryDetail
+            val ownHeader=settingsPage && !hub || tab in setOf("media","vision","voice")
             Scaffold(containerColor=if(glass) Color.Transparent else colors.background,
                 contentWindowInsets=if(ownHeader) WindowInsets(0,0,0,0) else ScaffoldDefaults.contentWindowInsets,
                 bottomBar={Column {
@@ -244,18 +249,19 @@ fun ModernMeshlitApp() {
                 topBar={if(!ownHeader) CenterAlignedTopAppBar(expandedHeight=60.dp,
                     title={if(tab=="chat") Column(Modifier.heightIn(min=T.touch).clickable(onClickLabel="Choose model",onClick={if(localSelected)select("models") else showChatOptions=true}).testTag("chat-model-header"),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
                         Row(verticalAlignment=Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).background(if(localSelected && loaded!=null) colors.primary else colors.outline,androidx.compose.foundation.shape.CircleShape).semantics{contentDescription=modelStatus});Spacer(Modifier.width(7.dp))
                             Text(modelTitle,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium,
                                 modifier=Modifier.weight(1f,fill=false).testTag("chat-model-name"))
                             Icon(Icons.Default.ExpandMore,null,Modifier.size(16.dp),tint=colors.onSurfaceVariant)
                         }
-                        if(runtime !is CoordinatorState.Ready && localSelected) Text(modelStatus,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodySmall,
+                        Text(modelStatus,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodySmall,
                             color=colors.onSurfaceVariant,modifier=Modifier.testTag("chat-model-status"))
                     } else Text(WorkspaceDestinations.all.firstOrNull{it.id==tab}?.title ?: "Meshlit",maxLines=1,
                         overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium)},
                     navigationIcon={if(!wide) IconButton(onClick=openMenu){Icon(Icons.Default.Menu,stringResource(R.string.modern_menu))}},
                     actions={if(tab!="chat")IconButton(onClick={showGlobalSearch=true}){Icon(Icons.Default.Search,"Search all of Meshlit",Modifier.size(20.dp))}
                     if(tab=="chat") {
-                        IconButton(enabled=!state.running,onClick={chats.newChat()}){Icon(Icons.Default.EditNote,stringResource(R.string.modern_new_chat),Modifier.size(20.dp))}
+                        IconButton(enabled=!state.running,onClick={scope.launch{chats.ready.await();chats.newChat();android.widget.Toast.makeText(context,"New chat",android.widget.Toast.LENGTH_SHORT).show()}}){Icon(Icons.Default.EditNote,stringResource(R.string.modern_new_chat),Modifier.size(20.dp))}
                         IconButton(onClick={chatMenu=true}){Icon(Icons.Default.MoreVert,"Chat menu",Modifier.size(20.dp))}
                         DropdownMenu(chatMenu,{chatMenu=false}) {
                             DropdownMenuItem(text={Text("Models and imports")},onClick={chatMenu=false;select("models")})
@@ -280,14 +286,15 @@ fun ModernMeshlitApp() {
                 Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),contentAlignment=Alignment.TopCenter) {
                     key(tab) {when(tab) {
                         "models" -> PhoneModelPicker()
-                        "devices" -> ModernNetworkScreen(onBack={select("chat")},
-                            onDashboard={select("device-dashboard")}, initialPage="app")
+                        "devices","agents","settings" -> if(!primaryDetail) PhoneWorkspacePage(tab,::select){primaryDetail=true}
+                            else if(tab=="devices") ModernNetworkScreen(onBack={primaryDetail=false},onDashboard={select("device-dashboard")}, initialPage="app")
+                            else ModernSettingsScreen(initialDestination=tab,onExit={primaryDetail=false})
                         "monitor" -> ModernMonitorScreen()
                         "media" -> MediaGenerationScreen(onBack={select("chat")})
                         "vision" -> MediaGenerationScreen(onBack={select("chat")},initialKind="vision")
                         "voice" -> HandsFreeVoiceDialog(chats){select("chat")}
                         "structured" -> ModernStructuredScreen()
-                        else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onExit=if(tab!="settings") ({tab=settingsOrigin;settingsDestination=null}) else null,onMenu=openMenu,onDestinationChanged={destination->
+                        else -> if(settingsPage) ModernSettingsScreen(initialDestination=tab.takeUnless{it=="settings"},onExit=if(tab!="settings") ({tab=previousHub;settingsDestination=null}) else null,onMenu=openMenu,onDestinationChanged={destination->
                             settingsDestination=destination
                             if(destination==null && tab!="settings") tab="settings"
                         }) else ModernChatScreen(state,runtime,chats,coordinator.engineTag,showChatSearch,chatSearchQuery,chatSearchMessage,chatPhotoState,chatPhotoProviderState,chatDraftState,chatPhotoTurnState,chatCapturePathState,chatCaptureUriState,onSearchQuery={chatSearchQuery=it;chatSearchMessage=null},onCloseSearch={showChatSearch=false;chatSearchMessage=null},onModels={select("models")},onMedia={select("media")},onVision={select("vision")},onFiles={select("files")},onProviders={select("providers")},onOptions={showChatOptions=true},onConnections={select("device-dashboard")})
@@ -453,6 +460,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                             val currentMatch=searchOpen && row.key==rows.getOrNull(matches.getOrNull(matchPosition) ?: -1)?.key
                             Surface(shape=RoundedCornerShape(8.dp),color=if(currentMatch) colors.secondaryContainer else colors.surfaceContainerHigh,modifier=Modifier.weight(1f,fill=false).widthIn(max=T.bubbleMax).then(if(currentMatch) Modifier.testTag("chat-search-current-match") else Modifier)) {
                                 Column(Modifier.clickable(onClickLabel="Quote your message",enabled=!state.running){replyTo(message)}.padding(horizontal=16.dp,vertical=12.dp)) {
+                                    MessageClock(message.createdAtMs)
                                     message.attachmentNote?.let{Text(it,style=MaterialTheme.typography.labelMedium,color=colors.onSurfaceVariant);Spacer(Modifier.height(6.dp))}
                                     SelectionContainer {Text(message.text,style=MaterialTheme.typography.bodyLarge.copy(fontSize=18.sp,lineHeight=28.sp),color=colors.onSurface)}
                                 }
@@ -463,6 +471,7 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                                 Modifier.size(24.dp),tint=androidx.compose.ui.graphics.Color.Unspecified)
                             Spacer(Modifier.width(10.dp))
                             Text(message.source ?: "Meshlit",style=MaterialTheme.typography.titleSmall,color=colors.onSurfaceVariant,maxLines=2,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false))
+                            MessageClock(message.createdAtMs,Modifier.padding(start=8.dp))
                             if(state.running && message.id==controller.generationId && chatToolActivity(state.activeTool)!=null) ChatToolActivityIndicator(checkNotNull(state.activeTool))
                             else if(message.text.isEmpty() && state.running && message.id==controller.generationId) {
                                 Spacer(Modifier.width(T.medium));LinearProgressIndicator(Modifier.width(60.dp))
@@ -484,6 +493,16 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
                     }
                 }
                 item(key="chat-end-anchor"){Spacer(Modifier.fillMaxWidth().height(1.dp).testTag("chat-end-anchor"))}
+            }
+            val turnIndices=rows.indices.filter{rows[it].kind=="user"}
+            if(turnIndices.size>=2){
+                val activeTurn by remember(list,turnIndices) { derivedStateOf {
+                    turnIndices.indexOfLast{it<=list.firstVisibleItemIndex}.coerceAtLeast(0)
+                } }
+                com.meshlit.ui.phone.PhoneTurnAnchors(turnIndices.map{rows[it].message.text},activeTurn,Modifier.align(Alignment.CenterStart)){turn->
+                    followLatest=false
+                    scope.launch{list.scrollToItem(turnIndices[turn])}
+                }
             }
             if(!nearBottom && rows.isNotEmpty()) SmallFloatingActionButton(onClick={followLatest=true;list.requestScrollToItem(rows.size)},
                 modifier=Modifier.align(Alignment.BottomCenter).padding(T.small).testTag("chat-latest")) {Icon(Icons.Default.ArrowDownward,stringResource(R.string.modern_latest))}
@@ -508,14 +527,14 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=16.dp,vertical=10.dp)) {
             PhonePrompt(draft,{editDraft(it.take(12000))},if(photo!=null) "Ask about this photo" else stringResource(R.string.modern_message),
                 !state.running,composerFocus,send,attachments={
-                    ChatAttachmentActions(!state.running,onText={text->if(draft.length+text.length+2<=12000) editDraft(if(draft.isBlank()) text else "$draft\n\n$text") else controller.attachmentError("Attachment plus draft exceeds 12000 characters")},onSelectedImage={selectPhoto(it)},onPhoto={photoPicker.launch("image/*")},onCamera={try{
+                    key(state.selectedId){ChatAttachmentActions(!state.running,onText={text->if(draft.length+text.length+2<=12000) editDraft(if(draft.isBlank()) text else "$draft\n\n$text") else controller.attachmentError("Attachment plus draft exceeds 12000 characters")},onSelectedImage={selectPhoto(it)},onPhoto={photoPicker.launch("image/*")},onCamera={try{
                         clearPhoto()
                         val dir=java.io.File(context.cacheDir,"exports/captures").apply{mkdirs();listFiles().orEmpty().filter{it.name.startsWith("chat-") && System.currentTimeMillis()-it.lastModified()>86_400_000}.forEach{it.delete()}}
                         val target=java.io.File(dir,"chat-${java.util.UUID.randomUUID()}.jpg")
                         captureFilePath=target.path
                         captureUri=androidx.core.content.FileProvider.getUriForFile(context,"${context.packageName}.fileprovider",target)
                         camera.launch(checkNotNull(captureUri))
-                    }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions)
+                    }catch(_:Exception){clearPhoto();controller.attachmentError("No compatible camera capture app is available")}},onFiles=onFiles,onMedia=onMedia,onVision=onVision,onOptions=onOptions)}
                 },tools={
                         ChatAccessControl(access,!state.running,onMode={mode->
                             runCatching{controller.setOptions(access.copy(approvalMode=mode))}.onFailure{controller.attachmentError(it.message ?: "Approval choice could not be applied")}
@@ -541,5 +560,13 @@ private fun ModernChatScreen(state:ChatState,runtime:CoordinatorState,controller
     }
 }
 
+
+@Composable
+private fun MessageClock(timestamp:Long?,modifier:Modifier=Modifier){
+    if(timestamp==null)return
+    val context=androidx.compose.ui.platform.LocalContext.current
+    Text(android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(timestamp)),modifier,
+        style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+}
 
 private data class ReplyTimelineRow(val key:String,val message:ChatMessage,val block:ReplyBlock?=null,val kind:String)

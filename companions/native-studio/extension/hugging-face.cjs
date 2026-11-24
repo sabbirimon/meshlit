@@ -73,7 +73,7 @@ function modelRows(rows) {
         const tags=Array.isArray(m.tags)?m.tags:[];
         const base=tags.find(t=>t.startsWith('base_model:quantized:'))||tags.find(t=>/^base_model:[^:]+\//.test(t));
         const publisher=base?.split(':').pop().split('/')[0]||m.id.split('/')[0];
-        return {id:m.id,publisher,summary:[m.pipeline_tag,publisher,Number.isFinite(m.downloads)?m.downloads.toLocaleString()+' downloads':''].filter(Boolean).join(' · '),
+        return {id:m.id,publisher,minBytes:Number.isSafeInteger(m.gguf?.totalFileSize)?m.gguf.totalFileSize:undefined,summary:[m.pipeline_tag,publisher,Number.isFinite(m.downloads)?m.downloads.toLocaleString()+' downloads':''].filter(Boolean).join(' · '),
             caps:tags.filter(t=>['image-text-to-text','tool-use','reasoning'].includes(t)),likes:m.likes,downloads:m.downloads,lastModified:Date.parse(m.lastModified)||0};
     });
 }

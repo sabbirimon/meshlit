@@ -122,7 +122,7 @@ class WorkbenchUiDeviceTest {
         click("Validate");outputContains("admitted true");checks+="validate-admitted"
         compose.onNodeWithTag("hyperl-list").performScrollToNode(hasText("Stop"))
         compose.onNodeWithText("Stop").assertIsNotEnabled();checks+="idle-stop-disabled"
-        click("Run CPU");outputContains("CPU_REFERENCE");outputContains("[0.0,6.0,12.0]");checks+="actual-weighted-relu"
+        click("Run CPU");outputContains("NATIVE_C99");outputContains("[0.0,6.0,12.0]");checks+="actual-weighted-relu"
         click("Generate source");outputContains("kernel");checks+="metal-source"
         click("Vulkan source");click("Generate source");outputContains("#version");checks+="vulkan-source"
         compose.onNodeWithTag("hyperl-list").performScrollToNode(hasTestTag("hyperl-recipe"))

@@ -52,6 +52,27 @@ class PhoneWorkspaceTest {
         compose.runOnIdle { assertEquals(1,sent) }
     }
 
+    @Test fun turnRailOpensAndJumpsToTheChosenPrompt() {
+        var selected=0
+        compose.setContent { MeshlitTheme { PhoneTurnAnchors(listOf("First prompt","Second prompt","Third prompt"),1){selected=it} } }
+        compose.onNodeWithContentDescription("Conversation anchors, turn 2 of 3").performClick()
+        compose.onNodeWithText("Third prompt").performClick()
+        compose.runOnIdle { assertEquals(2,selected) }
+    }
+
+    @Test fun hubListsMoreThanOnePageAndReturnsPublisherArtOnDevice() {
+        assumeTrue(InstrumentationRegistry.getArguments().getString("livePhoneCatalog")=="true")
+        kotlinx.coroutines.runBlocking {
+            val catalog=com.meshlit.models.PhoneHubCatalog
+            val first=catalog.page("",null,"")
+            val next=catalog.page("",requireNotNull(first.next),"")
+            org.junit.Assert.assertTrue((first.ids+next.ids).distinct().size>50)
+            val fits=catalog.page("stories260K",null,"",ggufOnly=true,capacity=2_000_000L)
+            org.junit.Assert.assertTrue("ggml-org/test-model-stories260K" in fits.ids)
+            org.junit.Assert.assertNotNull(catalog.logo("Qwen"))
+        }
+    }
+
     @Test fun publicCatalogsResolveDownloadChoicesOnDevice() {
         assumeTrue(InstrumentationRegistry.getArguments().getString("livePhoneCatalog")=="true")
         compose.setContent { MeshlitTheme { PhoneModelPicker() } }
@@ -61,7 +82,7 @@ class PhoneWorkspaceTest {
             compose.waitUntil(60_000) {compose.onAllNodes(hasText(value,substring=true)).fetchSemanticsNodes().isNotEmpty()}
         }
         waitForText("Bonsai 27B")
-        compose.onNodeWithText("Bonsai 27B",substring=true).performClick()
+        compose.onNodeWithText("Bonsai 27B").performClick()
         waitForText("bonsai-27b")
         compose.onNodeWithText("bonsai-27b",substring=true).performClick()
         waitForText("GGUF")
@@ -71,7 +92,9 @@ class PhoneWorkspaceTest {
         compose.onNodeWithTag("phone-catalog-search").performTextInput("stories260K")
         waitForText("ggml-org/test-model-stories260K")
         compose.onNodeWithText("ggml-org/test-model-stories260K").performClick()
-        waitForText("Download ·")
+        waitForText("Publisher model card")
+        compose.onNodeWithText("GGUF").assertIsDisplayed()
+        compose.onNodeWithText("llama",substring=true).assertExists()
         val dir=InstrumentationRegistry.getInstrumentation().targetContext.cacheDir
         File(dir,"phone-picker-proof.png").outputStream().use { out->
             compose.onRoot().captureToImage().asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG,100,out)

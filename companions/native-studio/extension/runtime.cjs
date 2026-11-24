@@ -80,7 +80,8 @@ class LocalServer {
         env.LLAMA_API_KEY = token;
         signal.throwIfAborted();
         progress('Loading model into memory…');
-        const child = spawn(server, ['--host','127.0.0.1','--port',String(port),'--model',weights,'--alias','meshlit-local','--ctx-size','4096','--parallel','1','--threads',threads,'--threads-batch',threads,
+        const contextSize=4096;
+        const child = spawn(server, ['--host','127.0.0.1','--port',String(port),'--model',weights,'--alias','meshlit-local','--ctx-size',String(contextSize),'--parallel','1','--threads',threads,'--threads-batch',threads,
             '--fit','off','--device','none','--n-gpu-layers','0','--no-warmup','--no-agent','--no-webui','--offline'], {env,stdio:'ignore', windowsHide:true});
         this.child = child;
         let failed;
@@ -92,7 +93,7 @@ class LocalServer {
             if (failed || child.exitCode !== null || child.signalCode) throw Error('Local model server stopped during startup'+(failed?' · '+failed.message:' · exit '+child.exitCode)+'. Check available RAM and extract the full Studio package.');
             try {
                 const inventory = await request(base, '/models', token, null, AbortSignal.any([signal,AbortSignal.timeout(1000)]));
-                if (inventory.data?.some(m => m.id === 'meshlit-local')) return {base, token, model:'meshlit-local'};
+                if (inventory.data?.some(m => m.id === 'meshlit-local')) return {base, token, model:'meshlit-local',contextSize};
             } catch { signal.throwIfAborted(); }
             await sleep(250, undefined, {signal});
         }

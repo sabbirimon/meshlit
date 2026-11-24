@@ -11,7 +11,7 @@ import kotlinx.serialization.json.*
 import java.util.UUID
 
 @Serializable enum class ChatApprovalMode(val label:String) {
-    ASK("Ask each time"), AUTO_READS("Auto approved reads"), SELECTED_TOOLS("Selected approved tools")
+    ASK("Ask each time"), AUTO_READS("Auto approved reads"), SELECTED_TOOLS("Autopilot · approved tools")
 }
 internal data class PendingChatToolApproval(val id:String,val tool:String,val arguments:String,val expiresAtMs:Long)
 

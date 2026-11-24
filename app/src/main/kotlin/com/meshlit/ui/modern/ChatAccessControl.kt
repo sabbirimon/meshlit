@@ -15,7 +15,10 @@ import com.meshlit.chat.*
     var confirm by remember{mutableStateOf(false)}
     Box(modifier) {
         TouchIcon(Icons.Default.Tune, "Chat tools and permissions", Modifier.testTag("chat-access-indicator"),enabled) { menu=true }
+        val count=options.toolCount + if(options.hostedAgentToolsActive) 1 else 0
+        if(count>0) Badge(Modifier.align(androidx.compose.ui.Alignment.TopEnd)) { Text(count.toString()) }
         DropdownMenu(menu,{menu=false}) {
+            DropdownMenuItem(text={Text("Choose tools and permissions")},onClick={menu=false;onTools()})
             extraOptions()
             ChatExecutionMode.entries.forEach { mode -> DropdownMenuItem(
                 text={Text(mode.label+when {
@@ -30,7 +33,7 @@ import com.meshlit.chat.*
             ChatApprovalMode.entries.forEach { mode -> DropdownMenuItem(text={Text(mode.label+(if(options.approvalMode==mode)" ✓" else ""))},
                 onClick={menu=false;if(mode==ChatApprovalMode.SELECTED_TOOLS && mode!=options.approvalMode)confirm=true else onMode(mode)}) }
             HorizontalDivider()
-            DropdownMenuItem(text={Text("Choose tools and conversation settings")},onClick={menu=false;onTools()})
+
         }
     }
     if(confirm) SelectedToolsConfirmation(onDismiss={confirm=false},onConfirm={confirm=false;onMode(ChatApprovalMode.SELECTED_TOOLS)})

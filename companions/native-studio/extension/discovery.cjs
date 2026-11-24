@@ -107,7 +107,7 @@ function chooseFile(vscode, metadata, files, brand, local=[], account, lmOptions
             try {
                 if(msg.op==='search'||msg.op==='page'){
                     const append=msg.op==='page', source=msg.source||'hub';
-                    if(!['hub','mine','lm'].includes(source)||typeof msg.q!=='string'||msg.q.length>220||!['','likes','downloads','lastModified'].includes(msg.sort))throw Error('Invalid search');
+                    if(!['hub','gguf','community','mine','lm'].includes(source)||typeof msg.q!=='string'||msg.q.length>220||!['','likes','downloads','lastModified'].includes(msg.sort))throw Error('Invalid search');
                     const key=JSON.stringify([source,msg.q,msg.sort]);
                     if(append && (!next||scope!==key))return;
                     if(!append){next=undefined;rows.clear();repos.clear();scope=key;}
@@ -119,7 +119,7 @@ function chooseFile(vscode, metadata, files, brand, local=[], account, lmOptions
                         }
                         if(preferPublic)items=await publicLm.list(msg.q,msg.sort,signal);
                     }else{
-                        const exact=source==='hub'&&repoInput(msg.q);
+                        const exact=['hub','gguf'].includes(source)&&repoInput(msg.q);
                         if(exact)items=[{id:exact,publisher:exact.split('/')[0],summary:'Hugging Face repository'}];
                         else{
                             const params=new URLSearchParams({limit:'50'});
@@ -127,10 +127,11 @@ function chooseFile(vscode, metadata, files, brand, local=[], account, lmOptions
                                 const name=await account?.name();
                                 if(!name)throw Error('Sign in to Hugging Face to see your model repositories.');
                                 params.set('author',name);
-                            }else params.set('filter','gguf');
+                            }else if(source==='gguf')params.set('filter','gguf');
+                            else if(source==='community')params.set('author','lmstudio-community');
                             if(msg.q)params.set('search',msg.q);
                             if(msg.sort){params.set('sort',msg.sort);params.set('direction','-1');}
-                            for(const field of ['author','likes','downloads','lastModified','tags','pipeline_tag'])params.append('expand',field);
+                            for(const field of ['author','likes','downloads','lastModified','tags','pipeline_tag','gguf'])params.append('expand',field);
                             items=hf.modelRows(await metadata(append?next:'https://huggingface.co/api/models?'+params,signal,page));
                         }
                     }
@@ -169,6 +170,9 @@ function chooseFile(vscode, metadata, files, brand, local=[], account, lmOptions
                     selected=msg.repo;revision=data.sha;
                     choices = files(msg.repo,data).map(item=>({...item,repo:msg.repo}));
                     const facts = choices.length?['GGUF','Bundled runtime: CPU']:[];
+                    const extensions=new Set(Object.values(require('./model-adapters.cjs').formats).flatMap(format=>format.extensions));
+                    const formats=new Set((data.siblings||[]).map(file=>file.rfilename.split('.').pop().toLowerCase()).filter(ext=>extensions.has(ext)));
+                    for(const format of formats)if(!facts.includes(format.toUpperCase()))facts.push(format.toUpperCase());
                     if(data.siblings?.some(file=>/(^|\/)mmproj[-_.]/i.test(file.rfilename)))facts.push('Vision weights');
                     for(const capability of ['vision','image-text-to-text','tool-use','reasoning'])if(data.tags?.includes(capability))facts.push(capability);
                     if (typeof data.gguf?.architecture === 'string') facts.push(data.gguf.architecture);

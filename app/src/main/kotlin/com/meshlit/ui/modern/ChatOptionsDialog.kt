@@ -69,6 +69,74 @@ import kotlinx.coroutines.withContext
     Spacer(Modifier.height(12.dp))
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).testTag("chat-settings"),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("Access shown in Chat reflects this conversation's saved route and tool switches. A switch only permits a request: each tool also needs its separate app, agent and device grant. Online provider selection sends chat text to that endpoint when you press Send.",style=MaterialTheme.typography.bodySmall)
+        SettingsFeatureSection("Permissions and tools") {
+        Text("This conversation only. Main Settings controls device-wide permission; Save here does not change another chat.",style=MaterialTheme.typography.bodySmall)
+        Text("Conversation mode",style=MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ChatExecutionMode.entries.forEach { mode ->
+            FilterChip(options.executionMode==mode,{options=options.copy(executionMode=mode)},
+                enabled=mode==ChatExecutionMode.CHAT || options.canSelectAgentMode && !com.meshlit.BuildProfile.coreCandidate,
+                label={Text(mode.label)},modifier=Modifier.testTag("chat-settings-execution-${mode.name.lowercase()}"))
+        } }
+        Text("Chat answers without running tools. Agent can use your selected tools for each message and may answer without using one. Choose local tools or approved hosted web search to enable Agent. Save applies this choice only to this conversation; app and device grants remain separate.",style=MaterialTheme.typography.bodySmall)
+        Text("Action approval",style=MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ChatApprovalMode.entries.forEach { mode ->
+            FilterChip(options.approvalMode==mode,{if(mode==ChatApprovalMode.SELECTED_TOOLS && options.approvalMode!=mode)confirmSelectedTools=true else options=options.copy(approvalMode=mode)},label={Text(mode.label)})
+        } }
+        Text("Ask reviews each selected tool call. Auto allows known approved reads and asks before other calls. Selected tools uses existing grants without another chat prompt. OS, root and protected policy controls remain human-only. This choice lasts for the app session; restart returns to Ask.",style=MaterialTheme.typography.bodySmall)
+        if(operationPolicy.agentsPaused || operationPolicy.emergencyStopped) {
+            Text(if(operationPolicy.emergencyStopped) "App-wide emergency stop is active. Resume in Settings → Operations."
+                else "Agents are paused for this device. Enable Agents on this device in main Settings → Agent management.",color=MaterialTheme.colorScheme.error)
+        }
+        if(com.meshlit.BuildProfile.coreCandidate) {
+            Text("Tools are unavailable in the Core candidate build. This build supports local chat, models and files; use the Experimental app for agent tools.",modifier=Modifier.testTag("chat-tools-build-reason"))
+        } else if(!options.supportsLocalToolSelection) {
+            Text("Phone, files, device and other local tools require an on-device model. Hosted mode offers only separately reviewed public web search.",modifier=Modifier.testTag("chat-tools-route-reason"))
+            val review=effortProfile?.reviewedHostedTools()
+            val available=effortProfile?.hostedToolsAllowed(review?.reviewId)==true
+            if(options.onlineProfileId!=null) {
+                Row { Text("Hosted web search in this chat",Modifier.weight(1f))
+                    Switch(options.hasHostedWebGrant,{enabled->
+                        options=if(enabled)options.copy(hostedToolReviewId=checkNotNull(review).reviewId)
+                            else options.copy(hostedToolReviewId=null,executionMode=ChatExecutionMode.CHAT)
+                    },enabled=available || options.hasHostedWebGrant,modifier=Modifier.testTag("chat-hosted-web-tools"))
+                }
+                Text(if(available)"Choose Agent and Save. Meshlit asks before each search, sends the approved query to your search service, then returns public snippets to the selected model. At most one search per turn. Private knowledge and phone tools are excluded."
+                    else "Enable agent access and review native tool calling for this exact direct API model in Online providers.",style=MaterialTheme.typography.bodySmall)
+            }
+            OutlinedButton(onClick={options=options.localRoute()},modifier=Modifier.testTag("chat-tools-use-local")) {Text("Use local model for tools")}
+            Text("Save applies the route change. Load a capable local model before sending; switching here does not load one or grant tool access.",style=MaterialTheme.typography.bodySmall)
+        } else {
+            val selectedGroups=ChatToolGroup.entries.filter { it.selected(options) }
+            if(selectedGroups.isNotEmpty())Text(selectedGroups.joinToString(" · ") { it.label },style=MaterialTheme.typography.titleSmall)
+            LinearProgressIndicator(progress={ (options.toolCount/10f).coerceIn(0f,1f) },modifier=Modifier.fillMaxWidth())
+            Text("Selected tools: ${options.toolCount}/10. Combine groups as needed; each action still requires its own saved grant.",style=MaterialTheme.typography.bodySmall,color=if(options.toolCount>10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            ChatToolSwitch(ChatToolGroup.MEMORY,options){options=it}
+            Text("Requires saved agent management in Memory and personality. Agents can manage switches and facts; recall is applied only to on-device chat.")
+            ChatToolSwitch(ChatToolGroup.LOCAL_SEARCH,options){options=it}
+            Text("The on-device model can search saved app content only after your separate local-content agent grant. No Internet is needed.")
+            ChatToolSwitch(ChatToolGroup.WEB,options,label="This chat: web access"){options=it}
+            Text("App-wide search: ${if(searchAccess.webEnabled) "on" else "off"} · agent search: ${if(searchAccess.agentWeb) "allowed" else "not allowed"} · ${if(searchAccess.agentWebPaused) "paused" else "not paused"}. Brave key: ${when {webKeyReadFailed->"could not read status";hasWebKey==true->"stored";hasWebKey==false->"missing";else->"checking"}}.",
+                style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("chat-web-global-status"))
+            Text("This switch changes only the current chat after Save. It cannot turn on app-wide Internet or agent access.",style=MaterialTheme.typography.bodySmall)
+            Text("Web search uses the provider saved in Search settings. DuckDuckGo needs no API key; selecting Brave requires its key. Internet access and the search agent grant must be on. Queries go to the selected provider. Reading full pages uses your configured HTTPS Crawl4AI host and approved domains.")
+            TextButton(onClick=onSearchSettings){Text("App-wide search setup")}
+            ChatToolSwitch(ChatToolGroup.PHONE,options,label="This chat: phone-agent access"){options=it}
+            Text("Runs with the loaded on-device model and needs no external host. Requires saved autonomy, app scope and Android Accessibility in Settings → Phone agent and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant.")
+            ChatToolSwitch(ChatToolGroup.NODE,options){options=it}
+            Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. The combined chat tool list is limited to ten. VM/QEMU and remote nodes must actually be available.")
+            ChatToolSwitch(ChatToolGroup.CRYPTO,options){options=it}
+            Text("Requires the saved cryptography agent grant. Keys/tool results are visible to the model and saved chat; keep real credentials in the vault.")
+            ChatToolSwitch(ChatToolGroup.TEAMS,options){options=it}
+            Text("Uses only your separately saved team setup and Models delegation. It can start bounded text teams, inspect findings and pause or stop their runs. Role templates do not grant tools.")
+            ChatToolSwitch(ChatToolGroup.CONNECTIONS,options){options=it}
+            Text("Shows real saved/opt-in discovered choices. Automatic contact checks need Connection assistance enabled in Devices and an exact source approval. First identities and unsupported transports require owner setup. Connection checks do not grant model use, commands or compute.")
+            ChatToolSwitch(ChatToolGroup.REMOTE,options){options=it}
+            Text("Commands only saved fingerprint-pinned SSH nodes within per-node action grants. Configure Device and cluster commands plus SSH delegation.")
+            ChatToolSwitch(ChatToolGroup.PEER,options){options=it}
+            Text("Requires the foreground, manually paired peer and saved P2P/agent grants. Receiver approves command scopes independently; native layer inference over Internet is not implemented.")
+            Text("Experimental local tool protocol: up to eight calls and five minutes with phone tools, otherwise three calls and 180 seconds. Stop cancels it. A model trained for JSON/tool use is required; invalid output dispatches no action for that step. The starter model is not qualified for reliable autonomy.")
+        }
+        }
         SettingsFeatureSection("Task for this chat") {
             Text("Choose a starting task. This replaces only this chat's draft instructions and tool groups. Save applies it; Cancel keeps the current chat unchanged. App-wide permissions and agent profiles are never enabled here.",style=MaterialTheme.typography.bodySmall)
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -154,74 +222,6 @@ import kotlinx.coroutines.withContext
         } }
         Text(if(allowedEfforts.isEmpty())"This selection has no declared reasoning control. Configure documented support for an exact API model in Model connections. Local and mixed routes stay Auto."
             else "Requests the provider's reasoning setting for this exact model. It is separate from response length and permissions. Reasoning can consume the same token budget as the answer.",style=MaterialTheme.typography.bodySmall)
-        }
-        SettingsFeatureSection("Permissions and tools") {
-        Text("This conversation only. Main Settings controls device-wide permission; Save here does not change another chat.",style=MaterialTheme.typography.bodySmall)
-        Text("Conversation mode",style=MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ChatExecutionMode.entries.forEach { mode ->
-            FilterChip(options.executionMode==mode,{options=options.copy(executionMode=mode)},
-                enabled=mode==ChatExecutionMode.CHAT || options.canSelectAgentMode && !com.meshlit.BuildProfile.coreCandidate,
-                label={Text(mode.label)},modifier=Modifier.testTag("chat-settings-execution-${mode.name.lowercase()}"))
-        } }
-        Text("Chat answers without running tools. Agent can use your selected tools for each message and may answer without using one. Choose local tools or approved hosted web search to enable Agent. Save applies this choice only to this conversation; app and device grants remain separate.",style=MaterialTheme.typography.bodySmall)
-        Text("Action approval",style=MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {ChatApprovalMode.entries.forEach { mode ->
-            FilterChip(options.approvalMode==mode,{if(mode==ChatApprovalMode.SELECTED_TOOLS && options.approvalMode!=mode)confirmSelectedTools=true else options=options.copy(approvalMode=mode)},label={Text(mode.label)})
-        } }
-        Text("Ask reviews each selected tool call. Auto allows known approved reads and asks before other calls. Selected tools uses existing grants without another chat prompt. OS, root and protected policy controls remain human-only. This choice lasts for the app session; restart returns to Ask.",style=MaterialTheme.typography.bodySmall)
-        if(operationPolicy.agentsPaused || operationPolicy.emergencyStopped) {
-            Text(if(operationPolicy.emergencyStopped) "App-wide emergency stop is active. Resume in Settings → Operations."
-                else "Agents are paused for this device. Enable Agents on this device in main Settings → Agent management.",color=MaterialTheme.colorScheme.error)
-        }
-        if(com.meshlit.BuildProfile.coreCandidate) {
-            Text("Tools are unavailable in the Core candidate build. This build supports local chat, models and files; use the Experimental app for agent tools.",modifier=Modifier.testTag("chat-tools-build-reason"))
-        } else if(!options.supportsLocalToolSelection) {
-            Text("Phone, files, device and other local tools require an on-device model. Hosted mode offers only separately reviewed public web search.",modifier=Modifier.testTag("chat-tools-route-reason"))
-            val review=effortProfile?.reviewedHostedTools()
-            val available=effortProfile?.hostedToolsAllowed(review?.reviewId)==true
-            if(options.onlineProfileId!=null) {
-                Row { Text("Hosted web search in this chat",Modifier.weight(1f))
-                    Switch(options.hasHostedWebGrant,{enabled->
-                        options=if(enabled)options.copy(hostedToolReviewId=checkNotNull(review).reviewId)
-                            else options.copy(hostedToolReviewId=null,executionMode=ChatExecutionMode.CHAT)
-                    },enabled=available || options.hasHostedWebGrant,modifier=Modifier.testTag("chat-hosted-web-tools"))
-                }
-                Text(if(available)"Choose Agent and Save. Meshlit asks before each search, sends the approved query to your search service, then returns public snippets to the selected model. At most one search per turn. Private knowledge and phone tools are excluded."
-                    else "Enable agent access and review native tool calling for this exact direct API model in Online providers.",style=MaterialTheme.typography.bodySmall)
-            }
-            OutlinedButton(onClick={options=options.localRoute()},modifier=Modifier.testTag("chat-tools-use-local")) {Text("Use local model for tools")}
-            Text("Save applies the route change. Load a capable local model before sending; switching here does not load one or grant tool access.",style=MaterialTheme.typography.bodySmall)
-        } else {
-            val selectedGroups=ChatToolGroup.entries.filter { it.selected(options) }
-            if(selectedGroups.isNotEmpty())Text(selectedGroups.joinToString(" · ") { it.label },style=MaterialTheme.typography.titleSmall)
-            LinearProgressIndicator(progress={ (options.toolCount/10f).coerceIn(0f,1f) },modifier=Modifier.fillMaxWidth())
-            Text("Selected tools: ${options.toolCount}/10. Combine groups as needed; each action still requires its own saved grant.",style=MaterialTheme.typography.bodySmall,color=if(options.toolCount>10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-            ChatToolSwitch(ChatToolGroup.MEMORY,options){options=it}
-            Text("Requires saved agent management in Memory and personality. Agents can manage switches and facts; recall is applied only to on-device chat.")
-            ChatToolSwitch(ChatToolGroup.LOCAL_SEARCH,options){options=it}
-            Text("The on-device model can search saved app content only after your separate local-content agent grant. No Internet is needed.")
-            ChatToolSwitch(ChatToolGroup.WEB,options,label="This chat: web access"){options=it}
-            Text("App-wide search: ${if(searchAccess.webEnabled) "on" else "off"} · agent search: ${if(searchAccess.agentWeb) "allowed" else "not allowed"} · ${if(searchAccess.agentWebPaused) "paused" else "not paused"}. Brave key: ${when {webKeyReadFailed->"could not read status";hasWebKey==true->"stored";hasWebKey==false->"missing";else->"checking"}}.",
-                style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("chat-web-global-status"))
-            Text("This switch changes only the current chat after Save. It cannot turn on app-wide Internet or agent access.",style=MaterialTheme.typography.bodySmall)
-            Text("Web search uses the provider saved in Search settings. DuckDuckGo needs no API key; selecting Brave requires its key. Internet access and the search agent grant must be on. Queries go to the selected provider. Reading full pages uses your configured HTTPS Crawl4AI host and approved domains.")
-            TextButton(onClick=onSearchSettings){Text("App-wide search setup")}
-            ChatToolSwitch(ChatToolGroup.PHONE,options,label="This chat: phone-agent access"){options=it}
-            Text("Runs with the loaded on-device model and needs no external host. Requires saved autonomy, app scope and Android Accessibility in Settings → Phone agent and autonomy. Install/remove/permission requests use Android human confirmation; no silent OS grant.")
-            ChatToolSwitch(ChatToolGroup.NODE,options){options=it}
-            Text("Uses only saved node actions and the configured guest, with separate per-key/host and VM agent grants. No agent app/root shell or permission changes. The combined chat tool list is limited to ten. VM/QEMU and remote nodes must actually be available.")
-            ChatToolSwitch(ChatToolGroup.CRYPTO,options){options=it}
-            Text("Requires the saved cryptography agent grant. Keys/tool results are visible to the model and saved chat; keep real credentials in the vault.")
-            ChatToolSwitch(ChatToolGroup.TEAMS,options){options=it}
-            Text("Uses only your separately saved team setup and Models delegation. It can start bounded text teams, inspect findings and pause or stop their runs. Role templates do not grant tools.")
-            ChatToolSwitch(ChatToolGroup.CONNECTIONS,options){options=it}
-            Text("Shows real saved/opt-in discovered choices. Automatic contact checks need Connection assistance enabled in Devices and an exact source approval. First identities and unsupported transports require owner setup. Connection checks do not grant model use, commands or compute.")
-            ChatToolSwitch(ChatToolGroup.REMOTE,options){options=it}
-            Text("Commands only saved fingerprint-pinned SSH nodes within per-node action grants. Configure Device and cluster commands plus SSH delegation.")
-            ChatToolSwitch(ChatToolGroup.PEER,options){options=it}
-            Text("Requires the foreground, manually paired peer and saved P2P/agent grants. Receiver approves command scopes independently; native layer inference over Internet is not implemented.")
-            Text("Experimental local tool protocol: up to eight calls and five minutes with phone tools, otherwise three calls and 180 seconds. Stop cancels it. A model trained for JSON/tool use is required; invalid output dispatches no action for that step. The starter model is not qualified for reliable autonomy.")
-        }
         }
         SettingsFeatureSection("Token management") {
         FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {

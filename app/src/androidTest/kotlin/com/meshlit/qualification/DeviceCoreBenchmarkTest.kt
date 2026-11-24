@@ -88,7 +88,7 @@ class DeviceCoreBenchmarkTest {
         HyperLLibrary.ids.forEach{id->
             val recipe=HyperLLibrary.recipe(id)
             val result=controller.execute(HyperLCodec.json.encodeToString(recipe.program),HyperLCodec.json.encodeToString(recipe.example),16L*1024*1024)
-            assertEquals("CPU_REFERENCE",result.backend)
+            assertTrue(result.backend.startsWith("NATIVE_C99"))
             assertArrayEquals("Actual recipe $id",expected.getValue(id),result.values,0f)
             verified+=id
         }
@@ -106,7 +106,7 @@ class DeviceCoreBenchmarkTest {
                     put("estimatedArrayBytes",result.plan.estimatedBytes);put("before",before);put("after",snapshot())}
             }
         }
-        report("hyperl-cpu",buildJsonObject{put("metadata",metadata());put("backend","CPU_REFERENCE")
+        report("hyperl-cpu",buildJsonObject{put("metadata",metadata());put("backend","NATIVE_C99")
             put("verifiedRecipes",JsonArray(verified.map(::JsonPrimitive)));put("warmupsPerSize",1);put("samplesPerSize",5)
             put("samples",JsonArray(samples));put("phoneGpuExecuted",false)})
         } finally {activity.close()}

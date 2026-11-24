@@ -23,21 +23,44 @@ import com.meshlit.ui.modern.*
 internal fun PhoneWorkspaceMenu(state:ChatState,onSelect:(String)->Unit,onNew:()->Unit,
                                onChat:(String)->Unit,onDelete:(String)->Unit) {
     var query by rememberSaveable {mutableStateOf("")}
-    var allTools by rememberSaveable {mutableStateOf(false)}
+    var opened by rememberSaveable {mutableStateOf<String?>(null)}
     val saved by MenuShortcutStore.ids(LocalContext.current).collectAsState()
-    val shortcuts=(listOf("models","devices","agents","settings")+saved).distinct()
     val pages=WorkspaceDestinations.search(query)
     LazyColumn(Modifier.fillMaxSize().testTag("app-drawer"),contentPadding=PaddingValues(horizontal=20.dp,vertical=24.dp)) {
         item { Text("Meshlit",style=MaterialTheme.typography.headlineMedium) }
         item { Spacer(Modifier.height(20.dp));OutlinedTextField(query,{query=it.take(200)},Modifier.fillMaxWidth().testTag("workspace-search"),
             placeholder={Text("Find a tool")},leadingIcon={Icon(Icons.Default.Search,null)},singleLine=true) }
-        if(query.isBlank()) item { PhoneMenuRow("New chat",Icons.Default.EditNote,!state.running,onClick=onNew) }
-        val visible=if(query.isNotBlank() || allTools) pages else shortcuts.mapNotNull{id->pages.find{it.id==id}}
-        items(visible,key={it.id}) { page ->
-            PhoneMenuRow(if(page.id=="models") "Models" else page.title,settingsIcon(page.id),tag="workspace-${page.id}") { onSelect(page.id) }
+        val core=listOf("chat","models","devices","agents")
+        if(query.isBlank()){
+            item { SectionTitle("Core") }
+            item { PhoneMenuRow("New chat",Icons.Default.EditNote,!state.running,onClick=onNew) }
+            items(core.mapNotNull{id->pages.find{it.id==id}},key={it.id}){entry->
+                DestinationRow(entry.id,entry.title,entry.description){onSelect(entry.id)}
+            }
+        }
+        val extra=saved.filter{it !in core && it!="settings"}
+        if(query.isBlank() && extra.isNotEmpty()){
+            item{SectionTitle("Shortcuts")}
+            items(extra.mapNotNull{id->pages.find{it.id==id}},key={"pin:"+it.id}){entry->
+                DestinationRow(entry.id,entry.title,entry.description){onSelect(entry.id)}
+            }
+        }
+        for(group in SettingsGroup.entries){
+            val entries=pages.filter{entry-> (query.isNotBlank() || entry.id !in core+extra)
+                && SettingsDestinations.all.find{it.id==entry.id}?.group==group}
+            if(entries.isNotEmpty()){
+                item(key=group.name){PhoneMenuRow(group.title,phoneIcon(entries.first().id)){opened=if(opened==group.name)null else group.name}}
+                if(opened==group.name || query.isNotBlank())items(entries,key={it.id}){entry->
+                    DestinationRow(entry.id,entry.title,entry.description){onSelect(entry.id)}
+                }
+            }
+        }
+        val other=pages.filter{entry-> SettingsDestinations.all.none{it.id==entry.id} && (query.isNotBlank() || entry.id !in core+extra)}
+        if(other.isNotEmpty()){
+            item{SectionTitle("Workspace")}
+            items(other,key={it.id}){entry->DestinationRow(entry.id,entry.title,entry.description){onSelect(entry.id)}}
         }
         if(query.isBlank()) {
-            item { PhoneMenuRow(if(allTools) "Fewer tools" else "All tools",if(allTools) Icons.Default.ExpandLess else Icons.Default.ExpandMore){allTools=!allTools} }
             if(state.conversations.isNotEmpty()) item {
                 HorizontalDivider(Modifier.padding(vertical=16.dp))
                 Text("Recent chats",style=MaterialTheme.typography.titleMedium,modifier=Modifier.padding(bottom=8.dp))

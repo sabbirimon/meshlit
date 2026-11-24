@@ -73,11 +73,12 @@ internal fun shareGeneratedFile(context:Context,file:File) {
             DropdownMenuItem(text={Text("Response token details")},onClick={menu=false;details=true})
         }
         }
-        if(showMetrics && usage!=null) TextButton(onClick={details=true}) {
-            Text(usage.tokensPerSecond?.let{java.lang.String.format(java.util.Locale.ROOT,"%.1f tok/s",it)}
-                ?: java.lang.String.format(java.util.Locale.ROOT,"%.1f s",usage.elapsedMs/1000.0),
-                color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium)
-        }
+    }
+    if(showMetrics && usage!=null) TextButton(onClick={details=true}) {
+        val rate=usage.tokensPerSecond?.let{java.lang.String.format(java.util.Locale.ROOT,"%.1f tok/s %s",it,if(usage.rateBasis?.startsWith("Runtime")==true)"decode" else "overall")}
+        val elapsed=java.lang.String.format(java.util.Locale.ROOT,"%.1f s elapsed",usage.elapsedMs/1000.0)
+        Text(listOfNotNull(rate ?: "Speed unreported",elapsed,usage.output?.let{"$it output tokens"},usage.contextCapacity?.let{"$it ctx"}).joinToString(" · "),
+            color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium)
     }
     error?.let{AlertDialog(onDismissRequest={error=null},title={Text("Cannot share")},text={Text(it)},
         confirmButton={TextButton(onClick={error=null}){Text("OK")}})}

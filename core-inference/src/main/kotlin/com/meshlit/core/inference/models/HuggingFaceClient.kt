@@ -9,7 +9,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 @Serializable data class HubArtifact(val repo:String,val revision:String,val fileName:String,val sizeBytes:Long?,val sha256:String?,val url:String)
-@Serializable data class HubRepository(val id:String,val revision:String,val private:Boolean,val gated:String,val license:String?,val files:List<HubArtifact>)
+@Serializable data class HubRepository(val id:String,val revision:String,val private:Boolean,val gated:String,val license:String?,val files:List<HubArtifact>,
+    val downloads:Long?=null,val likes:Long?=null,val updated:String?=null,val task:String?=null,
+    val architecture:String?=null,val parameters:Long?=null,val contextLength:Long?=null,val tags:List<String> = emptyList(),val formats:List<String> = emptyList())
 @Serializable data class HostedModelConfig(val enabled:Boolean=false,val model:String="",val endpoint:String="https://router.huggingface.co/v1/chat/completions",val billTo:String="") {
     fun validate() {
         require(model.isBlank() || model.matches(Regex("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(:[A-Za-z0-9_-]+)?"))) { "Enter namespace/model with an optional provider suffix" }
@@ -78,8 +80,25 @@ class HuggingFaceClient {
             name.split('/').forEach{url.addPathSegment(it)}
             HubArtifact(id,revision,name,lfs?.get("size")?.jsonPrimitive?.longOrNull ?: item["size"]?.jsonPrimitive?.longOrNull,sha,url.build().toString())
         }.take(200)
+        val gguf=data["gguf"] as? JsonObject
+        val config=data["config"] as? JsonObject
+        val card=data["cardData"] as? JsonObject
+        fun JsonObject.field(key:String)=(this[key] as? JsonPrimitive)?.contentOrNull
+        val license=when(val value=card?.get("license")){
+            is JsonPrimitive -> value.contentOrNull
+            is JsonArray -> value.mapNotNull{(it as? JsonPrimitive)?.contentOrNull}.joinToString(", ")
+            else -> null
+        }
+        val weightExtensions=setOf("gguf","safetensors","onnx","pth","pt","bin","tflite","pte","rkllm","mlmodel","dlc","engine","msgpack","pb","h5","npz","npy","llamafile","ggml")
+        val formats=data["siblings"]?.jsonArray.orEmpty().mapNotNull{
+            it.jsonObject["rfilename"]?.jsonPrimitive?.contentOrNull?.substringAfterLast('.', "")?.lowercase()?.takeIf(weightExtensions::contains)
+        }.distinct().sorted()
         return HubRepository(id,revision,data["private"]?.jsonPrimitive?.booleanOrNull ?: false,
-            data["gated"]?.jsonPrimitive?.content ?: "unknown",(data["cardData"] as? JsonObject)?.get("license")?.jsonPrimitive?.contentOrNull,files)
+            data["gated"]?.jsonPrimitive?.content ?: "unknown",license,files,
+            data.field("downloads")?.toLongOrNull(),data.field("likes")?.toLongOrNull(),data.field("lastModified"),
+            data.field("pipeline_tag"),gguf?.field("architecture") ?: config?.field("model_type"),
+            gguf?.field("total")?.toLongOrNull(),gguf?.field("context_length")?.toLongOrNull(),
+            (data["tags"] as? JsonArray).orEmpty().mapNotNull{(it as? JsonPrimitive)?.contentOrNull}.distinct(),formats)
     }
     suspend fun hostedModels(token:String):JsonElement=fetch(builder("https://router.huggingface.co/v1/models",token).build())
     suspend fun browserToken(open: suspend (String) -> Unit): String {

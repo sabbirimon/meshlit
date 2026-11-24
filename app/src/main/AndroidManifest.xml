@@ -21,6 +21,7 @@
          dataSync is the closest fit for "long-running job queue" and is
          capped at 6h/24h on Android 15+ — handled with onTimeout(). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -246,6 +247,7 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Human-started public-key SSH node session on an explicit private interface" />
         </service>
         <service android:name=".models.ModelDownloadService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name=".chat.ChatScreenCapture" android:exported="false" android:foregroundServiceType="mediaProjection" />
         <service android:name=".chat.ChatInferenceService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User initiated on-device model generation" />
         </service>

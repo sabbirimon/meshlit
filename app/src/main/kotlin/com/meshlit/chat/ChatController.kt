@@ -36,7 +36,7 @@ data class PhotoChatRequest(val uri:android.net.Uri,val profile:OnlineProfile?=n
     val label:String get()=profile?.let{"${it.name} · ${it.model}"} ?: "On-device photo · ${checkNotNull(offline).label}"
 }
 
-@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null,val knowledgeSources:List<String> = emptyList(),val webSources:List<ChatWebSource> = emptyList(),val deviceOffer:com.meshlit.core.mcp.control.DeviceConnectionOffer?=null,val deviceReceipt:com.meshlit.core.mcp.control.DeviceConnectionReceipt?=null,val isolatedPhoto:Boolean=false)
+@Serializable data class ChatMessage(val id:String=UUID.randomUUID().toString(),val role:String,val text:String,val usage:ChatTokenUsage?=null,val attachmentNote:String?=null,val source:String?=null,val status:String?=null,val knowledgeSources:List<String> = emptyList(),val webSources:List<ChatWebSource> = emptyList(),val deviceOffer:com.meshlit.core.mcp.control.DeviceConnectionOffer?=null,val deviceReceipt:com.meshlit.core.mcp.control.DeviceConnectionReceipt?=null,val isolatedPhoto:Boolean=false,val createdAtMs:Long?=null)
 @Serializable data class ChatConversation(val id:String=UUID.randomUUID().toString(),val title:String="New chat",
     val messages:List<ChatMessage> = emptyList(),val updatedAt:Long=System.currentTimeMillis(),val options:ChatOptions=ChatOptions(),val usageNote:String?=null,val draft:String="",val recoveryBinding:ReplicaChatBinding?=null)
 data class ChatState(val conversations:List<ChatConversation> = emptyList(),val selectedId:String?=null,
@@ -161,8 +161,8 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         require(text.length<=12000) { "Message is too long" }
         if(_state.value.current==null) newChat()
         val selected=_state.value.selectedId!!
-        val user=ChatMessage(role="user",text=text.trim(),attachmentNote=photo?.let{"Photo attached · original image not retained"},isolatedPhoto=photo?.offline!=null)
-        val assistant=ChatMessage(role="assistant",text="",source=photo?.label,status=photo?.let{"Analyzing photo"},isolatedPhoto=photo?.offline!=null)
+        val user=ChatMessage(role="user",createdAtMs=System.currentTimeMillis(),text=text.trim(),attachmentNote=photo?.let{"Photo attached · original image not retained"},isolatedPhoto=photo?.offline!=null)
+        val assistant=ChatMessage(role="assistant",createdAtMs=System.currentTimeMillis(),text="",source=photo?.label,status=photo?.let{"Analyzing photo"},isolatedPhoto=photo?.offline!=null)
         val configured=_state.value.current!!.options
         val hostedProfile:OnlineProfile?
         try { configured.validate();com.meshlit.BuildProfile.requireChat(configured)
@@ -203,7 +203,7 @@ class ChatController(private val context:Context,private val coordinator:Inferen
         generation=appScope.launch {
             val started=android.os.SystemClock.elapsedRealtime()
             var foregroundRequested=false
-            fun recordUsage(usage:ChatTokenUsage) {_state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(usage=usage.copy(budgetReason=if(photo!=null) "Vision request limit; actual usage is reported separately" else decision.explanation)) else it}) else c})}}
+            fun recordUsage(usage:ChatTokenUsage) {_state.update{old->old.copy(conversations=old.conversations.map{c->if(c.id==selected) c.copy(messages=c.messages.map{if(it.id==assistant.id) it.copy(createdAtMs=System.currentTimeMillis(),usage=usage.copy(budgetReason=if(photo!=null) "Vision request limit; actual usage is reported separately" else decision.explanation)) else it}) else c})}}
             try {
                 val remoteKnowledge = options.onlineProfileId != null || options.routeId != null || options.agentToolsActive ||
                     colibriDecision?.route == com.meshlit.workspace.ColibriRoute.HOST || coordinator.engineTag !in setOf("runanywhere", "llama-native-local")

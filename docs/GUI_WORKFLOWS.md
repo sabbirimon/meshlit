@@ -6,7 +6,13 @@ Scope: Android/shared reference; desktop ports have separate acceptance. Phase l
 
 Desktop chat uses workbench theme colors for the title and speaker labels. The title stays centered as the sidebar opens or closes. Android centers the model name in the chat header and uses the phone’s system typeface by default. Its status bar and system navigation follow the appearance selected in Meshlit, including when the phone uses a different theme.
 
-On a phone, open the chat menu and choose **Models and imports**. **On device** opens file import, URL import and installed models. **Hugging Face** searches GGUF repositories. **LM Studio** opens the public catalog. Choose a family, a variant, a repository and then the file size you want to download. Transfers appear under **On device**. Long-press the attachment, chat-tools or voice icon to see its label.
+On Android, open **Models → On device** to see the installed model card. Choose another installed model using **Choose model**. Each card shows its publisher, available capabilities, file format, and specifications. Model context is the training limit. Active context is the window allocated for the current session. **Import** opens the file picker or accepts a model link.
+
+The mobile chat header shows the active context window when the runtime reports it. If only the model specification is available, the header labels it as the model maximum. New messages show their local time. Completed replies show elapsed time and token speed when the runtime provides a count. Desktop local chat shows its configured window and the same reply metrics.
+
+In conversations with at least two prompts, the short marks beside the transcript show your position. Hover or focus a desktop mark to preview its prompt and click to jump. On a phone, tap the marks and choose a prompt. **Add to chat → Share screen** opens the system source picker. Desktop shows a live preview in the browser and attaches the frame you choose. Android captures one frame after five seconds. Review the attachment in chat before pressing Send.
+
+On a phone, open the chat menu and choose **Models and imports**. **On device** opens file import, URL import and installed models. **Hugging Face** opens all formats. Tap **All formats** to limit discovery to GGUF, or **Fits this phone** to show repositories with a published GGUF weight estimate within the current memory budget. Use **Load more models** to continue. **LM Studio** opens the public catalog and the larger **Community GGUF** repository list. Choose a family, a variant, a repository and then the file size you want to download. Transfers appear under **On device**. Long-press the attachment, chat-tools or voice icon to see its label.
 
 ## Start a conversation
 
@@ -32,7 +38,7 @@ Desktop replies show elapsed time and any token counts returned by the engine. D
 
 ## Connect a Hugging Face account
 
-Public, ungated models work as a guest. On desktop, choose **Sign in** in the model browser. On Android, open **Settings → Hugging Face dashboard**. Choose **Sign in with Hugging Face** to open the official browser consent screen. If you need an account, choose **Create a Hugging Face account**, complete the provider's signup, return to Meshlit and select sign-in again. Keep the originating Meshlit window or screen open until authorization returns.
+Public, ungated models work as a guest. On desktop, choose **Sign in** in the model browser. On Android, open **Models → Hugging Face → Sign in or create an account**. Choose **Sign in with Hugging Face** to open the official browser consent screen. If you need an account, choose **Create a Hugging Face account**, complete the provider's signup, return to Meshlit and select sign-in again. Keep the originating Meshlit window or screen open until authorization returns.
 
 Read the requested permissions on huggingface.co. Approving connects eligible private models and already-approved gated models. A 403 can indicate that you still need to accept terms or request access on the model page. If browser sign-in expires, start again. A read token remains available in the account controls. Use the sign-out or remove-token control on each device to remove its saved credential. The provider's applications page manages the upstream grant. [HF account documentation](https://huggingface.co/docs/hub/en/oauth)
 
